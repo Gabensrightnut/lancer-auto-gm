@@ -6,10 +6,10 @@ extends RefCounted
 
 const EFFECTS := ["set_flag", "add_flag", "clear_flag", "standing", "reserve", "reserve_table", "contact", "obligation",
 	"pay_obligation", "hook", "harm", "rest", "npc_dead", "log", "start_combat", "downtime", "ui", "help", "deal",
-	"rival_fate", "end_battle", "battle_refused"]
+	"rival_fate", "end_battle", "battle_refused", "trust", "give_item"]
 const CONDITIONS := ["all", "any", "not", "flag", "var", "standing", "alive", "dead", "npc_alive", "trigger", "squad_trigger",
 	"background", "reserve", "phase", "downtime_left", "last_outcome", "ll_min", "ll_max", "contact", "obligation",
-	"missions_min", "hub_has", "role", "hook", "squad_reserve", "deal"]
+	"missions_min", "hub_has", "role", "hook", "squad_reserve", "deal", "trust"]
 
 
 ## Problems in all scenes and downtime data, as plain strings (empty = all good).

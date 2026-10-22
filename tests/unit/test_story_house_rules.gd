@@ -131,3 +131,34 @@ func test_fight_for_it_and_food_and_water() -> void:
 	expect(r["ok"], str(r["reason"]))
 	expect(not Economy.hungry(s, c, t["a"]) and Economy.rations(s) == 4, "a friendly hub feeds the squad")
 	expect(not _sub(t, "restock", {})["ok"], "once per visit")
+
+
+func test_every_world_has_its_own_money() -> void:
+	var t := Setup.setup(224)
+	var s: StoryState = t["story"]
+	var c: Campaign = t["campaign"]
+	_rule(t, "hr_wallet")
+	var here := Economy.currency(s)
+	var start_local := Economy.local(s)
+	expect(start_local > 0 and here.begins_with(str(Sector.current(s)["name"])), "named after this world: %s" % here)
+	expect(Economy.price(s, c, "drink")["text"].contains("manna"), "prices show both: %s" % Economy.price(s, c, "drink")["text"])
+	s.phase = "downtime"
+	var far: Dictionary = {}
+	for w: Dictionary in Sector.get_sector(s)["worlds"]:
+		if str(w["system"]) == "sys_1" and str(w["culture"]) != "union_core":
+			far = w
+	if far.is_empty():
+		return
+	expect(_sub(t, "travel", {"world": far["id"]})["ok"])
+	expect(Economy.currency(s) != here, "another world, another money: %s" % Economy.currency(s))
+	expect_eq(Economy.local(s), 0, "%s is no good here" % here)
+	expect(Economy.describe(s).contains("other world"), Economy.describe(s))
+	var m := int(Economy.wallet(s)["manna"])
+	expect(_sub(t, "exchange", {"to_manna": false, "amount": 10})["ok"], "change manna at the hub")
+	expect(Economy.local(s) == 10 * Economy.rate(s) and int(Economy.wallet(s)["manna"]) == m - 10)
+	Sector.current(s)["culture"] = "union_core"
+	expect(Economy.communal(s) and int(Economy.price(s, c, "food")["manna"]) == 0, "basics are free in the communal Union Core (Core p.10)")
+	Sector.current(s)["culture"] = "frontier_colony"
+	var poor := Economy.rate(s)
+	Sector.current(s)["culture"] = "cyberpunk"
+	expect(Economy.rate(s) < poor, "manna buys less on a rich world (%d vs %d a manna)" % [Economy.rate(s), poor])

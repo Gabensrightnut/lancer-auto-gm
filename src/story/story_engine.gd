@@ -96,6 +96,9 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 				return _no("Nobody like that is here.")
 			if bool(npc.get("dead", false)):
 				return _no("%s is dead." % npc["name"])
+			var cold := Tones.refuses(story, str(npc["id"]))
+			if cold != "":
+				return _no(cold)
 			var w := _able(story, campaign, me)
 			if not w.is_empty():
 				return w
@@ -242,6 +245,10 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 			var why_h := StoryHouseRules.refusal(str(p.get("id", "")))
 			if why_h != "":
 				return _no(why_h)
+		"exchange":
+			var why_x := Economy.exchange_refusal(story, campaign, bool(p.get("to_manna", true)), int(p.get("amount", 0)))
+			if why_x != "":
+				return _no(why_x)
 		"buy", "sell_salvage", "use_printer", "restock", "fight_for_it":
 			if story.phase == "mission":
 				return _no("Not in the middle of a mission.")
@@ -399,6 +406,9 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 			story.phase = "downtime"
 			var events := Downtime.start(story, campaign, bool(p.get("long", campaign.options.get("long_downtime", false))))
 			events.append_array(_ai_downtime(story, campaign))
+			# The main campaign: the conversation that follows the chapter's mission.
+			if CampaignScript.active(campaign):
+				events.append_array(CampaignScript.aftermath(story, campaign, _first_alive(story, campaign)))
 			if not story.hub.is_empty():
 				for h: Dictionary in MissionHooks.fill_board(story, campaign):
 					events.append({"type": "hook_added", "hook": h})
@@ -428,6 +438,8 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 			return Economy.buy(story, campaign, str(p["item"]), str(p.get("pilot", me)))
 		"sell_salvage":
 			return Economy.sell_salvage(story)
+		"exchange":
+			return Economy.exchange(story, bool(p.get("to_manna", true)), int(p["amount"]))
 		"use_printer":
 			return Economy.use_printer(story, campaign, str(p.get("pilot", me)))
 		"restock":
@@ -441,6 +453,8 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 			var recap: Array = (story.downtime.get("log", []) as Array).duplicate(true)
 			story.flags["_last_downtime"] = recap
 			var events: Array = [{"type": "downtime_ended", "rule_ref": REF_FLOW, "recap": recap}]
+			# The main campaign: the chapter's branch, then the next chapter (CampaignScript).
+			events.append_array(CampaignScript.advance(story, campaign))
 			for h: Dictionary in MissionHooks.fill_board(story, campaign):
 				events.append({"type": "hook_added", "hook": h})
 			return events
@@ -537,6 +551,8 @@ func _finish_mission(story: StoryState, campaign: Campaign, p: Dictionary) -> Ar
 	events.append_array(StoryArc.advance(story, campaign, hook, won))
 	# What became of the enemy commander (Rivals).
 	events.append_array(Rivals.after_mission(story, outcome, hook))
+	# The main campaign remembers the chapter's mission (CampaignScript).
+	events.append_array(CampaignScript.after_mission(story, campaign, hook, won))
 	# House rules that are on: pay, salvage, rations, wrecked mechs (Economy).
 	events.append_array(Economy.after_mission(story, campaign, hook, won, p.get("summary", {})))
 	# The GM's bond rewards were for this mission only (Core p.50).

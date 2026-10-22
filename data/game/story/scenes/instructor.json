@@ -69,6 +69,28 @@
    "line": "@farewell",
    "end": true
   },
+  "bristle": {
+   "speaker": "npc",
+   "expression": "angry",
+   "line": [
+    "Careful.",
+    "Say that again. I dare you.",
+    "You want to think very hard about your next words.",
+    "Charming. Anything else?"
+   ],
+   "next": "menu"
+  },
+  "pushed": {
+   "speaker": "npc",
+   "expression": "worried",
+   "line": [
+    "I've told you what I know.",
+    "Drop it.",
+    "You're pushing your luck.",
+    "Some things aren't your business."
+   ],
+   "next": "menu"
+  },
   "check_ok": {
    "speaker": "npc",
    "expression": "smiling",
@@ -310,6 +332,7 @@
     },
     {
      "id": "leave",
+     "tone": "leave",
      "text": [
       "That's all for now.",
       "I should go.",

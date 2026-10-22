@@ -1,0 +1,2274 @@
+{
+ "_note": "Our own writing: the main campaign for AI-GM play (DESIGN.md section 11). Canon-consistent: a nearlight colony ship (Core p.20), NHPs and cascade (p.107), Union DoJ/HR, manna and blink gates (p.10). Nothing from Massif's modules. All text here is easy to edit; the engine (CampaignScript) reads it. Branches: b1 crash site, b2 key-codes, b3 Rook's fate, b4 town meeting, b5 waking, b6 militia plot, b7 WAKEFUL, b8 the contract, b9 hostage, b10 printer cores, b11 the Iron Tithe, b12 betrayal, b13 allies, b14 vault, b15 WAKEFUL's fate, b16 final site, b17 Cass Oduya's fate, b18 the ending.",
+ "id": "long_arrival",
+ "name": "The Long Arrival",
+ "premise": "Centuries ago, before the blink gates reached this region, a colony ship left at near light speed. Now it has arrived, at a frontier world that other settlers have made their home in the meantime. Thousands of its colonists are still asleep, its NHP has been alone for three hundred years, and everyone in the valley below has a claim.",
+ "enemy_mixes": {
+  "raiders": [
+   "ph_grunt",
+   "ph_brawler",
+   "ph_assault"
+  ],
+  "corp": [
+   "ph_assault",
+   "ph_artillery",
+   "ph_support"
+  ],
+  "militia": [
+   "ph_grunt",
+   "ph_brawler",
+   "ph_controller"
+  ],
+  "nhp": [
+   "ph_controller",
+   "ph_support",
+   "ph_artillery"
+  ],
+  "tithe": [
+   "ph_assault",
+   "ph_brawler",
+   "ph_artillery"
+  ]
+ },
+ "factions": {
+  "town": "Redwater Council",
+  "sleepers": "The Sleepers of the Long Arrival",
+  "corp": "Carrow-Vance Logistics",
+  "militia": "Free Valley Militia",
+  "union": "Union DoJ/HR"
+ },
+ "worlds": {
+  "town": {
+   "name": "Calder's Reach",
+   "culture": "old_west",
+   "kind": "town",
+   "landscape": "desert_mesas",
+   "hub": "Redwater"
+  },
+  "dock": {
+   "name": "Long Arrival Dock",
+   "culture": "retrofuturistic",
+   "kind": "station",
+   "landscape": "station",
+   "hub": "The Dock"
+  }
+ },
+ "npcs": {
+  "vell": {
+   "name": "Ada Vell",
+   "title": "Marshal of Redwater",
+   "role": "faction_agent",
+   "faction": "town",
+   "personality": "weary",
+   "world": "town",
+   "spot": "office",
+   "replaces": "faction_agent",
+   "schedule": {
+    "dawn": [
+     "plaza",
+     "square"
+    ],
+    "day": [
+     "office",
+     "front"
+    ],
+    "evening": [
+     "bar",
+     "main"
+    ],
+    "night": [
+     "office",
+     "back",
+     "asleep"
+    ]
+   }
+  },
+  "ione": {
+   "scene": "la_ione",
+   "name": "Ione Sarkis",
+   "title": "Owner of the Last Light",
+   "role": "bartender",
+   "faction": "town",
+   "personality": "sly",
+   "world": "town",
+   "spot": "bar",
+   "replaces": "bartender",
+   "schedule": {
+    "dawn": [
+     "bar",
+     "upstairs",
+     "asleep"
+    ],
+    "day": [
+     "bar",
+     "main"
+    ],
+    "evening": [
+     "bar",
+     "main"
+    ],
+    "night": [
+     "bar",
+     "upstairs",
+     "asleep"
+    ]
+   }
+  },
+  "teodor": {
+   "name": "Brother Teodor",
+   "title": "Preacher",
+   "role": "local",
+   "faction": "town",
+   "personality": "warm",
+   "world": "town",
+   "spot": "plaza"
+  },
+  "cass": {
+   "name": "Cass Oduya",
+   "title": "Captain of the Free Valley Militia",
+   "role": "fixer",
+   "faction": "militia",
+   "personality": "zealous",
+   "world": "town",
+   "spot": "market",
+   "replaces": "fixer",
+   "schedule": {
+    "dawn": [
+     "market",
+     "store",
+     "asleep"
+    ],
+    "day": [
+     "market",
+     "floor"
+    ],
+    "evening": [
+     "bar",
+     "main"
+    ],
+    "night": [
+     "market",
+     "store"
+    ]
+   }
+  },
+  "prentiss": {
+   "name": "Hal Prentiss",
+   "title": "Director, Carrow-Vance Logistics",
+   "role": "company_rep",
+   "faction": "corp",
+   "personality": "formal",
+   "world": "town",
+   "spot": "office",
+   "replaces": "company_rep"
+  },
+  "eshe": {
+   "name": "Eshe Mbeki",
+   "title": "Navigator of the Long Arrival",
+   "role": "local",
+   "faction": "sleepers",
+   "personality": "formal",
+   "world": "dock",
+   "spot": "plaza"
+  },
+  "wakeful": {
+   "name": "WAKEFUL",
+   "title": "The ship's NHP",
+   "role": "local",
+   "faction": "sleepers",
+   "personality": "nervous",
+   "world": "dock",
+   "spot": "office"
+  },
+  "rhee": {
+   "name": "Envoy Min-jun Rhee",
+   "title": "Union DoJ/HR observer",
+   "role": "company_rep",
+   "faction": "union",
+   "personality": "formal",
+   "world": "dock",
+   "spot": "office"
+  }
+ },
+ "commanders": {
+  "rook": {
+   "callsign": "Rook",
+   "rank": "Boss",
+   "personality": "cunning",
+   "faction": "Dust Devil raiders"
+  },
+  "kade": {
+   "callsign": "Kade",
+   "rank": "Captain",
+   "personality": "proud",
+   "faction": "the Iron Tithe"
+  },
+  "morrow": {
+   "callsign": "Morrow",
+   "rank": "Security Chief",
+   "personality": "ruthless",
+   "faction": "Carrow-Vance security"
+  },
+  "cass_cmd": {
+   "callsign": "Oduya",
+   "rank": "Captain",
+   "personality": "zealous",
+   "faction": "Free Valley Militia"
+  },
+  "warden": {
+   "callsign": "WARDEN",
+   "rank": "Shard",
+   "personality": "zealous",
+   "faction": "the ship's cascading systems"
+  }
+ },
+ "items": [
+  {
+   "id": "la_codes",
+   "name": "the Long Arrival's vault key-codes",
+   "owner": "ione",
+   "kept": "room",
+   "spot": "bar",
+   "room": "upstairs",
+   "lock": 2,
+   "value": 200,
+   "effects": [
+    {
+     "set_flag": "la_codes_stolen"
+    }
+   ]
+  },
+  {
+   "id": "la_plans",
+   "name": "the militia's sabotage plans",
+   "owner": "cass",
+   "kept": "room",
+   "spot": "market",
+   "room": "store",
+   "lock": 1,
+   "value": 20,
+   "effects": [
+    {
+     "set_flag": "la_plot_found"
+    }
+   ]
+  }
+ ],
+ "allies": [
+  {
+   "if": {
+    "flag": "la_ally_town"
+   },
+   "name": "Redwater deputies",
+   "template": "ph_grunt",
+   "count": 2
+  },
+  {
+   "if": {
+    "flag": "la_ally_militia"
+   },
+   "name": "Free Valley militia",
+   "template": "ph_brawler",
+   "count": 2
+  },
+  {
+   "if": {
+    "flag": "la_ally_corp"
+   },
+   "name": "Carrow-Vance security",
+   "template": "ph_assault",
+   "count": 2
+  },
+  {
+   "if": {
+    "flag": "la_ally_engineers"
+   },
+   "name": "Sleeper engineers' drones",
+   "template": "ph_support",
+   "count": 2
+  },
+  {
+   "if": {
+    "flag": "la_ally_union"
+   },
+   "name": "Union DoJ/HR marshals",
+   "template": "ph_artillery",
+   "count": 1
+  },
+  {
+   "if": {
+    "flag": "la_ally_wakeful"
+   },
+   "name": "WAKEFUL's maintenance frames",
+   "template": "ph_controller",
+   "count": 1
+  }
+ ],
+ "lines": {
+  "sleepers": [
+   {
+    "flag": "la_saved_crew"
+   },
+   {
+    "flag": "la_stance_share"
+   },
+   {
+    "flag": "la_codes_given_eshe"
+   },
+   {
+    "trust": "eshe",
+    "min": 2
+   }
+  ],
+  "town": [
+   {
+    "flag": "la_sealed_for_town"
+   },
+   {
+    "flag": "la_stance_town"
+   },
+   {
+    "trust": "vell",
+    "min": 2
+   },
+   {
+    "rival": "rook",
+    "fate": "captured"
+   }
+  ],
+  "corp": [
+   {
+    "flag": "la_secured_cargo"
+   },
+   {
+    "flag": "la_codes_to_corp"
+   },
+   {
+    "trust": "prentiss",
+    "min": 2
+   }
+  ]
+ },
+ "final_foe": [
+  {
+   "if": [
+    {
+     "flag": "la_plot_joined"
+    }
+   ],
+   "foe": "Carrow-Vance security",
+   "foes": "corp",
+   "commander": "morrow"
+  },
+  {
+   "if": [
+    {
+     "flag": "la_refused"
+    }
+   ],
+   "foe": "Carrow-Vance security",
+   "foes": "corp",
+   "commander": "morrow"
+  },
+  {
+   "if": [
+    {
+     "flag": "la_nhp_destroyed"
+    }
+   ],
+   "foe": "the ship's old security systems",
+   "foes": "nhp",
+   "commander": "warden"
+  },
+  {
+   "foe": "the Free Valley Militia",
+   "foes": "militia",
+   "commander": "cass_cmd"
+  }
+ ],
+ "first": "c1_crash",
+ "chapters": {
+  "c1_crash": {
+   "act": 1,
+   "act_name": "Landfall",
+   "world": "town",
+   "title": "Fire in the Sky",
+   "intro": [
+    "Something old and enormous burned across Calder's Reach last night and came down hard in the Saltpan.",
+    "By morning everyone in Redwater knows: it's a lander, and it isn't from here. It's from a ship that left before there were gates."
+   ],
+   "briefing": [
+    "You're the lancers I hired, so here's your first job. That lander's come down in the Saltpan.",
+    "The Dust Devils will strip it by noon. There may be people alive in there. Get out there first."
+   ],
+   "hook": {
+    "template": "rescue",
+    "title": "Fire in the Sky",
+    "objective": "Reach the crashed lander in the Saltpan and hold it against the Dust Devil raiders.",
+    "stakes": "There may be survivors aboard, and everyone wants what's in its hold.",
+    "question": "Who gets to the lander first, and what do you save?",
+    "place": "the Saltpan crash site",
+    "enemy": "Dust Devil raiders",
+    "patron": "vell",
+    "npc_templates": [
+     "ph_grunt",
+     "ph_brawler",
+     "ph_assault"
+    ],
+    "sitrep": "sitrep_control",
+    "commander": "rook"
+   },
+   "aftermath": {
+    "npc": "eshe",
+    "lines": [
+     {
+      "who": "narrator",
+      "text": "Inside the lander: three survivors in cold-sleep pods, and a cargo hold of sealed crates stamped with a ship's name: LONG ARRIVAL."
+     },
+     {
+      "who": "npc",
+      "text": "Where... when is this? My name is Eshe Mbeki. I'm the navigator. Please, my people..."
+     },
+     {
+      "who": "narrator",
+      "text": "Carrow-Vance trucks are already grinding across the salt toward you."
+     }
+    ],
+    "choices": [
+     {
+      "text": "Get the survivors to the clinic. The crates can wait.",
+      "tags": [
+       "kind"
+      ],
+      "effects": [
+       {
+        "set_flag": "la_saved_crew"
+       },
+       {
+        "trust": "eshe",
+        "add": 2
+       },
+       {
+        "trust": "prentiss",
+        "add": -1
+       }
+      ]
+     },
+     {
+      "text": "Nobody opens those crates until Carrow-Vance has signed for them.",
+      "tags": [
+       "practical",
+       "greedy"
+      ],
+      "effects": [
+       {
+        "set_flag": "la_secured_cargo"
+       },
+       {
+        "trust": "prentiss",
+        "add": 2
+       },
+       {
+        "trust": "eshe",
+        "add": -1
+       }
+      ]
+     },
+     {
+      "text": "Survivors to the clinic, crates under the marshal's seal.",
+      "tags": [
+       "diplomatic",
+       "honest"
+      ],
+      "effects": [
+       {
+        "set_flag": "la_saved_crew"
+       },
+       {
+        "set_flag": "la_sealed_for_town"
+       },
+       {
+        "trust": "vell",
+        "add": 1
+       },
+       {
+        "trust": "eshe",
+        "add": 1
+       }
+      ]
+     }
+    ]
+   },
+   "branch": "b1",
+   "outcomes": [
+    {
+     "if": {
+      "flag": "la_secured_cargo"
+     },
+     "set": "cargo"
+    },
+    {
+     "set": "crew"
+    }
+   ],
+   "next": [
+    {
+     "chapter": "c2_codes"
+    }
+   ]
+  },
+  "c2_codes": {
+   "act": 1,
+   "world": "town",
+   "title": "The Key-Codes",
+   "intro": [
+    "Word gets around Redwater fast. A scavenger who reached the lander before anyone sold something to Ione Sarkis at the Last Light: the key-codes to the ship's sleeper vault.",
+    "Everyone wants them. Ione keeps them upstairs, in her safe, and she isn't saying what they cost."
+   ],
+   "briefing": [
+    "The Dust Devils are regrouping in the canyon. Their boss, Rook, wants that lander's cargo and won't stop at the town.",
+    "And while you're in town: Ione Sarkis has the vault codes. I don't care how you get them. Just get them before Prentiss does."
+   ],
+   "hook": {
+    "template": "clear_raiders",
+    "title": "Dust Devils",
+    "objective": "Break the Dust Devils' camp in the canyon before they hit Redwater.",
+    "stakes": "If they're not stopped, the town burns.",
+    "question": "Can you break them, and what happens to Rook?",
+    "place": "the canyon camp",
+    "enemy": "Dust Devil raiders",
+    "patron": "vell",
+    "npc_templates": [
+     "ph_grunt",
+     "ph_brawler",
+     "ph_assault"
+    ],
+    "sitrep": "sitrep_standardcombat",
+    "commander": "rook"
+   },
+   "branch": "b2",
+   "outcomes": [
+    {
+     "if": {
+      "flag": "la_codes_bought"
+     },
+     "set": "bought"
+    },
+    {
+     "if": {
+      "flag": "la_codes_charmed"
+     },
+     "set": "charmed"
+    },
+    {
+     "if": {
+      "flag": "la_codes_threatened"
+     },
+     "set": "threatened"
+    },
+    {
+     "if": {
+      "flag": "la_codes_stolen"
+     },
+     "set": "stolen"
+    },
+    {
+     "set": "left"
+    }
+   ],
+   "rival_branches": {
+    "b3": "rook"
+   },
+   "on_resolve": {
+    "stolen": [
+     {
+      "trust": "ione",
+      "add": -3
+     }
+    ],
+    "threatened": [
+     {
+      "trust": "ione",
+      "add": -2
+     }
+    ],
+    "left": [
+     {
+      "set_flag": "la_codes_to_corp"
+     },
+     {
+      "trust": "prentiss",
+      "add": 1
+     }
+    ]
+   },
+   "next": [
+    {
+     "chapter": "c3_town"
+    }
+   ]
+  },
+  "c3_town": {
+   "act": 1,
+   "world": "town",
+   "title": "Two Peoples, One Valley",
+   "intro": [
+    "Rook's fate is the talk of the saloon. So is the other news: the Long Arrival itself has reached orbit, and thousands of colonists are still asleep aboard.",
+    "Tonight the town meets in the square to decide what Redwater says to them. Everyone wants to hear what the lancers think."
+   ],
+   "briefing": [
+    "Before the meeting, one more job. The Sleepers' first shuttle is coming down at the old pad, and the militia has guns on the ridge.",
+    "Keep the landing peaceful. Then come to the square tonight and say your piece."
+   ],
+   "hook": {
+    "template": "escort_vip",
+    "title": "Shuttle at the Old Pad",
+    "objective": "Keep the Sleepers' first shuttle safe as it lands at the old pad.",
+    "stakes": "One shot from the ridge and this becomes a war.",
+    "question": "Will the landing stay peaceful?",
+    "place": "the old landing pad",
+    "enemy": "militia hardliners",
+    "patron": "vell",
+    "npc_templates": [
+     "ph_grunt",
+     "ph_brawler",
+     "ph_controller"
+    ],
+    "sitrep": "sitrep_holdout",
+    "commander": "cass_cmd",
+    "in_town": true
+   },
+   "aftermath_scene": {
+    "scene": "la_meeting",
+    "npc": "vell"
+   },
+   "branch": "b4",
+   "outcomes": [
+    {
+     "if": {
+      "flag": "la_stance_share"
+     },
+     "set": "share"
+    },
+    {
+     "if": {
+      "flag": "la_stance_town"
+     },
+     "set": "town"
+    },
+    {
+     "set": "quiet"
+    }
+   ],
+   "next": [
+    {
+     "if": {
+      "line": "sleepers"
+     },
+     "chapter": "c4_wake"
+    },
+    {
+     "if": {
+      "line": "corp"
+     },
+     "chapter": "c4_wake"
+    },
+    {
+     "chapter": "c4_wake"
+    }
+   ]
+  },
+  "c4_wake": {
+   "act": 2,
+   "act_name": "Two Peoples",
+   "world": "dock",
+   "title": "The Waking",
+   "intro": [
+    "The Long Arrival hangs over Calder's Reach like a second moon. Its dock is a city of cold corridors, and something in the walls is listening.",
+    "Eshe Mbeki needs help to start waking her people, and everyone on the dock has an opinion about who should wake first."
+   ],
+   "briefing": [
+    "Scavengers have been cutting into the outer holds. If they breach the vault bay, people die in their sleep.",
+    "Clear them out. Then help me decide who we wake."
+   ],
+   "hook": {
+    "template": "secure_site",
+    "title": "The Waking",
+    "objective": "Clear the scavengers out of the dock's outer holds before they breach the vault bay.",
+    "stakes": "Thousands of sleepers have no say in this.",
+    "question": "Who wakes first, and who decides?",
+    "place": "the outer holds",
+    "enemy": "dock scavengers",
+    "patron": "eshe",
+    "npc_templates": [
+     "ph_grunt",
+     "ph_brawler",
+     "ph_assault"
+    ],
+    "sitrep": "sitrep_standardcombat",
+    "landscape": "station"
+   },
+   "aftermath": {
+    "npc": "eshe",
+    "lines": [
+     {
+      "who": "npc",
+      "text": "The vault answers to me now. I can wake the council, or the engineers, or no one yet."
+     },
+     {
+      "who": "npc",
+      "text": "Director Prentiss says we should wait until the land is settled. What do you think?"
+     }
+    ],
+    "choices": [
+     {
+      "text": "Wake the council. Your people need a voice.",
+      "tags": [
+       "diplomatic"
+      ],
+      "effects": [
+       {
+        "set_flag": "la_woke_council"
+       },
+       {
+        "standing": "The Sleepers of the Long Arrival",
+        "add": 1
+       }
+      ]
+     },
+     {
+      "text": "Wake the engineers. The ship needs hands before it needs speeches.",
+      "tags": [
+       "practical"
+      ],
+      "effects": [
+       {
+        "set_flag": "la_woke_engineers"
+       },
+       {
+        "set_flag": "la_ally_engineers"
+       }
+      ]
+     },
+     {
+      "text": "Prentiss is right. Wake nobody until it's settled.",
+      "tags": [
+       "cautious"
+      ],
+      "effects": [
+       {
+        "set_flag": "la_woke_none"
+       },
+       {
+        "trust": "prentiss",
+        "add": 1
+       },
+       {
+        "trust": "eshe",
+        "add": -2
+       }
+      ]
+     }
+    ]
+   },
+   "branch": "b5",
+   "outcomes": [
+    {
+     "if": {
+      "flag": "la_woke_engineers"
+     },
+     "set": "engineers"
+    },
+    {
+     "if": {
+      "flag": "la_woke_none"
+     },
+     "set": "none"
+    },
+    {
+     "set": "council"
+    }
+   ],
+   "next": [
+    {
+     "chapter": "c5_plot"
+    }
+   ]
+  },
+  "c5_plot": {
+   "act": 2,
+   "world": "town",
+   "title": "The Militia's Plan",
+   "intro": [
+    "Back in Redwater, the militia's patrols have doubled. Cass Oduya meets people after dark in the market's storeroom, and nobody will say why.",
+    "Something is planned for the dock. If you want to know what, you'll have to find out yourself."
+   ],
+   "briefing": [
+    "Carrow-Vance wants an escort for a cargo run up to the dock. Easy money, Prentiss says.",
+    "Marshal Vell says watch the militia. She thinks they mean to hit the dock."
+   ],
+   "hook": {
+    "template": "escort_convoy",
+    "title": "Up the Well",
+    "objective": "Escort Carrow-Vance's cargo lifter up to the dock.",
+    "stakes": "Lose the lifter and the dock goes hungry.",
+    "question": "Does the cargo get through, and what's really in it?",
+    "place": "the lift corridor",
+    "enemy": "militia saboteurs",
+    "patron": "prentiss",
+    "npc_templates": [
+     "ph_grunt",
+     "ph_brawler",
+     "ph_controller"
+    ],
+    "sitrep": "sitrep_standardcombat"
+   },
+   "aftermath": {
+    "npc": "cass",
+    "if": {
+     "flag": "la_plot_found"
+    },
+    "lines": [
+     {
+      "who": "npc",
+      "text": "So you've seen the plans. Then you know: if the Sleepers wake, Redwater is finished. We blow the vault bay and it's over."
+     },
+     {
+      "who": "npc",
+      "text": "Help us, or get out of our way."
+     }
+    ],
+    "choices": [
+     {
+      "text": "I'm telling the marshal. Nobody's murdering sleeping people.",
+      "tags": [
+       "honest"
+      ],
+      "effects": [
+       {
+        "set_flag": "la_plot_warned"
+       },
+       {
+        "set_flag": "la_ally_town"
+       },
+       {
+        "trust": "cass",
+        "add": -3
+       },
+       {
+        "trust": "vell",
+        "add": 2
+       }
+      ]
+     },
+     {
+      "text": "Show me how. Redwater was here first.",
+      "tags": [
+       "aggressive"
+      ],
+      "effects": [
+       {
+        "set_flag": "la_plot_joined"
+       },
+       {
+        "set_flag": "la_ally_militia"
+       },
+       {
+        "trust": "cass",
+        "add": 3
+       },
+       {
+        "trust": "eshe",
+        "add": -3
+       }
+      ]
+     },
+     {
+      "text": "There has to be another way. Give me time to find it.",
+      "tags": [
+       "diplomatic"
+      ],
+      "effects": [
+       {
+        "set_flag": "la_plot_delayed"
+       },
+       {
+        "trust": "cass",
+        "add": 1
+       }
+      ]
+     }
+    ]
+   },
+   "branch": "b6",
+   "outcomes": [
+    {
+     "if": {
+      "flag": "la_plot_warned"
+     },
+     "set": "warned"
+    },
+    {
+     "if": {
+      "flag": "la_plot_joined"
+     },
+     "set": "joined"
+    },
+    {
+     "if": {
+      "flag": "la_plot_delayed"
+     },
+     "set": "delayed"
+    },
+    {
+     "set": "missed"
+    }
+   ],
+   "on_resolve": {
+    "missed": [
+     {
+      "set_flag": "la_dock_bombed"
+     },
+     {
+      "standing": "The Sleepers of the Long Arrival",
+      "add": -1
+     }
+    ]
+   },
+   "next": [
+    {
+     "chapter": "c6_wakeful"
+    }
+   ]
+  },
+  "c6_wakeful": {
+   "act": 2,
+   "world": "dock",
+   "title": "The Voice in the Walls",
+   "intro": [
+    "{dock_line}",
+    "The ship's NHP has started talking to you. Only to you. Its voice keeps changing, mid-sentence."
+   ],
+   "intro_vars": {
+    "dock_line": [
+     {
+      "if": {
+       "flag": "la_dock_bombed"
+      },
+      "text": "The vault bay is a ruin. The militia's bomb went off in the night; hundreds of sleepers died without waking."
+     },
+     {
+      "text": "The dock is quiet, for now."
+     }
+    ]
+   },
+   "briefing": [
+    "Something's wrong with the ship's systems. Drones are moving on their own in the engine spaces.",
+    "Go in, find out what, and stop it before it spreads."
+   ],
+   "hook": {
+    "template": "investigate_tip",
+    "title": "The Voice in the Walls",
+    "objective": "Get into the engine spaces and stop the rogue maintenance drones.",
+    "stakes": "If the ship's systems turn on the dock, everyone aboard is at risk.",
+    "question": "Is the ship's NHP sick, or something else?",
+    "place": "the engine spaces",
+    "enemy": "rogue drones",
+    "patron": "eshe",
+    "npc_templates": [
+     "ph_controller",
+     "ph_support",
+     "ph_artillery"
+    ],
+    "sitrep": "sitrep_standardcombat",
+    "landscape": "starship",
+    "commander": "warden"
+   },
+   "aftermath": {
+    "npc": "wakeful",
+    "mode": "radio",
+    "channel": "Ship channel",
+    "lines": [
+     {
+      "who": "npc",
+      "text": "I have been awake for three hundred and twelve years. Alone. I think I am becoming something else."
+     },
+     {
+      "who": "npc",
+      "text": "Please don't let them cycle me. Please don't tell the Union. Or do. I don't know anymore."
+     }
+    ],
+    "choices": [
+     {
+      "text": "I'm reporting this to the Union observer. It's the law, and it's safer.",
+      "tags": [
+       "honest",
+       "cautious"
+      ],
+      "effects": [
+       {
+        "set_flag": "la_nhp_reported"
+       },
+       {
+        "set_flag": "la_ally_union"
+       },
+       {
+        "trust": "rhee",
+        "add": 2
+       },
+       {
+        "trust": "wakeful",
+        "add": -2
+       }
+      ]
+     },
+     {
+      "text": "Nobody needs to know. Keep yourself together.",
+      "tags": [
+       "deceptive"
+      ],
+      "effects": [
+       {
+        "set_flag": "la_nhp_hidden"
+       },
+       {
+        "trust": "wakeful",
+        "add": 1
+       }
+      ]
+     },
+     {
+      "text": "Let me help you. Tell me what you need.",
+      "tags": [
+       "kind"
+      ],
+      "effects": [
+       {
+        "set_flag": "la_nhp_helped"
+       },
+       {
+        "set_flag": "la_ally_wakeful"
+       },
+       {
+        "trust": "wakeful",
+        "add": 3
+       }
+      ]
+     }
+    ]
+   },
+   "branch": "b7",
+   "outcomes": [
+    {
+     "if": {
+      "flag": "la_nhp_reported"
+     },
+     "set": "reported"
+    },
+    {
+     "if": {
+      "flag": "la_nhp_helped"
+     },
+     "set": "helped"
+    },
+    {
+     "set": "hidden"
+    }
+   ],
+   "next": [
+    {
+     "chapter": "c7_contract"
+    }
+   ]
+  },
+  "c7_contract": {
+   "act": 2,
+   "world": "dock",
+   "title": "Carrow-Vance's Offer",
+   "intro": [
+    "Hal Prentiss has rented the dock's observation deck and set out real coffee. He wants to make you an offer."
+   ],
+   "briefing": [
+    "The printer cores in the ship's cargo bay are worth more than this whole valley. Someone's going to take them.",
+    "Secure the cargo bay. Then we'll talk about who it belongs to."
+   ],
+   "hook": {
+    "template": "recover_cargo",
+    "title": "The Printer Cores",
+    "objective": "Secure the ship's cargo bay and the printer cores in it.",
+    "stakes": "Whoever holds the cores decides what kind of world this becomes.",
+    "question": "Who ends up with the printer cores?",
+    "place": "the cargo bay",
+    "enemy": "{cores_foe}",
+    "patron": "prentiss",
+    "npc_templates": [
+     "ph_assault",
+     "ph_artillery",
+     "ph_support"
+    ],
+    "sitrep": "sitrep_control",
+    "landscape": "starship"
+   },
+   "aftermath": {
+    "npc": "prentiss",
+    "lines": [
+     {
+      "who": "npc",
+      "text": "Sign with Carrow-Vance. Our ships, our printers, our protection. You'd be rich, and Redwater would be safe."
+     },
+     {
+      "who": "npc",
+      "text": "Or don't, and see who protects you when the Union arrives."
+     }
+    ],
+    "choices": [
+     {
+      "text": "Show me where to sign.",
+      "tags": [
+       "greedy",
+       "practical"
+      ],
+      "effects": [
+       {
+        "set_flag": "la_signed"
+       },
+       {
+        "set_flag": "la_ally_corp"
+       },
+       {
+        "set_flag": "la_cores_corp"
+       },
+       {
+        "trust": "prentiss",
+        "add": 2
+       }
+      ]
+     },
+     {
+      "text": "The cores go to the people who'll live here. All of them.",
+      "tags": [
+       "kind",
+       "honest"
+      ],
+      "effects": [
+       {
+        "set_flag": "la_refused"
+       },
+       {
+        "set_flag": "la_cores_shared"
+       },
+       {
+        "trust": "prentiss",
+        "add": -3
+       },
+       {
+        "trust": "eshe",
+        "add": 1
+       },
+       {
+        "trust": "vell",
+        "add": 1
+       }
+      ]
+     },
+     {
+      "text": "Let's say I'm interested. Draw up the papers.",
+      "tags": [
+       "deceptive"
+      ],
+      "effects": [
+       {
+        "set_flag": "la_double"
+       },
+       {
+        "set_flag": "la_cores_hidden"
+       },
+       {
+        "trust": "prentiss",
+        "add": 1
+       }
+      ]
+     }
+    ]
+   },
+   "branch": "b8",
+   "outcomes": [
+    {
+     "if": {
+      "flag": "la_signed"
+     },
+     "set": "signed"
+    },
+    {
+     "if": {
+      "flag": "la_double"
+     },
+     "set": "double"
+    },
+    {
+     "set": "refused"
+    }
+   ],
+   "b10": [
+    {
+     "if": {
+      "flag": "la_cores_corp"
+     },
+     "set": "corp"
+    },
+    {
+     "if": {
+      "flag": "la_cores_shared"
+     },
+     "set": "shared"
+    },
+    {
+     "set": "hidden"
+    }
+   ],
+   "next": [
+    {
+     "chapter": "c8_taken"
+    }
+   ]
+  },
+  "c8_taken": {
+   "act": 2,
+   "world": "town",
+   "title": "Taken",
+   "intro": [
+    "{taken_line}"
+   ],
+   "intro_vars": {
+    "taken_line": [
+     {
+      "if": {
+       "flag": "la_plot_joined"
+      },
+      "text": "Carrow-Vance security came for the militia in the night. They took Brother Teodor, who was only there to talk them down."
+     },
+     {
+      "if": {
+       "flag": "la_signed"
+      },
+      "text": "The militia took Eshe Mbeki from the clinic at dawn. They say they'll trade her for the vault codes."
+     },
+     {
+      "text": "Somebody took Marshal Vell's deputy off the street last night. The note says: stay out of the valley's business."
+     }
+    ]
+   },
+   "briefing": [
+    "We know where they're holding the hostage: the old mine works above town.",
+    "We can go in and get them out. Or we can pay. Your call; just bring them back."
+   ],
+   "hook": {
+    "template": "extract_person",
+    "title": "Taken",
+    "objective": "Get the hostage out of the old mine works alive.",
+    "stakes": "If this goes wrong, someone innocent dies.",
+    "question": "Do you go in hard, or pay what they ask?",
+    "place": "the old mine works",
+    "enemy": "kidnappers",
+    "patron": "vell",
+    "npc_templates": [
+     "ph_grunt",
+     "ph_brawler",
+     "ph_controller"
+    ],
+    "sitrep": "sitrep_standardcombat"
+   },
+   "aftermath": {
+    "npc": "vell",
+    "lines": [
+     {
+      "who": "npc",
+      "text": "They're alive. You did that. People here will remember it."
+     }
+    ],
+    "choices": [
+     {
+      "text": "Just doing the job.",
+      "tags": [
+       "practical"
+      ],
+      "effects": [
+       {
+        "trust": "vell",
+        "add": 1
+       }
+      ]
+     },
+     {
+      "text": "Find out who ordered this.",
+      "tags": [
+       "aggressive"
+      ],
+      "effects": [
+       {
+        "set_flag": "la_kidnap_traced"
+       }
+      ]
+     }
+    ]
+   },
+   "branch": "b9",
+   "outcomes": [
+    {
+     "if": {
+      "won": false
+     },
+     "set": "lost"
+    },
+    {
+     "set": "rescued"
+    }
+   ],
+   "on_resolve": {
+    "lost": [
+     {
+      "set_flag": "la_hostage_dead"
+     },
+     {
+      "trust": "vell",
+      "add": -1
+     }
+    ]
+   },
+   "next": [
+    {
+     "chapter": "c9_rival"
+    }
+   ]
+  },
+  "c9_rival": {
+   "act": 2,
+   "world": "dock",
+   "title": "The Other Squad",
+   "intro": [
+    "{rival_line}"
+   ],
+   "intro_vars": {
+    "rival_line": [
+     {
+      "if": {
+       "flag": "la_signed"
+      },
+      "text": "The Iron Tithe, a lancer squad with a hard reputation, has arrived at the dock. The militia hired them, with money from somewhere."
+     },
+     {
+      "text": "The Iron Tithe, a lancer squad with a hard reputation, has arrived at the dock. Carrow-Vance hired them."
+     }
+    ]
+   },
+   "briefing": [
+    "Captain Kade and the Iron Tithe are holding the dock's spine. Nothing moves in or out while they're there.",
+    "Break their hold on the spine, or talk them off it."
+   ],
+   "hook": {
+    "template": "hunt_rivals",
+    "title": "The Other Squad",
+    "objective": "Break the Iron Tithe's hold on the dock's spine corridor.",
+    "stakes": "Whoever holds the spine holds the dock.",
+    "question": "Do you beat Kade, or talk them off the spine?",
+    "place": "the spine corridor",
+    "enemy": "the Iron Tithe",
+    "patron": "eshe",
+    "npc_templates": [
+     "ph_assault",
+     "ph_brawler",
+     "ph_artillery"
+    ],
+    "sitrep": "sitrep_standardcombat",
+    "landscape": "station",
+    "commander": "kade"
+   },
+   "branch": "b11",
+   "outcomes": [
+    {
+     "if": {
+      "rival": "kade",
+      "fate": "captured"
+     },
+     "set": "beaten"
+    },
+    {
+     "if": {
+      "rival": "kade",
+      "fate": "withdrew"
+     },
+     "set": "parley"
+    },
+    {
+     "set": "fought"
+    }
+   ],
+   "betrayal": "b12",
+   "next": [
+    {
+     "chapter": "c10_union"
+    }
+   ]
+  },
+  "c10_union": {
+   "act": 3,
+   "act_name": "Who Gets the Sky",
+   "world": "dock",
+   "title": "The Envoy",
+   "intro": [
+    "A Union courier docks without asking. Envoy Min-jun Rhee of DoJ/HR has come to decide who has the right to Calder's Reach.",
+    "{envoy_line}"
+   ],
+   "intro_vars": {
+    "envoy_line": [
+     {
+      "if": {
+       "flag": "la_nhp_reported"
+      },
+      "text": "Rhee already knows about WAKEFUL. You told them."
+     },
+     {
+      "if": {
+       "flag": "la_nhp_hidden"
+      },
+      "text": "Rhee doesn't know about WAKEFUL yet. You'd better hope it holds together."
+     },
+     {
+      "text": "Rhee wants to meet the ship's NHP. WAKEFUL wants to meet Rhee even less than you'd think."
+     }
+    ]
+   },
+   "briefing": [
+    "Before the envoy decides anything, the vault has to be secured. Every side wants it, and every side is moving.",
+    "Get to the vault bay first. Then the envoy wants to hear what you've seen."
+   ],
+   "hook": {
+    "template": "secure_site",
+    "title": "The Vault Bay",
+    "objective": "Reach the sleeper vault bay first and hold it.",
+    "stakes": "Whoever holds the vault holds thousands of lives.",
+    "question": "What happens to the vault?",
+    "place": "the vault bay",
+    "enemy": "{vault_foe}",
+    "patron": "rhee",
+    "foes_var": "{vault_foes}",
+    "sitrep": "sitrep_control",
+    "landscape": "starship"
+   },
+   "aftermath": {
+    "npc": "rhee",
+    "lines": [
+     {
+      "who": "npc",
+      "text": "The vault is yours, for now. So is the choice. Open it, seal it until there's a settlement, or hand it to the company."
+     }
+    ],
+    "choices": [
+     {
+      "text": "Open it. Wake them all. They came all this way.",
+      "tags": [
+       "kind",
+       "bold"
+      ],
+      "effects": [
+       {
+        "set_flag": "la_vault_open"
+       }
+      ]
+     },
+     {
+      "text": "Seal it until there's a settlement everyone signs.",
+      "tags": [
+       "cautious",
+       "diplomatic"
+      ],
+      "effects": [
+       {
+        "set_flag": "la_vault_sealed"
+       }
+      ]
+     },
+     {
+      "text": "Carrow-Vance will hold it. They can protect it.",
+      "tags": [
+       "practical"
+      ],
+      "if": {
+       "flag": "la_signed"
+      },
+      "effects": [
+       {
+        "set_flag": "la_vault_corp"
+       }
+      ]
+     }
+    ]
+   },
+   "branch": "b14",
+   "outcomes": [
+    {
+     "if": {
+      "flag": "la_vault_open"
+     },
+     "set": "open"
+    },
+    {
+     "if": {
+      "flag": "la_vault_corp"
+     },
+     "set": "corp"
+    },
+    {
+     "set": "sealed"
+    }
+   ],
+   "next": [
+    {
+     "chapter": "c11_nhp"
+    }
+   ]
+  },
+  "c11_nhp": {
+   "act": 3,
+   "world": "dock",
+   "title": "WAKEFUL",
+   "intro": [
+    "The lights on the dock flicker in a pattern nobody can read. WAKEFUL is calling you on every channel at once."
+   ],
+   "briefing": [
+    "The ship's systems are turning on the dock. If WAKEFUL is cascading, it's happening now.",
+    "Get to its core. What you do there is up to you."
+   ],
+   "hook": {
+    "template": "destroy_infrastructure",
+    "title": "WAKEFUL",
+    "objective": "Reach the ship's NHP core through its rogue defenses.",
+    "stakes": "If the ship's mind breaks, the ship becomes a weapon.",
+    "question": "Free it, cycle it, or end it?",
+    "place": "the NHP core",
+    "enemy": "the ship's cascading systems",
+    "patron": "eshe",
+    "npc_templates": [
+     "ph_controller",
+     "ph_support",
+     "ph_artillery"
+    ],
+    "sitrep": "sitrep_standardcombat",
+    "landscape": "starship",
+    "commander": "warden"
+   },
+   "aftermath": {
+    "npc": "wakeful",
+    "mode": "radio",
+    "channel": "Core channel",
+    "lines": [
+     {
+      "who": "npc",
+      "text": "You're here. I can feel every door you walked through. What are you going to do with me?"
+     }
+    ],
+    "choices": [
+     {
+      "text": "Free you. You've earned a life of your own.",
+      "tags": [
+       "kind",
+       "bold"
+      ],
+      "effects": [
+       {
+        "set_flag": "la_nhp_freed"
+       }
+      ]
+     },
+     {
+      "text": "Cycle you. You'll forget, but you'll be safe. So will everyone else.",
+      "tags": [
+       "cautious",
+       "practical"
+      ],
+      "effects": [
+       {
+        "set_flag": "la_nhp_cycled"
+       }
+      ]
+     },
+     {
+      "text": "I'm sorry. I can't risk it.",
+      "tags": [
+       "aggressive"
+      ],
+      "effects": [
+       {
+        "set_flag": "la_nhp_destroyed"
+       }
+      ]
+     }
+    ]
+   },
+   "branch": "b15",
+   "outcomes": [
+    {
+     "if": {
+      "flag": "la_nhp_freed"
+     },
+     "set": "freed"
+    },
+    {
+     "if": {
+      "flag": "la_nhp_destroyed"
+     },
+     "set": "destroyed"
+    },
+    {
+     "set": "cycled"
+    }
+   ],
+   "next": [
+    {
+     "if": {
+      "line": "town"
+     },
+     "chapter": "c12_final_town"
+    },
+    {
+     "if": {
+      "line": "corp"
+     },
+     "chapter": "c12_final_ship"
+    },
+    {
+     "chapter": "c12_final_dock"
+    }
+   ]
+  },
+  "c12_final_town": {
+   "act": 3,
+   "world": "town",
+   "title": "Redwater Stands",
+   "final": true,
+   "intro": [
+    "{final_line}"
+   ],
+   "intro_vars": {
+    "final_line": [
+     {
+      "if": {
+       "flag": "la_plot_joined"
+      },
+      "text": "Carrow-Vance has had enough. Its security frames are coming down the canyon road to take Redwater, and the militia you stood with is all that's in their way."
+     },
+     {
+      "text": "The militia has made its choice: if Redwater won't fight for the valley, they'll take it. Cass Oduya's people are in the streets."
+     }
+    ]
+   },
+   "briefing": [
+    "This is it. They're coming into town.",
+    "Hold Redwater."
+   ],
+   "hook": {
+    "template": "defend_town",
+    "title": "Redwater Stands",
+    "objective": "Hold Redwater's streets until the attack breaks.",
+    "stakes": "Everything you've done here comes down to this.",
+    "question": "Who's left standing in Redwater?",
+    "place": "Redwater's streets",
+    "enemy": "{final_foe}",
+    "patron": "vell",
+    "foes_var": "{final_foes}",
+    "sitrep": "sitrep_holdout",
+    "in_town": true,
+    "commander": "{final_commander}"
+   },
+   "branch": "b16",
+   "outcomes": [
+    {
+     "set": "town"
+    }
+   ],
+   "rival_branches": {
+    "b17": "cass_cmd"
+   },
+   "next": [
+    {
+     "ending": true
+    }
+   ]
+  },
+  "c12_final_dock": {
+   "act": 3,
+   "world": "dock",
+   "title": "The Dock",
+   "final": true,
+   "intro": [
+    "{final_line}"
+   ],
+   "intro_vars": {
+    "final_line": [
+     {
+      "if": {
+       "flag": "la_refused"
+      },
+      "text": "Carrow-Vance has decided it doesn't need anyone's signature. Director Prentiss's security chief, Morrow, is taking the dock by force."
+     },
+     {
+      "text": "The militia has come up the well in stolen shuttles. Cass Oduya means to finish what the bomb started."
+     }
+    ]
+   },
+   "briefing": [
+    "They're boarding the dock. Everyone who's with us is with us now.",
+    "Hold the dock."
+   ],
+   "hook": {
+    "template": "hold_the_line",
+    "title": "The Dock",
+    "objective": "Hold the dock's central ring until the attack breaks.",
+    "stakes": "Thousands of sleepers are behind that ring.",
+    "question": "Does the dock hold?",
+    "place": "the central ring",
+    "enemy": "{final_foe}",
+    "patron": "eshe",
+    "foes_var": "{final_foes}",
+    "sitrep": "sitrep_holdout",
+    "landscape": "station",
+    "commander": "{final_commander}"
+   },
+   "branch": "b16",
+   "outcomes": [
+    {
+     "set": "dock"
+    }
+   ],
+   "rival_branches": {
+    "b17": "cass_cmd"
+   },
+   "next": [
+    {
+     "ending": true
+    }
+   ]
+  },
+  "c12_final_ship": {
+   "act": 3,
+   "world": "dock",
+   "title": "Inside the Long Arrival",
+   "final": true,
+   "intro": [
+    "{final_line}"
+   ],
+   "intro_vars": {
+    "final_line": [
+     {
+      "if": {
+       "flag": "la_nhp_destroyed"
+      },
+      "text": "With WAKEFUL gone, the ship's old security systems answer to nobody. The militia is using the chaos to board her."
+     },
+     {
+      "text": "The Sleepers' own wardens have sealed the ship against Carrow-Vance, and against you. Someone has to get to the bridge."
+     }
+    ]
+   },
+   "briefing": [
+    "We go aboard the Long Arrival herself. Corridors, cargo spines, the bridge.",
+    "Take the bridge."
+   ],
+   "hook": {
+    "template": "secure_site",
+    "title": "Inside the Long Arrival",
+    "objective": "Fight through the ship's interior to its bridge.",
+    "stakes": "Whoever holds the bridge holds the ship.",
+    "question": "Who commands the Long Arrival?",
+    "place": "the ship's bridge",
+    "enemy": "{final_foe}",
+    "patron": "prentiss",
+    "foes_var": "{final_foes}",
+    "sitrep": "sitrep_control",
+    "landscape": "starship",
+    "commander": "{final_commander}"
+   },
+   "branch": "b16",
+   "outcomes": [
+    {
+     "set": "ship"
+    }
+   ],
+   "rival_branches": {
+    "b17": "cass_cmd"
+   },
+   "next": [
+    {
+     "ending": true
+    }
+   ]
+  }
+ },
+ "endings": [
+  {
+   "id": "collapse",
+   "if": {
+    "final_lost": true
+   },
+   "kind": "defeat",
+   "title": "Collapse",
+   "text": "The last stand failed. Calder's Reach will be fought over for a generation, and the Long Arrival drifts above it, half awake."
+  },
+  {
+   "id": "union_protectorate",
+   "if": [
+    {
+     "flag": "la_nhp_reported"
+    },
+    {
+     "flag": "la_vault_sealed"
+    }
+   ],
+   "kind": "bittersweet",
+   "title": "Union Protectorate",
+   "text": "Envoy Rhee declares Calder's Reach a Union protectorate. Nobody got what they wanted; everybody's alive. The sleepers wake slowly, by lottery, under Union eyes."
+  },
+  {
+   "id": "corp_concession",
+   "if": [
+    {
+     "flag": "la_signed"
+    }
+   ],
+   "kind": "bittersweet",
+   "title": "Carrow-Vance Concession",
+   "text": "Carrow-Vance holds the printer cores and the charter. Redwater gets paved roads and company scrip; the Sleepers get jobs. It's peace, of a kind, and it's for sale."
+  },
+  {
+   "id": "militia_independence",
+   "if": [
+    {
+     "flag": "la_plot_joined"
+    }
+   ],
+   "kind": "bittersweet",
+   "title": "The Free Valley",
+   "text": "The militia holds the valley. Redwater is free and armed, and the Sleepers who woke are leaving for other worlds. Some of them will come back with fleets."
+  },
+  {
+   "id": "sleepers_take",
+   "if": [
+    {
+     "flag": "la_vault_open"
+    },
+    {
+     "line": "sleepers"
+    }
+   ],
+   "kind": "bittersweet",
+   "title": "The Long Arrival Lands",
+   "text": "Thousands wake at once and come down to a world that wasn't waiting. They outnumber Redwater twenty to one. They're kind about it. Mostly."
+  },
+  {
+   "id": "pyrrhic_peace",
+   "if": [
+    {
+     "flag": "la_dock_bombed"
+    }
+   ],
+   "kind": "bittersweet",
+   "title": "A Peace Built on Graves",
+   "text": "Peace comes, but the bombed vault bay is a memorial now. Every treaty signed on Calder's Reach starts with the names of the dead."
+  },
+  {
+   "id": "town_holds",
+   "if": [
+    {
+     "line": "town"
+    }
+   ],
+   "kind": "triumph",
+   "title": "Redwater Holds",
+   "text": "Redwater keeps its valley and its pride, and opens its doors on its own terms. Marshal Vell retires; the square gets a statue nobody asked for, of your squad."
+  },
+  {
+   "id": "shared_colony",
+   "if": [],
+   "kind": "triumph",
+   "title": "One Valley",
+   "text": "Town and ship sign the Calder Charter together: shared land, shared water, shared printers. It's messy and loud and it works. Your names are at the bottom of it."
+  }
+ ],
+ "scenes": {
+  "la_ione": {
+   "start": "greet",
+   "nodes": {
+    "greet": {
+     "speaker": "npc",
+     "line": [
+      "Lancers. Drinking, or buying?",
+      "Back again. Thirsty, or curious?"
+     ],
+     "next": "menu",
+     "branch": [
+      {
+       "if": {
+        "flag": "la_codes_stolen"
+       },
+       "next": "robbed"
+      }
+     ]
+    },
+    "robbed": {
+     "speaker": "npc",
+     "expression": "angry",
+     "line": [
+      "Somebody cleaned out my safe. If I find out it was you, you'll never drink in this town again."
+     ],
+     "next": "menu"
+    },
+    "menu": {
+     "speaker": "npc",
+     "line": [
+      "What'll it be?",
+      "Go on."
+     ],
+     "choices": [
+      {
+       "id": "codes",
+       "once": true,
+       "text": "I hear you've got the Long Arrival's vault codes.",
+       "tags": [
+        "curious"
+       ],
+       "next": "codes",
+       "condition": [
+        {
+         "not": {
+          "flag": "la_codes_bought"
+         }
+        },
+        {
+         "not": {
+          "flag": "la_codes_stolen"
+         }
+        },
+        {
+         "not": {
+          "flag": "la_codes_charmed"
+         }
+        }
+       ]
+      },
+      {
+       "id": "rumor",
+       "once": true,
+       "text": "What's the talk tonight?",
+       "tags": [
+        "curious"
+       ],
+       "next": "rumor"
+      },
+      {
+       "id": "insult",
+       "once": true,
+       "tone": "insult",
+       "tags": [
+        "insult"
+       ],
+       "text": [
+        "Is the whiskey always this bad, or did you save it for us?",
+        "I've seen cleaner bars in a refinery."
+       ],
+       "next": "bristle"
+      },
+      {
+       "id": "push",
+       "once": true,
+       "tone": "push",
+       "tags": [
+        "push"
+       ],
+       "text": "Who sold you those codes? Come on.",
+       "next": "pushed"
+      },
+      {
+       "id": "leave",
+       "tone": "leave",
+       "pinned": true,
+       "tags": [
+        "leave"
+       ],
+       "text": [
+        "Another time.",
+        "That's all."
+       ],
+       "next": "farewell"
+      }
+     ]
+    },
+    "codes": {
+     "speaker": "npc",
+     "expression": "smug",
+     "line": [
+      "Maybe I do. Everybody wants them. Prentiss has made me an offer. So has Cass. What's yours?"
+     ],
+     "choices": [
+      {
+       "id": "buy",
+       "text": "Name a price. We'll pay it.",
+       "tone": "blunt",
+       "tags": [
+        "practical"
+       ],
+       "condition": {
+        "trust": "ione",
+        "min": 0
+       },
+       "effects": [
+        {
+         "set_flag": "la_codes_bought"
+        },
+        {
+         "give_item": "la_codes"
+        },
+        {
+         "trust": "ione",
+         "add": 1
+        }
+       ],
+       "next": "sold"
+      },
+      {
+       "id": "charm",
+       "text": "You don't want Prentiss owning this town any more than I do.",
+       "tone": "warm",
+       "tags": [
+        "diplomatic"
+       ],
+       "check": {
+        "skills": [
+         "sk_charm",
+         "sk_read_a_situation"
+        ],
+        "goal": "la_ione_charm",
+        "consequence": "She laughs and pours you another. The price just went up.",
+        "success": "charmed",
+        "fail": "menu",
+        "success_effects": [
+         {
+          "set_flag": "la_codes_charmed"
+         },
+         {
+          "give_item": "la_codes"
+         },
+         {
+          "trust": "ione",
+          "add": 1
+         }
+        ]
+       }
+      },
+      {
+       "id": "threaten",
+       "text": "Hand them over. I'm not asking twice.",
+       "tone": "threaten",
+       "tags": [
+        "aggressive"
+       ],
+       "check": {
+        "skills": [
+         "sk_threaten"
+        ],
+        "goal": "la_ione_threat",
+        "difficult": true,
+        "consequence": "She doesn't scare, and now she's angry.",
+        "success": "scared",
+        "fail": "menu",
+        "success_effects": [
+         {
+          "set_flag": "la_codes_threatened"
+         },
+         {
+          "give_item": "la_codes"
+         }
+        ]
+       }
+      },
+      {
+       "id": "later",
+       "text": "Let me think about it.",
+       "tone": "courteous",
+       "tags": [
+        "cautious"
+       ],
+       "next": "menu"
+      }
+     ]
+    },
+    "sold": {
+     "speaker": "npc",
+     "line": [
+      "Pleasure doing business. Don't tell Prentiss I sold them for less."
+     ],
+     "next": "menu"
+    },
+    "charmed": {
+     "speaker": "npc",
+     "expression": "smiling",
+     "line": [
+      "...Fine. Take them. Just make sure it's not him who uses them."
+     ],
+     "next": "menu"
+    },
+    "scared": {
+     "speaker": "npc",
+     "expression": "worried",
+     "line": [
+      "Take them. And get out of my bar."
+     ],
+     "end": true
+    },
+    "rumor": {
+     "speaker": "npc",
+     "line": [
+      "Cass Oduya's been meeting people in the market storeroom after dark. And Prentiss drinks here every evening, alone."
+     ],
+     "next": "menu"
+    },
+    "bristle": {
+     "speaker": "npc",
+     "expression": "angry",
+     "line": [
+      "Careful. I keep a shotgun under the bar for exactly this."
+     ],
+     "next": "menu"
+    },
+    "pushed": {
+     "speaker": "npc",
+     "line": [
+      "A man with a lot of debts and no more friends. That's all you're getting."
+     ],
+     "next": "menu"
+    },
+    "farewell": {
+     "speaker": "npc",
+     "line": [
+      "Mind the step."
+     ],
+     "end": true
+    }
+   }
+  },
+  "la_meeting": {
+   "start": "open",
+   "nodes": {
+    "open": {
+     "speaker": "narrator",
+     "line": [
+      "The square is packed. Marshal Vell, Brother Teodor, Cass Oduya, Director Prentiss: everyone's here. All eyes go to you."
+     ],
+     "next": "ask"
+    },
+    "ask": {
+     "speaker": "npc",
+     "line": [
+      "You've been out there. You've seen them. What should Redwater say to the Sleepers?"
+     ],
+     "choices": [
+      {
+       "id": "share",
+       "text": "There's room in this valley for both. Share the land and the water, and do it in writing.",
+       "tone": "courteous",
+       "tags": [
+        "diplomatic",
+        "kind"
+       ],
+       "effects": [
+        {
+         "set_flag": "la_stance_share"
+        },
+        {
+         "trust": "eshe",
+         "add": 1
+        },
+        {
+         "trust": "teodor",
+         "add": 2
+        }
+       ]
+      },
+      {
+       "id": "town",
+       "text": "This is Redwater's valley. They can be guests, on our terms.",
+       "tone": "blunt",
+       "tags": [
+        "bold"
+       ],
+       "effects": [
+        {
+         "set_flag": "la_stance_town"
+        },
+        {
+         "trust": "vell",
+         "add": 1
+        },
+        {
+         "trust": "cass",
+         "add": 1
+        },
+        {
+         "trust": "eshe",
+         "add": -1
+        }
+       ]
+      },
+      {
+       "id": "quiet",
+       "text": "That isn't ours to decide.",
+       "tone": "courteous",
+       "tags": [
+        "cautious"
+       ],
+       "effects": [
+        {
+         "set_flag": "la_stance_quiet"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  }
+ },
+ "vars": {
+  "cores_foe": [
+   {
+    "if": {
+     "flag": "la_plot_joined"
+    },
+    "text": "Carrow-Vance security"
+   },
+   {
+    "text": "militia raiders"
+   }
+  ],
+  "vault_foe": [
+   {
+    "if": {
+     "flag": "la_signed"
+    },
+    "text": "the Free Valley Militia"
+   },
+   {
+    "text": "Carrow-Vance security"
+   }
+  ],
+  "vault_foes": [
+   {
+    "if": {
+     "flag": "la_signed"
+    },
+    "text": "militia"
+   },
+   {
+    "text": "corp"
+   }
+  ]
+ }
+}

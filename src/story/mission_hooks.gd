@@ -148,6 +148,9 @@ static func pick_twist(rng: RandomNumberGenerator, wanted: String = "", campaign
 ## Fills the job board up to `count` hooks from the board templates (by weight), preferring
 ## the wants of people the squad has met.
 static func fill_board(story: StoryState, campaign: Campaign, count: int = 3) -> Array:
+	# The authored main campaign (AI GM): its chapter's job only, never procedural plot.
+	if CampaignScript.active(campaign):
+		return CampaignScript.fill_board(story, campaign)
 	var added: Array = []
 	var templates: Dictionary = data().get("templates", {})
 	var arc_hook := StoryArc.ensure(story, campaign)

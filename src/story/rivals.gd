@@ -96,6 +96,8 @@ static func attach(story: StoryState, hook: Dictionary, rng: RandomNumberGenerat
 	if bool(hook.get("tutorial", false)):
 		return
 	var id := rival_id
+	if story.flags.has(CampaignScript.KEY) and id == "":
+		return  # the main campaign names its commanders itself
 	if id == "" or not story.npcs.has(id) or str(story.npcs[id].get("status", "")) != "active":
 		var taken := story.hooks.map(func(h: Dictionary) -> String: return str(h.get("commander", {}).get("id", "")))
 		var pool := at_large(story).filter(func(x: String) -> bool:

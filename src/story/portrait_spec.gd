@@ -150,6 +150,8 @@ static func flatten(spec: Dictionary) -> Dictionary:
 ## The NPC's face when a scene line doesn't say: standing first, then personality.
 static func npc_expression(story: StoryState, npc: Dictionary) -> String:
 	var auto: Dictionary = data().get("auto", {})
+	if int(npc.get("temper", 0)) >= int(Tones.data().get("warn_at", 7)):
+		return "angry"
 	var st := story.get_standing(str(npc.get("faction", "")))
 	if st <= -1:
 		return str(auto.get("standing", {}).get("hostile", "angry"))

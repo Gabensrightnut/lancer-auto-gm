@@ -1,0 +1,38 @@
+{
+  "_note": "Our own data (DESIGN.md section 11: no solution menus). How a reply's tone lands: temper (0 calm .. 10, kept per NPC across visits, cools by 1 each day) and patience (per conversation; at 0 they end it). An explicit 'tone' on a choice wins; otherwise the choice's tags map to a tone. When temper reaches 'draws_at', someone who carries a weapon draws and the fight starts in town, on foot (Core p.45: switching to mech combat); others throw you out. Walking away ('leave') ends the scene calmly.",
+  "tones": {
+    "courteous": {"temper": -1, "patience": 0},
+    "warm": {"temper": -1, "patience": 0},
+    "blunt": {"temper": 0, "patience": -1},
+    "flatter": {"temper": -1, "patience": -1},
+    "lie": {"temper": 0, "patience": -1, "caught_temper": 3},
+    "push": {"temper": 1, "patience": -2},
+    "insult": {"temper": 3, "patience": -2},
+    "threaten": {"temper": 2, "patience": -1},
+    "leave": {"temper": 0, "patience": 0}
+  },
+  "from_tags": {"kind": "warm", "diplomatic": "courteous", "honest": "blunt", "practical": "blunt", "deceptive": "lie", "aggressive": "threaten", "bold": "push", "greedy": "push", "curious": "blunt", "cautious": "courteous", "leave": "leave"},
+  "personality": {
+    "warm": {"patience": 6, "temper": {"insult": 1}},
+    "gruff": {"patience": 3, "temper": {"flatter": 1, "push": 1}},
+    "nervous": {"patience": 4, "temper": {"threaten": -1}},
+    "sly": {"patience": 5, "temper": {"lie": 1}},
+    "formal": {"patience": 4, "temper": {"insult": 1, "blunt": 1}},
+    "weary": {"patience": 3, "temper": {}},
+    "cheerful": {"patience": 6, "temper": {"insult": -1}},
+    "zealous": {"patience": 4, "temper": {"insult": 2, "threaten": 1}},
+    "default": {"patience": 4, "temper": {}}
+  },
+  "draws_at": 10,
+  "warn_at": 7,
+  "armed_roles": ["faction_agent", "company_rep", "fixer", "bartender", "enemy_commander"],
+  "lines": {
+    "warn": ["Their hand drifts toward the gun at their hip.", "The room goes very quiet.", "Their eyes go flat. One more word like that.", "Somebody behind you pushes their chair back."],
+    "patience_out": ["\"We're done here.\"", "\"I've said all I'm going to say.\"", "\"Get out of my sight.\"", "They turn their back on you."],
+    "draws": ["\"That's it.\" A gun comes up.", "Steel clears leather. Everyone in the street scatters.", "\"You should have walked away.\""],
+    "thrown_out": ["\"Out. Now. And don't come back until you've learned some manners.\"", "They call for help, and you're shown the door."],
+    "cold": ["\"I've got nothing to say to you.\"", "They won't even look at you."]
+  },
+  "insults": ["Is the service always this slow, or just for us?", "You're not as important as you think you are.", "I've met smarter rocks.", "Do you ever stop talking?"],
+  "pushes": ["Come on. I know you know more than that.", "What are you hiding?", "That's not the whole story, is it?", "Try that again, and this time tell me the truth."]
+}

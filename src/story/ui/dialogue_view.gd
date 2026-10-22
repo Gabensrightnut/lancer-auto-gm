@@ -3,7 +3,7 @@ extends Control
 ## Pop-up conversation over the live 3D scene, in the style of Lancer Tactics (our own art):
 ## the speaking pilot's portrait card on the left, the other person's on the right, a speech
 ## bubble from whoever is talking, and 4-6 replies to pick from. Click or Space advances;
-## 1-6 pick a reply. Shows who decides (the speaking pilot's player, or a squad vote) and
+## 1-8 pick a reply. Shows who decides (the speaking pilot's player, or a squad vote) and
 ## what AI squadmates chose and why. A log (L) scrolls back through every conversation.
 ## Reading options (StorySettings, per player): text size, and skipping lines already read.
 ##
@@ -476,7 +476,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 					choose(str(o["id"]))
 					get_viewport().set_input_as_handled()
 					return
-		elif k >= KEY_1 and k <= KEY_6:
+		elif k >= KEY_1 and k <= KEY_8:
 			var offered := Dialogue.offered(story)
 			var i := k - KEY_1
 			if i < offered.size():

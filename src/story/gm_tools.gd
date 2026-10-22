@@ -283,6 +283,10 @@ static func build_scene(id: String, p: Dictionary) -> Dictionary:
 				var c: Dictionary = choices[j]
 				var cc := {"id": "c%d" % j, "text": str(c["text"]), "tags": (c.get("tags", []) as Array).duplicate(),
 					"effects": (c.get("effects", []) as Array).duplicate(true), "pinned": true}
+				if c.has("if"):
+					cc["condition"] = c["if"]
+				if c.has("tone"):
+					cc["tone"] = str(c["tone"])
 				if str(c.get("reply", "")).strip_edges() != "":
 					cc["next"] = "r%d" % j
 					nodes["r%d" % j] = {"speaker": str(c.get("reply_who", "npc")), "line": str(c["reply"]), "end": true}
