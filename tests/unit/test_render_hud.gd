@@ -81,3 +81,31 @@ func test_heat_warning_text() -> void:
 	u.heat_cap = 6
 	var w := ActionCatalog.heat_warnings(u, 1, 3)
 	expect(not w.is_empty() and "overheat" in String(w[0]["text"]), "5 + up to 3 can overheat a cap of 6")
+
+
+func test_reaction_prompt_offers_choices() -> void:
+	var s := F.state()
+	var monarch := F.mech(s, "m", "players", Vector2i(1, 1))
+	monarch.name = "Monarch"
+	var a := F.mech(s, "a", "enemies", Vector2i(5, 1))
+	a.name = "Goblin"
+	var b := F.mech(s, "b", "enemies", Vector2i(6, 3))
+	b.name = "Sherman"
+	var rp := ReactionPrompt.new()
+	var got: Array = []
+	var ask := func(p: Dictionary) -> void: got.append(await rp.ask(s, p))
+	ask.call({"unit": "m", "reaction": "avenger_silos", "context": {"targets": ["a", "b"], "suggested": {"take": true, "target": "b"}}})
+	expect_eq(rp._buttons.get_child_count(), 3, "one button per target and Hold fire")
+	expect(String((rp._buttons.get_child(1) as Button).text).contains("suggested"), "the engine's pick is marked")
+	expect_eq(rp._picking, "unit", "clicking a unit on the board answers too")
+	(rp._buttons.get_child(0) as Button).pressed.emit()
+	expect_eq(got[0], {"take": true, "target": "a"})
+	ask.call({"unit": "a", "reaction": "reactive_code", "context": {"attacker": "m", "options": ["lock_on", "invade"], "suggested": {"take": true, "action": "lock_on"}}})
+	expect_eq(rp._buttons.get_child_count(), 3, "an action per option and Don't")
+	(rp._buttons.get_child(1) as Button).pressed.emit()
+	expect_eq(got[1], {"take": true, "action": "invade"})
+	ask.call({"unit": "a", "reaction": "tactical_simulation", "context": {"attacker": "m", "target": "b", "suggested": {"take": true}}})
+	expect_eq(rp._picking, "cell", "a space is picked on the board")
+	(rp._buttons.get_child(0) as Button).pressed.emit()
+	expect_eq(got[2], {"take": true})
+	rp.free()

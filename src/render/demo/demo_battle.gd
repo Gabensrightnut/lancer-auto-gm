@@ -58,6 +58,8 @@ func setup(db: ContentDB, battle_view: BattleView, events: EventPlayer, layer: C
 	turn.view = view
 	turn.player = player
 	turn.db = content
+	reaction_prompt.view = view
+	reaction_prompt.picker = turn
 	add_child(turn)
 	turn.setup(ui)
 	turn.submitter = submit

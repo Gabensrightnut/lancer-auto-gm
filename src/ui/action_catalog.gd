@@ -9,6 +9,9 @@ extends RefCounted
 ## lockouts with a fixed length (turns left), Recharge state, core power uses, reactions
 ## used this round, and the Danger Zone threshold.
 
+## Pegasus (and anything else with the option): Skirmish and Barrage may use average damage.
+const AVERAGE_NOTE := "You may deal average damage instead of rolling (Pegasus)."
+
 const OVERCHARGE := ["1", "1d3", "1d6", "1d6+4"]
 const OVERCHARGE_MAX := [1, 3, 6, 10]
 
@@ -115,6 +118,8 @@ static func for_unit(state: GameState, engine: RulesEngine, db: ContentDB, unit_
 				a["lockout"] = {"kind": "uses", "left": 0, "total": Weapons.tag_value(w, "tg_limited")}
 			elif int(ws["uses"]) == 1:
 				warns.append({"text": "Last charge."})
+		if Effects.has(u, "average_damage_option"):
+			warns.append({"text": AVERAGE_NOTE})
 		var self_heat := Weapons.tag_value(w, "tg_heat_self")
 		if self_heat > 0:
 			extras.append({"icon": "heat", "value": "+%d" % self_heat})
@@ -134,7 +139,12 @@ static func for_unit(state: GameState, engine: RulesEngine, db: ContentDB, unit_
 	out.append(boost)
 	out.append(_from_data(db, "act_hide", {"group": "quick", "cost": "quick", "icon": "status_hidden", "short": "Hide", "kind": "self", "type": "hide", "preview": {"quick": 1}}).merged(_validate_self(state, engine, u, "hide"), true))
 	# Full actions.
-	out.append(_from_data(db, "act_barrage", {"group": "full", "cost": "full", "icon": "barrage", "short": "Barrage", "kind": "barrage", "preview": {"full": 1, "quick": 2}}).merged(_spend(u, "full", "barrage"), true))
+	var barrage := _from_data(db, "act_barrage", {"group": "full", "cost": "full", "icon": "barrage", "short": "Barrage", "kind": "barrage", "preview": {"full": 1, "quick": 2}}).merged(_spend(u, "full", "barrage"), true)
+	if Effects.has(u, "average_damage_option"):
+		var bw: Array = barrage.get("warnings", [])
+		bw.append({"text": AVERAGE_NOTE})
+		barrage["warnings"] = bw
+	out.append(barrage)
 	out.append(_from_data(db, "act_stabilize", {"group": "full", "cost": "full", "icon": "repair", "short": "Stabilize", "kind": "self", "type": "stabilize", "params": {"main": "cool", "extra": "reload"}, "preview": {"full": 1}}).merged(_spend(u, "full", "stabilize"), true))
 	# Tech.
 	for t: Array in [["act_lockon", "lock_on", "condition_lockon", "Lock On"], ["act_scan", "scan", "sensor", "Scan"], ["act_invade", "invade", "tech_quick", "Invade"]]:
