@@ -107,7 +107,8 @@ static func kit(landscape: String, culture: String) -> String:
 	return landscape if culture == "" else "%s/%s" % [landscape, culture]
 
 
-static func generate(rng: RandomNumberGenerator, w: int, h: int, shape: GridLayout.Shape, blocked: Dictionary, landscape: String, culture: String) -> BattleMap:
+static func generate(rng: RandomNumberGenerator, w: int, h: int, shape: GridLayout.Shape, blocked: Dictionary, landscape: String, culture: String,
+		hub: Dictionary = {}) -> BattleMap:
 	var g := TerrainGen.new()
 	g.rng = rng
 	g.w = w
@@ -148,10 +149,156 @@ static func generate(rng: RandomNumberGenerator, w: int, h: int, shape: GridLayo
 			g._swamp()
 		_:
 			g._hills()
-	if landscape != "city" and culture != "":
+	if not hub.is_empty():
+		g._town(hub, culture)
+	elif landscape != "city" and culture != "":
 		g._settlement(culture)
 	g._clear_blocked()
+	g._materials(landscape, culture)
 	return g.map
+
+
+# --- Materials (Core p.68) -------------------------------------------------------------
+
+## What built and natural cover is made of, by culture: [material, Armor]. Objects have 5
+## Evasion and 10 HP per Size 1 section (Core p.68); "solid rock" and tough places 1-2 Armor,
+## fortified places 3-4; flimsy wood or prefab none. The rules read "armor_N"
+## (TerrainDamage); "material_*" picks how it looks when hit and when it breaks.
+const MATERIALS := {
+	"old_west": ["wood", 0], "": ["wood", 0], "east_asian": ["wood", 0], "medieval": ["stone", 1],
+	"cyberpunk": ["concrete", 1], "retro": ["concrete", 1], "ruins": ["concrete", 1], "burning": ["concrete", 1],
+	"union": ["fortified", 3],
+}
+
+
+## [material, armor] for a column with these look tags in this world.
+static func material_for(col: BattleMap.Column, landscape: String, culture: String) -> Array:
+	if col.has_tag("bulkhead"):
+		return ["hull", 4] if landscape == "starship" else ["fortified", 3]
+	if col.has_tag("machinery"):
+		return ["fortified", 2]
+	if col.has_tag("container"):
+		return ["metal", 1]
+	if col.has_tag("rock"):
+		return ["stone", 2]
+	if col.has_tag("crystal"):
+		return ["stone", 1]
+	if col.has_tag("wall"):
+		# Town walls of stone are tougher than the houses; barricades are what the city is.
+		return ["stone", 2] if culture == "medieval" else (MATERIALS.get(culture, ["concrete", 1]) as Array)
+	if col.has_tag("building") or col.has_tag("platform"):
+		if landscape in ["station", "starship"]:
+			return ["fortified", 3]
+		return MATERIALS.get(culture, ["concrete", 1])
+	return []
+
+
+func _materials(landscape: String, culture: String) -> void:
+	for cell in cells:
+		var col := map.column(cell)
+		if col.ground < 1 and not col.has_tag(BattleMap.TAG_DESTRUCTIBLE):
+			continue
+		var m := material_for(col, landscape, culture)
+		if m.is_empty():
+			continue
+		_tag(col, ["material_" + str(m[0]), "armor_%d" % int(m[1])])
+
+
+# --- Towns (a hub's own streets) --------------------------------------------------------
+
+## Mech-scale battlefield of a hub (story.hub): the same buildings around the same plaza,
+## with the same streets out to their doors, from the hub's own layout (HubLayout spots, in
+## meters) at about 2 m per space. Small-town buildings are 1-2 levels and take up their
+## spaces, so they're real cover, and they can be knocked down. More houses fill out the
+## streets around them. The plaza's centerpiece stands in the middle.
+const TOWN_SCALE := 2.0
+
+
+func _town(hub: Dictionary, culture: String) -> void:
+	var cc := w / 2
+	var cr := h / 2
+	var used := {}
+	var mark := func(c: int, r: int, levels: int, tags: Array) -> void:
+		if c < 0 or r < 0 or c >= w or r >= h:
+			return
+		var cell := _cell(c, r)
+		if not map.has_cell(cell) or blocked.has(cell):
+			return
+		var col := map.column(cell)
+		col.ground = levels
+		col.tags = PackedStringArray(tags)
+		used[cell] = true
+	# Level the town site: gentle ground, nothing in the way.
+	var radius := int(24.0 / TOWN_SCALE) + 4
+	for r in range(cr - radius, cr + radius + 1):
+		for c in range(cc - radius, cc + radius + 1):
+			if c < 0 or r < 0 or c >= w or r >= h:
+				continue
+			var cell := _cell(c, r)
+			if not map.has_cell(cell) or blocked.has(cell):
+				continue
+			var col := map.column(cell)
+			col.ground = 0
+			col.tags = PackedStringArray()
+	var doors: Array[Vector2i] = []
+	for spot: Dictionary in hub.get("spots", []):
+		var kind := str(spot.get("kind", ""))
+		var pos := Vector2(float(spot["pos"][0]), float(spot["pos"][1])) / TOWN_SCALE
+		var sz: Array = spot.get("size", [8.0, 6.0, 4.0])
+		var sw := maxi(2, int(round(float(sz[0]) / TOWN_SCALE)))
+		var sd := maxi(2, int(round(float(sz[1]) / TOWN_SCALE)))
+		var levels := clampi(int(round(float(sz[2]) / 3.5)), 1, 2)
+		var c0 := cc + int(round(pos.x)) - sw / 2
+		var r0 := cr + int(round(pos.y)) - sd / 2
+		if kind == "plaza":
+			# The centerpiece (well, fountain, statue...): one low block in the middle.
+			mark.call(cc, cr, 1, ["wall", BattleMap.TAG_DESTRUCTIBLE])
+			continue
+		if kind == "landing":
+			continue  # an open pad: the squad's mechs stood here
+		# Facing the plaza: the long side toward it.
+		if absf(pos.x) > absf(pos.y):
+			var t := sw
+			sw = sd
+			sd = t
+			c0 = cc + int(round(pos.x)) - sw / 2
+			r0 = cr + int(round(pos.y)) - sd / 2
+		for r in range(r0, r0 + sd):
+			for c in range(c0, c0 + sw):
+				mark.call(c, r, levels, ["building", BattleMap.TAG_DESTRUCTIBLE])
+		var door := Vector2(float(spot["door"][0]), float(spot["door"][1])) / TOWN_SCALE
+		doors.append(Vector2i(cc + int(round(door.x)), cr + int(round(door.y))))
+	# Side streets: rows of small houses along the roads out of town.
+	var houses := 6 + rng.randi_range(0, 6)
+	for i in range(houses):
+		var a := rng.randf() * TAU
+		var dist := rng.randf_range(12.0, float(radius))
+		var c0 := cc + int(cos(a) * dist)
+		var r0 := cr + int(sin(a) * dist)
+		var free := true
+		for r in range(r0 - 1, r0 + 3):
+			for c in range(c0 - 1, c0 + 3):
+				if c >= 0 and r >= 0 and c < w and r < h and used.has(_cell(c, r)):
+					free = false
+		if not free:
+			continue
+		for r in range(r0, r0 + 2):
+			for c in range(c0, c0 + 2):
+				mark.call(c, r, 1, ["building", BattleMap.TAG_DESTRUCTIBLE])
+	# Streets: clear lines from the plaza to every door.
+	for d in doors:
+		var from := Vector2(cc, cr)
+		var to := Vector2(d.x, d.y)
+		var n := int(from.distance_to(to)) + 1
+		for k in range(n + 1):
+			var p := from.lerp(to, float(k) / n)
+			for dc in [0, 1]:
+				var cell := _cell(int(round(p.x)) + dc, int(round(p.y)))
+				if map.has_cell(cell) and not blocked.has(cell) and map.column(cell).has_tag("building"):
+					map.column(cell).ground = 0
+					map.column(cell).tags = PackedStringArray()
+	# Some crates and carts in the streets: difficult going, not cover.
+	_patches(maxi(2, w * h / 400), Vector2i(1, 2), [BattleMap.TAG_DIFFICULT, "rubble"], 0, true)
 
 
 var rng: RandomNumberGenerator

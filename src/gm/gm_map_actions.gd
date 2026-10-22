@@ -24,7 +24,15 @@ static func register(engine: RulesEngine) -> void:
 
 
 static func known_tag(t: String) -> bool:
+	if t.begins_with("armor_") or t.begins_with("floor_"):
+		return t.substr(t.find("_") + 1).is_valid_int()
+	if t.begins_with("material_"):
+		return t.substr(9) in MATERIALS
 	return t in RULES_TAGS or t in LOOK_TAGS
+
+
+## Building materials (TerrainGen.MATERIALS): how a column looks when hit and when it breaks.
+const MATERIALS := ["wood", "stone", "concrete", "metal", "fortified", "hull"]
 
 
 class EditTerrain:

@@ -10,9 +10,11 @@ extends RefCounted
 ## goes in mission.flavor["kit"] and the landscape's name in flavor["terrain"].
 ##
 ## opts: {"players": 1-4 (default 4), "sitrep": id (default: weighted pick),
-##   "size": 20-40 (default: random), "shape": "hex"/"square" (default hex),
+##   "size": map width 20-60 (default: picked by squad size and sitrep, see map_size()),
+##   "height": map height (default: from the width and the sitrep's shape), "shape": "hex"/"square" (default hex),
 ##   "landscape": TerrainGen.LANDSCAPES key, "culture": culture id (default: seeded pick),
 ##   "settings": GmSettings, "db": ContentDB, "npc_templates": Dictionary,
+##   "hub": story.hub (a fight in a hub's town: built from its layout and culture kit),
 ##   "map_doc": MapDoc (a saved/edited map: its terrain, kit and zones; sitrep defaults to its own),
 ##   "weather": a weather.json id ("clear" for none), "environments": [ids] (overrides the pick),
 ##   "squad": Campaign.squad() entries [{seat, pilot, mech}] to field the campaign's pilots}
@@ -25,10 +27,8 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	var cfg := GmSettings.load_json(GmSettings.MISSIONS_FILE)
 	var settings: GmSettings = opts.get("settings", GmSettings.from_preset("Standard"))
 	var shape := GridLayout.Shape.SQUARE if str(opts.get("shape", "hex")) == "square" else GridLayout.Shape.HEX
-	var sizes: Dictionary = cfg.get("map_sizes", {"min": 20, "max": 40})
-	var size := clampi(int(opts.get("size", rng.randi_range(int(sizes["min"]), int(sizes["max"])))), 20, 40)
-	var w := size
-	var h := clampi(int(size * rng.randf_range(0.75, 1.0)), 20, 40)
+	var w := 0
+	var h := 0
 
 	# A saved or edited map (MapDoc) replaces the generated battlefield.
 	var doc: MapDoc = opts.get("map_doc") if opts.get("map_doc") is MapDoc else null
@@ -41,12 +41,29 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	m.mission_seed = mission_seed
 	m.max_rounds = int(cfg.get("max_rounds", 12))
 	_pick_sitrep(m, rng, cfg, str(opts.get("sitrep", doc.sitrep if doc else "")))
+	if doc == null:
+		var squad_size: int = (opts["squad"] as Array).size() if opts.get("squad") is Array and not (opts["squad"] as Array).is_empty() else int(opts.get("players", 4))
+		var wh := map_size(rng, cfg, clampi(squad_size, 1, 4), m.sitrep_id, opts)
+		w = wh.x
+		h = wh.y
 
 	var state := GameState.new(mission_seed, shape)
 	# The world uses its own RNG so terrain changes never shift the rest of the mission.
 	var world_rng := RandomNumberGenerator.new()
 	world_rng.seed = hash([mission_seed, "world"])
-	var bf := battlefield(rng, world_rng, m.sitrep_id, w, h, shape, str(opts.get("landscape", "")), str(opts.get("culture", "")), int(settings.approach)) 		if doc == null else _doc_battlefield(doc, m.sitrep_id, rng)
+	# A fight in a hub's town happens in that town: its culture, its streets and buildings.
+	var hub: Dictionary = opts.get("hub", {}) if opts.get("hub") is Dictionary else {}
+	var landscape := str(opts.get("landscape", ""))
+	var culture := str(opts.get("culture", ""))
+	if not hub.is_empty():
+		culture = WorldKits.culture_id(str(hub.get("culture", culture)))
+		if landscape == "":
+			landscape = "station" if str(hub.get("kind", "")) == "station" else str(WorldKits.HUB_LANDSCAPE.get(culture, "grassy_hills"))
+	var bf: Dictionary
+	if doc == null:
+		bf = battlefield(rng, world_rng, m.sitrep_id, w, h, shape, landscape, culture, int(settings.approach), hub)
+	else:
+		bf = _doc_battlefield(doc, m.sitrep_id, rng)
 	state.map = bf["map"]
 	var layout: Dictionary = bf["layout"]
 	var fairness: Dictionary = bf["fairness"]
@@ -75,6 +92,30 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	_setup_objectives(m, state, rng, cfg)
 	m.briefing = _briefing(m, w, h, players, state)
 	return {"state": state, "mission": m, "fairness": fairness, "layout": layout}
+
+
+## Map width x height (columns x rows) for a mission: bigger squads get bigger maps, and
+## some sitreps want more room (data/game/gm/missions.json "map_sizes"). Not always square:
+## usually a little longer than wide. opts.size sets the width (opts.height the height).
+## The extra room is flanking space and terrain; the approach dial keeps the deployment
+## zones close (SitrepLayout).
+static func map_size(rng: RandomNumberGenerator, cfg: Dictionary, players: int, sitrep_id: String, opts: Dictionary = {}) -> Vector2i:
+	var sz: Dictionary = cfg.get("map_sizes", {})
+	var lo := int(sz.get("min", 30))
+	var hi := int(sz.get("max", 60))
+	var base := float(sz.get("base", 30)) + float(sz.get("per_player", 6)) * players
+	var shape: Array = (sz.get("sitreps", {}) as Dictionary).get(sitrep_id, [1.0, 1.1])
+	var jitter := float(sz.get("jitter", 4))
+	var w := int(round(base * float(shape[0]) + rng.randf_range(-jitter, jitter)))
+	var h := int(round(base * float(shape[1]) + rng.randf_range(-jitter, jitter)))
+	if opts.has("size"):
+		w = int(opts["size"])
+		h = int(opts.get("height", round(w * float(shape[1]) / float(shape[0]))))
+	elif opts.has("height"):
+		h = int(opts["height"])
+	# Explicit sizes may go down to 20 (tests, skirmishes); picked sizes stay in [min, max].
+	var floor_size := 20 if opts.has("size") or opts.has("height") else lo
+	return Vector2i(clampi(w, floor_size, 60), clampi(h, floor_size, 60))
 
 
 static func _pick_sitrep(m: Mission, rng: RandomNumberGenerator, cfg: Dictionary, wanted: String) -> void:
@@ -128,14 +169,14 @@ static func _rect(c0: int, r0: int, cw: int, rh: int, w: int, h: int, shape: Gri
 ## sitrep's fortifications, then fairness repairs (MapFairness). `rng` lays out the zones;
 ## `world_rng` builds the terrain. Returns {map, layout, fairness, world: [landscape, culture]}.
 static func battlefield(rng: RandomNumberGenerator, world_rng: RandomNumberGenerator, sitrep_id: String, w: int, h: int,
-		shape: GridLayout.Shape, landscape: String = "", culture: String = "", approach: int = 0) -> Dictionary:
+		shape: GridLayout.Shape, landscape: String = "", culture: String = "", approach: int = 0, hub: Dictionary = {}) -> Dictionary:
 	var layout := SitrepLayout.layout(sitrep_id, w, h, shape, rng, approach)
 	var blocked := {}  # cells kept clear of rocks and woods (deployment, zones, routes)
 	for list: Array in (layout["deployment"] as Dictionary).values() + (layout["zones"] as Dictionary).values() + [layout["clear"]]:
 		for c: Array in list:
 			blocked[Vector2i(c[0], c[1])] = true
 	var world := TerrainGen.pick(world_rng, landscape, culture)
-	var map := TerrainGen.generate(world_rng, w, h, shape, blocked, world[0], world[1])
+	var map := TerrainGen.generate(world_rng, w, h, shape, blocked, world[0], world[1], hub)
 	if sitrep_id in ["sitrep_holdout", "sitrep_gauntlet"]:
 		_fortify(map, rng, layout["zones"]["zone"], shape)
 	var fairness := MapFairness.repair(map, layout, w, h, shape, blocked, world_rng, TerrainGen.cover_tags(world[0]))
