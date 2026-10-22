@@ -124,7 +124,7 @@ static func _liquids(t: TerrainRenderer, root: Node3D) -> void:
 
 ## Grass tufts, flowers and pebbles: never taller than FLAT.
 static func _ground_cover(t: TerrainRenderer, root: Node3D) -> void:
-	var density := int(WorldStyle.num(t.style, "flora.grass", 0.0))
+	var density := WorldQuality.grass(int(WorldStyle.num(t.style, "flora.grass", 0.0)))
 	var greens := _colors(t, "flora.grass_colors")
 	var flowers := _colors(t, "flora.flowers")
 	var tall := WorldStyle.num(t.style, "flora.grass_height", 1.0)

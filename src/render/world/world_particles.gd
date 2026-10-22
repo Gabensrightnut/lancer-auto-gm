@@ -97,7 +97,7 @@ static func _make(kind: String, b: Rect2) -> CPUParticles3D:
 			height = 9.0
 		_:
 			return null
-	p.amount = clampi(p.amount, 40, 6000)
+	p.amount = WorldQuality.particles(clampi(p.amount, 40, 6000))
 	p.preprocess = p.lifetime
 	p.emission_box_extents = Vector3(b.size.x * 0.5, height * 0.5, b.size.y * 0.5)
 	p.position = Vector3(b.get_center().x, height * 0.5 + 0.5, b.get_center().y)

@@ -28,6 +28,12 @@ uniform float wet = 0.0;
 uniform float arched = 0.0;
 // Roof surface: 0 tar and gravel, 1 clay tiles, 2 wood shingles, 3 white panels, 4 corrugated metal.
 uniform int roof_style = 0;
+// 1 on buildings outside the board (skyline): darker, greyer, dimmer lights.
+uniform float backdrop = 0.0;
+// Light rim along each wall's top edge (roof edges = elevation edges a unit stands at).
+uniform vec3 rim_color : source_color = vec3(1.0, 0.96, 0.88);
+uniform float rim_strength = 0.4;
+uniform float rim_glow = 0.0;
 
 varying vec4 vc;
 varying vec4 cu;
@@ -317,6 +323,19 @@ void fragment() {
 		}
 		// Wet walls darken toward the bottom.
 		col *= 1.0 - wet * 0.25 * (1.0 - smoothstep(0.0, 0.6, y - foot));
+	}
+	// Roof-edge rim on board buildings: wall tops and parapet caps.
+	if (backdrop < 0.5) {
+		float rim = 0.0;
+		if (fn.y < 0.5 && fn.y > -0.5) {
+			rim = smoothstep(0.03, 0.012, cu.y - UV.y) * step(UV.y, cu.y + 0.001);
+		}
+		col = mix(col, rim_color, rim * rim_strength);
+		emit += rim_color * rim * rim_glow;
+	} else {
+		float lum = dot(col, vec3(0.3, 0.59, 0.11));
+		col = mix(col, vec3(lum), 0.35) * 0.6;
+		emit *= 0.55;
 	}
 	// Bump from the height pattern.
 	vec3 dpx = dFdx(wpos);

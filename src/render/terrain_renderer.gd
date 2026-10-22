@@ -114,9 +114,11 @@ static func make_material(s: Dictionary) -> ShaderMaterial:
 	for k: String in pairs:
 		if g.has(k):
 			m.set_shader_parameter(pairs[k], WorldStyle.color(g[k]))
-	for k: String in ["strata", "soil_depth", "wetness", "vein_strength", "columnar"]:
+	for k: String in ["strata", "soil_depth", "wetness", "vein_strength", "columnar", "rim_strength", "rim_glow", "backdrop_fade"]:
 		if g.has(k):
 			m.set_shader_parameter(k, float(g[k]))
+	if g.has("rim"):
+		m.set_shader_parameter("rim_color", WorldStyle.color(g["rim"]))
 	return m
 
 
@@ -380,11 +382,14 @@ func _build_grid_lines() -> void:
 			ys.append(col.gap_bottom * GridLayout.LEVEL_HEIGHT)
 		for y in ys:
 			add_outline(dark, cell, y + 0.01, 0.025, 0.06)
-			add_outline(light, cell, y + 0.014, 0.04, 0.03)
+			add_outline(light, cell, y + 0.014, 0.04, 0.036)
+		_board_edge(light, dark, cell, col.ground * GridLayout.LEVEL_HEIGHT)
 	grid_lines = MeshInstance3D.new()
 	grid_lines.name = "GridLines"
 	grid_lines.mesh = light.commit()
-	grid_lines.material_override = MeshKit.overlay_material(WorldStyle.color(WorldStyle.value(style, "grid_color", [0.92, 0.97, 1.0, 0.32])))
+	var line_mat := MeshKit.overlay_material(WorldStyle.color(WorldStyle.value(style, "grid_color", [0.92, 0.97, 1.0, 0.32]))).duplicate() as StandardMaterial3D
+	line_mat.render_priority = 2  # always over its shade band
+	grid_lines.material_override = line_mat
 	grid_lines.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(grid_lines)
 	var under := MeshInstance3D.new()
@@ -394,6 +399,21 @@ func _build_grid_lines() -> void:
 	under.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# Hidden and shown with the grid.
 	grid_lines.add_child(under)
+
+
+## The board's outer boundary: a wider light band with a dark shadow outside it, along every
+## cell edge that has no neighbor on the map.
+func _board_edge(light: SurfaceTool, dark: SurfaceTool, cell: Vector2i, y: float) -> void:
+	var edge_n: Array[Vector2i] = _shape["edge_neighbors"]
+	var outer := cell_corners(cell, y + 0.016, 0.0)
+	var inner := cell_corners(cell, y + 0.016, 0.1)
+	var shade := cell_corners(cell, y + 0.012, -0.06)
+	for i in range(outer.size()):
+		if map.has_cell(cell + edge_n[i]):
+			continue
+		var j := (i + 1) % outer.size()
+		MeshKit.add_quad(light, outer[i], outer[j], inner[j], inner[i], Vector3.UP)
+		MeshKit.add_quad(dark, shade[i], shade[j], outer[j], outer[i], Vector3.UP)
 
 
 ## Adds a flat band just inside a cell's outline (used for grid lines and overlays).

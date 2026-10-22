@@ -50,12 +50,16 @@
 	"cyberpunk": {
 		"name": "neon megacity",
 		"ground": {
-			"top_a": "#3a3a44",
-			"top_b": "#474752",
-			"top_dry": "#1c1c22",
+			"top_a": "#4a4a56",
+			"top_b": "#5a5a66",
+			"top_dry": "#24242c",
 			"wall": "#4a4a54",
 			"wetness": 1.0,
-			"hazard": "#ff3a8a"
+			"hazard": "#ff3a8a",
+			"rim": "#7ee8ff",
+			"rim_strength": 0.5,
+			"rim_glow": 0.9,
+			"backdrop_fade": 0.8
 		},
 		"architecture": {
 			"materials": [
@@ -122,7 +126,10 @@
 					"lit_windows": 0.12,
 					"neon": 0.3
 				}
-			}
+			},
+			"rim": "#ff5ac8",
+			"rim_strength": 0.5,
+			"rim_glow": 1.2
 		},
 		"sky": {
 			"top": "#05040c",
@@ -141,15 +148,15 @@
 			"sun_energy": 0.6,
 			"sun_pitch": -55.0,
 			"sun_yaw": 30.0,
-			"ambient": 0.75,
+			"ambient": 0.9,
 			"ambient_color": "#4a3a70",
 			"fill_color": "#ff3aa0",
 			"fill_energy": 0.35,
 			"fog_color": "#2a1838",
-			"fog_density": 0.009,
+			"fog_density": 0.006,
 			"fog_aerial": 0.2,
 			"sun_scatter": 0.0,
-			"volumetric": 0.008,
+			"volumetric": 0.005,
 			"volumetric_albedo": "#a080c0",
 			"volumetric_emission": "#1a0a2a",
 			"volumetric_emission_energy": 0.4,
@@ -187,7 +194,11 @@
 			"top_dry": "#24201e",
 			"wall": "#6a625a",
 			"wetness": 0.1,
-			"hazard": "#ff5a10"
+			"hazard": "#ff5a10",
+			"rim": "#ffd0a0",
+			"rim_strength": 0.45,
+			"rim_glow": 0.25,
+			"backdrop_fade": 0.7
 		},
 		"architecture": {
 			"materials": [
@@ -236,7 +247,10 @@
 				"look": {
 					"burning": 0.06
 				}
-			}
+			},
+			"rim": "#ffd8b0",
+			"rim_strength": 0.45,
+			"rim_glow": 0.2
 		},
 		"sky": {
 			"top": "#2a2026",
