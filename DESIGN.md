@@ -264,6 +264,15 @@ them, and they disappear when the turn moves on.
   Destructible terrain visibly breaks when destroyed.
 - The grid stays readable on top of everything (toggle-able grid lines, clear tile edges).
 
+### Town fights and building toughness
+- A fight that breaks out in a town happens in that town: the battle map is built from the
+  hub's own layout and culture kit at mech scale, so the saloon you walked into is the cover
+  you fight behind.
+- Buildings follow the book's object rules (Core p.68): 5 Evasion and 10 HP per Size-1 section,
+  each section destroyed separately. Flimsy wood/prefab has no Armor and breaks easily; tough
+  stone or brick has 1-2 Armor; fortified bunkers, bulkheads and hulls have 3-4 Armor, so most
+  shots just chip them and it takes AP damage or breaching charges to bring them down.
+
 ### World art direction: beautiful but dangerous
 The feel to aim for (examples are inspiration only; nothing taken from them): the vast alien
 vistas of Halo, the lived-in worlds of Star Wars, the grim scale of Warhammer 40k.
@@ -689,6 +698,8 @@ until you decide to turn any of these on as your own campaign rules.
   lose and the deal is off, but you can come back and pay with scrap, a spare mech, manna or
   local money.
 - Buying food and water as a survival need.
+- A saving roll to see whether a hit building collapses (the book uses HP, Armor and AP
+  instead, Core p.68).
 
 ## Rule differences: Lancer Tactics vs. the book
 
