@@ -44,7 +44,7 @@ static func add_status(state: GameState, u: Unit, status: String, source: String
 	u.statuses[status] = entry
 	if not had:
 		events.append({"type": "status_added", "unit": u.id, "status": status, "source": source})
-	if u.flying and u.flight != "hover" and (status == "Immobilized" or status == "Stunned"):
+	if u.flying and (status == "Immobilized" or status == "Stunned"):
 		events.append_array(begin_falling(u, "Flying characters begin falling if Immobilized or Stunned."))
 	return events
 

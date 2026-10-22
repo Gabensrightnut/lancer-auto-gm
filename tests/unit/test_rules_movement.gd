@@ -210,3 +210,15 @@ func test_hex_movement_and_big_footprint() -> void:
 	expect_eq(plan["cost"], 2)
 	F.act(e, s, "move", "p1", {"to": [4, 2]})
 	expect_eq(u.cell, Vector2i(4, 2))
+
+
+func test_stunned_flyer_falls_even_when_hovering() -> void:
+	var s := F.state()
+	var e := RulesEngine.new()
+	var u := _one(s, e)
+	u.flight = "hover"
+	F.act(e, s, "move", "p1", {"to": [1, 0], "level": 3, "fly": true})
+	expect(u.flying)
+	Combat.add_status(s, u, "Stunned", "test", "p1")
+	F.act(e, s, "end_turn", "p1")
+	expect_eq(u.level, 0)
