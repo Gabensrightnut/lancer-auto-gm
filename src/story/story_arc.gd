@@ -93,7 +93,11 @@ static func stage_hook(story: StoryState, campaign: Campaign) -> Dictionary:
 	hook["enemy"] = "%s's forces" % other if kind != "side_a" or n > 0 else hook["enemy"]
 	var vars := {"a": story.arc["a"], "b": story.arc["b"], "rival": story.arc["rival"]}
 	var beat := StoryText.fill(_fill(StoryText.line(stage.get("beat", [""]), story, campaign, {}), vars), story, campaign, {"hook": hook})
+	# Each stage remembers how the last one went.
+	if story.arc.has("last_won"):
+		beat = StoryText.fill(_fill(StoryText.pool_line("arc_after_win" if bool(story.arc["last_won"]) else "arc_after_loss", story), vars), story, campaign, {"hook": hook}) + " " + beat
 	hook["arc"] = {"id": story.arc["id"], "name": story.arc["name"], "stage": n, "of": stages.size(), "final": bool(stage.get("final", false)), "beat": beat}
+	hook["short_title"] = hook["title"]
 	hook["title"] = "%s (%d/%d): %s" % [story.arc["name"], n + 1, stages.size(), hook["title"]]
 	return hook
 

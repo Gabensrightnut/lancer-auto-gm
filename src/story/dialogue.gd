@@ -155,6 +155,7 @@ static func _build_choices(story: StoryState, campaign: Campaign, raw: Array, ct
 			var p: Dictionary = campaign.pilots.get(str(ctx.get("speaker", "")), {}) if campaign != null else {}
 			var trig := NarrativeCheck.pick_trigger(p, chk.get("skills", []))
 			cc["check"] = {"level": level, "difficult": bool(chk.get("difficult", false)), "trigger": trig["name"], "bonus": trig["bonus"],
+				"teamwork": bool(chk.get("teamwork", false)),
 				"consequence": StoryText.fill(str(chk.get("consequence", "")), story, campaign, ctx), "challenge": bool(chk.get("challenge", false))}
 		eligible.append(cc)
 	# Cap at MAX_CHOICES: pinned first, then by priority, keeping the written order.
@@ -241,9 +242,12 @@ static func _roll_choice(story: StoryState, campaign: Campaign, chk: Dictionary,
 		sharing = squad
 	else:
 		if bool(chk.get("teamwork", false)):
-			var helpers := squad.filter(func(pid: String) -> bool: return pid != speaker)
+			# Helpers: everyone else who hasn't said no (Core p.45: they give +1 and share the risk).
+			var said: Dictionary = story.dialogue.get("helpers", {})
+			var helpers := squad.filter(func(pid: String) -> bool:
+				return pid != speaker and not story.down_and_out.has(pid) and bool(said.get(story.seat_of(pid), true)))
 			opts["helpers"] = helpers.size()
-			sharing = squad
+			sharing = [speaker] + helpers
 		var rec := NarrativeCheck.roll(story.dice, campaign.pilots.get(speaker, {}), opts)
 		events.append({"type": "narrative_check", "pilot": speaker, "check": rec, "rule_ref": NarrativeCheck.REF})
 		story.dialogue["pilot_expression"] = PortraitSpec.check_expression(str(rec["outcome"]))

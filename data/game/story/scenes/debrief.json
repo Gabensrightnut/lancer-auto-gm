@@ -27,18 +27,67 @@
    "speaker": "npc",
    "expression": "smiling",
    "line": "@debrief_victory",
-   "next": "twist"
+   "next": "detail"
   },
   "lost": {
    "speaker": "npc",
    "expression": "worried",
    "line": "@debrief_defeat",
-   "next": "twist"
+   "next": "detail"
   },
   "draw": {
    "speaker": "npc",
    "expression": "neutral",
    "line": "@debrief_draw",
+   "next": "detail"
+  },
+  "detail": {
+   "speaker": "narrator",
+   "branch": [
+    {
+     "if": {
+      "not": {
+       "var": "rounds"
+      }
+     },
+     "next": "twist"
+    }
+   ],
+   "line": "@debrief_detail",
+   "next": "fallen"
+  },
+  "fallen": {
+   "speaker": "npc",
+   "expression": "sad",
+   "branch": [
+    {
+     "if": {
+      "not": {
+       "var": "fallen"
+      }
+     },
+     "next": "mvp"
+    }
+   ],
+   "line": "@debrief_fallen",
+   "next": "mvp"
+  },
+  "mvp": {
+   "speaker": "npc",
+   "branch": [
+    {
+     "if": {
+      "not": {
+       "var": "mvp_line"
+      }
+     },
+     "next": "twist"
+    }
+   ],
+   "line": [
+    "{mvp_line} Good work.",
+    "{mvp_line} Don't let it go to your head."
+   ],
    "next": "twist"
   },
   "twist": {

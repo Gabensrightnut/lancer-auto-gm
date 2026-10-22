@@ -129,6 +129,50 @@ static func values(story: StoryState, campaign: Campaign, ctx: Dictionary) -> Di
 	return v
 
 
+## Debrief values from the mission that just ended (story.last_mission.summary).
+static func mission_vars(story: StoryState, campaign: Campaign, outcome: String) -> Dictionary:
+	var sm: Dictionary = story.last_mission.get("summary", {})
+	var fallen_names: Array = []
+	for pid: String in story.dead:
+		if int(story.dead[pid].get("mission", -1)) == int(story.last_mission.get("number", -2)):
+			fallen_names.append(str(campaign.pilots.get(pid, {}).get("callsign", "")))
+	# A fallen pilot's mech isn't "reprinted for them"; the debrief mourns them instead.
+	var lost: Array = (sm.get("lost", []) as Array).filter(func(n: String) -> bool: return not fallen_names.has(n))
+	var v := {"outcome": outcome, "kills": str(sm.get("kills", 0)), "mvp": str(sm.get("mvp", ""))}
+	if sm.has("rounds"):
+		v["rounds"] = str(sm["rounds"])
+	if lost.is_empty():
+		v["lost_line"] = "Every mech came back in one piece."
+	else:
+		v["lost_line"] = "%s %s wrecked; the printer will make %s at the full repair." % [", ".join(PackedStringArray(lost)),
+			"was" if lost.size() == 1 else "were", "a new one" if lost.size() == 1 else "new ones"]
+	v["mvp_line"] = ("%s did the most damage out there." % v["mvp"]) if v["mvp"] != "" else ""
+	var fallen: Array = []
+	for pid: String in story.dead:
+		if int(story.dead[pid].get("mission", -1)) == int(story.last_mission.get("number", -2)):
+			fallen.append(str(campaign.pilots.get(pid, {}).get("callsign", "a pilot")))
+	if not fallen.is_empty():
+		v["fallen"] = ", ".join(PackedStringArray(fallen))
+	var ejected: Array = sm.get("ejected", [])
+	v["ejected_line"] = ("%s had to get out on foot." % ", ".join(PackedStringArray(ejected))) if not ejected.is_empty() else ""
+	return v
+
+
+## Briefing values that look back: the last mission and what the squad did in downtime.
+static func briefing_vars(story: StoryState, campaign: Campaign) -> Dictionary:
+	var v := {}
+	var lm := story.last_mission
+	if not lm.is_empty():
+		v["last_title"] = str(lm.get("hook", ""))
+		v["last_place"] = str(lm.get("place", ""))
+		v["last_outcome_line"] = {"victory": "it went our way", "defeat": "it went badly", "draw": "nobody won"}.get(str(lm.get("outcome", "")), "it's over")
+		v["last_twist"] = str(lm.get("twist", ""))
+	var recap: Array = story.flags.get("_last_downtime", [])
+	if not recap.is_empty():
+		v["downtime_recap"] = " ".join(PackedStringArray(recap.slice(0, 4).map(func(r: Dictionary) -> String: return str(r.get("text", "")))))
+	return v
+
+
 static func standing_label(n: int) -> String:
 	return str(STANDING_LABELS.get(clampi(n, -3, 3), "Neutral"))
 

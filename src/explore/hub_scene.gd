@@ -39,6 +39,7 @@ var ui: CanvasLayer
 var dialogue: DialogueView
 var popup: StoryCheckPopup
 var downtime_panel: DowntimePanel
+var downtime_screen: DowntimeScreen
 var hud: HubHud
 var level_panel: LevelUpPanel
 var gear_panel: PilotGearPanel
@@ -314,7 +315,7 @@ func _physics_process(delta: float) -> void:
 	var me: PilotFigure = avatars.get(local_seat)
 	if me == null:
 		return
-	var busy := dialogue.visible or downtime_panel.visible or hud.board_open() or level_panel.visible or gear_panel.visible
+	var busy := dialogue.visible or downtime_screen.visible or hud.board_open() or level_panel.visible or gear_panel.visible
 	var dir := Vector3.ZERO
 	if not busy:
 		var f := Vector3(-sin(_yaw), 0, -cos(_yaw))
@@ -479,19 +480,18 @@ func _unhandled_input(ev: InputEvent) -> void:
 					talk_to(_near_npc)
 			KEY_TAB:
 				if not dialogue.visible:
-					downtime_panel.visible = not downtime_panel.visible
-					downtime_panel.refresh()
-					_center(downtime_panel)
-					hud.set_busy(downtime_panel.visible)
+					downtime_screen.visible = not downtime_screen.visible
+					downtime_screen.refresh()
+					hud.set_busy(downtime_screen.visible)
 			KEY_J:
 				if not dialogue.visible:
 					hud.toggle_board()
 			KEY_ESCAPE:
-				downtime_panel.visible = false
+				downtime_screen.visible = false
 				gear_panel.visible = false
 				hud.close_board()
 				hud.set_busy(false)
-	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT and not dialogue.visible and not downtime_panel.visible:
+	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT and not dialogue.visible and not downtime_screen.visible:
 		var from := _cam.project_ray_origin(ev.position)
 		var dir := _cam.project_ray_normal(ev.position)
 		if absf(dir.y) > 0.001:
@@ -516,10 +516,11 @@ func _build_ui() -> void:
 	ui.add_child(hud)
 	hud.bind(engine, story, campaign, local_seat)
 	hud.story_events.connect(_handle)
-	downtime_panel = DowntimePanel.new()
-	ui.add_child(downtime_panel)
-	downtime_panel.bind(engine, story, campaign, local_seat)
-	downtime_panel.story_events.connect(_handle)
+	downtime_screen = DowntimeScreen.new()
+	ui.add_child(downtime_screen)
+	downtime_screen.bind(engine, story, campaign, local_seat)
+	downtime_screen.story_events.connect(_handle)
+	downtime_panel = downtime_screen.panel
 	dialogue = DialogueView.new()
 	ui.add_child(dialogue)
 	dialogue.bind(engine, story, campaign, local_seat)
@@ -547,7 +548,7 @@ func _center(c: Control) -> void:
 
 ## Everything the story engine reports: pop-ups, toasts, panels to open, missions to start.
 func _handle(events: Array) -> void:
-	popup.dock = "bottom" if downtime_panel.visible or hud.board_open() else "top"
+	popup.dock = "corner" if downtime_screen.visible else ("bottom" if hud.board_open() else "top")
 	tutorial_panel.show_events(events)
 	for e: Dictionary in events:
 		var who: String = str(campaign.pilots.get(str(e.get("pilot", "")), {}).get("callsign", ""))
@@ -584,8 +585,7 @@ func _handle(events: Array) -> void:
 			"ui_requested":
 				match str(e["ui"]):
 					"downtime":
-						downtime_panel.open(str(e["params"].get("action", "")), str(e.get("npc", "")), str(e["params"].get("subject", "")))
-						_center(downtime_panel)
+						downtime_screen.open(str(e["params"].get("action", "")), str(e.get("npc", "")), str(e["params"].get("subject", "")))
 					"hooks":
 						hud.toggle_board()
 					"pilot_gear":
@@ -593,16 +593,16 @@ func _handle(events: Array) -> void:
 			"boots_on_the_ground":
 				mission_requested.emit(e["hook"])
 	# A downtime action taken from a conversation: show its result, and its choice if it has one.
-	if events.any(func(x: Dictionary) -> bool: return str(x.get("type", "")) == "downtime_result" and story.seat_of(str(x.get("pilot", ""))) == local_seat) and not downtime_panel.visible:
-		downtime_panel.open()
+	if events.any(func(x: Dictionary) -> bool: return str(x.get("type", "")) == "downtime_result" and story.seat_of(str(x.get("pilot", ""))) == local_seat) and not downtime_screen.visible:
+		downtime_screen.open()
 		downtime_panel.show_events(events)
 	dialogue.refresh()
-	downtime_panel.refresh()
+	downtime_screen.refresh()
 	hud.refresh()
 	level_panel.refresh()
 	if level_panel.visible and dialogue.visible:
 		level_panel.visible = false  # after the debrief conversation
-	hud.set_busy(dialogue.visible or downtime_panel.visible or level_panel.visible)
+	hud.set_busy(dialogue.visible or downtime_screen.visible or level_panel.visible)
 	story_events.emit(events)
 
 
@@ -663,12 +663,11 @@ func screenshot_stage(tag: String) -> void:
 		"downtime":
 			if Dialogue.is_open(story):
 				_handle(Dialogue.close(story))
-			downtime_panel.open("dt_get_a_damn_drink")
-			_center(downtime_panel)
+			downtime_screen.open("dt_get_a_damn_drink")
 			downtime_panel._subject.text = "Collect gossip"
 			downtime_panel._go()
 		"supplies":
-			downtime_panel.visible = false
+			downtime_screen.visible = false
 			if Dialogue.is_open(story):
 				_handle(Dialogue.close(story))
 			var qm := ""
@@ -691,7 +690,7 @@ func screenshot_stage(tag: String) -> void:
 			gear_panel.open()
 		"board":
 			gear_panel.visible = false
-			downtime_panel.visible = false
+			downtime_screen.visible = false
 			while not story.pending_choice.is_empty():
 				var o: Array = story.pending_choice["options"]
 				var picks: Array = o.slice(0, int(story.pending_choice.get("count", 1))).map(func(x: Dictionary) -> String: return str(x["id"]))

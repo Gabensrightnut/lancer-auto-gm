@@ -116,6 +116,31 @@ func has_reserve(pilot_id: String, reserve_id: String) -> bool:
 	return false
 
 
+## Every choice waiting on this pilot (the head first, then the queue).
+func choices_for(pilot_id: String) -> Array:
+	var out: Array = []
+	if not pending_choice.is_empty() and str(pending_choice.get("pilot", "")) == pilot_id:
+		out.append(pending_choice)
+	for c: Dictionary in downtime.get("queue", []):
+		if str(c.get("pilot", "")) == pilot_id:
+			out.append(c)
+	return out
+
+
+func first_choice_for(pilot_id: String) -> Dictionary:
+	var all := choices_for(pilot_id)
+	return all[0] if not all.is_empty() else {}
+
+
+## Every pending choice, for anyone.
+func all_choices() -> Array:
+	var out: Array = []
+	if not pending_choice.is_empty():
+		out.append(pending_choice)
+	out.append_array(downtime.get("queue", []))
+	return out
+
+
 func get_standing(faction: String) -> int:
 	return int(standing.get(faction, 0))
 

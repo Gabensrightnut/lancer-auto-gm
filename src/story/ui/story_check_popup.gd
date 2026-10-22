@@ -86,7 +86,13 @@ static func breakdown(check: Dictionary) -> String:
 func _process(delta: float) -> void:
 	if visible:
 		var vp := get_viewport_rect().size
-		position = Vector2((vp.x - size.x) / 2.0, vp.y * 0.1 if dock == "top" else vp.y - size.y - 12.0)
+		match dock:
+			"corner":
+				position = Vector2(vp.x - size.x - 16.0, vp.y - size.y - 16.0)
+			"bottom":
+				position = Vector2((vp.x - size.x) / 2.0, vp.y - size.y - 12.0)
+			_:
+				position = Vector2((vp.x - size.x) / 2.0, vp.y * 0.1)
 	if not visible or get_global_rect().has_point(get_global_mouse_position()):
 		return
 	_timer -= delta

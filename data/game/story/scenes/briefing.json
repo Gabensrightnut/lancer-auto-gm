@@ -12,6 +12,32 @@
     {
      "if": [
       {
+       "var": "downtime_recap"
+      },
+      {
+       "not": {
+        "flag": "recap_told:{operation}"
+       }
+      }
+     ],
+     "next": "recap"
+    },
+    {
+     "if": [
+      {
+       "var": "last_title"
+      },
+      {
+       "not": {
+        "flag": "callback_told:{operation}"
+       }
+      }
+     ],
+     "next": "callback"
+    },
+    {
+     "if": [
+      {
        "hook": "arc"
       },
       {
@@ -23,6 +49,26 @@
      "next": "arc_beat"
     }
    ]
+  },
+  "recap": {
+   "speaker": "narrator",
+   "line": "@briefing_recap",
+   "effects": [
+    {
+     "set_flag": "recap_told:{operation}"
+    }
+   ],
+   "next": "open"
+  },
+  "callback": {
+   "speaker": "npc",
+   "line": "@briefing_callback",
+   "effects": [
+    {
+     "set_flag": "callback_told:{operation}"
+    }
+   ],
+   "next": "open"
   },
   "arc_beat": {
    "speaker": "narrator",
