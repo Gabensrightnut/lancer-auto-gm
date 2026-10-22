@@ -87,6 +87,8 @@ class Dismount:
 		var m := _mech(state, u)
 		if m == null:
 			return RuleResult.deny("You aren't inside a mech.", "Core p.71 Dismount")
+		if (m.counters.get("hacked", {}) as Dictionary).has("jam_cockpit"):
+			return RuleResult.deny("The cockpit is jammed: fix it first (an Engineering check as a full action, `fix_hack`).", "talents: Hacker")
 		if m.counters.get("empty", false):
 			return RuleResult.deny("Nobody is inside.", "Core p.71 Dismount")
 		if Pilots.free_adjacent(state, m, TurnAction.cell_param(params, "to")) == null:
@@ -127,6 +129,8 @@ class Mount:
 			return RuleResult.deny("Choose a mech that isn't destroyed.", "actions: Mount")
 		if m.side != u.side:
 			return RuleResult.deny("You can only mount your own or willing allied mechs.", "actions: Mount")
+		if (m.counters.get("hacked", {}) as Dictionary).has("jam_cockpit"):
+			return RuleResult.deny("The cockpit is jammed.", "talents: Hacker")
 		if not m.counters.get("empty", false) or (m.counters.has("pilot") and m.counters["pilot"] != u.id):
 			return RuleResult.deny("Someone is already piloting that mech.", "actions: Mount")
 		if Sight.unit_distance(state, u, m) > 1:

@@ -13,6 +13,8 @@ class QuickTech:
 
 	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
 		var used: Array = u.turn.get("quick_tech", [])
+		if (u.counters.get("hacked", {}) as Dictionary).has("hack_slash"):
+			return RuleResult.deny("Hack/Slash: no tech actions until you reboot (a Systems check, `fix_hack`) or Shut Down.", "talents: Hacker")
 		if used.has(type()) and int(u.turn.get("free_quick", 0)) <= 0 and not Rulings.lancer_tactics(state, "lt_repeat_quick_tech"):
 			return RuleResult.deny("Pick a different Quick Tech option: each can be used once per turn.", "actions: Quick Tech")
 		return check_tech(state, u, state.unit(String(params.get("target", ""))))
@@ -137,6 +139,8 @@ class FullTech:
 		return h as QuickTech if h is QuickTech else null
 
 	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		if (u.counters.get("hacked", {}) as Dictionary).has("hack_slash"):
+			return RuleResult.deny("Hack/Slash: no tech actions until you reboot or Shut Down.", "talents: Hacker")
 		var options: Array = params.get("options", [])
 		if options.size() != 2:
 			return RuleResult.deny("Full Tech takes two Quick Tech options.", "actions: Full Tech")

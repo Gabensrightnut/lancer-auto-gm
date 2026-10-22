@@ -264,6 +264,11 @@
       {
         "kind": "zero_in"
       }
+    ],
+    "3": [
+      {
+        "kind": "called_shot"
+      }
     ]
   },
   "t_centimane": {
@@ -328,6 +333,11 @@
         "on": "ranged",
         "when": "first_aux_ranged",
         "accuracy": 1
+      }
+    ],
+    "3": [
+      {
+        "kind": "gunslinger_die"
       }
     ]
   },
@@ -646,12 +656,34 @@
         "kind": "ammo_case",
         "charges": 6
       }
+    ],
+    "2": [
+      {
+        "kind": "ammo_plus"
+      }
+    ],
+    "3": [
+      {
+        "kind": "ammo_crit_free"
+      }
     ]
   },
   "t_exemplar": {
     "1": [
       {
         "kind": "exemplar"
+      }
+    ]
+  },
+  "t_heavy_gunner": {
+    "2": [
+      {
+        "kind": "covering_fire_pin"
+      }
+    ],
+    "3": [
+      {
+        "kind": "covering_fire_two"
       }
     ]
   }

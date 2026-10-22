@@ -50,6 +50,15 @@ extends RefCounted
 ##   covering_fire           the Covering Fire quick action and its reaction attack (Heavy Gunner 1)
 ##   lunge                   1/round, before an Auxiliary melee attack (params.lunge): fly up to 3
 ##                           spaces straight at the target, ignoring engagement (Hunter 1)
+##   ammo_plus               Hellfire, Jager and Sabot ammo, 2 charges each (Walking Armory 2)
+##   ammo_crit_free          a crit with special ammo costs no charges (Walking Armory 3)
+##   covering_fire_pin       a Covering Fire reaction hit: Immobilized until the end of its next
+##                           turn (Heavy Gunner 2)
+##   covering_fire_two       Covering Fire on two targets (params.targets) (Heavy Gunner 3)
+##   gunslinger_die          Gunslinger Die: aux ranged hits count it down; at 1 the next aux
+##                           ranged attack gets +2d6 bonus damage, AP, ignores cover (Gunslinger 3)
+##   called_shot             1/round, steadied Rifle crit: Hull save or headshot/leg/body
+##                           (params.called_shot, default leg) (Crack Shot 3)
 ##   prowl                   on its own turn: Hidden isn't lost to line of sight or leaving cover,
 ##                           Hide in plain sight, pass through enemies (Infiltrator 1)
 
@@ -59,6 +68,9 @@ const AMMO := {
 	"thumper": {"type": "Explosive", "tag": {"id": "tg_knockback", "val": 1}},
 	"shock": {"type": "Energy"},
 	"mag": {"type": "Kinetic", "tag": {"id": "tg_arcing"}},
+	"hellfire": {"type": "Energy", "cost": 2, "rank": 2},
+	"jager": {"type": "Explosive", "tag": {"id": "tg_knockback", "val": 2}, "cost": 2, "rank": 2},
+	"sabot": {"type": "Kinetic", "tag": {"id": "tg_ap"}, "cost": 2, "rank": 2},
 }
 const RANGED_TYPES := ["CQB", "Rifle", "Launcher", "Cannon", "Nexus"]
 
@@ -138,6 +150,8 @@ static func soft_cover(state: GameState, target: Unit) -> bool:
 
 
 static func ignores_cover(state: GameState, attacker: Unit, w: Dictionary, target: Unit) -> bool:
+	if gunslinger_ready(attacker, w) or attacker.counters.get("gunslinger_fire", false):
+		return true  # Gunslinger 3
 	for e: Dictionary in Effects.of(attacker, "ignore_cover_cqb"):
 		if w.get("type", "") == "CQB" and Sight.unit_distance(state, attacker, target) <= int(e.get("range", 3)):
 			return true
@@ -261,6 +275,11 @@ static func before_roll(state: GameState, attacker: Unit, w: Dictionary, target:
 				out["events"].append_array(Attacks.knock_back(state, o, attacker.cell, 1, attacker))
 				out["events"].append_array(Combat.add_status(state, o, "Prone", attacker.id))
 	attacker.counters.erase("chaff")  # Skirmisher chaff is lost when it attacks
+	if gunslinger_ready(attacker, w):
+		# Gunslinger 3: reset the die; this attack gets +2d6, AP and ignores cover.
+		attacker.counters["gunslinger_die"] = 6
+		attacker.counters["gunslinger_fire"] = true
+		out["events"].append({"type": "effect_triggered", "unit": attacker.id, "effect": "Gunslinger Die", "target": target.id, "rule_ref": REF})
 	return out
 
 
@@ -275,6 +294,8 @@ static func after_roll(state: GameState, attacker: Unit, w: Dictionary, target: 
 	for e: Dictionary in Effects.of(attacker, "attack_mod"):
 		if e.get("per", "") == "round":
 			pass  # marked when the source was used (see used_sources)
+	if result == "miss":
+		attacker.counters.erase("gunslinger_fire")
 	if Effects.has(attacker, "relentless"):
 		if result == "miss":
 			attacker.counters["relentless"] = int(attacker.counters.get("relentless", 0)) + 1
@@ -315,6 +336,8 @@ static func bonus_sources(state: GameState, attacker: Unit, w: Dictionary, targe
 		out.append({"value": "1d6", "type": "Energy", "label": "Fusion Hemorrhage"})
 	if info.get("zero_in", false) and info.get("crit", false):
 		out.append({"value": "1d6", "label": "Zero In"})
+	if attacker.counters.get("gunslinger_fire", false):
+		out.append({"value": "2d6", "label": "Gunslinger Die"})
 	return out
 
 
@@ -325,6 +348,24 @@ static func on_hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		return events
 	if opts.get("dz_heat", false):
 		events.append_array(Combat.apply_heat(state, target, 2, attacker.id))  # Aggressive Heat Bleed
+	if Effects.has(attacker, "gunslinger_die") and String(w.get("size", "")) == "Auxiliary" and RANGED_TYPES.has(String(w.get("type", ""))):
+		if attacker.counters.get("gunslinger_fire", false):
+			attacker.counters.erase("gunslinger_fire")
+		else:
+			attacker.counters["gunslinger_die"] = maxi(1, int(attacker.counters.get("gunslinger_die", 6)) - 1)
+	if crit and Effects.has(attacker, "called_shot") and w.get("type", "") == "Rifle" and _steadying(attacker) and _round_ok(state, attacker, "called_shot"):
+		# Crack Shot 3: Hull save, or the attacker's called shot (default: leg).
+		_use_round(state, attacker, "called_shot")
+		var save := Combat.skill_check(state, target, "hull", "Save vs called shot", attacker.save_target, 0, 0, [], true)
+		events.append({"type": "skill_check", "unit": target.id, "check": save, "rule_ref": REF})
+		if not save["success"]:
+			match String(opts.get("called_shot", "leg")):
+				"head":
+					events.append_array(Combat.add_status(state, target, "Blinded", attacker.id, target.id))  # sight only to adjacent spaces
+				"body":
+					events.append_array(Combat.add_status(state, target, "Prone", attacker.id))
+				_:
+					events.append_array(Combat.add_status(state, target, "Immobilized", attacker.id, target.id))
 	if crit and w.get("type", "") == "Nexus" and Effects.has(attacker, "nexus_crit") and _round_ok(state, attacker, "nexus_crit"):
 		_use_round(state, attacker, "nexus_crit")
 		var save := Combat.skill_check(state, target, "systems", "Save vs Ten Thousand Teeth", attacker.save_target, 0, 0, [], true)
@@ -383,15 +424,17 @@ static func bond_sources(state: GameState, u: Unit) -> Array:
 static func check_ammo(u: Unit, w: Dictionary, ammo: String) -> RuleResult:
 	var ref := "talents: Walking Armory"
 	if not AMMO.has(ammo):
-		return RuleResult.deny("Ammo is thumper, shock or mag.", ref)
+		return RuleResult.deny("Ammo is thumper, shock, mag (or hellfire, jager, sabot at rank 2).", ref)
 	if not Effects.has(u, "ammo_case"):
 		return RuleResult.deny("Special ammunition needs the Walking Armory talent.", ref)
+	if int(AMMO[ammo].get("rank", 1)) > 1 and not Effects.has(u, "ammo_plus"):
+		return RuleResult.deny("%s ammunition needs Walking Armory rank 2." % ammo.capitalize(), ref)
 	if String(w.get("size", "")) != "Main" or not RANGED_TYPES.has(String(w.get("type", ""))):
 		return RuleResult.deny("Special ammunition is for Main ranged weapons.", ref)
 	if u.turn.get("ammo_used", false):
 		return RuleResult.deny("Special ammunition only once per turn.", ref)
-	if ammo_left(u) <= 0:
-		return RuleResult.deny("The Ammo Case is empty.", ref)
+	if ammo_left(u) < int(AMMO[ammo].get("cost", 1)):
+		return RuleResult.deny("Not enough charges left in the Ammo Case.", ref)
 	return RuleResult.allow()
 
 
@@ -405,16 +448,33 @@ static func ammo_left(u: Unit) -> int:
 static func spend_ammo(u: Unit, ammo: String) -> Dictionary:
 	if not AMMO.has(ammo) or not Effects.has(u, "ammo_case"):
 		return {}
-	u.counters["ammo_case"] = ammo_left(u) - 1
+	u.counters["ammo_case"] = ammo_left(u) - int(AMMO[ammo].get("cost", 1))
 	u.turn["ammo_used"] = true
 	return {"type": "effect_triggered", "unit": u.id, "effect": "Ammo Case: " + ammo.capitalize(), "target": u.id,
 		"charges": u.counters["ammo_case"], "rule_ref": "talents: Walking Armory"}
 
 
-## Shock ammunition: characters next to the chosen target take 1 AP energy, hit or miss.
-static func shock_ammo(state: GameState, u: Unit, ammo: String, target: Unit) -> Array[Dictionary]:
+## After the attack: Shock's splash, Jager's Hull save, Walking Armory 3's free crit.
+## PROVISIONAL: Jager's save falls on the attack's target; Hellfire's bonus damage as burn is
+## the table's.
+static func shock_ammo(state: GameState, u: Unit, ammo: String, target: Unit, fired: Array[Dictionary] = []) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
-	if ammo != "shock" or target == null:
+	if not AMMO.has(ammo) or target == null:
+		return events
+	var first: Dictionary = {}
+	for ev: Dictionary in fired:
+		if ev.get("type", "") == "attack_rolled" and ev.get("attacker", "") == u.id:
+			first = ev
+			break
+	if Effects.has(u, "ammo_crit_free") and first.get("result", "") == "crit":
+		u.counters["ammo_case"] = ammo_left(u) + int(AMMO[ammo].get("cost", 1))
+		events.append({"type": "effect_triggered", "unit": u.id, "effect": "Ammo Case: critical hit, no charges spent", "target": u.id, "rule_ref": "talents: Walking Armory"})
+	if ammo == "jager" and first.get("result", "miss") != "miss" and Combat.is_present(target):
+		var save := Combat.skill_check(state, target, "hull", "Save vs Jager round", u.save_target, 0, 0, GearSystems.prone_save_sources(target), true)
+		events.append({"type": "skill_check", "unit": target.id, "check": save, "rule_ref": "talents: Walking Armory"})
+		if not save["success"]:
+			events.append_array(Combat.add_status(state, target, "Prone", u.id))
+	if ammo != "shock":
 		return events
 	var ids: Array = state.units.keys()
 	ids.sort()
@@ -480,17 +540,28 @@ static func _heavy_ranged(state: GameState, u: Unit, t: Unit) -> Dictionary:
 
 
 ## Impaired until the start of your next turn; one target at a time.
-static func covering_fire(state: GameState, u: Unit, t: Unit) -> Array[Dictionary]:
+static func covering_fire(state: GameState, u: Unit, targets: Array) -> Array[Dictionary]:
 	for o: Unit in state.units.values():
 		if String(o.counters.get("covering_fire", "")) == u.id:
 			o.counters.erase("covering_fire")
 			o.counters.erase("cf_moved")
-	t.counters["covering_fire"] = u.id
-	t.counters["cf_moved"] = 0
-	var events: Array[Dictionary] = [{"type": "effect_triggered", "unit": u.id, "effect": "Covering Fire", "target": t.id,
-		"text": "Impaired until the start of your next turn; if it moves more than 1 space it shakes that off, but you may shoot it (half damage).", "rule_ref": "talents: Heavy Gunner"}]
-	events.append_array(Combat.add_status(state, t, "Impaired", u.id, "", u.id))
+	var events: Array[Dictionary] = []
+	for t: Unit in targets:
+		t.counters["covering_fire"] = u.id
+		t.counters["cf_moved"] = 0
+		events.append({"type": "effect_triggered", "unit": u.id, "effect": "Covering Fire", "target": t.id,
+			"text": "Impaired until the start of your next turn; if it moves more than 1 space it shakes that off, but you may shoot it (half damage).", "rule_ref": "talents: Heavy Gunner"})
+		events.append_array(Combat.add_status(state, t, "Impaired", u.id, "", u.id))
 	return events
+
+
+## The Covering Fire targets an action names: params.targets (2 with Heavy Gunner 3) or target.
+static func covering_targets(state: GameState, u: Unit, params: Dictionary) -> Array:
+	var ids: Array = params.get("targets", [params.get("target", "")]) if Effects.has(u, "covering_fire_two") else [params.get("target", "")]
+	var out: Array = []
+	for id: Variant in ids.slice(0, 2):
+		out.append(state.unit(str(id)))
+	return out
 
 
 ## The covered character moved: past 1 space it clears Impaired and the gunner may attack it
@@ -518,7 +589,10 @@ static func covered_moved(state: GameState, t: Unit, spaces: int) -> Array[Dicti
 		return events
 	_use_round(state, g, "covering_fire_attack")
 	Reactions._mark_used(g, "covering_fire_attack", state)
-	events.append_array(Attacks.attack(state, g, w, t, {"reaction": true, "half_damage": true}))
+	var shot := Attacks.attack(state, g, w, t, {"reaction": true, "half_damage": true})
+	events.append_array(shot)
+	if Effects.has(g, "covering_fire_pin") and Combat.is_present(t) and shot.any(func(ev: Dictionary) -> bool: return ev.get("type", "") == "attack_rolled" and ev.get("result", "miss") != "miss"):
+		events.append_array(Combat.add_status(state, t, "Immobilized", g.id, t.id))  # Heavy Gunner 2
 	return events
 
 
@@ -527,6 +601,12 @@ static func damaged_by(target: Unit, source: Unit) -> void:
 	if source != null and String(source.counters.get("covering_fire", "")) == target.id:
 		source.counters.erase("covering_fire")
 		source.counters.erase("cf_moved")
+
+
+## Gunslinger 3: is this attack the charged one (die at 1, Auxiliary ranged weapon)?
+static func gunslinger_ready(u: Unit, w: Dictionary) -> bool:
+	return Effects.has(u, "gunslinger_die") and int(u.counters.get("gunslinger_die", 6)) <= 1 \
+		and String(w.get("size", "")) == "Auxiliary" and RANGED_TYPES.has(String(w.get("type", "")))
 
 
 ## Infiltrator Prowl is active (its own turn).

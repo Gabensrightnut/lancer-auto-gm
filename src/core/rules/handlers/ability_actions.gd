@@ -273,7 +273,13 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 			"jackhammer":
 				events.append_array(TalentRules.jackhammer(state, u, target))
 			"covering_fire":
-				events.append_array(TalentRules.covering_fire(state, u, target))
+				events.append_array(TalentRules.covering_fire(state, u, TalentRules.covering_targets(state, u, params)))
+			"hacked":
+				# Hacker 2 Invade options: they last until the target fixes them.
+				var hk: Dictionary = target.counters.get("hacked", {})
+				hk[String(op["effect"])] = u.id
+				target.counters["hacked"] = hk
+				events.append({"type": "effect_triggered", "unit": u.id, "effect": String(op.get("label", "")), "target": target.id, "rule_ref": "talents: Hacker"})
 			"fire_weapon":
 				var fw := Weapons.find(u, String(a["source_key"]).trim_prefix("w:"))
 				events.append_array(Attacks.attack(state, u, fw, target, {"fired_by_rule": true}))
@@ -500,9 +506,10 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 			if not (u.turn.get("hits", {}).get(ww, []) as Array).has(String(params.get("target", ""))):
 				return RuleResult.deny("Only right after hitting that character with the wreathed weapon this turn.", "mods: Shock Wreath")
 		if op.get("op", "") == "covering_fire":
-			var cr := TalentRules.check_covering_fire(state, u, state.unit(String(params.get("target", ""))))
-			if not cr.ok:
-				return cr
+			for ct: Variant in TalentRules.covering_targets(state, u, params):
+				var cr := TalentRules.check_covering_fire(state, u, ct)
+				if not cr.ok:
+					return cr
 		if op.get("op", "") == "jackhammer":
 			var jr := TalentRules.check_jackhammer(state, u, state.unit(String(params.get("target", ""))))
 			if not jr.ok:
