@@ -14,6 +14,9 @@ signal view_updated(view: Dictionary, events: Array)
 ## Answer to submit(): RuleResult.to_dict() (ok, reason, rule_ref, grey_area, options).
 signal action_answered(request_id: int, result: Dictionary)
 signal seats_changed(table: Dictionary)
+## Who the game is waiting on changed (NetHost.waiting_on() as this seat may know it).
+## info["you"] is true when it's waiting on you.
+signal waiting_changed(info: Dictionary)
 ## Lost the host. `retrying` is true while reconnect attempts continue.
 signal connection_lost(retrying: bool)
 
@@ -26,6 +29,8 @@ var seat := ""
 var token := ""
 ## The latest view from the host (empty until the first update).
 var view: Dictionary = {}
+## Who the game is waiting on (see waiting_changed).
+var waiting: Dictionary = {}
 var connected := false
 var auto_reconnect := true
 
@@ -132,7 +137,20 @@ func _on_message(_peer: int, msg: Dictionary) -> void:
 		NetProtocol.UPDATE:
 			view = msg.get("view", {})
 			view_updated.emit(view, msg.get("events", []))
+			_set_waiting(msg.get("waiting", {}))
 		NetProtocol.RESULT:
 			action_answered.emit(int(msg.get("id", 0)), msg.get("result", {}))
 		NetProtocol.SEATS:
 			seats_changed.emit(msg.get("seats", {}))
+			_set_waiting(msg.get("waiting", {}))
+
+
+## "I'll go": ask to take the next turn with `unit_id` (yours, or an AI squadmate's).
+func pick_next(unit_id: String) -> int:
+	return submit({"type": "start_turn", "actor": unit_id})
+
+
+func _set_waiting(info: Variant) -> void:
+	if info is Dictionary and not (info as Dictionary).is_empty() and info != waiting:
+		waiting = info
+		waiting_changed.emit(waiting)

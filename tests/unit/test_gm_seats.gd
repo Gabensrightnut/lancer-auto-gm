@@ -86,19 +86,11 @@ func test_ai_waits_for_humans_then_takes_over_mid_mission() -> void:
 	var steps := director.run(3)
 	expect(steps > 0, "the AI plays them now")
 	expect(s.acted.size() > 0 or s.active_unit != "")
-	# One player takes theirs back: the AI stops when it's p1's unit's turn to be picked.
+	# One player takes theirs back: from then on the squad's picks wait for them.
 	host.set_seat_ai("p1", false)
 	director.run(400)
-	expect(s.phase == GameState.PHASE_ENDED or _human_is_up(s, "p1"), "stops for the human")
-
-
-func _human_is_up(s: GameState, seat: String) -> bool:
-	if s.active_unit != "":
-		return s.unit(s.active_unit).controller == seat
-	for u in TurnRules.waiting(s, s.turn_side):
-		if u.controller == seat:
-			return true
-	return false
+	var w := host.waiting_on()
+	expect(s.phase == GameState.PHASE_ENDED or "p1" in w["seats"], "stops for the human: %s" % str(w))
 
 
 func test_hot_seat_skips_ai_seats() -> void:

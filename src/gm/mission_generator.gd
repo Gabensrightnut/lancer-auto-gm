@@ -38,9 +38,15 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	if m.sitrep_id in ["sitrep_holdout", "sitrep_gauntlet"]:
 		_fortify(state.map, rng, m.zones["zone"], shape)
 
+	# Names use their own RNG so changing name lists never changes the battlefield.
+	var names_rng := RandomNumberGenerator.new()
+	names_rng.seed = hash([mission_seed, "names"])
+	var names := NameGen.new(names_rng)
+	m.flavor = {"operation": names.operation(), "planet": names.planet(), "faction": names.faction(),
+		"team": names.team_name(), "cargo": names.cargo()}
 	var players := clampi(int(opts.get("players", 4)), 1, 4)
 	state.seats["gm"] = {"name": "GM", "side": Mission.ENEMIES, "gm": true}
-	_add_squad(state, m, rng, players, opts.get("db"))
+	_add_squad(state, m, rng, players, opts.get("db"), names)
 	_add_enemies(state, m, rng, cfg, players, settings, opts.get("npc_templates", UnitFactory.npc_templates()))
 	m.briefing = _briefing(m, w, h, players, state)
 	return {"state": state, "mission": m}
@@ -206,7 +212,7 @@ static func _fortify(map: BattleMap, rng: RandomNumberGenerator, zone: Array, _s
 
 # --- Forces ------------------------------------------------------------------------------
 
-static func _add_squad(state: GameState, m: Mission, rng: RandomNumberGenerator, players: int, db_opt: Variant) -> void:
+static func _add_squad(state: GameState, m: Mission, rng: RandomNumberGenerator, players: int, db_opt: Variant, names: NameGen) -> void:
 	var db: ContentDB = db_opt if db_opt is ContentDB else null
 	if db == null:
 		db = ContentDB.new()
@@ -223,11 +229,14 @@ static func _add_squad(state: GameState, m: Mission, rng: RandomNumberGenerator,
 			loadout = builds[0]["loadout"]
 		var seat := "p%d" % (i + 1)
 		var u := UnitFactory.build_mech(db, seat, b["frame"], loadout, pilot)
-		u.name = "%s %d" % [str(b.get("callsign", u.name)), i + 1]
+		var callsign := names.callsign()
+		var frame_name := u.name
+		u.name = callsign
 		u.side = Mission.PLAYERS
 		u.controller = seat
 		u.loadout["ai_role"] = str(b.get("role", ""))
-		state.seats[seat] = {"name": "Pilot %d" % (i + 1), "side": Mission.PLAYERS}
+		state.seats[seat] = {"name": callsign, "side": Mission.PLAYERS, "callsign": callsign,
+			"pilot": names.pilot_name(), "mech": "%s (%s)" % [names.mech_name(), frame_name]}
 		_place(state, u, free)
 
 
@@ -325,5 +334,7 @@ static func _briefing(m: Mission, w: int, h: int, players: int, state: GameState
 	for s: Dictionary in _sitreps():
 		if s.get("id", "") == m.sitrep_id:
 			goal = str(s.get("pcVictory", ""))
-	return "%s on grassy hills (%d x %d). %d lancers against %d hostiles. Win: %s." % [
-		m.sitrep_name, w, h, players, enemies, goal.trim_suffix(".")]
+	var f := m.flavor
+	return "%s: %s on %s, grassy hills (%d x %d). %s, %d lancers, against %d %s units. Win: %s." % [
+		f.get("operation", "OPERATION"), m.sitrep_name, f.get("planet", "a frontier world"), w, h,
+		f.get("team", "The squad"), players, enemies, f.get("faction", "hostile"), goal.trim_suffix(".")]

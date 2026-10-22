@@ -11,6 +11,7 @@ section 9). Everything it does goes through `NetHost.submit()` -> `RulesEngine.s
 | `ai_knowledge.gd` | The planning copy of the battle for one side: Hidden enemies left out, unscanned stats unknown. |
 | `ai_director.gd` | Runs AI seats on the host: starts combat, picks who acts, plays AI turns, reinforcements, ends the mission. |
 | `gm_settings.gd` | Dials (aggression, caution, focus fire, reinforcements, difficulty, randomness) and presets. |
+| `name_gen.gd` | Seeded callsigns, pilot/mech names and mission flavor from the COMP/CON generator lists. |
 | `gm_actions.gd` | Host-only engine actions `gm_spawn` and `gm_end_mission` (events `units_arrived`, `mission_ended`). |
 
 ## Using it (UI)
@@ -32,5 +33,12 @@ Online: `Net.host.set_fill_empty_with_ai(true)` (off by default) gives every emp
 pilot; `set_seat_reserved(seat, true)` keeps one free for a friend. A friend who joins an
 AI seat takes it over; when they leave, the AI picks it back up.
 
-Seats on a side where a human still has a unit waiting: the humans pick who acts next; the AI
-picks only when every waiting unit on that side is AI-played.
+The AI only acts for seats set to AI and never times out or auto-resolves a human seat.
+On a side with any human seat the humans pick who goes next ("I'll go", including sending an
+AI squadmate in); the AI picks only for a side with no human seat (normally the GM's). Show
+`host.waiting_on(seat)` so players know who the game is waiting for (src/net/README.md).
+
+Names and flavor (callsigns, pilot and mech names, operation, planet, faction, team, cargo)
+come from COMP/CON's lists in `data/compcon/generators/` via `NameGen`; our own extra lines
+go in `data/game/names/<same file name>`. Pilot details are in `state.seats[seat]`
+(`callsign`, `pilot`, `mech`); `mission.flavor` holds the rest.

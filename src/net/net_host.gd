@@ -18,6 +18,8 @@ signal local_update(seat: String, view: Dictionary, events: Array)
 signal action_resolved(seat: String, action: Dictionary, result: RuleResult, events: Array)
 ## Every seat has been sent its view for the latest change.
 signal updates_sent(events: Array)
+## Who the game is waiting on changed. See waiting_on().
+signal waiting_changed(info: Dictionary)
 
 var state: GameState
 var engine: RulesEngine
@@ -37,6 +39,7 @@ var fill_empty_with_ai := false
 ## Seats kept empty for a friend who joins later (never filled by the AI).
 var reserved_seats: Dictionary = {}
 
+var _last_waiting: Dictionary = {}
 var _peer_seat: Dictionary = {}  # peer -> seat
 var _seat_peer: Dictionary = {}  # seat -> connected peer
 var _seat_token: Dictionary = {}  # seat -> reconnect token (kept while the player is away)
@@ -78,20 +81,113 @@ func close() -> void:
 
 ## Runs an action for `seat` through the rules engine. A seat may only command units it
 ## controls. Returns {"result": RuleResult, "events": Array}.
+##
+## "I'll go": picking who acts next is a start_turn for that unit. In Lancer the players
+## decide among themselves which of them goes next, so a human seat may pick its own unit,
+## an AI squadmate on its side, or (people sharing this screen) any seat played here.
 func submit(seat: String, action: Dictionary) -> Dictionary:
 	var actor := state.unit(str(action.get("actor", "")))
 	if actor == null and seat != GM_SEAT:
 		# Actions without an actor (start_combat, gm_spawn, gm_end_mission...) are the host's.
 		return {"result": RuleResult.deny("Only the GM can do that.", ""), "events": []}
+	if actor != null and action.get("type", "") == "start_turn" and actor.controller != seat:
+		var why := _pick_refusal(seat, actor)
+		if why != "":
+			return {"result": RuleResult.deny(why, TurnRules.REF_TURN_ORDER), "events": []}
+		return _run(actor.controller, action)
 	if actor != null and actor.controller != seat:
 		var no := RuleResult.deny("%s isn't yours to command." % actor.name if actor.name != "" else "That unit isn't yours to command.", "")
 		return {"result": no, "events": []}
+	return _run(seat, action)
+
+
+func _run(seat: String, action: Dictionary) -> Dictionary:
 	var out := engine.submit(state, action)
 	var events: Array = out["events"]
 	action_resolved.emit(seat, action, out["result"], events)
 	if not events.is_empty():
 		send_updates(events)
 	return out
+
+
+## Why `seat` may not pick `u` to act next ("" if it may).
+func _pick_refusal(seat: String, u: Unit) -> String:
+	var info: Dictionary = state.seats.get(seat, {})
+	if info.is_empty() or str(info.get("side", "")) != u.side:
+		return "You can only choose who goes next on your own side."
+	if is_ai_seat(seat):
+		return "That seat is played by the AI."
+	if is_ai_seat(u.controller):
+		return ""  # An AI squadmate: the players choose when it goes.
+	if seat in local_seats and u.controller in local_seats:
+		return ""  # Several seats at this screen: the people here decide.
+	return "%s belongs to another player, who has to choose to go themselves." % (u.name if u.name != "" else u.id)
+
+
+## Who the game is waiting on, as `for_seat` may know it ("" = the host's full picture).
+## {state: "setup"/"turn"/"pick"/"ended", seats: [seat ids that must act], ai: bool (the AI
+##  is acting, no human needed), unit: active unit id (turn), side: side picking (pick),
+##  units: unit ids that can still go (pick, own side only), you: bool (for_seat must act),
+##  text: plain sentence for the UI}
+## Nothing ever times out: a human seat is waited on until it acts.
+func waiting_on(for_seat: String = "") -> Dictionary:
+	var my_side: String = state.seats.get(for_seat, {}).get("side", "")
+	var all_seen := for_seat == "" or for_seat == GM_SEAT
+	var info := {"state": "", "seats": [], "ai": false, "unit": "", "side": "", "units": [], "text": ""}
+	if state.phase == GameState.PHASE_ENDED:
+		info["state"] = "ended"
+		info["text"] = "The mission is over."
+	elif state.phase != GameState.PHASE_COMBAT:
+		info["state"] = "setup"
+		info["ai"] = is_ai_seat(GM_SEAT)
+		info["seats"] = [] if info["ai"] else [GM_SEAT]
+		info["text"] = "The GM is setting up the battle." if info["ai"] else "Waiting for the GM to start the battle."
+	elif state.active_unit != "":
+		var u := state.unit(state.active_unit)
+		info["state"] = "turn"
+		info["ai"] = is_ai_seat(u.controller)
+		info["seats"] = [] if info["ai"] else [u.controller]
+		var seen := all_seen or my_side == u.side or not u.has_status("Hidden")
+		info["unit"] = u.id if seen else ""
+		var who := (u.name if u.name != "" else u.id) if seen else "A hidden enemy"
+		if info["ai"]:
+			info["text"] = "%s is taking its turn." % who
+		else:
+			info["text"] = "Waiting for %s: %s's turn." % [_seat_name(u.controller), who]
+	else:
+		var side := state.turn_side
+		info["state"] = "pick"
+		info["side"] = side
+		var humans: Array = []
+		for seat: String in state.seats:
+			if str(state.seats[seat].get("side", "")) == side and not is_ai_seat(seat):
+				humans.append(seat)
+		info["seats"] = humans
+		info["ai"] = humans.is_empty()
+		if all_seen or my_side == side:
+			for u in TurnRules.waiting(state, side):
+				info["units"].append(u.id)
+		if humans.is_empty():
+			info["text"] = "The %s are choosing who acts next." % side
+		else:
+			var names := PackedStringArray()
+			for seat: String in humans:
+				names.append(_seat_name(seat))
+			info["text"] = "%s pick: who goes next? (%s)" % [side.capitalize(), ", ".join(names)]
+	info["you"] = for_seat != "" and for_seat in info["seats"]
+	return info
+
+
+func _seat_name(seat: String) -> String:
+	var player: String = _player_names.get(seat, "")
+	return player if player != "" else str(state.seats.get(seat, {}).get("name", seat))
+
+
+func _waiting_check() -> void:
+	var info := waiting_on()
+	if info != _last_waiting:
+		_last_waiting = info
+		waiting_changed.emit(info)
 
 
 ## Sends every seat its view and the events it may see. Call this after anything that
@@ -103,6 +199,7 @@ func send_updates(events: Array = []) -> void:
 	for seat: String in _seat_peer:
 		_send_update(seat, events)
 	updates_sent.emit(events)
+	_waiting_check()
 
 
 ## Lets the AI play `seat` (or hands it back to people). Works mid-mission.
@@ -168,7 +265,7 @@ func release_seat(seat: String) -> void:
 func _send_update(seat: String, events: Array) -> void:
 	var view := view_filter.view_for(state, seat)
 	var seen := NetEventFilter.events_for(view_filter, state, seat, events, view)
-	transport.send(_seat_peer[seat], {"t": NetProtocol.UPDATE, "view": view, "events": seen})
+	transport.send(_seat_peer[seat], {"t": NetProtocol.UPDATE, "view": view, "events": seen, "waiting": waiting_on(seat)})
 
 
 func _on_hosted(code: String) -> void:
@@ -257,7 +354,8 @@ func _refuse(peer: int, code: String, reason: String) -> void:
 func _seats_changed() -> void:
 	var table := seat_table()
 	seats_changed.emit(table)
+	_waiting_check()
 	if transport == null:
 		return
 	for seat: String in _seat_peer:
-		transport.send(_seat_peer[seat], {"t": NetProtocol.SEATS, "seats": table})
+		transport.send(_seat_peer[seat], {"t": NetProtocol.SEATS, "seats": table, "waiting": waiting_on(seat)})

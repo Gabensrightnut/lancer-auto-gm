@@ -161,3 +161,24 @@ func test_gauntlet_and_wipeout() -> void:
 	expect_eq(m2.outcome, "players")
 	var m3 := Mission.from_dict(m2.to_dict())
 	expect_eq(m3.outcome, "players")
+
+
+func test_names_and_flavor_come_from_the_compcon_lists() -> void:
+	var g := _gen(42)
+	var m: Mission = g["mission"]
+	var s: GameState = g["state"]
+	var names := NameGen.new(RandomNumberGenerator.new())
+	expect(m.flavor["operation"].begins_with("OPERATION "), m.flavor["operation"])
+	expect(m.flavor["planet"] in names.lines("planets.txt"))
+	expect(m.flavor["faction"] in names.lines("factions.txt"))
+	expect(m.briefing.contains(m.flavor["operation"]))
+	var callsigns := names.lines("callsigns.txt")
+	var seen := {}
+	for u in s.units_on_side("players"):
+		expect(u.name in callsigns, "%s is a callsign" % u.name)
+		expect(not seen.has(u.name), "no two pilots share a callsign")
+		seen[u.name] = true
+		var seat: Dictionary = s.seats[u.controller]
+		expect(seat["pilot"].split(" ").size() >= 2, "full pilot name: %s" % seat["pilot"])
+		expect(seat["mech"].contains("Everest"), seat["mech"])
+	expect_eq(_gen(42)["mission"].flavor, m.flavor, "same seed, same names")

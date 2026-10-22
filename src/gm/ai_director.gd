@@ -8,8 +8,10 @@ extends RefCounted
 ## starts combat, ends a decided mission, brings reinforcements, picks the next AI unit to
 ## activate, or plays one whole AI turn. run() loops until a human is needed.
 ##
-## Picking who acts next: when it's a side's pick and every waiting unit on it is AI-played,
-## the AI picks. While a human on that side still has a unit waiting, the humans pick first.
+## The AI only ever acts for seats set to AI. Human seats are waited on with no time limit,
+## and nothing of theirs is auto-resolved. Picking who acts next: on a side with any human
+## seat the humans choose ("I'll go", including when an AI squadmate goes); the AI picks only
+## for a side with no human seat at all (usually the GM's).
 
 ## One line per AI decision, for the battle log ("Moving to hard cover, heat is high").
 signal ai_log(unit_id: String, text: String)
@@ -75,13 +77,12 @@ func step() -> bool:
 			play_turn(u)
 			return true
 		return false
-	var waiting := TurnRules.waiting(state, state.turn_side)
+	if not host.waiting_on()["ai"]:
+		return false  # Humans on this side choose who goes next.
 	var mine: Array[Unit] = []
-	for u in waiting:
+	for u in TurnRules.waiting(state, state.turn_side):
 		if host.is_ai_seat(u.controller):
 			mine.append(u)
-		else:
-			return false  # Humans on this side pick first.
 	if mine.is_empty():
 		return false
 	var pick := _choose_activation(mine)
