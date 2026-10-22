@@ -193,10 +193,14 @@ func _load_campaign(id: String) -> void:
 	MenuSession.campaign = r["campaign"]
 	MenuSession.lobby = null
 	if MenuSession.store.has_mission(id):
-		var net := MenuSession.net(self)
-		var res: Dictionary = net.resume_mission(MenuSession.store, id) if net != null else {"error": "no network"}
-		if res.get("error", "") == "":
-			get_tree().change_scene_to_file(MenuSession.BATTLE_SCENE)
+		var s := GameFlow.resume_mission(MenuSession.store, MenuSession.campaign)
+		if s != null:
+			var net := MenuSession.net(self)
+			if net != null and not (s.host.export_seats()["tokens"] as Dictionary).is_empty():
+				# Friends were in this mission: reopen the same room and wait for them.
+				net.host = s.host
+				net.open_online(s.host, GameFlow.last_room)
+			MenuSession.go(self, "battle")
 			return
 	MenuSession.go(self, "lobby")
 

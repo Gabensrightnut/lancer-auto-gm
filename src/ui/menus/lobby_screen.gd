@@ -87,6 +87,9 @@ func _ready() -> void:
 
 
 func _refresh() -> void:
+	if not lobby.is_host and (lobby.started or str(lobby.client.view.get("phase", "")) == GameState.PHASE_COMBAT):
+		_follow_host.call_deferred()
+		return
 	_refreshing = true
 	for c in seats_box.get_children():
 		c.queue_free()
@@ -281,15 +284,24 @@ func _host_online() -> void:
 
 
 func _start() -> void:
-	var r := lobby.start()
-	if r.has("error"):
+	var s := GameFlow.start_mission(lobby, MenuSession.store)
+	if s == null:
+		_refresh()
 		return
-	MenuSession.store.save_campaign(lobby.campaign)
 	var net := MenuSession.net(self)
 	if net != null:
-		net.host = r["host"]
-		net.director = r["director"]
-	get_tree().change_scene_to_file(MenuSession.BATTLE_SCENE)
+		net.host = s.host  # Keeps an online room open; the battle drives the AI itself.
+		net.director = null
+	MenuSession.go(self, "battle")
+
+
+## Joining players follow the host into the battle (also when rejoining one in progress).
+func _follow_host() -> void:
+	if lobby.is_host or lobby.client == null:
+		return
+	if lobby.started or str(lobby.client.view.get("phase", "")) == GameState.PHASE_COMBAT:
+		GameFlow.session = BattleSession.for_client(lobby.client)
+		MenuSession.go(self, "battle")
 
 
 func _back() -> void:
