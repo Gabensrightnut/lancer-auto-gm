@@ -114,3 +114,40 @@ func test_untagged_map_has_no_cover_looks() -> void:
 	expect(_instances(t, "Rough").is_empty(), "no rough ground")
 	expect(t.find_child("Flames", true, false) == null, "nothing burns")
 	_free(t)
+
+
+func test_hub_kits_fit_their_footprint() -> void:
+	var cultures := ["", "frontier_colony", "medieval_tech", "old_west", "retrofuturistic", "cyberpunk", "east_asian", "union_core", "medieval", "retro", "union"]
+	for c: String in cultures:
+		expect(WorldKits.culture_id(c) == "" or WorldStyle.cultures().has(WorldKits.culture_id(c)), "%s maps to a known culture" % c)
+		for kind: String in ["bar", "office", "market", "workshop", "printer"]:
+			var spot := {"kind": kind, "size": [8.0, 6.0, 4.5]}
+			var b := WorldKits.build_hub_building(c, spot, 5)
+			var box := AABB()
+			var first := true
+			for m in b.find_children("*", "MeshInstance3D", true, false):
+				var mi := m as MeshInstance3D
+				var xf := b.global_transform.affine_inverse() * mi.global_transform if mi.is_inside_tree() else _local(b, mi)
+				var bb := xf * mi.mesh.get_aabb()
+				box = bb if first else box.merge(bb)
+				first = false
+			expect(box.position.x >= -4.0 - WorldKits.ROOF_OVERHANG - 0.05 and box.end.x <= 4.0 + WorldKits.ROOF_OVERHANG + 0.05, "%s %s width %s" % [c, kind, box])
+			expect(box.position.z >= -3.0 - WorldKits.ROOF_OVERHANG - 0.05, "%s %s back %s" % [c, kind, box])
+			b.free()
+		for kind: String in WorldKits.hub_prop_kinds(c):
+			var p := WorldKits.build_hub_prop(c, kind, 1)
+			expect(p.get_child_count() > 0, "%s %s prop has parts" % [c, kind])
+			p.free()
+		var cp := WorldKits.build_hub_centerpiece(c, 1)
+		expect(cp.get_child_count() > 0, "%s centerpiece" % c)
+		cp.free()
+
+
+## A child's transform relative to `root` without being in the scene tree.
+func _local(root: Node3D, n: Node3D) -> Transform3D:
+	var xf := n.transform
+	var p := n.get_parent()
+	while p != null and p != root:
+		xf = (p as Node3D).transform * xf
+		p = p.get_parent()
+	return xf

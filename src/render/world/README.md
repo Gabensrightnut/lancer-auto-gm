@@ -105,3 +105,40 @@ RTX 3080, 1080p, generated 40x40 maps with 8 mechs, vsync off. Average fps acros
 (hills/medieval, neon city, alien wilds, desert/Old West, burning city) at a wide and a close
 camera: high 177-274 (1% low 78-210), medium 162-336, low 306-512 (1% low 210-340).
 
+
+## Hub towns at walking scale (`world_kits.gd`)
+
+The same cultures for on-foot hubs (story's `src/explore`), in meters. Every culture argument
+takes story's ids (`medieval_tech`, `retrofuturistic`, `union_core`, `frontier_colony`, ...)
+or map ids. Nothing carries text: sign boards are blank, the caller adds names.
+
+```gdscript
+# A building for a HubLayout spot: origin at the footprint center, door toward +Z.
+var b := WorldKits.build_hub_building(hub["culture"], spot, hub["seed"])
+b.position = Vector3(spot["pos"][0], 0, spot["pos"][1])
+b.rotation.y = atan2(-b.position.x, -b.position.z)   # face the plaza, as HubScene does
+add_child(b)
+# Props in the culture's style (kinds that suit it come first), and the plaza centerpiece.
+for kind in WorldKits.hub_prop_kinds(culture):
+	var p := WorldKits.build_hub_prop(culture, kind, i)   # footprint WorldKits.PROP_RADIUS[kind]
+add_child(WorldKits.build_hub_centerpiece(culture, seed))   # within 1.6 m of the center
+var colors := WorldKits.hub_ground(culture)                 # {"ground", "pave"} Colors
+WorldKits.apply_hub_environment(culture, environment, sun)  # sky, sun and fog
+```
+
+Walls stay inside the spot's `size` [w, d, h]; roofs, porches, awnings and signs reach out at
+most `ROOF_OVERHANG` (0.6 m) at the sides and back, and porches up to 2.7 m in front (Old West
+boardwalk), so keep a clear path at the door. Doors are 1.3 x 2.3 m (3.2 x 3.4 m roll-up
+shutters on workshops and printer bays). Landing pads and plazas return an empty node.
+
+| Culture | Buildings | Props | Centerpiece |
+|---|---|---|---|
+| medieval | stone and timber frame, tiled gable roofs, arched windows, banners, hanging signs, lanterns | braziers, barrels, crates, carts, benches | well with a roofed winch |
+| old_west | wood siding, false fronts, covered boardwalks, hitching rails | barrels, crates, carts, lantern posts | trough and windpump |
+| retro | pastel plaster, chrome rims, rounded canopies, pylon signs | globe lamps, bright benches, planters | fountain |
+| east_asian | plaster and wood, hipped roofs with upturned eaves, lanterns | stone lanterns, blossom planters, benches | blossom tree on a stone ring |
+| cyberpunk | metal and glass, neon strips, blade signs, holo ads, shutters | neon posts, crates, barrels | holo pylon |
+| union | white and glass, clean canopies with light strips | light columns, planters, benches | fountain |
+| "" (frontier) | prefab metal and concrete, struts and awnings | crates, barrels, lamp posts | well |
+
+Preview: `world_preview.tscn` tags `hub-<culture>` (e.g. `hub-medieval_tech`, `hub-union_core`).
