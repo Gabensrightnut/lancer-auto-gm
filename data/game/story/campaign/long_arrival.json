@@ -981,7 +981,6 @@
      "ph_artillery"
     ],
     "sitrep": "sitrep_standardcombat",
-    "landscape": "starship",
     "commander": "warden",
     "boarding": {
      "kind": "rescue",
@@ -1789,12 +1788,21 @@
     "patron": "prentiss",
     "foes_var": "{final_foes}",
     "sitrep": "sitrep_control",
-    "landscape": "starship",
     "commander": "{final_commander}",
     "boarding": {
      "kind": "seize",
      "map": "docked"
-    }
+    },
+    "environments_if": [
+     {
+      "if": {
+       "flag": "la_nhp_destroyed"
+      },
+      "ids": [
+       "env_zero_g"
+      ]
+     }
+    ]
    },
    "branch": "b16",
    "outcomes": [

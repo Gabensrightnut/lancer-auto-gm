@@ -60,6 +60,12 @@ static func build_mission(campaign: Campaign, story: StoryState, db: ContentDB, 
 		gen_opts["landscape"] = hook["landscape"]
 	if hook.has("map_culture"):
 		gen_opts["culture"] = hook["map_culture"]
+	# The same stretch of world as the last fight here keeps its look (world-maps' region).
+	var region: Variant = story.flags.get("_regions", {}).get(region_key(story, hook))
+	if region is Dictionary and not hook.has("boarding"):
+		gen_opts["region"] = region
+	if not (hook.get("environments", []) as Array).is_empty():
+		gen_opts["environments"] = hook["environments"]
 	# Boarding: world-maps builds the ships (opts.boarding: {kind, map}).
 	if hook.has("boarding"):
 		gen_opts["boarding"] = (hook["boarding"] as Dictionary).duplicate()
@@ -320,6 +326,15 @@ static func battle_summary(state: GameState, _story: StoryState, events: Array =
 	return {"rounds": state.round_number, "kills": kills, "lost": lost, "ejected": ejected, "mvp": mvp, "mvp_damage": best, "cascades": cascades}
 
 
+## Which stretch of world a fight is in: the world and the place.
+static func region_key(story: StoryState, hook: Dictionary) -> String:
+	return "%s:%s" % [str(Sector.get_sector(story).get("at", story.hub.get("id", ""))), str(hook.get("place", ""))]
+
+
 static func finish_mission(campaign: Campaign, story: StoryState, engine: StoryEngine, state: GameState, mission: Mission, events: Array = []) -> Dictionary:
 	campaign.record_mission(state, mission)
+	if mission.flavor.get("region") is Dictionary and not mission.flavor.get("hook", {}).has("boarding"):
+		var regions: Dictionary = story.flags.get("_regions", {})
+		regions[region_key(story, mission.flavor.get("hook", {}))] = (mission.flavor["region"] as Dictionary).duplicate()
+		story.flags["_regions"] = regions
 	return engine.submit(story, campaign, {"type": "mission_finished", "seat": "gm", "params": mission_result(state, mission, story, events)})

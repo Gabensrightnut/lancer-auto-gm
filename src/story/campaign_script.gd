@@ -215,6 +215,12 @@ static func build_hook(story: StoryState, campaign: Campaign, cid: String) -> Di
 			hook[k] = str(hs[k])
 	if hs.has("boarding"):
 		hook["boarding"] = (hs["boarding"] as Dictionary).duplicate()
+		hook["landscape"] = ""
+	# Rules environments the story calls for (zero-g aboard a ship with its systems dead, Core p.63).
+	for env: Dictionary in hs.get("environments_if", []):
+		if check(story, campaign, env.get("if"), {}):
+			hook["environments"] = (env["ids"] as Array).duplicate()
+			break
 	if bool(hs.get("in_town", false)):
 		hook["in_town"] = true
 		hook["town_spot"] = "plaza"

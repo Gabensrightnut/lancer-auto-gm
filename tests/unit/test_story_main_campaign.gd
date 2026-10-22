@@ -168,6 +168,13 @@ func test_eighteen_paths_really_differ() -> void:
 	expect(ally_sets.size() >= 4, "and who's at your side changes (%d sets)" % ally_sets.size())
 
 
+func test_redwater_holds_is_reachable() -> void:
+	# Seal the crates for the town, speak for Redwater at the meeting, warn the marshal about
+	# the plot, refuse the company, open the vault.
+	var r := run(360, [2, 0, 1, 0, 0, 2, 1, 0, 0, 0, 0, 0], true, true)
+	expect_eq(r["ending"], "town_holds", "Redwater holds: %s" % [r["chain"]])
+
+
 func test_finding_the_plot_opens_other_endings() -> void:
 	var endings := {}
 	var paths := [[2, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1], [0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0], [0, 0, 0, 0, 0, 0, 2, 1, 0, 0, 1], [2, 1, 0, 2, 1, 2, 1, 1, 0, 1, 1]]

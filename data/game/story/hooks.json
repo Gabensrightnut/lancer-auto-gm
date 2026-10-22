@@ -1168,7 +1168,6 @@
     },
     "seize_ship": {
       "weight": 1,
-      "landscape": "starship",
       "boarding": {
         "kind": "seize",
         "map": "docked"
@@ -1203,7 +1202,6 @@
     },
     "rescue_crew": {
       "weight": 1,
-      "landscape": "starship",
       "boarding": {
         "kind": "rescue",
         "map": "enemy_ship"
@@ -1243,7 +1241,6 @@
     },
     "take_smuggler": {
       "weight": 1,
-      "landscape": "starship",
       "boarding": {
         "kind": "smuggler",
         "map": "docked"
@@ -1279,7 +1276,6 @@
     "repel_boarders": {
       "weight": 1,
       "board": false,
-      "landscape": "starship",
       "boarding": {
         "kind": "defend",
         "map": "own_ship"

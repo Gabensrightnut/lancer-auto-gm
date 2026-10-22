@@ -11,7 +11,7 @@ func test_boarding_jobs_tell_the_map_what_to_build() -> void:
 	var c: Campaign = t["campaign"]
 	for tid: String in ["seize_ship", "rescue_crew", "take_smuggler"]:
 		var h := MissionHooks.make(s, c, tid, {})
-		expect(h.has("boarding") and str(h["landscape"]) == "starship", "%s is a boarding job" % tid)
+		expect(h.has("boarding") and str(h["landscape"]) == "", "%s is a boarding job (the generator builds the ships)" % tid)
 		expect(not str(h["objective"]).contains("{"), str(h["objective"]))
 	var hook := MissionHooks.make(s, c, "seize_ship", {})
 	s.hooks.append(hook)

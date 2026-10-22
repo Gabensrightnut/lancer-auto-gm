@@ -55,7 +55,7 @@ static func make(story: StoryState, campaign: Campaign, template_id: String, opt
 	# builds (two docked ships, an enemy ship's interior, the squad's own transport).
 	if t.has("boarding"):
 		hook["boarding"] = (t["boarding"] as Dictionary).duplicate()
-		hook["landscape"] = str(t.get("landscape", "starship"))
+		hook["landscape"] = ""  # the generator builds the ships from opts.boarding
 	var spot := town_spot(story, str(t.get("town_spot", "")), rng)
 	if bool(t.get("in_town", false)) and not spot.is_empty():
 		hook["in_town"] = true
