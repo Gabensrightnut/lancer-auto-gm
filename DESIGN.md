@@ -580,6 +580,13 @@ differently without an AI. Each game has a **seed**: share it to replay the same
   downtime actions (Get Resources, Get Connected, Get Creative, Power at a Cost...). So a
   company rep you're in good standing with can grant a reserve (e.g. cheaper or faster
   repairs), and the game explains how getting new mechs works through leveling.
+- **Supplies by the book:** food, water, repair materials and the like work exactly as
+  LANCER handles them (Reserves, pilot gear, Repairs and Repair Cap, rest, downtime actions),
+  shown as things you can actually do (e.g. a quartermaster scene to get a Supplies reserve).
+  No invented hunger or survival meters.
+- **Story inspiration from real campaigns:** official modules, actual plays and campaign
+  write-ups are researched for structure, mission types, arcs and pacing (written up in
+  `docs/research/`), then turned into original story tables. Nothing copied.
 
 ### Progression
 - **Everyone starts at the bottom, like D&D level 1:** by the book, new pilots start at
