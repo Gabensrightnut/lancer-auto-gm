@@ -86,7 +86,8 @@ static func build(w: Dictionary) -> Node3D:
 		"wrap": MeshKit.mech_material(Color(0.7, 0.14, 0.09), 0.1, 0.7, Color.BLACK, false),
 	}
 	var muzzle := Vector3(0, 0, -0.3 * k)
-	var signature := {"mw_assault_cannon": _gatling, "mw_variable_sword": _katana, "mw_chain_axe": _chain_axe, "mw_war_pike": _war_pike}
+	var signature := {"mw_assault_cannon": _gatling, "mw_variable_sword": _katana, "mw_chain_axe": _chain_axe, "mw_war_pike": _war_pike,
+		"mw_shotgun": _pump_shotgun, "mw_tactical_knife": _combat_knife}
 	var type := String(w.get("type", "")) if not signature.has(id) else "signature"
 	match type:
 		"signature":
@@ -316,6 +317,36 @@ static func _war_pike(ctx: Dictionary) -> Vector3:
 	_box(ctx, Vector3(0.006, 0.028, 0.06), Vector3(0, 0, -0.22), "blade", Vector3.ZERO, 0.2)
 	_box(ctx, Vector3(0.004, 0.06, 0.07), Vector3(0, 0.035, -0.16), "body", Vector3(0, 0, 0), 0.6)
 	return Vector3(0, 0, -0.25)
+
+
+## Signature: GMS shotgun as a long, boxy pump shotgun (Everest reference): a slab receiver,
+## long rectangular barrel shroud over a tube magazine, a ribbed pump and a short stock.
+static func _pump_shotgun(ctx: Dictionary) -> Vector3:
+	var len := 0.42
+	_box(ctx, Vector3(0.05, 0.075, 0.2), Vector3(0, 0, -0.02), "body")          # receiver
+	_box(ctx, Vector3(0.035, 0.07, 0.03), Vector3(0, -0.06, 0.02), "body", Vector3(-15, 0, 0))  # grip
+	_box(ctx, Vector3(0.04, 0.06, 0.12), Vector3(0, -0.005, 0.13), "body", Vector3(4, 0, 0), 0.9)  # stock
+	_box(ctx, Vector3(0.042, 0.042, len), Vector3(0, 0.012, -0.12 - len / 2.0), "body")  # barrel shroud
+	_box(ctx, Vector3(0.026, 0.026, len * 0.8), Vector3(0, -0.028, -0.12 - len * 0.4), "body")  # magazine tube
+	for i in range(5):
+		_box(ctx, Vector3(0.05, 0.04, 0.012), Vector3(0, -0.028, -0.2 - i * 0.02), "body")  # pump ribs
+	for i in range(4):
+		_box(ctx, Vector3(0.044, 0.008, 0.03), Vector3(0, 0.036, -0.17 - i * 0.08), "body")  # vent rib
+	_box(ctx, Vector3(0.05, 0.05, 0.03), Vector3(0, 0.012, -0.12 - len), "body")  # muzzle block
+	return Vector3(0, 0.012, -0.14 - len)
+
+
+## Signature: GMS tactical knife as a big serrated combat knife (Everest reference).
+static func _combat_knife(ctx: Dictionary) -> Vector3:
+	var len := 0.26
+	_box(ctx, Vector3(0.03, 0.035, 0.09), Vector3(0, 0, 0.03), "body")   # handle
+	_box(ctx, Vector3(0.06, 0.014, 0.02), Vector3(0, 0, -0.02), "paint")  # guard
+	_box(ctx, Vector3(0.008, 0.055, len), Vector3(0, -0.005, -0.03 - len / 2.0), "light", Vector3.ZERO, 0.75)
+	# Serrated spine.
+	for i in range(7):
+		_box(ctx, Vector3(0.007, 0.014, 0.014), Vector3(0, 0.026, -0.05 - i * 0.022), "blade", Vector3(45, 0, 0))
+	_box(ctx, Vector3(0.006, 0.03, 0.05), Vector3(0, -0.012, -0.03 - len + 0.012), "light", Vector3(-25, 0, 0), 0.3)  # point
+	return Vector3(0, 0, -0.03 - len)
 
 
 ## Signature: SSC variable sword as a long slender katana with a wrapped hilt.

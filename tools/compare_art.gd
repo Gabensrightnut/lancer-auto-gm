@@ -27,8 +27,9 @@ func _init() -> void:
 	_bottom = float(a[8]) if a.size() > 8 else 0.97
 	var db := ContentDB.new()
 	db.load_all()
-	var art := Image.load_from_file(art_path)
-	var w := int(H * float(art.get_width()) / art.get_height())
+	var multi := art_path == "-"
+	var art := Image.load_from_file(art_path) if not multi else null
+	var w := int(H * float(art.get_width()) / art.get_height()) if art else int(H * 0.95)
 	var frame := db.frame(frame_id)
 	var mounts: Array = []
 	var fm: Array = frame.get("mounts", [])
@@ -36,8 +37,15 @@ func _init() -> void:
 		mounts.append({"mount": fm[i], "weapons": [weapons[i]] if i < weapons.size() and weapons[i] != "" else []})
 	var model := MechBuilder.build(frame, {"mounts": mounts}, db)
 	model.scale = Vector3.ONE / model.size  # compare at unit height
-	var shot := await _render(model, w, yaw, pitch, null)
-	var panels: Array = [art, shot]
+	var panels: Array = []
+	if multi:
+		# No art: front, 3/4 and back views of the model.
+		for y: float in [yaw, yaw + 40.0, yaw + 180.0]:
+			var mm := MechBuilder.build(frame, {"mounts": mounts}, db)
+			mm.scale = Vector3.ONE / mm.size
+			panels.append(await _render(mm, w, y, pitch, null))
+	else:
+		panels = [art, await _render(model, w, yaw, pitch, null)]
 	if guide != "":
 		var g := _load_glb(guide)
 		if g:
