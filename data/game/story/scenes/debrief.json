@@ -86,7 +86,10 @@
    ],
    "line": [
     "{mvp_line} Good work.",
-    "{mvp_line} Don't let it go to your head."
+    "{mvp_line} Don't let it go to your head.",
+    "{mvp_line} Noted.",
+    "{mvp_line} Buy them a drink.",
+    "{mvp_line} The rest of you, take notes."
    ],
    "next": "twist"
   },

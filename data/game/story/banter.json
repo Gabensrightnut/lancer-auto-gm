@@ -20,11 +20,14 @@
       ],
       "won": [
         "Clean work. Let's keep it that way.",
-        "One job done. Rest, then the next."
+        "One job done. Rest, then the next.",
+        "Good result. Check your mechs before you celebrate."
       ],
       "lost": [
         "We'll learn from it. We have to.",
-        "Bad day. Not the last one. Regroup."
+        "Bad day. Not the last one. Regroup.",
+        "We regroup, we look at what went wrong, we go again.",
+        "Bad day. Not the last one. Let's learn from it."
       ],
       "arc": [
         "Whatever's going on in {hub}, it isn't over.",
@@ -63,11 +66,15 @@
       ],
       "won": [
         "That's how it's done!",
-        "Who's buying? We won!"
+        "Who's buying? We won!",
+        "Did you see their faces? Worth it.",
+        "Next time, give me two of them."
       ],
       "lost": [
         "We'll hit them twice as hard next time.",
-        "I hate losing. I'm not doing it again."
+        "I hate losing. I'm not doing it again.",
+        "They got lucky. Next time they won't.",
+        "I want a rematch. Soon."
       ],
       "arc": [
         "Let's stop circling and go straight at whoever's behind this.",
@@ -105,11 +112,15 @@
       ],
       "won": [
         "People here will sleep better tonight.",
-        "We did good. Let's remember that."
+        "We did good. Let's remember that.",
+        "Somebody out there gets to go home tonight because of us.",
+        "Let's make sure the locals are all right before we rest."
       ],
       "lost": [
         "It's not on you. It's on all of us. We'll fix it together.",
-        "Let's check on the locals. They'll have it worse than us."
+        "Let's check on the locals. They'll have it worse than us.",
+        "Everyone's alive. That counts for something.",
+        "We'll make it right. I promise."
       ],
       "arc": [
         "The people in {hub} are caught in the middle. We have to think of them.",
@@ -147,11 +158,15 @@
       ],
       "won": [
         "Job done. Now let's see what it's worth.",
-        "Every win's a bargaining chip."
+        "Every win's a bargaining chip.",
+        "Job done, and someone owes us. Good.",
+        "That's how you earn a reputation."
       ],
       "lost": [
         "Losses cost. Next client pays upfront.",
-        "Our name took a hit. We fix that fast."
+        "Our name took a hit. We fix that fast.",
+        "Bad for business. We fix it.",
+        "Nobody pays for a loss. Let's not make it a habit."
       ],
       "arc": [
         "Both sides in {hub} want us. That makes us valuable.",
@@ -189,11 +204,15 @@
       ],
       "won": [
         "We won, but I still don't know who was really behind it.",
-        "What did we actually find out there?"
+        "What did we actually find out there?",
+        "We won, but I'd love to know what they were really after.",
+        "Did anyone else notice how they fell back? Odd."
       ],
       "lost": [
         "Let's figure out exactly where it went wrong.",
-        "I have theories. Lots of them."
+        "I have theories. Lots of them.",
+        "I want to go over every second of that fight.",
+        "There's a pattern in how they beat us. I'll find it."
       ],
       "arc": [
         "Something about {hub} doesn't add up. I'm going to keep digging.",
@@ -231,11 +250,15 @@
       ],
       "won": [
         "Now everyone in {hub} owes us a little.",
-        "Wins buy friends. Friends buy information."
+        "Wins buy friends. Friends buy information.",
+        "Everyone saw us win. That's worth more than the job.",
+        "Let's see who comes knocking now."
       ],
       "lost": [
         "Losing in public can be useful, if you plan the next move.",
-        "They'll get careless now. Good."
+        "They'll get careless now. Good.",
+        "Losing in public. Someone will use that.",
+        "Smile anyway. Never let them see it hurt."
       ],
       "arc": [
         "Everyone in {hub} is lying about something.",
@@ -273,11 +296,15 @@
       ],
       "won": [
         "We lived. Today, that's enough.",
-        "Don't get used to it."
+        "Don't get used to it.",
+        "We're still breathing. That's a win.",
+        "Don't get comfortable."
       ],
       "lost": [
         "It happens. Learn, or die next time.",
-        "We'll pay for this one later."
+        "We'll pay for this one later.",
+        "Could've been worse. Usually is.",
+        "We walk away. Some don't."
       ],
       "arc": [
         "This is going to get worse before it gets better.",
@@ -315,11 +342,15 @@
       ],
       "won": [
         "Nailed it. Mostly. Some of it nailed us.",
-        "Drinks! Somebody else is paying."
+        "Drinks! Somebody else is paying.",
+        "I'd like to thank my mech, my squad, and whoever left that cover lying around.",
+        "Drinks are on Kettle. Kettle doesn't know yet."
       ],
       "lost": [
         "Well, that could have gone better. Or worse! Probably better.",
-        "Tactical retreat. Very tactical. Extremely retreat."
+        "Tactical retreat. Very tactical. Extremely retreat.",
+        "On the bright side, my mech's lighter now. Several parts lighter.",
+        "Let's call it a tactical learning experience."
       ],
       "arc": [
         "Everyone in {hub} wants something. I just want breakfast.",

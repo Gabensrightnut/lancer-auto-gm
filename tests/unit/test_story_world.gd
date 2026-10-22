@@ -148,7 +148,10 @@ func test_arc_moves_on_every_mission_and_ends() -> void:
 			_submit(t, "downtime_choose", {"picks": (pc["options"] as Array).slice(0, int(pc["count"])).map(func(o: Dictionary) -> String: return o["id"])})
 		_submit(t, "end_downtime")
 	expect(s.flags.has("arc_done:%s:%s" % [arc_id, s.hub["id"]]), "the arc finished and was remembered")
-	expect(not s.arc.is_empty() and int(s.arc["stage"]) == 0, "a new situation begins")
+	expect(s.arc.is_empty(), "the world stays quiet for a while: time for side jobs, or to travel on")
+	s.mission_number += StoryArc.QUIET
+	StoryArc.ensure(s, t["campaign"])
+	expect(not s.arc.is_empty() and int(s.arc["stage"]) == 0, "then a new situation begins")
 
 
 func test_hazardous_crossing_without_supplies_is_a_challenge() -> void:

@@ -90,6 +90,11 @@ book in a way that changes the setting; parked.
 | Parley checks: Threaten / Pull Rank / Charm to make them stand down, Charm / Lead or Inspire to reason with a zealot (difficult), a both-sides truce is heroic | Canon (procedure) | Skill checks with triggers, difficult and heroic levels (p.45-46) |
 | Talking terms gives a Knowledge reserve when they trade what they know | Canon | Knowledge is a book reserve (lancer-data reserves.json) |
 | A squad NHP that cascades in battle (the rules engine's roll, Core p.107) gets barks, a debrief line and banter; "have it cycled" | Consistent | Cascade is Core p.107; NHPs being cycled (reset) is setting lore; flavor only, and off when the table leaves NHP themes out (session zero) |
+| Sector map: a few systems joined by blink gates, each with 2-3 worlds, moons or stations, each world with its own culture kit, landscape and hub | Consistent | Blink gates connect worlds with speed and safety, common wonders (Core p.10); Diasporan worlds vary widely (p.19); names from COMP/CON's planet list, never Sol's worlds (Cradle is Union's home, p.10) |
+| Travel between worlds is narrative: no cost, no travel time; between systems by blink gate, inside a system by ship | Canon (setting) / Consistent | Core p.10 (gates); paid travel is parked (DESIGN.md); travel without gates is nearlight with time dilation (p.20), which the game doesn't use |
+| Each world keeps its hub, people, job board and situation while the squad is away | Consistent | Our bookkeeping |
+| A world whose situation ended stays quiet for two missions before a new one starts there | Consistent | Campaign pacing is the GM's (p.40-44); our own number |
+| Standing shown on the map and in the hub, labelled as this game's own | Not a book rule (labelled) | Our bookkeeping; never changes a roll (codex: Standing) |
 
 ## When canon allows more than one answer
 

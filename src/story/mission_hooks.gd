@@ -46,7 +46,8 @@ static func make(story: StoryState, campaign: Campaign, template_id: String, opt
 		"sitrep": _pick(rng, t.get("sitreps", ["sitrep_standardcombat"])),
 		"seed": rng.randi(), "culture": str(story.hub.get("culture", "")),
 		"map_culture": str(NpcGen.cultures().get(str(story.hub.get("culture", "")), {}).get("map_culture", "")),
-		"landscape": _pick(rng, NpcGen.cultures().get(str(story.hub.get("culture", "")), {}).get("landscapes", [])),
+		# The world's own landscape (Sector), else one of its culture kit's.
+		"landscape": str(story.hub["landscape"]) if str(story.hub.get("landscape", "")) != "" else _pick(rng, NpcGen.cultures().get(str(story.hub.get("culture", "")), {}).get("landscapes", [])),
 	}
 	var ctx := {"hook": hook, "npc": patron_id, "vars": {"place": hook["place"], "enemy": hook["enemy"], "cargo": hook["cargo"],
 		"patron": hook["patron"], "hub": story.hub.get("name", "the settlement"), "rival": rival}}

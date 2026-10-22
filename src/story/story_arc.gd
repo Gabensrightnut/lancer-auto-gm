@@ -7,6 +7,8 @@ extends RefCounted
 ## the final one's result is remembered in flags and standing.
 
 const FILE := "res://data/game/story/arcs.json"
+## Missions a hub stays quiet after its situation ends, before a new one starts there.
+const QUIET := 2
 
 static var _data: Dictionary = {}
 
@@ -24,6 +26,11 @@ static func ensure(story: StoryState, campaign: Campaign) -> Dictionary:
 	if story.hub.is_empty():
 		return {}
 	if story.arc.is_empty() or str(story.arc.get("hub", "")) != str(story.hub.get("id", "")):
+		# A world whose situation just ended stays quiet for a couple of missions: time to
+		# take side jobs, or to travel on (Sector).
+		if int(story.hub.get("arc_ended", -99)) > story.mission_number - QUIET:
+			story.arc = {}
+			return {}
 		start(story, campaign)
 	if story.arc.is_empty():
 		return {}
@@ -120,6 +127,10 @@ static func advance(story: StoryState, campaign: Campaign, hook: Dictionary, won
 		story.flags["arc_done:%s:%s" % [story.arc["id"], story.arc["hub"]]] = "won" if won else "lost"
 		story.add_log("%s at %s is over: %s." % [story.arc["name"], story.hub.get("name", ""), "the squad came out on top" if won else "it didn't go the squad's way"])
 		story.arc = {}
+		story.hub["arc_ended"] = story.mission_number
+		var hints: Array = Sector.data().get("arc_done_hint", [])
+		if not hints.is_empty() and not Sector.get_sector(story).is_empty():
+			events.append({"type": "story_hint", "text": str(hints[story.dice.die(hints.size()) - 1])})
 		return events
 	story.arc["stage"] = int(story.arc["stage"]) + 1
 	story.arc["last_won"] = won

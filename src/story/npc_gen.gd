@@ -37,7 +37,7 @@ static func make_hub(story: StoryState, campaign: Campaign, hub_seed: int, kind:
 	var hub := {
 		"id": "hub_%d" % hub_seed, "kind": kind, "culture": culture, "culture_name": kit.get("name", culture),
 		"name": pattern.replace("{a}", _pick(rng, a_pool)),
-		"planet": names.planet(), "faction": names.faction(), "seed": hub_seed, "npcs": [], "spots": [],
+		"planet": Sector.fresh_name(names, {}), "faction": names.faction(), "seed": hub_seed, "npcs": [], "spots": [],
 	}
 	hub["spots"] = HubLayout.spots(kind, rng, kit.get("spots", {}), float(kit.get("door_gap", 1.6)))
 	hub["conflict"] = _conflict(rng, names, hub)
