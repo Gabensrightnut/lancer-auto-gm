@@ -67,7 +67,7 @@ static func state_of(u: Unit, w: Dictionary) -> Dictionary:
 	if not all.has(key):
 		var uses := -1
 		if has_tag(w, "tg_limited"):
-			# PROVISIONAL (RULES_TODO "Pilot stat bonuses"): +1 Limited use per 2 Engineering.
+			# +1 use of Limited gear per 2 Engineering (Core p.34).
 			uses = tag_value(w, "tg_limited") + u.engineering / 2
 		all[key] = {"loaded": true, "uses": uses, "destroyed": false}
 	return all[key]

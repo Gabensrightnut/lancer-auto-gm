@@ -4,23 +4,30 @@ extends RefCounted
 ## here changes the GameState, so the renderer can call them for overlays (no-LOS dimming,
 ## cover highlights) and get exactly what the rules will apply.
 ##
-## PROVISIONAL (docs/RULES_TODO.md "Line of sight in 3D", "Cover", "Distance in 3D"):
-## - A character fills `Size` levels (rounded up to 1) above each footprint space.
-## - Line of sight: a clear straight line from any sample point of the attacker (middle of each
-##   level it fills, and the top of its head) to any sample point of the target. Only solid
-##   terrain blocks it; other characters don't.
-## - Hard cover: solid terrain next to the target (within 1 space of its footprint) hides at
-##   least half the target's height from the attacker, while some of the target is still in
-##   line of sight. +2 Difficulty.
-## - Soft cover: the target is inside, or every clear line to it passes through, terrain tagged
-##   "soft_cover" (smoke, foliage). +1 Difficulty. Hard and soft cover don't stack.
+## Book rules (Core p.59, 62, 64-66, 82):
+## - A SIZE N character is N spaces on each side and N spaces high; under 1 rounds up.
+## - Adjacent = within one space in any direction, including diagonally and vertically.
+## - Line of sight: a line can be traced to some part of the target. Characters only grant
+##   cover if they have GUARDIAN; wrecks of destroyed mechs give hard cover.
+## - Hard cover (+2 Difficulty): the target is adjacent to the cover, is the same Size as it
+##   or smaller, and isn't flanked (flanked: a line totally clear of hard cover can be drawn
+##   between a space of the attacker and a space of the target).
+## - Soft cover (+1): the line from the attacker's center to the target's center is
+##   significantly obstructed (smoke, foliage...), or the target is obscured by hard cover it
+##   isn't adjacent to. Hard and soft don't stack. Characters shoot over cover no bigger than
+##   themselves.
+## PROVISIONAL (docs/RULES_TODO.md "Line of sight in 3D", "Distance in 3D", "Cover geometry"):
+## - Lines are sampled between the middles of the spaces (voxels) characters fill, plus the
+##   tops of their heads for line of sight; a column's terrain "size" is its height above the
+##   target's base.
 ## - Distance in 3D: the larger of ground distance between footprints and the height gap.
-## Only ranged attacks are affected by cover (actions: Fight; tags: Thrown, Seeking).
+## - A column tagged "soft_cover" is soft cover over its whole height.
+## Only ranged attacks are affected by cover (Core p.64: melee and tech attacks ignore cover).
 
 ## BattleMap column tag for soft cover (smoke, foliage...). The whole column above the ground.
 const TAG_SOFT_COVER := "soft_cover"
-const REF_COVER := "PROVISIONAL Core: Cover (docs/RULES_TODO.md)"
-const REF_LOS := "PROVISIONAL Core: Line of sight (docs/RULES_TODO.md)"
+const REF_COVER := "Core p.66 Cover"
+const REF_LOS := "Core p.65 Line of Sight"
 const HARD_COVER_DIFFICULTY := 2
 const SOFT_COVER_DIFFICULTY := 1
 ## Ray sample spacing in world units.
@@ -73,12 +80,23 @@ static func unit_distance(state: GameState, a: Unit, b: Unit) -> int:
 	return distance(state, body_of(state, a), body_of(state, b))
 
 
+## Wrecks of destroyed mechs: objects that block lines and give hard cover (Core p.74, 82).
+## A mech vaporized by a reactor meltdown leaves no wreck (Core p.81).
+static func wreck_bodies(state: GameState) -> Array[Body]:
+	var out: Array[Body] = []
+	for u: Unit in state.units.values():
+		if u.destroyed and u.kind == Unit.KIND_MECH and not u.counters.get("vaporized", false):
+			out.append(body_of(state, u))
+	return out
+
+
 static func line_of_sight(state: GameState, from: Body, to: Body) -> bool:
 	var skip := _skip_cells(from, to)
+	var walls := _voxels(wreck_bodies(state), from, to)
 	var eyes := _points(state, from, true)
 	for p in _points(state, to, true):
 		for eye in eyes:
-			if not _trace(state, p, eye, skip)["blocked"]:
+			if not _trace(state, p, eye, skip, walls)["blocked"]:
 				return true
 	return false
 
@@ -87,66 +105,59 @@ static func unit_line_of_sight(state: GameState, a: Unit, b: Unit) -> bool:
 	return line_of_sight(state, body_of(state, a), body_of(state, b))
 
 
-## Cover `target` has against a ranged attack from `attacker`.
-## Returns {los: bool, cover: "none"/"soft"/"hard", difficulty: int,
-## cover_cells: [[x, y], ...] (terrain giving hard cover), reason: String, rule_ref: String}.
-## `guardians`: bodies of allied characters the target may use as hard cover (Guardian).
+## Cover `target` has against a ranged attack from `attacker`. `guardians`: bodies of allied
+## GUARDIAN characters next to the target, which it may use as hard cover.
+## Returns {los: bool, cover: "none"/"soft"/"hard", difficulty: int, flanked: bool,
+## cover_cells: [[x, y], ...] (what gives the cover), reason: String, rule_ref: String}.
 static func cover(state: GameState, attacker: Body, target: Body, guardians: Array[Body] = []) -> Dictionary:
+	var out := {"los": false, "cover": "none", "difficulty": 0, "flanked": true, "cover_cells": [], "reason": "", "rule_ref": REF_COVER}
 	var skip := _skip_cells(attacker, target)
-	var eyes := _points(state, attacker, true)
-	var top_eye: Vector3 = eyes[eyes.size() - 1]
-	var mids := _points(state, target, false)
-	var all_points := _points(state, target, true)
-	var los := false
-	var all_soft := true
-	var covered_mids := 0
-	var cover_cells := {}
-	for p in all_points:
-		var visible := false
-		var clear := false
-		for eye in eyes:
-			var r := _trace(state, p, eye, skip)
-			if not r["blocked"]:
-				visible = true
-				if not r["soft"]:
-					clear = true
-					break
-		if visible:
-			los = true
-			if clear:
-				all_soft = false
-			# A Guardian ally between attacker and target covers this point (not terrain).
-			for g in guardians:
-				if _passes_body(state, p, top_eye, g):
-					cover_cells[g.cells[0]] = true
-					if mids.has(p):
-						covered_mids += 1
-					break
-			continue
-		# Blocked from every eye: is it terrain right next to the target that blocks it?
-		var r := _trace(state, p, top_eye, skip)
-		if not r["blocked"]:
-			continue
-		var block: Array[Vector2i] = [r["first_block"]]
-		if r["blocked"] and state.map.grid.footprint_distance(target.cells, block) <= 1:
-			cover_cells[block[0]] = true
-			if mids.has(p):
-				covered_mids += 1
-	var out := {"los": los, "cover": "none", "difficulty": 0, "cover_cells": [], "reason": "", "rule_ref": REF_COVER}
-	if not los:
+	var wrecks := _voxels(wreck_bodies(state), attacker, target)
+	if not line_of_sight(state, attacker, target):
 		out["reason"] = "No line of sight."
 		out["rule_ref"] = REF_LOS
 		return out
-	if covered_mids > 0 and covered_mids * 2 >= mids.size():
-		out["cover"] = "hard"
-		out["difficulty"] = HARD_COVER_DIFFICULTY
-		out["reason"] = "Hard cover: terrain (or a Guardian ally) next to the target hides at least half of it."
-		for c: Vector2i in cover_cells:
-			(out["cover_cells"] as Array).append([c.x, c.y])
-	elif all_soft or _in_soft_cover(state, target):
+	out["los"] = true
+	var hard_objects := wrecks.duplicate()
+	hard_objects.merge(_voxels(guardians, attacker, target))
+	# Flanked: some line between a space of the attacker and a space of the target is
+	# totally clear of hard cover.
+	var flanked := false
+	# Target: middle of each space plus the top of its head (so an attacker high above can
+	# see past low cover); attacker: middle of each of its spaces. PROVISIONAL.
+	var t_mids := _points(state, target, true)
+	var a_mids := _points(state, attacker, false)
+	for t in t_mids:
+		for a in a_mids:
+			if not _trace(state, t, a, skip, hard_objects)["blocked"]:
+				flanked = true
+				break
+		if flanked:
+			break
+	out["flanked"] = flanked
+	# Center to center, ignoring cover next to the attacker that it can shoot over.
+	var line_skip := skip.duplicate()
+	for c in _low_cover_near(state, attacker, target):
+		line_skip[c] = true
+	var r := _trace(state, _center(state, target), _center(state, attacker), line_skip, hard_objects)
+	if not flanked and r["blocked"]:
+		var block: Array[Vector2i] = [r["first_block"]]
+		var adjacent := state.map.grid.footprint_distance(target.cells, block) <= 1
+		var big_enough := int(r["block_top"]) >= target.level + target.height
+		if adjacent and big_enough:
+			out["cover"] = "hard"
+			out["difficulty"] = HARD_COVER_DIFFICULTY
+			out["cover_cells"] = [[block[0].x, block[0].y]]
+			out["reason"] = "Hard cover: it's next to cover at least its own Size, and you can't see around it."
+			return out
+	if r["blocked"] or r["soft"] or _in_soft_cover(state, target):
 		out["cover"] = "soft"
 		out["difficulty"] = SOFT_COVER_DIFFICULTY
-		out["reason"] = "Soft cover: the target is in or behind smoke/foliage."
+		if r["blocked"]:
+			out["cover_cells"] = [[r["first_block"].x, r["first_block"].y]]
+			out["reason"] = "Soft cover: partly obscured by something it isn't right next to (or that's smaller than it)."
+		else:
+			out["reason"] = "Soft cover: in or behind smoke, foliage or similar."
 	return out
 
 
@@ -183,14 +194,19 @@ static func _in_soft_cover(state: GameState, b: Body) -> bool:
 	return false
 
 
-static func _passes_body(state: GameState, p0: Vector3, p1: Vector3, b: Body) -> bool:
-	var n := maxi(1, ceili(p0.distance_to(p1) / STEP))
-	for i in range(1, n):
-		var p := p0.lerp(p1, float(i) / n)
-		var lvl := floori(p.y / GridLayout.LEVEL_HEIGHT + 0.0001)
-		if lvl >= b.level and lvl < b.level + b.height and b.cells.has(state.map.grid.from_world(p)):
-			return true
-	return false
+## Terrain next to the attacker no taller than it: it shoots over its own cover (Core p.66).
+## Cover that is also next to the target still counts for the target.
+static func _low_cover_near(state: GameState, b: Body, target: Body) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for c in b.cells:
+		for n in state.map.grid.neighbors(c):
+			var col := state.map.column(n)
+			if col == null or b.cells.has(n) or col.ground > b.level + b.height:
+				continue
+			var one: Array[Vector2i] = [n]
+			if state.map.grid.footprint_distance(target.cells, one) > 1:
+				out.append(n)
+	return out
 
 
 static func _skip_cells(a: Body, b: Body) -> Dictionary:
@@ -202,8 +218,27 @@ static func _skip_cells(a: Body, b: Body) -> Dictionary:
 	return skip
 
 
+## Voxels (Vector3i(x, y, level) -> top level) of object bodies, minus attacker/target.
+static func _voxels(bodies: Array[Body], a: Body, b: Body) -> Dictionary:
+	var out := {}
+	for body in bodies:
+		for c in body.cells:
+			if a.cells.has(c) or b.cells.has(c):
+				continue
+			for k in range(body.height):
+				out[Vector3i(c.x, c.y, body.level + k)] = body.level + body.height
+	return out
+
+
+static func _center(state: GameState, b: Body) -> Vector3:
+	var sum := Vector3.ZERO
+	for c in b.cells:
+		sum += state.map.grid.to_world(c, b.level)
+	sum /= b.cells.size()
+	return sum + Vector3(0, b.height * GridLayout.LEVEL_HEIGHT / 2.0, 0)
+
+
 ## Sample points: middle of each level the body fills, plus (if `tops`) the top of its head.
-## The middles come first, in the order cells x levels.
 static func _points(state: GameState, b: Body, tops: bool) -> Array[Vector3]:
 	var out: Array[Vector3] = []
 	for c in b.cells:
@@ -216,8 +251,9 @@ static func _points(state: GameState, b: Body, tops: bool) -> Array[Vector3]:
 	return out
 
 
-## Walks from p0 to p1. Returns {blocked, first_block (cell nearest p0), soft}.
-static func _trace(state: GameState, p0: Vector3, p1: Vector3, skip: Dictionary) -> Dictionary:
+## Walks from p0 to p1. Returns {blocked, first_block (cell nearest p0), block_top (top level
+## of what blocks), soft}. `objects` are extra solid voxels (wrecks, Guardians).
+static func _trace(state: GameState, p0: Vector3, p1: Vector3, skip: Dictionary, objects: Dictionary = {}) -> Dictionary:
 	var n := maxi(1, ceili(p0.distance_to(p1) / STEP))
 	var soft := false
 	var grid := state.map.grid
@@ -226,12 +262,15 @@ static func _trace(state: GameState, p0: Vector3, p1: Vector3, skip: Dictionary)
 		var cell := grid.from_world(p)
 		if skip.has(cell):
 			continue
+		var lvl := floori(p.y / GridLayout.LEVEL_HEIGHT + 0.0001)
+		var key := Vector3i(cell.x, cell.y, lvl)
+		if objects.has(key):
+			return {"blocked": true, "first_block": cell, "block_top": objects[key], "soft": soft}
 		var col := state.map.column(cell)
 		if col == null:
 			continue
-		var lvl := floori(p.y / GridLayout.LEVEL_HEIGHT + 0.0001)
 		if is_solid(state.map, cell, lvl):
-			return {"blocked": true, "first_block": cell, "soft": soft}
+			return {"blocked": true, "first_block": cell, "block_top": col.ground, "soft": soft}
 		if col.has_tag(TAG_SOFT_COVER) and lvl >= col.ground:
 			soft = true
-	return {"blocked": false, "first_block": Vector2i.ZERO, "soft": soft}
+	return {"blocked": false, "first_block": Vector2i.ZERO, "block_top": 0, "soft": soft}

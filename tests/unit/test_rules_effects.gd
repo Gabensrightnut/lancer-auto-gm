@@ -36,7 +36,7 @@ func _next_turn(u: Unit) -> void:
 	s.acted = PackedStringArray()
 	s.turn_side = u.side
 	if s.phase != GameState.PHASE_COMBAT:
-		e.submit(s, {"type": "start_combat", "params": {"first_side": u.side}})
+		e.submit(s, {"type": "start_combat", "params": {"first_side": "players"}})
 		s.turn_side = u.side
 	F.act(e, s, "start_turn", u.id)
 

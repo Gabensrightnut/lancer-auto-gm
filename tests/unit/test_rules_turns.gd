@@ -18,6 +18,7 @@ func test_sides_alternate_and_rounds_advance() -> void:
 	var s: GameState = t[0]
 	var e: RulesEngine = t[1]
 	expect(not F.ok(F.act(e, s, "start_turn", "p1")), "no turns before combat starts")
+	expect(not F.ok(e.submit(s, {"type": "start_combat", "params": {"first_side": "enemies"}})), "players always act first (Core p.60)")
 	expect(F.ok(e.submit(s, {"type": "start_combat", "params": {"first_side": "players"}})))
 	expect_eq(s.round_number, 1)
 	expect(not F.ok(F.act(e, s, "start_turn", "n1")), "players pick first")
@@ -34,8 +35,9 @@ func test_sides_alternate_and_rounds_advance() -> void:
 	var out := F.act(e, s, "end_turn", "p2")
 	expect_eq(s.round_number, 2, "everyone acted: new round")
 	expect_eq(F.events_of(out, "round_started").size(), 1)
-	expect_eq(s.turn_side, "players")
-	expect(not F.ok(F.act(e, s, "start_turn", "n1")))
+	expect_eq(s.turn_side, "enemies", "the players took the last turn, so the enemies start round 2 (Core p.60)")
+	expect(not F.ok(F.act(e, s, "start_turn", "p1")))
+	expect(F.ok(F.act(e, s, "start_turn", "n1")))
 
 
 func test_two_quick_actions_or_one_full() -> void:

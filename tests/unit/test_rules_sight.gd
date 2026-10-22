@@ -38,12 +38,17 @@ func test_low_wall_does_not_cover_a_size_three() -> void:
 	expect_eq(RulesQueries.cover(s, "a", "t")["cover"], "none")
 
 
-func test_two_level_wall_covers_a_size_three() -> void:
+func test_cover_must_be_at_least_the_targets_size() -> void:
 	var s := F.state()
 	for y in range(12):
 		s.map.set_column(Vector2i(3, y), 2)
 	_pair(s, 3.0)
-	expect_eq(RulesQueries.cover(s, "a", "t")["cover"], "hard")
+	expect_eq(RulesQueries.cover(s, "a", "t")["cover"], "soft", "a Size 2 wall only obscures a Size 3 (Core p.66)")
+	for y in range(12):
+		s.map.set_column(Vector2i(3, y), 3)
+	expect(not RulesQueries.cover(s, "a", "t")["los"], "a full-height wall hides it from a small attacker")
+	s.unit("a").size = 3.0
+	expect_eq(RulesQueries.cover(s, "a", "t")["cover"], "hard", "a Size 3 attacker sees its top over a Size 3 wall")
 
 
 func test_high_attacker_sees_over_cover() -> void:
@@ -51,16 +56,46 @@ func test_high_attacker_sees_over_cover() -> void:
 	s.map.set_column(Vector2i(3, 0), 1)
 	s.map.set_column(Vector2i(0, 0), 3)
 	_pair(s)
-	expect_eq(RulesQueries.cover(s, "a", "t")["cover"], "none")
+	var c := RulesQueries.cover(s, "a", "t")
+	expect(c["flanked"], "from up high a line clears the wall")
+	expect_eq(c["cover"], "soft", "not hard cover; the center line still clips the wall (PROVISIONAL 3D reading)")
 
 
-func test_wall_far_from_target_gives_no_cover() -> void:
+func test_attacker_shoots_over_its_own_low_cover() -> void:
 	var s := F.state()
 	s.map.set_column(Vector2i(1, 0), 1)
 	_pair(s)
 	var c := RulesQueries.cover(s, "a", "t")
 	expect(c["los"])
-	expect_eq(c["cover"], "none", "PROVISIONAL: cover must be next to the target")
+	expect_eq(c["cover"], "none", "a wall no taller than the attacker, next to it (Core p.66)")
+
+
+func test_hard_cover_away_from_the_target_is_soft_cover() -> void:
+	var s := F.state()
+	s.map.set_column(Vector2i(2, 0), 1)
+	_pair(s)
+	expect_eq(RulesQueries.cover(s, "a", "t")["cover"], "soft", "obscured by hard cover it isn't adjacent to (Core p.66)")
+
+
+func test_flanking_ignores_hard_cover() -> void:
+	var s := F.state()
+	s.map.set_column(Vector2i(3, 0), 1)
+	var t := _pair(s)
+	var a: Unit = t[0]
+	a.cell = Vector2i(4, 4)
+	var c := RulesQueries.cover(s, "a", "t")
+	expect(c["flanked"], "a clear line from the side")
+	expect_eq(c["cover"], "none")
+
+
+func test_wrecks_give_hard_cover() -> void:
+	var s := F.state()
+	_pair(s)
+	var wreck := F.mech(s, "w", "enemies", Vector2i(3, 0))
+	wreck.destroyed = true
+	expect_eq(RulesQueries.cover(s, "a", "t")["cover"], "hard", "destroyed mechs become hard cover (Core p.82)")
+	wreck.counters["vaporized"] = true
+	expect_eq(RulesQueries.cover(s, "a", "t")["cover"], "none", "a reactor meltdown leaves no wreck")
 
 
 func test_smoke_is_soft_cover() -> void:
@@ -94,7 +129,7 @@ func test_cover_at_destination() -> void:
 	s.map.set_column(Vector2i(3, 0), 1)
 	var t := _pair(s)
 	var c := RulesQueries.cover_at(s, "t", Vector2i(5, 0), 0)
-	expect_eq(c["a"]["cover"], "none", "stepping away from the wall loses the cover")
+	expect_eq(c["a"]["cover"], "soft", "away from the wall it only obscures: soft cover (Core p.66)")
 	expect_eq(RulesQueries.cover_at(s, "t", Vector2i(4, 0), 0)["a"]["cover"], "hard")
 
 

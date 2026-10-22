@@ -157,5 +157,87 @@ func test_self_destruct_explodes_at_end_of_next_turn() -> void:
 	out = F.act(e, s, "end_turn", "a")
 	expect(a.destroyed)
 	expect_eq(F.events_of(out, "reactor_explosion").size(), 1)
-	expect_eq(t.hp, 10, "12 explosive damage: structure lost, HP reset to full")
+	expect_eq(t.hp, 8, "12 explosive damage: structure lost, HP reset, 2 excess (Core p.80)")
 	expect_eq(t.structure, 3)
+
+
+func test_big_damage_can_cost_several_structure() -> void:
+	_setup(Vector2i(9, 9))
+	F.load_dice(s, [6, 6])
+	Combat.deal_damage(s, t, [{"type": "Kinetic", "amount": 25}])
+	expect_eq(t.structure, 2, "10 + 10 + 5: two structure (Core p.80)")
+	expect_eq(t.hp, 5)
+
+
+func test_heat_overflow_and_zero_stress_meltdown() -> void:
+	_setup(Vector2i(9, 9))
+	F.load_dice(s, [6, 6])
+	Combat.apply_heat(s, a, 9, "test")
+	expect_eq(a.stress, 3, "9 heat on cap 6: overheat once")
+	expect_eq(a.heat, 2, "the 2 beyond what it took to exceed the cap (PROVISIONAL)")
+	a.stress = 1
+	a.heat = 0
+	Combat.apply_heat(s, a, 7, "test")
+	expect_eq(a.stress, 0)
+	expect(not a.destroyed, "0 Stress: meltdown at the end of its next turn, not at once (Core p.81)")
+	expect(a.counters.has("meltdown"))
+
+
+func test_one_reaction_per_turn() -> void:
+	_setup(Vector2i(9, 9))
+	Reactions._mark_used(t, "overwatch", s)
+	var r := Reactions.can_react(t, "brace", s)
+	expect(not r.ok, "already reacted this turn (Core p.73)")
+	_next_turn(t)
+	expect(Reactions.can_react(t, "brace", s).ok, "a new turn")
+
+
+func test_pilots_boost_and_are_immune_to_most_tech() -> void:
+	_setup(Vector2i(2, 2))
+	var p := Pilots.make_pilot("pp", "Ace", "enemies", "gm", 1)
+	p.cell = Vector2i(3, 0)
+	s.add_unit(p)
+	expect(not F.ok(F.act(e, s, "invade", "a", {"target": "pp"})), "BIOLOGICAL: no Invade (Core p.74)")
+	expect(F.ok(F.act(e, s, "lock_on", "a", {"target": "pp"})), "Lock On still works")
+	Combat.refresh_engagement(s)
+	expect(not a.has_status("Engaged"), "pilots don't engage mechs")
+	_next_turn(p)
+	expect(F.ok(F.act(e, s, "boost", "pp", {"to": [4, 1]})), "pilots can Boost")
+	F.load_dice(s, [9])
+	var c := Combat.skill_check(s, p, "agility", "test", 10, 0, 0, [], true)
+	expect_eq(c["total"], 10, "9 + Grit 1 instead of a mech skill")
+
+
+func test_mechs_pass_smaller_hostiles_and_pilots() -> void:
+	s = F.state(GridLayout.Shape.SQUARE, 6, 1)
+	e = RulesEngine.new()
+	a = F.mech(s, "a", "players", Vector2i(0, 0))
+	t = F.mech(s, "t", "enemies", Vector2i(1, 0), 0.5)
+	F.begin(e, s, a)
+	expect(RulesQueries.preview_move(s, "a", Vector2i(2, 0))["ok"], "smaller hostiles don't obstruct (Core p.62)")
+	t.size = 1.0
+	expect(not RulesQueries.preview_move(s, "a", Vector2i(2, 0))["ok"], "same Size does")
+
+
+func test_falling_ten_spaces_per_round() -> void:
+	_setup(Vector2i(9, 9))
+	a.level = 14
+	a.counters["falling"] = true
+	F.act(e, s, "end_turn", "a")
+	expect_eq(a.level, 4, "10 spaces this round (Core p.63)")
+	expect_eq(a.hp, 10, "still falling: no damage yet")
+	_next_turn(t)
+	F.act(e, s, "end_turn", "t")
+	expect_eq(a.level, 4, "only falls at the end of its own turns")
+	_next_turn(a)
+	F.act(e, s, "end_turn", "a")
+	expect_eq(a.level, 0)
+	expect_eq(a.hp, 1, "14 spaces: 9 AP kinetic (the maximum)")
+
+
+func test_search_ties_go_to_the_searcher() -> void:
+	_setup(Vector2i(4, 0))
+	t.statuses["Hidden"] = {"source": "t"}
+	F.load_dice(s, [10, 10])
+	var out := F.act(e, s, "search", "a", {"target": "t"})
+	expect(F.events_of(out, "searched")[0]["found"], "a tie: the one who started the contest wins (Core p.13)")

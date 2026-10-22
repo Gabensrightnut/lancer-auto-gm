@@ -57,6 +57,7 @@ static func _run(state: GameState, u: Unit, a: Dictionary, aux: bool) -> Array[D
 	var target := state.unit(String(a["target"]))
 	var opts := a.duplicate()
 	opts["no_bonus_damage"] = aux
+	opts["action"] = String(a.get("_action", "attack"))
 	var p := Attacks.preview(state, u, w, target, opts)
 	if not p["ok"]:
 		# An earlier attack in the same action changed things (target destroyed, pushed away).
@@ -84,9 +85,13 @@ class Skirmish:
 		return AttackActions._check_aux(state, u, [params["aux"]], fired, Attacks.REF_SKIRMISH)
 
 	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
-		var events := AttackActions._run(state, u, params, false)
+		var p := params.duplicate()
+		p["_action"] = "skirmish"
+		var events := AttackActions._run(state, u, p, false)
 		if params.has("aux"):
-			events.append_array(AttackActions._run(state, u, params["aux"], true))
+			var a: Dictionary = (params["aux"] as Dictionary).duplicate()
+			a["_action"] = "skirmish"
+			events.append_array(AttackActions._run(state, u, a, true))
 		return events
 
 

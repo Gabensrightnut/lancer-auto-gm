@@ -12,9 +12,9 @@ extends RefCounted
 ## - "auto" (default for GM units, until the GM AI decides): the offering rule's default.
 ## - "never", or "on_structure" for Brace (only when the hit would take the last HP).
 ##
-## PROVISIONAL (docs/RULES_TODO.md "Reactions"): each reaction once per round, refreshed at
-## the start of the unit's turn; NPCs have no Brace (lancer-data has NPC versions of Overwatch
-## but not of Brace).
+## Each reaction can be used again from the start of your next turn, and only one reaction
+## per turn (Core p.73). PROVISIONAL (docs/RULES_TODO.md "NPCs and Brace", "Reaction
+## decisions"): NPCs have no Brace; GM/AI seats answer with suggested_answer().
 
 const REF_BRACE := "actions: Brace"
 const REF_OVERWATCH := "actions: Overwatch"
@@ -52,9 +52,37 @@ static func offer(state: GameState, u: Unit, reaction: String, context: Dictiona
 	return {"take": false}
 
 
-static func can_react(u: Unit, reaction: String) -> RuleResult:
+## A sensible answer to the reaction the engine is waiting on (for AI seats and defaults):
+## Overwatch with the first listed weapon, take prepared actions, Brace only if the hit would
+## take the last HP. Returns the params for a "react" action, or {} if nothing is pending.
+static func suggested_answer(state: GameState) -> Dictionary:
+	var p := state.pending
+	if p.is_empty():
+		return {}
+	var ctx: Dictionary = p.get("context", {})
+	match String(p.get("reaction", "")):
+		"overwatch":
+			var weapons: Array = ctx.get("weapons", [])
+			return {"take": not weapons.is_empty(), "weapon": weapons[0] if not weapons.is_empty() else ""}
+		"brace":
+			var u := state.unit(String(p.get("unit", "")))
+			var dmg := 0
+			for part: Dictionary in ctx.get("damage", []):
+				if part.get("type", "") != "Heat":
+					dmg += int(part.get("amount", 0))
+			if not ctx.get("ap", false) and u != null and not u.has_status("Shredded"):
+				dmg -= u.armor
+			return {"take": u != null and dmg >= u.hp + u.overshield}
+	return {"take": true}
+
+
+static func can_react(u: Unit, reaction: String, state: GameState = null) -> RuleResult:
 	if not Combat.is_present(u):
 		return RuleResult.deny("Not on the field.", "")
+	if state != null and String(u.counters.get("reaction_turn", "")) == _turn_key(state):
+		return RuleResult.deny("Only one reaction per turn (yours or anyone else's).", "Core p.73 Reactions")
+	if state != null and Movement.above_ceiling(state, u):
+		return RuleResult.deny("More than 10 spaces above the battlefield you can't take reactions.", "Core p.63 Flight")
 	if u.has_status("Stunned") or u.has_status("Shut Down"):
 		return RuleResult.deny("Stunned mechs can't take reactions.", "statuses: Stunned")
 	if u.has_status("Jammed"):
@@ -68,21 +96,28 @@ static func can_react(u: Unit, reaction: String) -> RuleResult:
 	if reaction == "brace" and u.kind == Unit.KIND_NPC:
 		return RuleResult.deny("NPCs don't Brace.", REF_BRACE)
 	if (u.counters.get("reactions", []) as Array).has(reaction):
-		return RuleResult.deny("You've already used that reaction this round.", "PROVISIONAL Core: Reactions (docs/RULES_TODO.md)")
+		return RuleResult.deny("You've already used that reaction; it comes back at the start of your next turn.", "Core p.73 Reactions")
 	return RuleResult.allow()
 
 
-static func _mark_used(u: Unit, reaction: String) -> void:
+static func _turn_key(state: GameState) -> String:
+	return "%d:%s" % [state.round_number, state.active_unit]
+
+
+static func _mark_used(u: Unit, reaction: String, state: GameState = null) -> void:
 	var used: Array = u.counters.get("reactions", [])
 	used.append(reaction)
 	u.counters["reactions"] = used
+	if state != null:
+		u.counters["reaction_turn"] = _turn_key(state)
+	Effects.reacted(u)
 
 
 ## BRACE: resistance to the triggering attack's damage, burn and heat (applied by the caller),
 ## +1 Difficulty on other attacks against you and no reactions until the end of your next
 ## turn, and next turn only one quick action.
 static func brace(state: GameState, u: Unit, attacker: String) -> Array[Dictionary]:
-	_mark_used(u, "brace")
+	_mark_used(u, "brace", state)
 	u.counters["brace_next_turn"] = true
 	var events: Array[Dictionary] = [{"type": "reaction", "unit": u.id, "reaction": "brace", "trigger": attacker, "rule_ref": REF_BRACE}]
 	events.append_array(Combat.add_status(state, u, "Braced", "Brace", u.id))
@@ -113,7 +148,7 @@ static func overwatch(state: GameState, mover: Unit) -> Array[Dictionary]:
 	ids.sort()
 	for id in ids:
 		var h := state.unit(id)
-		if not can_react(h, "overwatch").ok or not Combat.is_present(mover) or mover.destroyed:
+		if not can_react(h, "overwatch", state).ok or not Combat.is_present(mover) or mover.destroyed:
 			continue
 		var weapons := overwatch_weapons(state, h, mover)
 		if weapons.is_empty():
@@ -124,7 +159,7 @@ static func overwatch(state: GameState, mover: Unit) -> Array[Dictionary]:
 		var key := String(d.get("weapon", weapons[0]))
 		if not weapons.has(key):
 			key = weapons[0]
-		_mark_used(h, "overwatch")
+		_mark_used(h, "overwatch", state)
 		events.append({"type": "reaction", "unit": h.id, "reaction": "overwatch", "trigger": mover.id, "weapon": key, "rule_ref": REF_OVERWATCH})
 		events.append_array(Attacks.attack(state, h, Weapons.find(h, key), mover, {"reaction": true}))
 	return events
@@ -161,7 +196,7 @@ static func prepared_triggers(state: GameState, mover: Unit) -> Array[Dictionary
 			if params[k] is String and params[k] == "trigger":
 				params[k] = mover.id
 		p.counters.erase("prepared")
-		_mark_used(p, "prepared")
+		_mark_used(p, "prepared", state)
 		var h: TurnAction = RulesEngine.registry[action["type"]]
 		var r := h.check(state, p, params)
 		events.append({"type": "prepared_triggered", "unit": p.id, "trigger": mover.id, "action": action["type"], "ok": r.ok, "reason": r.reason, "rule_ref": "actions: Prepare"})

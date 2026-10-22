@@ -7,11 +7,12 @@ extends RefCounted
 ## Quick actions can't be repeated in a turn except Quick Tech with a different option, or
 ## through Overcharge (actions: Overcharge, "even actions you have already taken this turn").
 ##
-## PROVISIONAL (docs/RULES_TODO.md "Turn order"): sides alternate activations, the side that
-## starts is chosen when combat starts and starts every round, and when one side has nobody
-## left to act the other side's units act one after another.
+## Turn order (Core p.60): players act first; sides alternate (one hostile, one allied...)
+## until everyone has acted; if one side has nobody left, the rest act in turn. The order
+## keeps alternating across rounds: the side that didn't take the last turn starts the next
+## round. Who picks within a side is the players' / GM's choice (start_turn).
 
-const REF_TURN_ORDER := "PROVISIONAL Core: Turn order (docs/RULES_TODO.md)"
+const REF_TURN_ORDER := "Core p.60 Turns and Rounds"
 const REF_ACTIONS := "actions: Overcharge / Quick Tech (2 quick or 1 full per turn)"
 const REF_STUNNED := "statuses: Stunned"
 const REF_BRACE := "actions: Brace"
@@ -57,15 +58,19 @@ static func start_combat(state: GameState, first_side: String) -> Array[Dictiona
 	state.round_number = 0
 	var events: Array[Dictionary] = [{"type": "combat_started", "first_side": first_side}]
 	events.append_array(Combat.refresh_engagement(state))
-	events.append_array(_start_round(state))
+	events.append_array(_start_round(state, ""))
 	return events
 
 
-static func _start_round(state: GameState) -> Array[Dictionary]:
+## `last_side`: the side that took the last turn of the previous round ("" at combat start).
+static func _start_round(state: GameState, last_side: String) -> Array[Dictionary]:
 	state.round_number += 1
 	state.acted = PackedStringArray()
 	state.active_unit = ""
-	state.turn_side = state.first_side if not waiting(state, state.first_side).is_empty() else _next_side(state, state.first_side)
+	if last_side == "":
+		state.turn_side = state.first_side if not waiting(state, state.first_side).is_empty() else _next_side(state, state.first_side)
+	else:
+		state.turn_side = _next_side(state, last_side)
 	for u: Unit in state.units.values():
 		# "Each character only needs to make one such check per round" (glossary: Dangerous Terrain).
 		u.counters.erase("dangerous_checked")
@@ -111,7 +116,7 @@ static func finish_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 	if not u.destroyed:
 		events.append_array(Effects.turn_ending(state, u))
 		events.append_array(Combat.end_of_turn_checks(state, u))
-	events.append_array(Combat.fall_all(state))
+	events.append_array(Combat.fall_all(state, u))
 	events.append_array(Combat.expire_statuses(state, u))
 	events.append_array(Combat.tick_meltdown(state, u))
 	state.acted.append(u.id)
@@ -119,7 +124,7 @@ static func finish_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 	events.append({"type": "turn_ended", "unit": u.id})
 	var next := _next_side(state, u.side)
 	if next == "":
-		events.append_array(_start_round(state))
+		events.append_array(_start_round(state, u.side))
 	else:
 		state.turn_side = next
 		events.append({"type": "next_side", "side": next})
@@ -136,6 +141,8 @@ static func can_spend(u: Unit, cost: String, action: String) -> RuleResult:
 		if action == "eject" or action == "dismount":
 			return RuleResult.allow()  # pilots can still Eject or Dismount from Stunned mechs
 		return RuleResult.deny("Stunned mechs can't take any actions, free actions or reactions.", REF_STUNNED)
+	if Movement.above_ceiling(state_of(u), u) and action != "boost" and cost != REACTION:
+		return RuleResult.deny("More than 10 spaces above the battlefield you can only move and Boost.", "Core p.63 Flight")
 	if u.turn.get("prepared_lock", false):
 		return RuleResult.deny("After Preparing an action you can't move or act until it triggers or your next turn starts.", "actions: Prepare")
 	var t := u.turn
@@ -160,6 +167,14 @@ static func can_spend(u: Unit, cost: String, action: String) -> RuleResult:
 			if braced:
 				return RuleResult.deny("After Bracing you can't take free actions this turn.", REF_BRACE)
 	return RuleResult.allow()
+
+
+## The GameState a unit belongs to, for checks that need the map (set by RulesEngine).
+static var _state_ref: WeakRef = null
+
+
+static func state_of(_u: Unit) -> GameState:
+	return _state_ref.get_ref() if _state_ref != null else null
 
 
 ## Marks the action as taken. Call only after can_spend() allowed it.
