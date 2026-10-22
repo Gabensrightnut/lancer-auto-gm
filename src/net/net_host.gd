@@ -142,6 +142,16 @@ func waiting_on(for_seat: String = "") -> Dictionary:
 		info["ai"] = is_ai_seat(GM_SEAT)
 		info["seats"] = [] if info["ai"] else [GM_SEAT]
 		info["text"] = "The GM is setting up the battle." if info["ai"] else "Waiting for the GM to start the battle."
+	elif not state.pending.is_empty():
+		# The engine is paused until this unit's controller decides on a reaction.
+		var r := state.unit(state.pending.get("unit", ""))
+		info["state"] = "reaction"
+		info["ai"] = is_ai_seat(r.controller)
+		info["seats"] = [] if info["ai"] else [r.controller]
+		info["unit"] = r.id if all_seen or my_side == r.side else ""
+		info["text"] = "Waiting for %s to decide whether to %s." % [
+			(r.name if r.name != "" else r.id) if info["unit"] != "" else "an enemy",
+			String(state.pending.get("reaction", "react")).capitalize()]
 	elif state.active_unit != "":
 		var u := state.unit(state.active_unit)
 		info["state"] = "turn"

@@ -58,6 +58,9 @@ func step() -> bool:
 	var state := host.state
 	if state.phase == GameState.PHASE_ENDED:
 		return false
+	if not state.pending.is_empty():
+		# The engine is paused on a reaction question; answer it if an AI seat is being asked.
+		return _answer_reaction()
 	if mission != null and mission.outcome != "" and not mission.ended:
 		var out := host.submit(NetHost.GM_SEAT, mission.end_action())
 		mission.ended = true
@@ -104,11 +107,43 @@ func play_turn(u: Unit) -> void:
 		if u.destroyed or host.state.active_unit != u.id:
 			break
 		var out := host.submit(u.controller, action)
+		while _answer_reaction():
+			pass
+		if not host.state.pending.is_empty():
+			return  # A human is deciding on a reaction; step() replans this turn afterwards.
 		if not (out["result"] as RuleResult).ok:
 			# The real battlefield differed from what this side knew (a Hidden enemy in the way...).
 			_refused(u, action, out["result"])
-	if host.state.active_unit == u.id:
+	if host.state.active_unit == u.id and host.state.pending.is_empty():
 		host.submit(u.controller, {"type": "end_turn", "actor": u.id})
+
+
+## Answers the engine's pending reaction question when an AI-played unit is being asked.
+## Brace only when the hit would cost structure (same test as the GM's auto policy);
+## Overwatch and prepared actions are always taken, Overwatch with the first weapon offered.
+## Returns false if nothing was answered (no question, or a human is being asked).
+func _answer_reaction() -> bool:
+	var p: Dictionary = host.state.pending
+	if p.is_empty():
+		return false
+	var u := host.state.unit(p.get("unit", ""))
+	if u == null or not host.is_ai_seat(u.controller):
+		return false
+	var ctx: Dictionary = p.get("context", {})
+	var params := {"take": true}
+	match p.get("reaction", ""):
+		"brace":
+			params["take"] = Attacks._wants_brace(u, ctx.get("damage", []), ctx.get("ap", false))
+		"overwatch":
+			var weapons: Array = ctx.get("weapons", [])
+			params["take"] = not weapons.is_empty()
+			if not weapons.is_empty():
+				params["weapon"] = weapons[0]
+	var out := host.submit(u.controller, {"type": "react", "actor": u.id, "params": params})
+	if not (out["result"] as RuleResult).ok:
+		_refused(u, {"type": "react", "params": params}, out["result"])
+		return false
+	return true
 
 
 ## Which AI unit acts next: the one with the most to do right now (enemies in reach, damage
