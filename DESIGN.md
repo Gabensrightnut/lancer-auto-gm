@@ -268,6 +268,8 @@ them, and they disappear when the turn moves on.
 - The user, seeing a town NPC face to face: "people here still too blocky and round for my
   liking". Next pass on people: less round, less blocky, closer to the Lancer art style, with
   the most detail on head, face and hands (the face-to-face camera is about 1.25 m away).
+- Follow-up from the user: "somewhat realistic", at Dawn of War IV / Titanfall 2 pilot level of
+  realism for faces and general features (realism level only; nothing copied).
 
 ### Every place is its own place
 - No two towns look the same: every hub and every map gets its own layout, building mix and
