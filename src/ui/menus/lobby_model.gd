@@ -349,6 +349,8 @@ func _on_lobby_message(seat: String, msg: Dictionary) -> void:
 
 
 func _on_remote_lobby(data: Dictionary) -> void:
+	if data.has("hub_pos"):
+		return  # pilots walking around a story hub (the hub screen uses these)
 	if data.has("story"):
 		if story_payload.is_empty() and data["story"] is Dictionary and data["story"].has("view"):
 			story_payload = data

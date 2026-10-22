@@ -72,6 +72,23 @@ book in a way that changes the setting; parked.
 | Background-only dialogue options (once per person) and jobs made personal by a pilot's background | Consistent | Backgrounds are prompts for play (p.20-24); stakes tied to backgrounds (p.43); background +1 Accuracy still applies to checks (p.20) |
 | Arc shapes: betrayal (the patron was wrong), manhunt, gold rush | Consistent | Goal table kinds (p.42); goals and sides can change (p.42-43) |
 | Twists: sabotage, surrender offered, allies pinned down, leaked plan, prize in the wreckage, turncoat | Consistent | p.43 (goals change mid-mission); p.60 (surrender and retreat are valid ends to a fight) |
+| Every speaker (pilots, generated NPCs, banter, barks) carries a full builder portrait spec | Canon (look only) | Custom look has no gameplay effect (p.32) |
+| Squad bonds from shared missions, mourning, teamwork, drinking together, vote clashes; shown in debrief and downtime | Consistent | Freeform downtime bonding (p.50); no rules effect except the next two rows |
+| A bond the GM rewards: +1 Accuracy on skill checks to help each other during the next mission (pairs at Friends+, or who drank together) | Canon (GM option, on by default: options.bond_rewards) | Core p.50, the book's own example |
+| Bonded talent: choose a bondmate; replace them between missions only if the relationship changed | Canon | Core p.90 (the talent's mechanical bonuses are the rules engine's) |
+| Campaign endings (triumph / bittersweet / defeat) with an epilogue per pilot; ends after N situations, at LL12, if the squad falls, or when retired | Consistent | LL tops out at 12 (p.18); campaign shape is the table's choice; epilogues are our own text |
+| New campaign with the same pilots: they keep LL, builds and bonds; the dead stay dead | Canon / Consistent | Never lose licensed access (p.31); starting above LL0 is allowed (p.18) |
+| Codex: rule terms, statuses, actions, tags, frames, manufacturers, triggers, backgrounds, downtime, reserves, gear and talents | Canon | lancer-data's own text (Massif's data, shown as-is); our own features listed separately as "Game feature (not a book rule)" |
+| Session zero: who are we, who gives us orders, our history | Consistent | The book's first-session questions (Core p.40-41); the book's d20 tables stay in the book, our lists are our own |
+| Session zero tone, focus and content toggles | Consistent | Only steer our own generators (twists, arcs, banter); no rule changes. "Story first" uses the book's long downtime (p.50) |
+| History answers set starting bonds | Consistent | Freeform bonds between pilots (p.50); our own amounts |
+| Enemy commanders: every enemy force has a named leader with a personality (the toughest enemy unit, renamed only; no stat change) | Consistent | NPCs have objectives of their own and care about self-preservation (Core p.60); NPC names and personalities are the GM's |
+| A commander may yield, withdraw or offer a deal when losing, or let a losing squad walk away; the squad may call for terms once the outcome is clear | Canon | Core p.60: surrender and retreat are valid end-conditions; the GM may end combat early when there's no question about the outcome |
+| Squad withdraws under a truce: the mission is lost, the fight ends | Canon | Core p.60 (retreat ends a fight); failed missions still level up (p.18) |
+| A wrecked commander's pilot got out (2 in 3) or didn't, rolled on the story dice | Consistent | What happens to an NPC pilot is the GM's call; destroyed mechs eject or die narratively (p.60, p.83) |
+| Commanders who got away come back for revenge on later jobs; captured ones don't | Consistent | Recurring NPCs and changing goals (p.42-43) |
+| Parley checks: Threaten / Pull Rank / Charm to make them stand down, Charm / Lead or Inspire to reason with a zealot (difficult), a both-sides truce is heroic | Canon (procedure) | Skill checks with triggers, difficult and heroic levels (p.45-46) |
+| Talking terms gives a Knowledge reserve when they trade what they know | Canon | Knowledge is a book reserve (lancer-data reserves.json) |
 
 ## When canon allows more than one answer
 

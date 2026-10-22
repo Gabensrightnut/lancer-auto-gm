@@ -10,6 +10,7 @@ extends RefCounted
 
 const LANDSCAPES := "res://data/game/biomes/landscapes.json"
 const CULTURES := "res://data/game/biomes/cultures.json"
+const WEATHER := "res://data/game/biomes/weather.json"
 ## Old kit names used by the demo and earlier saves.
 const LEGACY := {"urban_ruins": "city/ruins", "alien": "alien_wilds"}
 
@@ -19,8 +20,8 @@ static var _data: Dictionary = {}
 static func _load() -> void:
 	if not _data.is_empty():
 		return
-	for key: String in ["landscapes", "cultures"]:
-		var path: String = LANDSCAPES if key == "landscapes" else CULTURES
+	for key: String in ["landscapes", "cultures", "weather"]:
+		var path: String = {"landscapes": LANDSCAPES, "cultures": CULTURES, "weather": WEATHER}[key]
 		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 		_data[key] = parsed if parsed is Dictionary else {}
 
@@ -28,6 +29,11 @@ static func _load() -> void:
 static func landscapes() -> Array:
 	_load()
 	return (_data["landscapes"] as Dictionary).keys().filter(func(k: String) -> bool: return not k.begins_with("_"))
+
+
+static func weathers() -> Array:
+	_load()
+	return (_data["weather"] as Dictionary).keys().filter(func(k: String) -> bool: return not k.begins_with("_"))
 
 
 static func cultures() -> Array:
@@ -38,6 +44,10 @@ static func cultures() -> Array:
 ## The merged style for a kit name. Unknown parts fall back to grassy hills / no culture.
 static func resolve(kit: String) -> Dictionary:
 	_load()
+	var weather := ""
+	if "+" in kit:
+		weather = kit.get_slice("+", 1)
+		kit = kit.get_slice("+", 0)
 	kit = LEGACY.get(kit, kit)
 	var parts := kit.split("/")
 	var lands: Dictionary = _data["landscapes"]
@@ -55,6 +65,23 @@ static func resolve(kit: String) -> Dictionary:
 		style["culture_name"] = (cults[parts[1]] as Dictionary).get("name", parts[1])
 		style["name"] = (lands[land_id] as Dictionary).get("name", land_id)
 	style["kit"] = "%s/%s" % [land_id, style["culture"]] if style["culture"] != "" else land_id
+	style["weather"] = ""
+	var wd: Dictionary = _data["weather"]
+	if weather != "" and wd.has(weather) and weather != "clear":
+		var w: Dictionary = (wd[weather] as Dictionary).duplicate(true)
+		var light: Dictionary = style.get("light", {})
+		# Scales apply to the style's own values.
+		if w.has("fog_scale"):
+			light["fog_density"] = float(light.get("fog_density", 0.004)) * float(w["fog_scale"])
+		var wl: Dictionary = w.get("light", {})
+		if wl.has("sun_energy_scale"):
+			light["sun_energy"] = float(light.get("sun_energy", 2.2)) * float(wl["sun_energy_scale"])
+			wl.erase("sun_energy_scale")
+		style["light"] = light
+		w.erase("fog_scale")
+		style = merge(style, w)
+		style["weather"] = weather
+		style["kit"] += "+" + weather
 	return style
 
 

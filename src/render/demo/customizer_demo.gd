@@ -53,6 +53,32 @@ func screenshot_stage(tag: String) -> void:
 				pc.set_expression("smiling")
 			if tag == "creator_token":
 				pc.set_tab("token")
+		"dialogue":
+			# How story's dialogue would look with PortraitArt: speaker lit, listener dimmed,
+			# the NPC mirrored to face the pilot.
+			var box := Control.new()
+			box.set_anchors_preset(Control.PRESET_FULL_RECT)
+			add_child(box)
+			_sheet = box
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 33
+			var pilot := PortraitArt.new()
+			pilot.set_look(PortraitArt.look_for_pilot({"id": "hawk", "portrait": PortraitSpec.randomize(rng)}), "determined")
+			pilot.size = Vector2(300, 360)
+			pilot.position = Vector2(40, 1080 - 360 - 60)
+			box.add_child(pilot)
+			var npc := PortraitArt.new()
+			npc.set_look(PortraitArt.look_for_npc({"id": "quartermaster_vell"}), "smug")
+			npc.flip = true
+			npc.lit = false
+			npc.size = Vector2(300, 360)
+			npc.position = Vector2(1920 - 340, 1080 - 360 - 60)
+			box.add_child(npc)
+			var bubble := Label.new()
+			bubble.text = "HAWK:  \"We'll take the contract. But the price goes up if they've got artillery.\""
+			bubble.add_theme_font_size_override("font_size", 24)
+			bubble.position = Vector2(380, 1080 - 200)
+			box.add_child(bubble)
 		"portraits":
 			# A grid of random pilots.
 			var grid := GridContainer.new()

@@ -26,6 +26,12 @@ var reaction_panel: PanelContainer
 var menu_layer: Control
 var tutorial: TutorialPanel
 var narration: NarrationPopup
+## AI squadmates' barks over their mechs (story campaigns).
+var bubbles: SpeechBubbles
+## The rules reference (CodexPanel): from the pause menu, or the Codex key (F1) on whatever is
+## hovered (an action on the bar, or a mech's frame).
+var codex: CodexPanel
+var _hover_term := ""
 ## The campaign's story (host), for the tutorial's lessons and which tips were shown. A friend
 ## in someone else's game gets a fresh one (tips only; the host keeps the campaign).
 var story: StoryState
@@ -47,6 +53,8 @@ func _ready() -> void:
 	view.content = content
 	add_child(view)
 	_build_ui()
+	bubbles.view = view
+	bubbles.duration_scale = MenuSession.settings().popup_duration
 	player = EventPlayer.new(view, rolls, combat_log)
 	player.camera = view.tactical
 	player.on_banner = show_banner
@@ -65,6 +73,9 @@ func _ready() -> void:
 	session.log_line.connect(func(t: String) -> void: combat_log.add_line("[color=#9aa4b2]%s[/color]" % t))
 	session.refused.connect(func(why: String, ref: String) -> void: show_banner("Not allowed: %s" % why) if ref == "" else show_banner("Not allowed: %s (%s)" % [why, ref]))
 	order_bar.i_will_go.connect(_on_i_will_go)
+	bar.action_hovered.connect(func(a: Dictionary, on: bool) -> void:
+		if on:
+			_hover_term = str(a.get("name", "")))
 	if session.is_host and MenuSession.campaign != null:
 		campaign = MenuSession.campaign
 		story = GameFlow.open_story(campaign, content)
@@ -80,6 +91,8 @@ func _ready() -> void:
 	# Screenshot staging (tools/screenshot.gd ... battle.tscn out.png frames stage:turn).
 	if "stage:turn" in OS.get_cmdline_user_args():
 		_stage_turn.call_deferred()
+	if "stage:codex" in OS.get_cmdline_user_args():
+		codex.open.call_deferred("Overcharge")
 	if "stage:twist" in OS.get_cmdline_user_args():
 		_stage_twist.call_deferred()
 
@@ -101,6 +114,15 @@ func _stage_twist() -> void:
 		await get_tree().process_frame
 	_narrate([{"type": "twist_revealed", "title": "Twist", "speaker": "Commander Ilse Vey", "rule_ref": GmTwist.REF,
 		"twist": {"id": "third_party", "reveal": "New transponders on the scope. Not the enemy you came for. Someone else wants this too.", "question": "Who sent them, and what do they want here?"}}])
+	var mates := _local_units()
+	var cam := get_viewport().get_camera_3d()
+	var screen := get_viewport().get_visible_rect()
+	for id: String in view.units:
+		var mv: MechView = view.units[id]
+		var u: Dictionary = mv.unit
+		if u.get("side", "") == Mission.PLAYERS and not mates.has(id) and screen.has_point(cam.unproject_position(mv.plate_anchor())):
+			bubbles.say(id, str(u.get("name", id)), "Contact front. I'll hold this side, you push.")
+			break
 	var lesson: Dictionary = Tutorial.lessons()[3]
 	tutorial.show_events([{"type": "tutorial_prompt", "kind": "lesson", "id": lesson["id"], "title": lesson.get("title", ""), "text": lesson.get("text", ""),
 		"objective": lesson.get("objective", ""), "rule_ref": lesson.get("rule_ref", ""), "step": 4, "of": Tutorial.lessons().size()}])
@@ -161,6 +183,28 @@ func _narrate(events: Array) -> void:
 	narration.show_events(events)
 
 
+## AI squadmates speak up as things happen (Squadmate.barks_for: their persona and what they
+## remember). Story campaigns only: the host's story, or a friend's mirror of it.
+func _barks(events: Array) -> void:
+	var st: StoryState = story if campaign != null else (GameFlow.story_client.story if GameFlow.story_client != null else null)
+	var c: Campaign = campaign if campaign != null else (GameFlow.story_client.campaign if GameFlow.story_client != null else null)
+	if st == null or c == null or st.seats.is_empty():
+		return
+	var unit_pilot := {}
+	var seat_of := {}
+	for id: String in session.view.get("units", {}):
+		var u: Dictionary = session.view["units"][id]
+		var seat := str(u.get("controller", ""))
+		if str(u.get("kind", "")) == Unit.KIND_MECH and st.seats.has(seat):
+			unit_pilot[id] = st.pilot_of_seat(seat)
+			seat_of[id] = seat
+	for e: Dictionary in events:
+		for line: Dictionary in Squadmate.barks_for(st, c, e, unit_pilot, seat_of):
+			var who := str(c.pilots.get(str(line["pilot"]), {}).get("callsign", ""))
+			bubbles.say(str(line["unit"]), who, str(line["text"]))
+			combat_log.add_line("[color=#9fc3e8]%s:[/color] %s" % [who, line["text"]])
+
+
 func _load(v: Dictionary) -> void:
 	_loaded = true
 	view.set_map(BattleMap.from_dict(v.get("map", {})), BIOME)
@@ -193,6 +237,7 @@ func _drain() -> void:
 		if not events.is_empty():
 			await player.play(events)
 			_narrate(events)
+			_barks(events)
 		_sync(item[0])
 	_draining = false
 
@@ -475,9 +520,13 @@ func _build_ui() -> void:
 	reaction_panel.custom_minimum_size = Vector2(620, 0)
 	reaction_panel.visible = false
 	ui.add_child(reaction_panel)
+	bubbles = SpeechBubbles.new()
+	ui.add_child(bubbles)
+	ui.move_child(bubbles, 0)
 	narration = NarrationPopup.new()
 	narration.theme = MenuTheme.theme()
 	ui.add_child(narration)
+	codex = CodexPanel.new()
 	tutorial = TutorialPanel.new()
 	ui.add_child(tutorial)
 	var menu := Button.new()
@@ -496,6 +545,13 @@ func _build_ui() -> void:
 	handoff_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	handoff_layer.visible = false
 	ui.add_child(handoff_layer)
+	var codex_dim := ColorRect.new()
+	codex_dim.color = Color(0, 0, 0, 0.6)
+	codex_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	codex_dim.visible = false
+	ui.add_child(codex_dim)
+	ui.add_child(codex)  # above everything else
+	codex.visibility_changed.connect(func() -> void: codex_dim.visible = codex.visible)
 
 
 ## In-battle menu: the game is saved after every turn, so leaving is safe.
@@ -549,6 +605,15 @@ func _open_menu() -> void:
 		hints.button_pressed = Tutorial.hints_on(campaign)
 		hints.toggled.connect(func(on: bool) -> void: campaign.options["teaching_hints"] = on)
 		b.add_child(hints)
+	var term := hovered_term()
+	var codex_btn := Button.new()
+	codex_btn.text = "Codex: look up \"%s\"" % term if term != "" else "Codex (rules reference)"
+	codex_btn.custom_minimum_size = Vector2(0, 50)
+	codex_btn.tooltip_text = "Search any rule, status, action, frame or piece of gear. In battle, F1 opens it on whatever you're pointing at."
+	codex_btn.pressed.connect(func() -> void:
+		menu_layer.visible = false
+		codex.open(term))
+	b.add_child(codex_btn)
 	for item in [["Back to the battle", func() -> void: menu_layer.visible = false],
 			["Settings", func() -> void: _leave("settings")],
 			["Save and quit to main menu", func() -> void: _leave("main")]]:
@@ -559,6 +624,29 @@ func _open_menu() -> void:
 		b.add_child(btn)
 	center.add_child(p)
 	menu_layer.visible = true
+
+
+## What the player last pointed at, for the Codex: a mech under the mouse (its frame or
+## name), else the last action hovered on the action bar.
+func hovered_term() -> String:
+	var id := view.labels.hover_unit if view != null and view.labels != null else ""
+	if id != "" and view.units.has(id):
+		var u: Dictionary = (view.units[id] as MechView).unit
+		var frame := content.frame(str(u.get("content_id", "")))
+		return str(frame.get("name", u.get("name", ""))) if not frame.is_empty() else str(u.get("name", ""))
+	return _hover_term
+
+
+func _unhandled_input(ev: InputEvent) -> void:
+	if InputMap.has_action("codex") and ev.is_action_pressed("codex"):
+		if codex.visible:
+			codex.visible = false
+		else:
+			codex.open(hovered_term())
+		get_viewport().set_input_as_handled()
+	elif codex.visible and ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE:
+		codex.visible = false
+		get_viewport().set_input_as_handled()
 
 
 ## Nobody plays from another computer, so stopping the AI keeps nobody waiting.

@@ -6,6 +6,7 @@ section 9). Everything it does goes through `NetHost.submit()` -> `RulesEngine.s
 | File | What it does |
 |---|---|
 | `mission_generator.gd` | `MissionGenerator.generate(seed, opts)` -> `{state, mission}`: sitrep, battlefield from `TerrainGen` (landscape + culture, 20-40 spaces; kit in `mission.flavor.kit`), zones, deployment, squad (core Everest builds) and enemies (NPC templates). Same seed, same mission. |
+| (environments) | `MissionGenerator` turns what the world suggests into rules environments (lancer-data environments.json): the weather's (`data/game/biomes/weather.json` "environment": sandstorm, storm, blizzard) and the landscape's (moon/asteroid low gravity, ocean world, volcanic molten world). Each comes into play at the GM dial `environments` (Standard 0.5, Teaching 0) with its own seeded roll. Result: `mission.environments`, `state.environments` (for the rules engine), `flavor.environments` ({id, name, text}), a line in the briefing, and a `gm_narrate` "environment" announcement to everyone when combat starts. |
 | `mission.gd` | Sitrep rules and scoring (Basic Combat, Control, Holdout, Gauntlet); `observe(state, events)` sets `outcome`. Save with `to_dict()`. |
 | `tactics_ai.gd` | Utility AI: picks a whole turn for one unit (move, attacks, Lock On, Scan, Hide, Stabilize, Boost) and explains it in one line. |
 | `ai_knowledge.gd` | The planning copy of the battle for one side: Hidden enemies left out, unscanned stats unknown. |

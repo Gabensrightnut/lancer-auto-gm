@@ -9,6 +9,8 @@ extends RefCounted
 const DIR := "res://assets/mechs/"
 
 static var _mat_cache: Dictionary = {}
+## Merged part meshes per frame and joint ("frame|path" -> ArrayMesh), built once.
+static var _merged: Dictionary = {}
 
 
 static func path(frame_id: String) -> String:
@@ -57,7 +59,64 @@ static func build(frame_id: String, m: MechModel, body: Node3D) -> bool:
 	for n in root.find_children("Slot_*", "Node3D", true, false):
 		m.slots[String(n.name).substr(5)] = n
 	_repaint(root, frame_id)
+	_merge(root, frame_id)
 	return true
+
+
+## Draw-call diet: the parts that move together (all mesh children of one joint) become a
+## single mesh with one surface per material, with LODs generated for distance. Built once
+## per frame and shared by every copy; paint still works per model (surface overrides).
+## A Blender frame goes from ~200 draw calls (and as many shadow draws) to a few dozen.
+static func _merge(root: Node3D, frame_id: String) -> void:
+	var groups := {}
+	for mi: MeshInstance3D in root.find_children("*", "MeshInstance3D", true, false):
+		if mi.mesh == null or mi.get_child_count() > 0 or mi.skin != null:
+			continue
+		var parent := mi.get_parent() as Node3D
+		if parent == null:
+			continue
+		if not groups.has(parent):
+			groups[parent] = []
+		(groups[parent] as Array).append(mi)
+	for parent: Node3D in groups:
+		var list: Array = groups[parent]
+		if list.size() < 2:
+			continue
+		var key := frame_id + "|" + str(root.get_path_to(parent))
+		var mesh: ArrayMesh = _merged.get(key)
+		if mesh == null:
+			mesh = _merged_mesh(list)
+			_merged[key] = mesh
+		var merged := MeshInstance3D.new()
+		merged.name = "Merged"
+		merged.mesh = mesh
+		merged.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		parent.add_child(merged)
+		for mi: MeshInstance3D in list:
+			parent.remove_child(mi)
+			mi.free()
+
+
+static func _merged_mesh(list: Array) -> ArrayMesh:
+	var buckets := {}  # material -> SurfaceTool
+	var order: Array = []
+	for mi: MeshInstance3D in list:
+		for s in range(mi.mesh.get_surface_count()):
+			var mat: Material = mi.material_override
+			if mat == null:
+				mat = mi.get_surface_override_material(s)
+			if mat == null:
+				mat = mi.mesh.surface_get_material(s)
+			if not buckets.has(mat):
+				buckets[mat] = SurfaceTool.new()
+				order.append(mat)
+			(buckets[mat] as SurfaceTool).append_from(mi.mesh, s, mi.transform)
+	var im := ImporterMesh.new()
+	for mat: Material in order:
+		var arrays := (buckets[mat] as SurfaceTool).commit_to_arrays()
+		im.add_surface(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, mat)
+	im.generate_lods(25.0, 60.0, [])
+	return im.get_mesh()
 
 
 static func _repaint(root: Node, frame_id: String) -> void:

@@ -4,7 +4,8 @@ extends Control
 ## the speaking pilot's portrait card on the left, the other person's on the right, a speech
 ## bubble from whoever is talking, and 4-6 replies to pick from. Click or Space advances;
 ## 1-6 pick a reply. Shows who decides (the speaking pilot's player, or a squad vote) and
-## what AI squadmates chose and why. A log keeps every line.
+## what AI squadmates chose and why. A log (L) scrolls back through every conversation.
+## Reading options (StorySettings, per player): text size, and skipping lines already read.
 ##
 ## It only reads the StoryState and submits actions through StoryEngine (the host's, or a
 ## network client's stand-in); `story_events` carries the results to the rest of the UI.
@@ -16,8 +17,8 @@ var story: StoryState
 var campaign: Campaign
 var seat := "p1"
 
-var _left: Portrait
-var _right: Portrait
+var _left: PortraitArt
+var _right: PortraitArt
 var _left_name: Label
 var _right_name: Label
 var _bubble: PanelContainer
@@ -30,14 +31,18 @@ var _note: Label
 var _log_panel: PanelContainer
 var _log_text: RichTextLabel
 var _note_timer := 0.0
+var _skip_timer := -1.0
+var _size_btn: Button
+var _seen_btn: Button
 
 
 func _init() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	visible = false
-	_left = Portrait.new()
-	_right = Portrait.new()
+	_left = PortraitArt.new()
+	_right = PortraitArt.new()
+	_right.flip = true  # the NPC faces the pilot
 	_left_name = _plate()
 	_right_name = _plate()
 	for n: Control in [_left, _right, _left_name, _right_name]:
@@ -75,25 +80,46 @@ func _init() -> void:
 	_note.add_theme_constant_override("outline_size", 4)
 	_note.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	add_child(_note)
-	var log_btn := StoryStyle.button("Log", 13)
+	var bar := HBoxContainer.new()
+	bar.name = "Toolbar"
+	bar.add_theme_constant_override("separation", 6)
+	add_child(bar)
+	var log_btn := StoryStyle.button("Log (L)", 13)
 	log_btn.name = "LogButton"
-	log_btn.pressed.connect(func() -> void: _log_panel.visible = not _log_panel.visible; _refresh_log())
-	add_child(log_btn)
+	log_btn.tooltip_text = "Scroll back through everything that's been said."
+	log_btn.pressed.connect(toggle_log)
+	bar.add_child(log_btn)
+	_size_btn = StoryStyle.button("", 13)
+	_size_btn.name = "TextSizeButton"
+	_size_btn.tooltip_text = "Make the story text bigger or smaller."
+	_size_btn.pressed.connect(func() -> void: StorySettings.cycle_text_scale(); refresh())
+	bar.add_child(_size_btn)
+	_seen_btn = StoryStyle.button("", 13)
+	_seen_btn.name = "SkipSeenButton"
+	_seen_btn.toggle_mode = true
+	_seen_btn.tooltip_text = "Lines you've read before go by on their own. Choices always wait for you."
+	_seen_btn.toggled.connect(func(on: bool) -> void: StorySettings.set_skip_seen(on); refresh())
+	bar.add_child(_seen_btn)
 	_log_panel = PanelContainer.new()
 	_log_panel.add_theme_stylebox_override("panel", StoryStyle.panel())
 	_log_panel.visible = false
 	add_child(_log_panel)
+	var lb := VBoxContainer.new()
+	_log_panel.add_child(lb)
+	lb.add_child(StoryStyle.label("CONVERSATION LOG", 14, StoryStyle.GOLD))
 	_log_text = RichTextLabel.new()
 	_log_text.bbcode_enabled = true
 	_log_text.scroll_following = true
-	_log_text.custom_minimum_size = Vector2(520, 360)
-	_log_text.add_theme_font_size_override("normal_font_size", 15)
-	_log_panel.add_child(_log_text)
+	_log_text.selection_enabled = true
+	_log_text.custom_minimum_size = Vector2(560, 420)
+	lb.add_child(_log_text)
 
 
 func _plate() -> Label:
 	var l := StoryStyle.label("", 16)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.clip_text = true
+	l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	l.add_theme_stylebox_override("normal", StoryStyle.panel(StoryStyle.EDGE, Color(0.03, 0.04, 0.06, 0.95), 1, 3, 4))
 	return l
 
@@ -117,8 +143,8 @@ func refresh() -> void:
 	var pilot: Dictionary = campaign.pilots.get(str(ctx.get("speaker", "")), {})
 	var speaker := str(story.dialogue.get("speaker", "npc"))
 	var expr := str(story.dialogue.get("expression", "neutral"))
-	_left.set_look(Portrait.look_for_pilot(pilot), expr if speaker == "pilot" else str(story.dialogue.get("pilot_expression", "neutral")))
-	_right.set_look(npc.get("look", {}), expr if speaker == "npc" else "neutral")
+	_left.set_look(PortraitArt.look_for_pilot(pilot), expr if speaker == "pilot" else str(story.dialogue.get("pilot_expression", "neutral")))
+	_right.set_look(PortraitSpec.for_npc(npc) if not npc.is_empty() else PortraitArt.look_for_npc(npc), expr if speaker == "npc" else "neutral")
 	_right.visible = not npc.is_empty()
 	_right_name.visible = _right.visible
 	_left.lit = speaker != "npc"
@@ -131,6 +157,11 @@ func refresh() -> void:
 	_bubble_name.text = Dialogue.speaker_name(story, campaign, speaker) if speaker != "narrator" else ""
 	_bubble_name.visible = speaker != "narrator"
 	_bubble_text.text = ("[i]%s[/i]" % text) if speaker == "narrator" else text
+	for k: String in ["normal_font_size", "italics_font_size"]:
+		_bubble_text.add_theme_font_size_override(k, StorySettings.size(19))
+	_size_btn.text = "Text %d%%" % roundi(StorySettings.text_scale() * 100)
+	_seen_btn.set_pressed_no_signal(StorySettings.skip_seen())
+	_seen_btn.text = "Skip read lines: %s" % ("on" if StorySettings.skip_seen() else "off")
 	_bubble_text.add_theme_color_override("default_color", Color(0.3, 0.32, 0.36) if speaker == "narrator" else Color(0.08, 0.09, 0.11))
 	_bubble.visible = text != ""
 	var offered := Dialogue.offered(story)
@@ -138,6 +169,29 @@ func refresh() -> void:
 	_build_choices(offered)
 	_layout()
 	_tail.queue_redraw()
+	_refresh_log()
+	# Lines already read go by on their own when the player asked for that.
+	var key := StorySettings.line_key(str(story.dialogue.get("scene", "")), str(story.dialogue.get("node", "")), text)
+	_skip_timer = 0.2 if StorySettings.skip_seen() and StorySettings.was_seen(key) and can_auto_skip(story, campaign, seat) else -1.0
+	StorySettings.mark_seen(key)
+
+
+## A line can skip itself only when nothing is waiting on a choice and this player is the one
+## moving the conversation on (the speaking pilot's player, or the only human at the table).
+static func can_auto_skip(s: StoryState, c: Campaign, local_seat: String) -> bool:
+	if s == null or not Dialogue.is_open(s) or not Dialogue.offered(s).is_empty():
+		return false
+	if str(Dialogue.decider(s, c)["speaker_seat"]) == local_seat:
+		return true
+	var humans := 0
+	for st: String in s.seats:
+		if not s.is_ai(st):
+			humans += 1
+	return humans <= 1
+
+
+func toggle_log() -> void:
+	_log_panel.visible = not _log_panel.visible
 	_refresh_log()
 
 
@@ -208,7 +262,7 @@ func _layout() -> void:
 	_right.position = Vector2(vp.x - card.x - 28, bottom - card.y - 44)
 	for pair: Array in [[_left_name, _left], [_right_name, _right]]:
 		var l: Label = pair[0]
-		var p: Portrait = pair[1]
+		var p: PortraitArt = pair[1]
 		l.size = Vector2(card.x, 44)
 		l.position = Vector2(p.position.x, p.position.y + card.y)
 	var bx := card.x + 60.0
@@ -223,9 +277,11 @@ func _layout() -> void:
 	_choices.position = Vector2(bx, _bubble.position.y - _choices.size.y - 14)
 	_note.position = Vector2(bx, _choices.position.y - 36)
 	_note.size = Vector2(bw, 30)
-	var lb := get_node("LogButton") as Button
-	lb.position = Vector2(vp.x - card.x - 28, _right.position.y - 40)
-	_log_panel.position = Vector2(vp.x - 580, 80)
+	var bar := get_node("Toolbar") as HBoxContainer
+	bar.reset_size()
+	# Top right, clear of the replies, which can stack up past the portrait cards.
+	bar.position = Vector2(vp.x - bar.size.x - 24, 16)
+	_log_panel.position = Vector2(vp.x - 620, 56)
 	_tail.position = Vector2.ZERO
 	_tail.size = vp
 
@@ -251,8 +307,13 @@ func _refresh_log() -> void:
 	if not _log_panel.visible or story == null:
 		return
 	_log_text.clear()
-	for l: Dictionary in story.dialogue.get("log", []):
-		if str(l.get("speaker", "")) == "narrator":
+	_log_text.add_theme_font_size_override("normal_font_size", StorySettings.size(15))
+	_log_text.add_theme_font_size_override("bold_font_size", StorySettings.size(15))
+	_log_text.add_theme_font_size_override("italics_font_size", StorySettings.size(15))
+	for l: Dictionary in Dialogue.transcript(story):
+		if l.has("header"):
+			_log_text.append_text("\n[color=#ffd166]— %s —[/color]\n" % l["header"])
+		elif str(l.get("speaker", "")) == "narrator":
 			_log_text.append_text("[i][color=#9aa8b8]%s[/color][/i]\n" % l["text"])
 		else:
 			_log_text.append_text("[b][color=#9fd0ff]%s:[/color][/b] %s\n" % [l.get("name", ""), l["text"]])
@@ -267,6 +328,10 @@ func _process(delta: float) -> void:
 	if visible:
 		_layout()  # wrapped replies only know their height once they have a width
 		_tail.queue_redraw()
+	if _skip_timer >= 0.0:
+		_skip_timer -= delta
+		if _skip_timer < 0.0:
+			advance()
 	if _note_timer > 0.0:
 		_note_timer -= delta
 		if _note_timer <= 0.0:
@@ -309,6 +374,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 		var k := (ev as InputEventKey).keycode
 		if k == KEY_SPACE or k == KEY_ENTER:
 			advance()
+			get_viewport().set_input_as_handled()
+		elif k == KEY_L:
+			toggle_log()
 			get_viewport().set_input_as_handled()
 		elif k >= KEY_1 and k <= KEY_6:
 			var offered := Dialogue.offered(story)

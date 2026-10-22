@@ -11,6 +11,7 @@ const COLORS := {
 	"hard": Color(0.3, 0.6, 1.0), "soft": Color(0.45, 1.0, 0.6),
 	"footprint": Color(0.35, 0.85, 1.0), "bad": Color(1.0, 0.25, 0.2),
 	"blocked": Color(0.08, 0.08, 0.09), "sky": Color(0.55, 0.8, 1.0), "dim": Color(0.0, 0.0, 0.02),
+	"area": Color(1.0, 0.5, 0.2), "pick": Color(1.0, 0.82, 0.35), "pick_bad": Color(1.0, 0.25, 0.2),
 }
 const FLAG_TEXT := {
 	"provoke": "PROVOKES", "boost": "BOOST", "difficult": "DIFFICULT",
@@ -56,6 +57,14 @@ func show_plan(new_plan: Dictionary) -> void:
 		_draw_footprint(plan["footprint"])
 	if plan.has("cover_from"):
 		_draw_cover_from(plan["cover_from"])
+	# Step-by-step picking: the area an aim would hit, spaces already picked, the hovered one.
+	if plan.has("area"):
+		_draw_cells(plan["area"], -1, COLORS["area"], 0.32)
+	if plan.has("picked"):
+		_draw_cells(plan["picked"], -1, COLORS["pick"], 0.55)
+	if plan.has("hover_cell"):
+		var ok: bool = plan.get("hover_ok", true)
+		_draw_cells([plan["hover_cell"]], -1, COLORS["pick"] if ok else COLORS["pick_bad"], 0.4)
 
 
 # --- helpers ---------------------------------------------------------------------------
@@ -170,7 +179,13 @@ func _draw_path(p: Dictionary) -> void:
 			var mid_xz := (prev_pt + pt) * 0.5
 			var e1 := Vector3(mid_xz.x, prev_pt.y, mid_xz.z)
 			var e2 := Vector3(mid_xz.x, pt.y, mid_xz.z)
-			if lv > prev_lv:
+			if p.get("fly", false):
+				# Flying: going up or down costs nothing extra; show the height change.
+				_segment(prev_pt, e1, col)
+				_segment(e1, e2, COLORS["sky"])
+				_segment(e2, pt, col)
+				_label("%s %d" % ["▲" if lv > prev_lv else "▼", absi(lv - prev_lv)], e2 + Vector3(0.25, 0.1, 0), COLORS["sky"], 30, 17)
+			elif lv > prev_lv:
 				_segment(prev_pt, e1, col)
 				_segment(e1, e2, col)
 				_segment(e2, pt, col)
@@ -254,6 +269,17 @@ func _draw_footprint(fp: Dictionary) -> void:
 	for fc in battle.map.grid.footprint(c, float(fp.get("size", 1))):
 		cells.append([fc.x, fc.y, lv])
 	_draw_cells(cells, lv, COLORS["footprint"] if ok else COLORS["bad"], 0.3, true, 0.035)
+	# In the air: a drop line and shadow to the ground and the height above it.
+	var ground := battle.map.ground_height(c)
+	if lv > ground:
+		var top := _footprint_center(c, lv, float(fp.get("size", 1)))
+		var bottom := _footprint_center(c, ground, float(fp.get("size", 1)))
+		_segment(top, bottom + Vector3.UP * 0.03, COLORS["sky"])
+		var shadow: Array = []
+		for fc in battle.map.grid.footprint(c, float(fp.get("size", 1))):
+			shadow.append([fc.x, fc.y, ground])
+		_draw_cells(shadow, ground, Color(0, 0, 0), 0.35, false, 0.03)
+		_label("▲ %d ABOVE GROUND" % (lv - ground), top.lerp(bottom, 0.5) + Vector3(0.35, 0, 0), COLORS["sky"], 30, 17)
 	if not ok:
 		_label(String(fp.get("reason", "CAN'T STAND HERE")), _footprint_center(c, lv, float(fp.get("size", 1))) + Vector3.UP * 0.4, COLORS["bad"], 34, 19)
 
@@ -326,7 +352,7 @@ func _draw_sky(sky: Dictionary) -> void:
 		battle.terrain.add_outline(line, c, y + 0.003, 0.04, 0.03)
 		sum += battle.map.grid.to_world(c, lv)
 	_mesh_node(fill, Color(col.r, col.g, col.b, 0.07))
-	_mesh_node(line, Color(col.r, col.g, col.b, 0.55))
+	_mesh_node(line, Color(col.r, col.g, col.b, 0.32))
 	if not cells.is_empty():
 		var center := sum / cells.size()
 		_label("SKY LAYER %d  (R / F to change)" % lv, center + Vector3(0, 0.3, 0), col, 44, 22)

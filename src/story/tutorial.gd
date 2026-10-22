@@ -96,6 +96,7 @@ static func _prompt(story: StoryState, lesson: Dictionary) -> Dictionary:
 	story.tutorial["shown"] = true
 	return {"type": "tutorial_prompt", "kind": "lesson", "id": lesson["id"], "title": lesson.get("title", ""), "text": lesson.get("text", ""),
 		"objective": lesson.get("objective", ""), "rule_ref": lesson.get("rule_ref", ""), "phase": lesson.get("phase", ""),
+		"codex": lesson.get("codex", lesson.get("title", "")),
 		"step": int(story.tutorial.get("step", 0)) + 1, "of": lessons().size()}
 
 

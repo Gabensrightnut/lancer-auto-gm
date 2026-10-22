@@ -20,6 +20,9 @@ extends RefCounted
 ##   {"downtime": "dt_get_connected", "subject": "$npc"}  takes that downtime action now for the speaker
 ##   {"ui": "downtime", "action": "dt_get_a_damn_drink"}   asks the UI to open a panel (downtime
 ##     action with a subject to name, pilot gear picker "pilot_gear", job board "hooks")
+##   {"rival_fate": "captured" | "withdrew" | "won"}   what becomes of the enemy commander (parley)
+##   {"end_battle": "players" | "enemies" | "none", "reason": "..."}  a parley ends the fight (Core p.60)
+##   {"battle_refused": true}                       no terms: the fight goes on
 ## Unknown effects are refused when the data is checked (StoryData.lint) and skipped here.
 
 const REF_RESERVES := "Core p.50-52: reserves"
@@ -121,6 +124,12 @@ static func apply(e: Dictionary, story: StoryState, campaign: Campaign, ctx: Dic
 			story.npcs[npc]["dead"] = true
 			return [{"type": "npc_died", "npc": npc}]
 		return []
+	if e.has("rival_fate"):
+		return Rivals.set_fate(story, str(e["rival_fate"]))
+	if e.has("end_battle"):
+		return Rivals.end_battle(story, str(e["end_battle"]), StoryText.fill(str(e.get("reason", "")), story, campaign, ctx))
+	if e.has("battle_refused"):
+		return Rivals.refuse(story)
 	if e.has("log"):
 		var text := StoryText.fill(str(e["log"]), story, campaign, ctx)
 		story.add_log(text)
@@ -214,7 +223,7 @@ static func harm(story: StoryState, campaign: Campaign, pid: String, amount: int
 
 
 static func kill(story: StoryState, pid: String, cause: String) -> Array:
-	story.dead[pid] = {"cause": cause, "mission": story.mission_number}
+	story.dead[pid] = {"cause": cause, "mission": story.mission_number, "place": str(story.current_hook.get("place", ""))}
 	story.down_and_out.erase(pid)
 	story.flags["dead_" + pid] = true
 	return [{"type": "pilot_died", "pilot": pid, "cause": cause, "rule_ref": "Core p.49, p.83: death"}]

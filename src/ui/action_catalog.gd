@@ -129,6 +129,8 @@ static func for_unit(state: GameState, engine: RulesEngine, db: ContentDB, unit_
 			warns.append({"text": "You're Engaged: ranged attacks take +1 Difficulty {icon:difficulty}."})
 		a["extras"] = extras
 		a["warnings"] = warns
+		if not ActionInputs.is_simple_attack(ActionInputs.weapon_steps(u, w)):
+			a["kind"] = "pick"  # area, several targets or a fold-to space: the step-by-step picker
 		out.append(a)
 	# Quick actions.
 	var boost := _from_data(db, "act_boost", {"group": "quick", "cost": "quick", "icon": "activation_quick", "short": "Boost", "kind": "move_boost", "preview": {"quick": 1}})
@@ -163,9 +165,26 @@ static func for_unit(state: GameState, engine: RulesEngine, db: ContentDB, unit_
 	# Reactions (chosen ahead of time; they trigger on others' turns).
 	out.append(_from_data(db, "act_brace", {"group": "reactions", "cost": "reaction", "icon": "reaction", "short": "Brace", "kind": "policy", "preview": {"reaction": 1}, "enabled": true}))
 	out.append(_from_data(db, "act_overwatch", {"group": "reactions", "cost": "reaction", "icon": "threat", "short": "Overwatch", "kind": "policy", "preview": {"reaction": 1}, "enabled": true}))
-	# Core power (from the frame). TODO(rules): core power isn't in the engine yet.
+	# Everything else the engine lists: other basic actions, systems, talents, traits, core.
+	var listing := RulesQueries.available_actions(state, u.id)
+	out.append_array(_from_listing(state, db, u, listing))
+	var core_entry: Dictionary = {}
+	for e: Dictionary in listing:
+		if String(e.get("type", "")) == "core_power":
+			core_entry = e
+	# Core power (from the frame).
 	var core: Dictionary = db.frame(u.content_id).get("core_system", {})
-	if not core.is_empty():
+	if not core.is_empty() and not core_entry.is_empty():
+		var ca := {"id": "core", "group": "core", "cost": String(core.get("activation", "Quick")).to_lower(), "icon": "corebonus",
+			"name": String(core.get("active_name", "Core Power")), "short": "Core", "kind": "pick", "type": "core_power",
+			"text": _strip(core.get("active_effect", "")), "rule_ref": "Core system: %s (%s)" % [core.get("name", ""), core.get("use", "")],
+			"extras": [{"icon": "generic_item", "value": "%d/1" % int(u.counters.get("core_power", 0))}], "preview": {"core_power": 1},
+			"enabled": bool(core_entry.get("available", false)), "reason": String(core_entry.get("reason", "")),
+			"lockout": {"kind": "uses", "left": 0, "total": 1} if int(u.counters.get("core_power", 1)) <= 0 else {},
+			"warnings": [{"text": "Once per mission: this is your only use."}]}
+		_table(ca, core_entry)
+		out.append(ca)
+	elif not core.is_empty():
 		var used: bool = u.counters.get("core_used", false)
 		out.append({"id": "core", "group": "core", "cost": String(core.get("activation", "Protocol")).to_lower(), "icon": "corebonus",
 			"name": String(core.get("active_name", "Core Power")), "short": "Core", "kind": "core",
@@ -175,6 +194,106 @@ static func for_unit(state: GameState, engine: RulesEngine, db: ContentDB, unit_
 			"lockout": {"kind": "uses", "left": 0, "total": 1} if used else {},
 			"warnings": [{"text": "Once per mission: this is your only use."}]})
 	return out
+
+
+## Basic actions this catalog builds itself (with richer previews); the rest come from the
+## engine's listing.
+const OWN_TYPES := ["move", "boost", "skirmish", "barrage", "hide", "stabilize", "scan", "lock_on", "invade", "overcharge", "core_power"]
+## Situational basic actions: on the More tab (not on All).
+const MORE := ["jump", "stand_up", "bonus_move", "disengage", "improvised_attack", "ram", "grapple", "fight", "bolster", "full_tech",
+	"search", "prepare", "shut_down", "boot_up", "eject", "dismount", "mount", "self_destruct", "end_grapple", "break_free",
+	"grapple_contest", "pull_stake", "use_object"]
+## Basic actions that are about moving: shown on the Quick tab.
+const GROUP_OF_BASIC := {"move": "quick", "attack": "quick", "tech": "tech", "other": "quick"}
+
+
+## Bar entries for the engine's listing (RulesQueries.available_actions) that aren't built
+## above: other basic actions, system/talent/trait abilities and trait reactions.
+static func _from_listing(state: GameState, db: ContentDB, u: Unit, listing: Array) -> Array:
+	var out: Array = []
+	for e: Dictionary in listing:
+		var id := String(e.get("id", ""))
+		var type := String(e.get("type", ""))
+		if type == "" or id.begins_with("weapon:") or OWN_TYPES.has(type) or id in ["reaction:brace", "reaction:overwatch"]:
+			continue
+		var group := String(e.get("group", "other"))
+		var cost := String(e.get("cost", "quick"))
+		var a: Dictionary
+		if id.begins_with("ability:") or id.begins_with("reaction:"):
+			var act := String(e.get("activation", "Reaction" if id.begins_with("reaction:") else "Quick"))
+			cost = _cost_of_activation(act)
+			a = {"id": id, "name": e.get("name", id), "short": _short(String(e.get("name", id))), "text": _strip(String(e.get("detail", ""))),
+				"rule_ref": "%s: %s" % [e.get("source", "system"), e.get("name", "")] if e.has("source") else String(e.get("rule_ref", "")),
+				"group": {"core": "core", "reaction": "reactions"}.get(group, "systems"), "cost": cost, "type": type,
+				"params": (e.get("params", {}) as Dictionary).duplicate(), "kind": "policy" if type == "react" else "pick",
+				"icon": "reaction" if type == "react" else ("tech_quick" if "Tech" in act or act == "Invade" else Icons.cost(cost))}
+			if e.get("source", "") != "":
+				a["desc"] = String(e["source"])
+		else:
+			a = _from_data(db, "act_" + type, {"short": _short(String(e.get("name", type)))})
+			if String(a.get("name", "")) == "act_" + type:
+				a["name"] = e.get("name", type)
+			a.merge({"id": id, "group": "full" if cost == "full" else GROUP_OF_BASIC.get(group, "quick"), "cost": cost, "type": type,
+				"params": (e.get("params", {}) as Dictionary).duplicate(), "kind": "pick", "icon": Icons.cost(cost)}, true)
+		a["enabled"] = bool(e.get("available", false))
+		a["reason"] = String(e.get("reason", ""))
+		# Situational extras live on More; the ones that only work in a pinch (Prone, grappled,
+		# shut down) come forward when they can be used.
+		if MORE.has(type) and not (a["enabled"] and type in ["stand_up", "break_free", "boot_up", "end_grapple", "pull_stake"]):
+			a["group"] = "more"
+		var extras: Array = []
+		var umax := int(e.get("uses_max", 0))
+		if umax > 0:
+			extras.append({"icon": "generic_item", "value": "%d/%d" % [int(e.get("uses_left", 0)), umax]})
+			if int(e.get("uses_left", 0)) <= 0:
+				a["lockout"] = {"kind": "uses", "left": 0, "total": umax}
+		var rc: Dictionary = e.get("recharge", {}) if e.get("recharge") is Dictionary else {}
+		if int(rc.get("value", 0)) > 0 and not rc.get("charged", true):
+			a["lockout"] = {"kind": "recharge", "target": int(rc["value"])}
+		if e.get("destroyed", false):
+			a["lockout"] = {"kind": "status", "status": "Destroyed"}
+			a["reason"] = "Destroyed: repair it first."
+		if String(e.get("frequency", "")) != "" and int(e.get("used", 0)) > 0 and not a.has("lockout"):
+			a["warnings"] = [{"text": "Used %d time%s already (%s)." % [int(e["used"]), "" if int(e["used"]) == 1 else "s", e["frequency"]]}]
+		a["extras"] = extras
+		_table(a, e)
+		out.append(a)
+	return out
+
+
+## Marks entries the table resolves by hand: a "table" badge and the note in the hover card.
+static func _table(a: Dictionary, e: Dictionary) -> void:
+	var status := String(e.get("automation", "automated" if e.get("automated", true) else "manual"))
+	if status in ["manual", "partial"]:
+		a["table"] = status
+		var note := String(e.get("table_note", ""))
+		if note == "":
+			note = "The game doesn't apply this one: your table does (read the text and apply it)." if status == "manual" 				else "The game applies most of this; your table handles the rest."
+		a["table_note"] = note
+
+
+static func _cost_of_activation(act: String) -> String:
+	match act:
+		"Full", "Full Action":
+			return "full"
+		"Protocol":
+			return "protocol"
+		"Free", "Free Action":
+			return "free"
+		"Reaction":
+			return "reaction"
+		"Quick Tech", "Invade":
+			return "quick_tech"
+		"Full Tech":
+			return "full_tech"
+	return "quick"
+
+
+static func _short(name: String) -> String:
+	for drop: String in ["Deploy ", "Recall ", "Deactivate ", "Detonate "]:
+		if name.begins_with(drop):
+			return drop.strip_edges() + " " + name.trim_prefix(drop).split(" ")[0]
+	return name.split(" ")[0] if name.length() > 12 else name
 
 
 static func _validate_self(state: GameState, engine: RulesEngine, u: Unit, type: String, params: Dictionary = {}) -> Dictionary:

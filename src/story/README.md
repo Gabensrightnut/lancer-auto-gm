@@ -47,8 +47,14 @@ and follows the core book. Page numbers are the free core book ("Core p.N").
 | `ui/downtime_screen.gd` | Downtime as its own scene: the squad's cards with every narrated result (AI too), the action picker, back to the hub or on to the briefing. |
 | `squadmate.gd` | `Squadmate`: AI squadmates as characters. `suggest(pilot)` picks a persona from triggers and background; `role()` / `orders()` give the team role (frame mechtype, or the persona for the Everest) and AiDirector stance; a memory per pilot (wounds, wrecks, fallen friends, choices) shifts their likes and downtime picks, and drives `banter()` between missions (banter.json) and `barks_for(event)` in battle (barks.json, cosmetic, own RNG). |
 | `background_story.gd` | `BackgroundStory`: background-only dialogue options per NPC role and personal stakes on jobs (background_story.json). |
+| `bonds.gd` | `Bonds`: relationships between pilots (Rivals .. Inseparable) from shared missions, mourning, teamwork, drinking together and vote clashes; the GM's bond reward (+1 Accuracy helping each other next mission, Core p.50; option `bond_rewards`); the Bonded talent's bondmate rule (`set_bondmate`, Core p.90). |
+| `ending.gd` | `Ending`: when a campaign ends (options.campaign_arcs situations, LL12, the squad fallen, or `end_campaign`), its kind and an epilogue per pilot (endings.json); `CampaignLoop.sequel()` starts a new campaign with the same pilots. `ui/epilogue_screen.gd` shows it. |
+| `codex.gd` | `Codex`: the in-game rules reference (DESIGN.md section 8). Every glossary term, status, action, tag, frame (stats, traits, core system), manufacturer, skill trigger, background, downtime action, reserve, pilot gear and talent, with lancer-data's own text (HTML stripped), plus our own features (`codex_own.json`, marked "Game feature (not a book rule)"). `search(query, category)` ranks exact > prefix > title > text. `ui/codex_panel.gd` shows it in the hub (K, or the HUD button; tutorial tips link to it). |
+| `session_zero.gd` | `SessionZero`: the first-session setup (Core p.40-41, `session_zero.json`, our own lists): who the squad is, who gives it orders (biases which NPCs bring work), history questions between pilots (starting bonds), tone (twist chance, arc weights), focus (long downtime, banter) and content to leave out (filters our twists and arcs). Applied with the `session_zero` action before the first mission; `ui/session_zero_screen.gd` (`scenes/story/session_zero.tscn`). |
+| `rivals.gd` | `Rivals`: enemy commanders as characters (`rivals.json`): one leads every enemy force (the toughest enemy unit, renamed, `mission.flavor["commander"]`), with a portrait and one of six personalities; a story arc's other side keeps one commander throughout, and those who got away come back for revenge (`hook["commander"]`). In battle they taunt (`Squadmate.barks_for` returns their lines too, `"rival": true`) and, once the outcome is clear (Core p.60), may yield, withdraw, offer a deal or let a losing squad walk away; the squad can call for terms (`parley`). The `parley` scene's choices end the fight with `battle_end_requested` (`CampaignLoop.end_by_parley(mission, event)` gives the `gm_end_mission` action). After the mission their fate is remembered (captured, withdrew, escaped, dead, routed, won) and mentioned in the debrief. |
+| `story_settings.gd` | `StorySettings`: per-player reading options kept in `user://`: text size (`set_text_scale`, StoryStyle scales every story label and button), "skip read lines" (lines already seen go by on their own; choices always wait). `notifier().changed` for UI. The dialogue's toolbar has both, plus the scroll-back log (L) of every conversation (`Dialogue.transcript`). |
 | `story_data.gd` | `StoryData.lint()`: checks every scene, effect, condition, pool, trigger and reserve id (run by the tests). |
-| `ui/` | `DialogueView` (portrait cards, speech bubble, choices, votes, log), `Portrait` (drawn placeholder faces with expressions), `StoryCheckPopup` (instant roll, one big number, breakdown on hover), `DowntimePanel`, `LevelUpPanel`, `PilotGearPanel` (the quartermaster's racks). |
+| `ui/` | `DialogueView` (PortraitArt cards, mirrored speaker, speech bubble, choices, votes, log), `Portrait` (drawn placeholder faces with expressions), `StoryCheckPopup` (instant roll, one big number, breakdown on hover), `DowntimePanel`, `LevelUpPanel`, `PilotGearPanel` (the quartermaster's racks). |
 
 Story tables (all our own writing, patterns from `docs/research/lancer_campaigns.md`, canon checks
 in `docs/CANON.md`): `hooks.json` (22 job templates after the book's goal table, stakes as
@@ -99,6 +105,10 @@ The walkable hub is in `src/explore/` (`HubScene`, `scenes/explore/hub.tscn`).
 - Choosing to die instead of going Down and Out (Core p.49) isn't offered yet; cloning and
   coming back (Core p.83) isn't built.
 
+- When a fight's outcome "isn't in question" (Core p.60) so terms can be talked: half the enemy
+  force down, or their commander on their last structure; for the squad, half its mechs wrecked
+  (`Rivals.enemy_losing` / `squad_losing`). The book leaves it to the GM.
+
 ## Asks for other sessions
 
 - **Main / campaign**: give `Campaign` a `story` field instead of `story_flags["_story"]`; add
@@ -119,10 +129,22 @@ The walkable hub is in `src/explore/` (`HubScene`, `scenes/explore/hub.tscn`).
   cyberpunk, retrofuturistic, east_asian, union_core) for picking a matching map kit; the hub's
   3D town could use the same kit's props.
 - **Visuals**: draw the parts and 10 expressions in `portraits.json`; `Portrait.set_look()` already
-  takes a v2 portrait and any expression id.
+  takes a v2 portrait and any expression id. Every `dialogue_line`, `banter`, bark and epilogue
+  carries `face: {portrait, expression}`; NPCs have `npc.portrait`, pilots `pilot.portrait`.
+- **Rules engine**: `pilot.bondmate` (set by `set_bondmate`) for the Bonded talent's +1/+2 and reactions.
 - **Flow / battle screen**: `Squadmate.orders(story, campaign, db)` -> `AiDirector.set_orders(seat, ...)` when a mission starts; after each batch of events, `Squadmate.barks_for(story, campaign, event, unit->pilot, unit->seat)` gives speech-bubble lines for AI squadmates.
 - **Net**: route story actions (`StoryEngine.submit`) through the host like battle actions, send
   story events to clients, and relay hub walking positions to `HubScene.set_avatar_position()`.
 - **Menus / builder**: talent, license and core bonus picks waiting in
   `story.pending_picks[pilot]`; the pilot gear picker (`ui_requested` "pilot_gear"); portraits
   read `pilot["look"]` when the portrait builder exists.
+- **Menus**: when a new campaign starts (not the tutorial), show `SessionZeroScreen` (`bind(engine,
+  story, campaign)`, wait for `done(events)`) before the first briefing. A `CodexPanel` can be
+  opened from the main menu / battle screen too (`codex.open(query)`).
+- **Flow / battle screen** (enemy commanders and parley, Core p.60):
+  - after each batch of battle events (host) submit `{"type": "battle_events", "seat": "gm", "params": {"events": events}}` to the story engine; the commander may open the `parley` dialogue;
+  - show a `DialogueView` over the battle while `Dialogue.is_open(story)` (same as the hub);
+  - a "Call for terms" button submits `{"type": "parley", "seat": my_seat}` (refused with the reason while the fight is in question);
+  - on a `battle_end_requested` story event, submit `CampaignLoop.end_by_parley(mission, event)` through the host like any GM action;
+  - bark lines now carry `"who"` (the speaker's callsign): use it instead of `campaign.pilots[line.pilot].callsign`, so the enemy commander's taunts get a name.
+- **Menus / settings**: a "Story text" section: text size (`StorySettings.set_text_scale`, 0.8-1.6) and "Skip lines I've read" (`StorySettings.set_skip_seen`).

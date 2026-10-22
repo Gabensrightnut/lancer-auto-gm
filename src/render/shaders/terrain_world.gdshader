@@ -6,7 +6,8 @@ shader_type spatial;
 // (worn lip) and 1 inside. UV2.y = the column's top height (sides).
 render_mode blend_mix, depth_draw_opaque, cull_back;
 
-// Ground style: 0 grass, 1 sand, 2 snow, 3 moss (alien), 4 paving, 5 ash.
+// Ground style: 0 grass, 1 sand, 2 snow, 3 moss (alien), 4 paving, 5 ash, 6 deck plates,
+// 7 regolith (moon dust).
 uniform int top_style = 0;
 uniform vec3 top_a : source_color = vec3(0.2, 0.34, 0.11);
 uniform vec3 top_b : source_color = vec3(0.3, 0.43, 0.15);
@@ -33,11 +34,21 @@ uniform vec3 rim_color : source_color = vec3(1.0, 0.96, 0.88);
 uniform float rim_strength = 0.45;
 uniform float rim_glow = 0.0;
 uniform float backdrop_fade = 0.5;
+// Station and ship surfaces.
+uniform vec3 metal_a : source_color = vec3(0.36, 0.38, 0.4);
+uniform vec3 metal_b : source_color = vec3(0.22, 0.23, 0.25);
+uniform vec3 stripe_col : source_color = vec3(0.9, 0.65, 0.1);
+uniform vec3 strip_light : source_color = vec3(0.6, 0.85, 1.0);
+uniform vec3 cargo_a : source_color = vec3(0.65, 0.3, 0.15);
+uniform vec3 cargo_b : source_color = vec3(0.2, 0.38, 0.55);
+uniform vec3 cargo_c : source_color = vec3(0.7, 0.6, 0.2);
 
 varying vec3 wpos;
 varying vec4 vcol;
 varying float top_y;
 varying float breakable;
+// The floor next to this wall (UV.y on side faces of station kinds), for the hazard band.
+varying float floor_y;
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 p) {
@@ -83,6 +94,7 @@ void vertex() {
 	vcol = COLOR;
 	top_y = UV2.y;
 	breakable = UV2.x;
+	floor_y = UV.y;
 }
 
 // Layered stone: warped horizontal strata with blocky fractures.
@@ -105,6 +117,30 @@ vec3 stone(vec2 p, float y, out float rough, out float relief) {
 		c = mix(rock_b, rock_a, 0.3 + 0.4 * hash(vec2(floor(jx), 3.0)) + 0.2 * n) * (1.0 - 0.6 * joint);
 		relief = n * 0.3 - joint;
 	}
+	return c;
+}
+
+// Metal deck plates: offset plates, bolts at corners, a grate now and then.
+vec3 deck(vec2 p, out float rough, out float metal, out float relief) {
+	vec2 g = p * vec2(1.0, 2.0);
+	g.x += step(1.0, mod(floor(g.y), 2.0)) * 0.5;
+	vec2 f = fract(g);
+	vec2 id = floor(g);
+	float seam = max(smoothstep(0.47, 0.495, abs(f.x - 0.5)), smoothstep(0.44, 0.49, abs(f.y - 0.5)));
+	float h = hash(id);
+	vec3 c = mix(metal_b, metal_a, 0.35 + 0.4 * h) * (0.85 + 0.25 * fbm3(p * 3.0));
+	float grate = step(0.86, h);
+	float bars = step(0.5, fract(f.x * 9.0));
+	c = mix(c, c * mix(0.25, 0.7, bars), grate * (1.0 - seam));
+	vec2 b = abs(f - 0.5) - vec2(0.42, 0.38);
+	float bolt = smoothstep(0.035, 0.02, length(max(abs(b), 0.0) - 0.0)) * step(0.0, b.x) * step(0.0, b.y);
+	c = mix(c, metal_a * 1.2, bolt);
+	c *= 1.0 - 0.45 * seam;
+	// Scuffs and oil.
+	c *= 1.0 - 0.25 * smoothstep(0.62, 0.8, fbm(p * 1.3 + 5.0));
+	rough = mix(0.45, 0.8, fbm3(p * 5.0)) + grate * 0.1;
+	metal = 0.65;
+	relief = -seam - grate * (1.0 - bars) * 0.6 + bolt * 0.5;
 	return c;
 }
 
@@ -159,6 +195,30 @@ vec3 ground_top(vec2 p, float lip, out float rough, out vec3 emit, out float rel
 		c *= 1.0 - 0.3 * wet;
 		rough = mix(0.85, 0.08, wet);
 		relief = n3 * 0.3 - seam * 0.5 - cr;
+	} else if (top_style == 6) {
+		float m;
+		c = deck(p, rough, m, relief);
+		// Hazard stripes along edges that drop.
+		float edge = 1.0 - smoothstep(0.0, 0.16, lip);
+		float stripes = step(0.5, fract((p.x + p.y) * 2.5));
+		c = mix(c, mix(stripe_col, vec3(0.05), stripes), edge * 0.85);
+		return c;
+	} else if (top_style == 7) {
+		// Regolith: fine grey dust, small craters, darker ejecta streaks.
+		c = mix(top_a, top_b, smoothstep(0.3, 0.7, n1)) * (0.8 + 0.35 * n3);
+		c = mix(c, top_dry, smoothstep(0.6, 0.8, n2) * 0.5);
+		vec2 cg = p * 1.3;
+		vec2 ci = floor(cg);
+		vec2 cf = fract(cg) - 0.5 - (vec2(hash(ci), hash(ci + 7.0)) - 0.5) * 0.4;
+		float r = 0.12 + 0.18 * hash(ci + 3.0);
+		float d = length(cf);
+		float crater = step(0.55, hash(ci + 11.0));
+		float rim = smoothstep(r + 0.06, r, d) * smoothstep(r - 0.06, r, d);
+		float bowl = smoothstep(r, r * 0.3, d);
+		c *= 1.0 - crater * (0.25 * bowl - 0.15 * rim);
+		relief = n3 * 0.4 + crater * (rim - bowl * 0.8);
+		rough = 0.98;
+		return c;
 	} else if (top_style == 5) {
 		// Ash: grey-black dust with cinders.
 		c = mix(top_a, top_b, smoothstep(0.3, 0.7, n1)) * (0.75 + 0.45 * n3);
@@ -252,6 +312,37 @@ void fragment() {
 			col *= 1.0 - 0.25 * (1.0 - smoothstep(0.0, 0.3, vcol.a));
 			relief = n3 * 0.5 - seam;
 			rough = 0.95;
+		} else if (kind == 10 || kind == 12) {
+			// Bulkhead tops and raised decks: plates (bulkheads darker, with conduit).
+			float m;
+			col = deck(p * (kind == 10 ? 2.0 : 1.0), rough, m, relief);
+			metal = m;
+			if (kind == 10) {
+				col *= 0.6;
+				float conduit = smoothstep(0.06, 0.0, abs(fract(p.x * 0.5 + p.y * 0.5) - 0.5));
+				col = mix(col, metal_a * 0.8, conduit * 0.5);
+			}
+			float edge = 1.0 - smoothstep(0.0, 0.16, vcol.a);
+			float stripes = step(0.5, fract((p.x + p.y) * 2.5));
+			col = mix(col, mix(stripe_col, vec3(0.05), stripes), edge * 0.8 * (kind == 12 ? 1.0 : 0.0));
+		} else if (kind == 11) {
+			// Container roof: ribbed steel in the container's color.
+			vec3 cc = vcol.g < 0.33 ? cargo_a : (vcol.g < 0.66 ? cargo_b : cargo_c);
+			float rib = 0.5 + 0.5 * sin(p.x * 25.0);
+			col = cc * (0.7 + 0.25 * rib) * (0.85 + 0.25 * n3);
+			col *= 1.0 - 0.35 * smoothstep(0.6, 0.8, fbm(p * 2.0 + 3.0));
+			rough = 0.6;
+			metal = 0.5;
+			relief = rib * 0.5;
+		} else if (kind == 13) {
+			// Machinery top: vents, hatches and small status lights.
+			float m;
+			col = deck(p * 3.0, rough, m, relief) * 0.75;
+			metal = m;
+			vec2 v = fract(p * 1.5);
+			float vent = step(0.25, v.x) * step(v.x, 0.75) * step(0.25, v.y) * step(v.y, 0.75) * step(0.5, fract(v.y * 12.0));
+			col *= 1.0 - 0.6 * vent;
+			emit = strip_light * step(0.985, hash(floor(p * 6.0))) * 2.0;
 		} else if (kind == 9) {
 			// Bridge deck: worn asphalt with patched seams.
 			col = mix(vec3(0.09, 0.09, 0.095), vec3(0.14, 0.135, 0.13), n2) * (0.85 + 0.3 * n3);
@@ -287,6 +378,52 @@ void fragment() {
 			col = wall_col * (0.75 + 0.35 * n) * (1.0 - 0.35 * seam);
 			col *= 0.7 + 0.3 * smoothstep(0.0, 0.5, wpos.y - (top_y - 2.0));
 			relief = n * 0.4 - seam;
+		} else if (kind == 10) {
+			// Bulkhead: tall panels, vertical ribs, a light strip near the top, hazard band at the foot.
+			float d2 = top_y - wpos.y;
+			float panel = fract(hcoord * 1.0);
+			float rib = smoothstep(0.04, 0.0, abs(panel - 0.5) - 0.44);
+			float hband = smoothstep(0.03, 0.0, abs(fract(wpos.y * 0.5) - 0.5) - 0.46);
+			col = mix(metal_b, metal_a, 0.4 + 0.3 * hash(vec2(floor(hcoord), floor(wpos.y * 0.5)))) * (0.85 + 0.2 * n);
+			col *= 1.0 - 0.45 * max(rib, hband);
+			float strip = smoothstep(0.03, 0.0, abs(d2 - 0.18));
+			emit += strip_light * strip * 1.6;
+			float stripes = step(0.5, fract((hcoord + wpos.y) * 2.5));
+			float hz = 1.0 - smoothstep(0.2, 0.26, wpos.y - floor_y);
+			col = mix(col, mix(stripe_col, vec3(0.05), stripes), hz * 0.8);
+			rough = 0.55;
+			metal = 0.6;
+			relief = -max(rib, hband) + n * 0.2;
+		} else if (kind == 11) {
+			// Shipping container: corrugated sides, door bars on some faces.
+			vec3 cc = vcol.g < 0.33 ? cargo_a : (vcol.g < 0.66 ? cargo_b : cargo_c);
+			float corr = 0.5 + 0.5 * sin(hcoord * 40.0);
+			col = cc * (0.65 + 0.3 * corr) * (0.85 + 0.25 * n);
+			float frame = smoothstep(0.06, 0.0, abs(fract(hcoord * 0.5) - 0.5) - 0.44) + smoothstep(0.05, 0.0, abs(fract(wpos.y) - 0.5) - 0.45);
+			col = mix(col, cc * 0.45, clamp(frame, 0.0, 1.0));
+			col *= 1.0 - 0.3 * smoothstep(0.6, 0.8, fbm(vec2(hcoord, wpos.y) * 2.0));
+			rough = 0.6;
+			metal = 0.5;
+			relief = corr * 0.6 - frame;
+		} else if (kind == 12) {
+			// Platform sides: dark steel with cross bracing.
+			vec2 q = vec2(hcoord, wpos.y) * 1.5;
+			float brace = smoothstep(0.06, 0.0, abs(fract(q.x + q.y) - 0.5) - 0.44) + smoothstep(0.06, 0.0, abs(fract(q.x - q.y) - 0.5) - 0.44);
+			col = metal_b * (0.8 + 0.3 * n) * (1.0 - 0.35 * clamp(brace, 0.0, 1.0));
+			col = mix(col, vec3(0.3, 0.22, 0.12), smoothstep(0.55, 0.8, fbm(vec2(hcoord * 2.0, wpos.y * 3.0))) * 0.5);
+			rough = 0.6;
+			metal = 0.6;
+			relief = -brace;
+		} else if (kind == 13) {
+			// Machinery: horizontal pipe bands and vertical ducts, a few lit indicators.
+			float pipe = 0.5 + 0.5 * cos(fract(wpos.y * 3.0) * 6.2832);
+			float duct = smoothstep(0.1, 0.0, abs(fract(hcoord * 0.7) - 0.5) - 0.38);
+			col = mix(metal_b, metal_a, pipe * 0.6) * (0.8 + 0.3 * n);
+			col = mix(col, metal_b * 0.6, duct * 0.6);
+			emit += strip_light * step(0.992, hash(floor(vec2(hcoord * 8.0, wpos.y * 8.0)))) * 2.5;
+			rough = 0.5;
+			metal = 0.7;
+			relief = pipe - duct;
 		} else if (kind == 9) {
 			float d2 = top_y - wpos.y;
 			float girder = smoothstep(0.02, 0.0, abs(d2 - 0.18)) + smoothstep(0.015, 0.0, abs(d2 - 0.75));

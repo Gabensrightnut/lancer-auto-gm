@@ -1,0 +1,591 @@
+{
+ "_note": "Our own writing. Talking terms mid-battle with the enemy commander (Rivals): the book says surrender and retreat are valid ends to a fight, and the GM may end it early once the outcome isn't in question (Core p.60). Opened by the commander (StoryEngine battle_events) or by the squad (parley).",
+ "id": "parley",
+ "start": "open",
+ "nodes": {
+  "open": {
+   "speaker": "npc",
+   "next": "yield",
+   "branch": [
+    {
+     "if": {
+      "var": "kind",
+      "eq": "demand"
+     },
+     "next": "demand"
+    },
+    {
+     "if": {
+      "var": "kind",
+      "eq": "withdraw"
+     },
+     "next": "withdraw"
+    },
+    {
+     "if": {
+      "var": "kind",
+      "eq": "deal"
+     },
+     "next": "deal"
+    },
+    {
+     "if": {
+      "var": "kind",
+      "eq": "offer_retreat"
+     },
+     "next": "offer"
+    }
+   ]
+  },
+  "demand": {
+   "speaker": "pilot",
+   "line": [
+    "{rival}, it's over. Stand down.",
+    "Look around, {rival}. You've lost. Let's end this.",
+    "This is your one chance, {rival}. Tell your people to power down."
+   ],
+   "next": "answer"
+  },
+  "answer": {
+   "speaker": "npc",
+   "next": "defiant",
+   "branch": [
+    {
+     "if": {
+      "var": "stance",
+      "eq": "yield"
+     },
+     "next": "yield"
+    },
+    {
+     "if": {
+      "var": "stance",
+      "eq": "withdraw"
+     },
+     "next": "withdraw"
+    },
+    {
+     "if": {
+      "var": "stance",
+      "eq": "deal"
+     },
+     "next": "deal"
+    }
+   ]
+  },
+  "yield": {
+   "speaker": "npc",
+   "expression": "worried",
+   "line": "{yield_line}",
+   "choices": [
+    {
+     "id": "accept",
+     "text": [
+      "Power down and climb out. You'll be treated fairly.",
+      "Accepted. Stand down, and nobody else gets hurt.",
+      "Deal. Hands where we can see them."
+     ],
+     "tags": [
+      "kind",
+      "honest",
+      "diplomatic"
+     ],
+     "effects": [
+      {
+       "rival_fate": "captured"
+      },
+      {
+       "end_battle": "players",
+       "reason": "{rival}'s force stood down. The field is yours (Core p.60: surrender ends a fight)."
+      }
+     ],
+     "next": "accepted"
+    },
+    {
+     "id": "let_go",
+     "text": [
+      "Take your people and go. Don't come back.",
+      "Leave the field and we're done here.",
+      "Go. Before I change my mind."
+     ],
+     "tags": [
+      "kind",
+      "cautious",
+      "practical"
+     ],
+     "effects": [
+      {
+       "rival_fate": "withdrew"
+      },
+      {
+       "end_battle": "players",
+       "reason": "{rival} withdrew and the field is yours (Core p.60: retreat ends a fight)."
+      }
+     ],
+     "next": "let_go"
+    },
+    {
+     "id": "intel",
+     "text": [
+      "Tell us what you know, and you can walk.",
+      "Talk first. Then maybe you leave."
+     ],
+     "tags": [
+      "greedy",
+      "aggressive",
+      "practical"
+     ],
+     "check": {
+      "skills": [
+       "sk_threaten",
+       "sk_read_a_situation",
+       "sk_pull_rank"
+      ],
+      "goal": "parley_intel:{operation}",
+      "consequence": "They leave without telling you anything useful, and they won't forget being pushed.",
+      "success": "intel_ok",
+      "fail": "intel_bad",
+      "success_effects": [
+       {
+        "reserve": "reserve_knowledge",
+        "to": "speaker",
+        "source": "{rival}",
+        "note": "What {rival} told you to be let go"
+       },
+       {
+        "rival_fate": "withdrew"
+       },
+       {
+        "end_battle": "players",
+        "reason": "{rival} talked, then withdrew (Core p.60)."
+       }
+      ],
+      "fail_effects": [
+       {
+        "rival_fate": "withdrew"
+       },
+       {
+        "end_battle": "players",
+        "reason": "{rival} withdrew (Core p.60)."
+       }
+      ]
+     }
+    },
+    {
+     "id": "no_terms",
+     "text": [
+      "No terms. We finish this.",
+      "No deals. It ends here.",
+      "Not a chance."
+     ],
+     "tags": [
+      "aggressive",
+      "bold"
+     ],
+     "effects": [
+      {
+       "battle_refused": true
+      }
+     ],
+     "next": "refused"
+    }
+   ]
+  },
+  "withdraw": {
+   "speaker": "npc",
+   "expression": "angry",
+   "line": "{withdraw_line}",
+   "choices": [
+    {
+     "id": "let_go",
+     "text": [
+      "Take your people and go. Don't come back.",
+      "Leave the field and we're done here.",
+      "Go. Before I change my mind."
+     ],
+     "tags": [
+      "kind",
+      "cautious",
+      "practical"
+     ],
+     "effects": [
+      {
+       "rival_fate": "withdrew"
+      },
+      {
+       "end_battle": "players",
+       "reason": "{rival} withdrew and the field is yours (Core p.60: retreat ends a fight)."
+      }
+     ],
+     "next": "let_go"
+    },
+    {
+     "id": "stand_down",
+     "text": [
+      "You're not going anywhere. Power down.",
+      "Nobody's leaving. Climb out, {rival}."
+     ],
+     "tags": [
+      "bold",
+      "aggressive"
+     ],
+     "check": {
+      "skills": [
+       "sk_threaten",
+       "sk_pull_rank",
+       "sk_charm"
+      ],
+      "goal": "stand_down:{operation}",
+      "difficult": true,
+      "consequence": "They don't believe you, and the shooting starts again.",
+      "success": "accepted",
+      "fail": "refused",
+      "success_effects": [
+       {
+        "rival_fate": "captured"
+       },
+       {
+        "end_battle": "players",
+        "reason": "{rival}'s force stood down. The field is yours (Core p.60: surrender ends a fight)."
+       }
+      ],
+      "fail_effects": [
+       {
+        "battle_refused": true
+       }
+      ]
+     }
+    },
+    {
+     "id": "press",
+     "text": [
+      "After them! Don't let them get away.",
+      "Cut off their retreat!"
+     ],
+     "tags": [
+      "aggressive",
+      "bold"
+     ],
+     "effects": [
+      {
+       "battle_refused": true
+      }
+     ],
+     "next": "refused"
+    }
+   ]
+  },
+  "deal": {
+   "speaker": "npc",
+   "expression": "smug",
+   "line": "{deal_line}",
+   "choices": [
+    {
+     "id": "take_deal",
+     "text": [
+      "Fine. Talk, then walk.",
+      "Let's hear it. If it's good, you go."
+     ],
+     "tags": [
+      "practical",
+      "greedy",
+      "diplomatic"
+     ],
+     "effects": [
+      {
+       "reserve": "reserve_knowledge",
+       "to": "speaker",
+       "source": "{rival}",
+       "note": "{rival}'s price for being let go"
+      },
+      {
+       "rival_fate": "withdrew"
+      },
+      {
+       "end_battle": "players",
+       "reason": "{rival} traded what they knew for a way out (Core p.60)."
+      }
+     ],
+     "next": "deal_done"
+    },
+    {
+     "id": "surrender",
+     "text": [
+      "No deals. Surrender.",
+      "The only deal is you climbing out of that cockpit."
+     ],
+     "tags": [
+      "bold",
+      "honest",
+      "aggressive"
+     ],
+     "check": {
+      "skills": [
+       "sk_threaten",
+       "sk_pull_rank",
+       "sk_charm"
+      ],
+      "goal": "surrender:{operation}",
+      "difficult": true,
+      "consequence": "They don't believe you, and the shooting starts again.",
+      "success": "accepted",
+      "fail": "refused",
+      "success_effects": [
+       {
+        "rival_fate": "captured"
+       },
+       {
+        "end_battle": "players",
+        "reason": "{rival}'s force stood down. The field is yours (Core p.60: surrender ends a fight)."
+       }
+      ],
+      "fail_effects": [
+       {
+        "battle_refused": true
+       }
+      ]
+     }
+    },
+    {
+     "id": "no_terms",
+     "text": [
+      "No terms. We finish this.",
+      "No deals. It ends here.",
+      "Not a chance."
+     ],
+     "tags": [
+      "aggressive",
+      "bold"
+     ],
+     "effects": [
+      {
+       "battle_refused": true
+      }
+     ],
+     "next": "refused"
+    }
+   ]
+  },
+  "defiant": {
+   "speaker": "npc",
+   "expression": "determined",
+   "line": "{defiant_line}",
+   "choices": [
+    {
+     "id": "reason",
+     "text": [
+      "Look at your people, {rival}. Is this worth their lives?",
+      "Nobody else has to die for this. Think about it."
+     ],
+     "tags": [
+      "kind",
+      "diplomatic"
+     ],
+     "check": {
+      "skills": [
+       "sk_charm",
+       "sk_lead_or_inspire",
+       "sk_read_a_situation"
+      ],
+      "goal": "parley_reason:{operation}",
+      "difficult": true,
+      "consequence": "They won't hear it. The fight goes on.",
+      "success": "reconsider",
+      "fail": "refused",
+      "fail_effects": [
+       {
+        "battle_refused": true
+       }
+      ]
+     }
+    },
+    {
+     "id": "fight",
+     "text": [
+      "Then we finish it.",
+      "Have it your way."
+     ],
+     "tags": [
+      "aggressive",
+      "bold",
+      "practical"
+     ],
+     "effects": [
+      {
+       "battle_refused": true
+      }
+     ],
+     "next": "refused"
+    }
+   ]
+  },
+  "reconsider": {
+   "speaker": "npc",
+   "expression": "sad",
+   "line": [
+    "...All right. All right. We stand down.",
+    "...Fine. Enough people have died today.",
+    "You're right. Damn you, you're right."
+   ],
+   "effects": [
+    {
+     "rival_fate": "captured"
+    },
+    {
+     "end_battle": "players",
+     "reason": "{rival}'s force stood down. The field is yours (Core p.60: surrender ends a fight)."
+    }
+   ],
+   "next": "accepted"
+  },
+  "offer": {
+   "speaker": "npc",
+   "expression": "determined",
+   "line": "{retreat_line}",
+   "choices": [
+    {
+     "id": "withdraw_squad",
+     "text": [
+      "Agreed. We're pulling out.",
+      "Fine. We take our wounded and go.",
+      "We'll go. This isn't over."
+     ],
+     "tags": [
+      "cautious",
+      "practical",
+      "kind",
+      "leave"
+     ],
+     "effects": [
+      {
+       "rival_fate": "won"
+      },
+      {
+       "end_battle": "enemies",
+       "reason": "The squad withdrew under a truce with {rival} (Core p.60: retreat ends a fight)."
+      }
+     ],
+     "next": "withdrawn"
+    },
+    {
+     "id": "both_back",
+     "text": [
+      "You pull back too, {rival}, and we both live to see tomorrow.",
+      "Call it a draw. Both sides pull back."
+     ],
+     "tags": [
+      "bold",
+      "diplomatic"
+     ],
+     "check": {
+      "skills": [
+       "sk_threaten",
+       "sk_charm",
+       "sk_stay_cool"
+      ],
+      "goal": "parley_draw:{operation}",
+      "heroic": true,
+      "consequence": "They laugh at you, and the fight goes on.",
+      "success": "truce",
+      "fail": "refused",
+      "success_effects": [
+       {
+        "rival_fate": "withdrew"
+       },
+       {
+        "end_battle": "none",
+        "reason": "Both sides pulled back under a truce (Core p.60)."
+       }
+      ],
+      "fail_effects": [
+       {
+        "battle_refused": true
+       }
+      ]
+     }
+    },
+    {
+     "id": "refuse",
+     "text": [
+      "We're not done yet.",
+      "Not a chance. Come and finish it."
+     ],
+     "tags": [
+      "bold",
+      "aggressive"
+     ],
+     "effects": [
+      {
+       "battle_refused": true
+      }
+     ],
+     "next": "refused"
+    }
+   ]
+  },
+  "accepted": {
+   "speaker": "narrator",
+   "line": [
+    "The enemy mechs power down one by one. It's over.",
+    "Hatches open. Hands go up. The fight is over.",
+    "Weapons go quiet across the field. They've surrendered."
+   ],
+   "end": true
+  },
+  "let_go": {
+   "speaker": "narrator",
+   "line": [
+    "The enemy pulls back and is gone. The field is yours.",
+    "You watch them go until they're off your sensors.",
+    "They withdraw in good order. Nobody fires."
+   ],
+   "end": true
+  },
+  "intel_ok": {
+   "speaker": "narrator",
+   "line": [
+    "{rival} talks, quickly, then leaves. What they told you checks out (Knowledge reserve).",
+    "It's useful: names, places, a schedule (Knowledge reserve). Then they're gone."
+   ],
+   "end": true
+  },
+  "intel_bad": {
+   "speaker": "narrator",
+   "line": [
+    "{rival} gives you nothing but a look you'll remember, and leaves.",
+    "They walk without a word. That one will be back."
+   ],
+   "end": true
+  },
+  "deal_done": {
+   "speaker": "narrator",
+   "line": [
+    "{rival} keeps their side of it (Knowledge reserve), and their mechs slip away.",
+    "The information comes through as promised (Knowledge reserve). So does their retreat."
+   ],
+   "end": true
+  },
+  "withdrawn": {
+   "speaker": "narrator",
+   "line": [
+    "The squad pulls back, carrying its wounded. Nobody fires.",
+    "You withdraw. It stings, but everyone who's still alive stays alive."
+   ],
+   "end": true
+  },
+  "truce": {
+   "speaker": "narrator",
+   "line": [
+    "A long silence. Then both sides back away.",
+    "Nobody wins. Everybody lives. Both sides pull back."
+   ],
+   "end": true
+  },
+  "refused": {
+   "speaker": "npc",
+   "expression": "angry",
+   "line": "{refused_line}",
+   "end": true
+  }
+ }
+}

@@ -20,6 +20,9 @@ extends RefCounted
 const SCENE_DIR := "res://data/game/story/scenes/"
 const MAX_CHOICES := 6
 const PERSONAS := "res://data/game/story/personas.json"
+## Every conversation is kept for the scroll-back log (story.flags), up to this many rows.
+const TRANSCRIPT := "_transcript"
+const TRANSCRIPT_MAX := 400
 
 static var _scenes: Dictionary = {}
 static var _personas: Dictionary = {}
@@ -67,8 +70,37 @@ static func advance(story: StoryState, campaign: Campaign) -> Array:
 
 static func close(story: StoryState, why: String = "finished") -> Array:
 	var sc := str(story.dialogue.get("scene", ""))
+	_keep_transcript(story)
 	story.dialogue = {}
 	return [{"type": "dialogue_ended", "scene": sc, "reason": why}]
+
+
+## Every conversation so far, oldest first, for the scroll-back log: {"header": "..."} rows
+## start each conversation, then {"speaker", "name", "text"} rows. The open one is included.
+static func transcript(story: StoryState) -> Array:
+	var out: Array = (story.flags.get(TRANSCRIPT, []) as Array).duplicate()
+	if is_open(story) and not (story.dialogue.get("log", []) as Array).is_empty():
+		out.append({"header": _header(story)})
+		out.append_array(story.dialogue["log"])
+	return out
+
+
+static func _header(story: StoryState) -> String:
+	var npc: Dictionary = story.npcs.get(str(story.dialogue.get("ctx", {}).get("npc", "")), {})
+	var who := str(npc.get("name", "")) if not npc.is_empty() else str(story.dialogue.get("scene", "")).capitalize()
+	return "%s  ·  mission %d" % [who, story.mission_number]
+
+
+static func _keep_transcript(story: StoryState) -> void:
+	var lines: Array = story.dialogue.get("log", [])
+	if lines.is_empty():
+		return
+	var kept: Array = (story.flags.get(TRANSCRIPT, []) as Array).duplicate()
+	kept.append({"header": _header(story)})
+	kept.append_array(lines)
+	if kept.size() > TRANSCRIPT_MAX:
+		kept = kept.slice(kept.size() - TRANSCRIPT_MAX)
+	story.flags[TRANSCRIPT] = kept
 
 
 static func current_node(story: StoryState) -> Dictionary:
@@ -118,7 +150,8 @@ static func _enter(story: StoryState, campaign: Campaign, node_id: String) -> Ar
 		if text != "":
 			(story.dialogue["log"] as Array).append({"speaker": speaker, "name": speaker_name(story, campaign, speaker), "text": text})
 			events.append({"type": "dialogue_line", "speaker": speaker, "name": speaker_name(story, campaign, speaker),
-				"expression": story.dialogue["expression"], "text": text, "choices": story.dialogue["choices"].duplicate(true)})
+				"expression": story.dialogue["expression"], "text": text, "choices": story.dialogue["choices"].duplicate(true),
+				"face": PortraitSpec.of_speaker(story, campaign, ctx, speaker, str(story.dialogue["expression"]))})
 		if node.has("choices") and (story.dialogue["choices"] as Array).is_empty():
 			# Nothing to say here any more: go on (or end) instead of getting stuck.
 			if node.has("next"):
@@ -258,8 +291,16 @@ static func _roll_choice(story: StoryState, campaign: Campaign, chk: Dictionary,
 				return pid != speaker and not story.down_and_out.has(pid) and bool(said.get(story.seat_of(pid), true)))
 			opts["helpers"] = helpers.size()
 			sharing = [speaker] + helpers
+			# A bond the GM rewarded in downtime: +1 Accuracy to help each other (Core p.50).
+			var mate := Bonds.reward_between(story, speaker, helpers)
+			if mate != "":
+				opts["accuracy"] = int(opts.get("accuracy", 0)) + 1
+				var srcs: Array = opts.get("sources", [])
+				srcs.append({"label": "Bond with %s" % campaign.pilots.get(mate, {}).get("callsign", ""), "kind": "accuracy", "type": "accuracy", "value": 1, "rule_ref": Bonds.REF_REWARD})
+				opts["sources"] = srcs
 		var rec := NarrativeCheck.roll(story.dice, campaign.pilots.get(speaker, {}), opts)
-		events.append({"type": "narrative_check", "pilot": speaker, "check": rec, "rule_ref": NarrativeCheck.REF})
+		events.append({"type": "narrative_check", "pilot": speaker, "check": rec, "rule_ref": NarrativeCheck.REF,
+			"helpers": sharing.filter(func(x: String) -> bool: return x != speaker)})
 		story.dialogue["pilot_expression"] = PortraitSpec.check_expression(str(rec["outcome"]))
 		success = rec["success"]
 		consequence = rec["consequence"]

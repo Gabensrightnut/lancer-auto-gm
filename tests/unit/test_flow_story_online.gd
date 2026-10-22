@@ -126,3 +126,17 @@ func test_level_up_picks_made_in_the_builder_stop_waiting() -> void:
 	var saved := StoryState.of(store.load_campaign(c.id)["campaign"])
 	expect_eq(int(saved.pending_picks[pid]["license"]), 0, "saved")
 	_cleanup()
+
+
+func test_hub_positions_wire_format() -> void:
+	var data := HubScreenPositions.pack(Vector3(3.14159, 0.0, -2.5), 7.0)
+	expect_eq(data, [3.14, -2.5, snappedf(wrapf(7.0, -PI, PI), 0.01)])
+	var back := HubScreenPositions.parse(data)
+	expect_eq(back[0], Vector3(3.14, 0.0, -2.5))
+	for bad: Variant in [null, [1, 2], ["a", 0, 0], [9999.0, 0.0, 0.0], {"x": 1}]:
+		expect(HubScreenPositions.parse(bad).is_empty(), "ignored: %s" % str(bad))
+	var lobby := LobbyModel.new()
+	lobby.is_host = false
+	lobby.remote = {"rows": [1]}
+	lobby._on_remote_lobby({"hub_pos": {"p1": data}})
+	expect_eq(lobby.remote, {"rows": [1]}, "walking positions don't disturb a friend's lobby view")

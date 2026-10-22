@@ -7,7 +7,7 @@
       "weight": 3,
       "reveal": [
         "The cargo isn't what {patron} said it was.",
-        "The 'supply depot' is a weapons cache. {patron} knew.",
+        "The job was never what it seemed: {patron} was moving weapons, and knew it.",
         "Your orders were written to keep you from asking questions."
       ],
       "question": "Do you finish the job anyway, now that you know?",

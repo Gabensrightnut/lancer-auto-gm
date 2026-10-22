@@ -20,6 +20,7 @@ static func build(t: TerrainRenderer, root: Node3D) -> void:
 	_liquids(t, root)
 	_ground_cover(t, root)
 	_rough(t, root)
+	_debris(t, root)
 	_woods(t, root)
 	_rocks(t, root)
 	_crystals(t, root)
@@ -30,6 +31,11 @@ static func build(t: TerrainRenderer, root: Node3D) -> void:
 	WorldHorizon.build(t, root)
 	TerrainRenderer._lap("horizon")
 	WorldParticles.build(t, root)
+	if float(t.style.get("lightning", 0.0)) > 0.0:
+		var l := Lightning.new()
+		l.name = "Lightning"
+		l.strength = float(t.style["lightning"])
+		root.add_child(l)
 
 
 static func foliage_material(sway: float, sway_height: float, leafy: float = 1.0) -> ShaderMaterial:
@@ -182,7 +188,7 @@ static func _rough(t: TerrainRenderer, root: Node3D) -> void:
 		if t.surface(c) != TerrainRenderer.KIND_ROUGH or t.structure_cells.has(c):
 			continue
 		var key := "r" + str(c)
-		var here := "rubble" if t.map.column(c).has_tag("rubble") else look
+		var here := "rubble" if (t.map.column(c).has_tag("rubble") or t.broken_cells.has(c)) else look
 		var n := 7 if here in ["rubble", "scree"] else 5
 		for i in range(n):
 			var p := t.random_point(c, key, i, 0.8)
@@ -211,6 +217,21 @@ static func _rough(t: TerrainRenderer, root: Node3D) -> void:
 	if not sticks.is_empty():
 		var rebar := MeshKit.mech_material(Color(0.35, 0.2, 0.12), 0.5, 0.7, Color.BLACK, false)
 		multi(root, "Rebar", MeshKit.cylinder(0.012, 0.3, 4), sticks, rebar, false)
+
+
+## Broken cells that the rules left as plain ground: scattered flat debris and scorch, low
+## enough that it never reads as rough going or cover.
+static func _debris(t: TerrainRenderer, root: Node3D) -> void:
+	var bits: Array = []
+	for c: Vector2i in t.broken_cells:
+		if not t.map.has_cell(c) or t.map.column(c).has_tag(BattleMap.TAG_DIFFICULT):
+			continue
+		var key := "db" + str(c)
+		for i in range(6):
+			var s := 0.05 + 0.05 * WorldRand.f(key, i)
+			bits.append(Transform3D(Basis(Vector3.UP, WorldRand.f(key, i + 10) * TAU) * Basis.from_scale(Vector3(s * 1.4, s * 0.3, s)), t.random_point(c, key, i + 20, 0.85)))
+	var col := WorldStyle.col(t.style, "ground.wall", Color(0.55, 0.52, 0.48)).darkened(0.25)
+	multi(root, "Debris", Flora.rock(col, 14), bits, foliage_material(0.0, 1.0, 0.0), false)
 
 
 # --- Woods (soft cover) ------------------------------------------------------------------

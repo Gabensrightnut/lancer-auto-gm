@@ -31,6 +31,10 @@ var _prompt_text: RichTextLabel
 var _hint: Label
 var _last_cell := Vector2i(99999, 99999)
 var _hover_unit := ""
+## Flight: on when the unit flies this move (T toggles); sky_level is the height to fly at
+## (R / F raise and lower it).
+var fly := false
+var sky_level := -1
 
 
 func setup(ui_layer: CanvasLayer) -> void:
@@ -80,6 +84,9 @@ func setup(ui_layer: CanvasLayer) -> void:
 
 func begin(uid: String) -> void:
 	unit_id = uid
+	var bu := state.unit(uid)
+	fly = bu != null and bu.flying
+	sky_level = bu.level if bu else -1
 	view.labels.active_unit = uid
 	active = true
 	mode = "idle"
@@ -106,8 +113,13 @@ func _set_hint() -> void:
 			_hint.text = "Pick a target for %s  ·  right-click to cancel" % selected.get("name", "")
 		"boost":
 			_hint.text = "Boost: click where to move  ·  right-click to cancel"
+		"pick":
+			_hint.text = _pick_hint()
 		_:
 			_hint.text = "Click the board to move  ·  pick an action below  ·  End Turn when done" if active else ""
+			if active and can_fly():
+				_hint.text += "
+" + ("FLYING at height %d  ·  R / F: up / down  ·  T: land" % sky_level if fly else "T: take off and fly")
 	# Under the turn-order bar's round banner, clear of hover cards; sized to its text so
 	# nameplates only fade right under it.
 	_hint.size = Vector2.ZERO
@@ -125,8 +137,19 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_ENTER, KEY_KP_ENTER:
 				if not pending.is_empty():
 					confirm()
+				elif mode == "pick":
+					_pick_finish_step()
+			KEY_SPACE:
+				if mode == "pick":
+					_pick_finish_step()
 			KEY_ESCAPE:
 				cancel()
+			KEY_T:
+				toggle_fly()
+			KEY_R:
+				change_sky(1)
+			KEY_F:
+				change_sky(-1)
 	elif event is InputEventMouseMotion:
 		hover_screen((event as InputEventMouseMotion).position)
 	elif event is InputEventMouseButton and event.pressed:
@@ -174,6 +197,9 @@ func unit_at_screen(screen: Vector2) -> String:
 
 
 func hover_screen(screen: Vector2) -> void:
+	if mode == "pick":
+		_pick_hover(screen)
+		return
 	if mode == "target":
 		var id := unit_at_screen(screen)
 		if id != _hover_unit:
@@ -187,6 +213,9 @@ func hover_screen(screen: Vector2) -> void:
 
 
 func click_screen(screen: Vector2) -> void:
+	if mode == "pick":
+		_pick_click(screen)
+		return
 	if mode == "target":
 		var id := unit_at_screen(screen)
 		if id != "":
@@ -199,11 +228,52 @@ func click_screen(screen: Vector2) -> void:
 
 # --- planning --------------------------------------------------------------------------
 
-## Draws the rules engine's move preview to `cell` (no state change).
+## Can the unit fly for the current kind of move (a flight system, or Boost with jump jets)?
+func can_fly() -> bool:
+	var u := state.unit(unit_id)
+	return u != null and Movement.can_fly(u, "boost" if mode == "boost" else "move")
+
+
+func toggle_fly() -> void:
+	if not can_fly():
+		fly = false
+		return
+	fly = not fly
+	var u := state.unit(unit_id)
+	if fly and sky_level <= state.map.ground_height(u.cell):
+		sky_level = maxi(u.level, state.map.ground_height(u.cell)) + 1
+	_refresh_preview()
+
+
+func change_sky(d: int) -> void:
+	if not fly:
+		return
+	var u := state.unit(unit_id)
+	sky_level = clampi(sky_level + d, 0, state.map.ground_height(u.cell) + 12)
+	_refresh_preview()
+
+
+func _refresh_preview() -> void:
+	_set_hint()
+	if _last_cell.x < 99999 and pending.is_empty():
+		preview_move(_last_cell)
+
+
+## Draws the rules engine's move preview to `cell` (no state change). Flying moves go to
+## the chosen sky level; walking ones let the engine pick the height.
 func preview_move(cell: Vector2i) -> Dictionary:
 	var u := state.unit(unit_id)
-	var p := RulesQueries.preview_move(state, unit_id, cell, -1, "boost" if mode == "boost" else "move")
-	view.overlays.show_plan(move_overlay(p, u))
+	var flying := fly and can_fly()
+	var p := RulesQueries.preview_move(state, unit_id, cell, sky_level if flying else -1, "boost" if mode == "boost" else "move", flying)
+	var plan := move_overlay(p, u)
+	if flying:
+		plan["fly"] = true
+		var cells: Array = []
+		for c: Vector2i in state.map.grid.cells_within(u.cell, int(p.get("budget", u.speed)) + 1):
+			if state.map.has_cell(c):
+				cells.append([c.x, c.y])
+		plan["sky_layer"] = {"level": sky_level, "cells": cells}
+	view.overlays.show_plan(plan)
 	return p
 
 
@@ -249,7 +319,7 @@ func plan_move(cell: Vector2i) -> void:
 		warn += "\n[color=#ffc857]⚠ %s[/color]" % w.get("text", "")
 	var type := "boost" if boosting else "move"
 	_ask("%s here?  Cost [b]%d[/b] of %d movement.%s" % ["Boost" if boosting else "Move", int(p.get("cost", 0)), int(p.get("budget", 0)), warn],
-		{"type": type, "actor": unit_id, "params": {"to": [cell.x, cell.y]}})
+		{"type": type, "actor": unit_id, "params": {"to": [cell.x, cell.y], "fly": fly and can_fly(), "level": sky_level if fly and can_fly() else -1}})
 
 
 func _on_action(a: Dictionary) -> void:
@@ -262,6 +332,10 @@ func _on_action(a: Dictionary) -> void:
 			selected = a
 		"move_boost":
 			mode = "boost"
+		"pick":
+			_start_pick(a)
+			if mode != "pick":
+				return
 		"self":
 			var warn := ""
 			for w: Variant in a.get("warnings", []):
@@ -316,6 +390,175 @@ func choose_target(id: String) -> void:
 			action = {"type": "barrage", "actor": unit_id, "params": {"attacks": attacks}}
 			line = "Barrage %s with your first two weapons?" % t.name
 	_ask(line, action)
+
+
+# --- step-by-step picking (areas, several targets, spaces: ActionInputs) ----------------
+
+var _steps: Array = []
+var _step_i := 0
+var _picks: Array = []
+var _params: Dictionary = {}
+var _pick_reason := ""
+
+
+func _start_pick(a: Dictionary) -> void:
+	_steps = ActionInputs.steps(state, engine, state.unit(unit_id), a)
+	_step_i = 0
+	_picks = []
+	_params = (a.get("params", {}) as Dictionary).duplicate(true)
+	_pick_reason = ""
+	selected = a
+	if _steps.is_empty():
+		_ask_pick()
+		return
+	mode = "pick"
+	view.overlays.clear()
+
+
+func _step() -> Dictionary:
+	return _steps[_step_i] if _step_i < _steps.size() else {}
+
+
+func _pick_hint() -> String:
+	var s := _step()
+	var n := int(s.get("count", 1))
+	var t := "%s: %s" % [selected.get("name", ""), s.get("label", "pick")]
+	if n > 1:
+		t += "  (%d/%d)" % [_picks.size(), n]
+	if s.get("optional", false) or (n > 1 and _picks.size() > 0 and s.get("up_to", true)):
+		t += "  ·  Space: done" if not s.get("optional", false) or _picks.size() > 0 else "  ·  Space: skip"
+	if _pick_reason != "":
+		t += "
+" + _pick_reason
+	return t + "  ·  right-click to cancel"
+
+
+## The action as it would be with `value` as the current step's next pick.
+func _pick_action(value: Variant) -> Dictionary:
+	var p := _params.duplicate(true)
+	var s := _step()
+	var picks := _picks.duplicate()
+	if value != null:
+		picks.append(value)
+	if not picks.is_empty():
+		p[String(s["param"])] = ActionInputs.value_of(s, picks)
+	return {"type": selected.get("type", ""), "actor": unit_id, "params": p}
+
+
+func _pick_value(screen: Vector2) -> Variant:
+	var s := _step()
+	if String(s.get("pick", "")) == "unit":
+		var id := unit_at_screen(screen)
+		if id == "" and s.get("or_space", false):
+			var c0: Variant = cell_at_screen(screen)
+			return null if c0 == null else [(c0 as Vector2i).x, (c0 as Vector2i).y]
+		return null if id == "" else id
+	var c: Variant = cell_at_screen(screen)
+	return null if c == null else [(c as Vector2i).x, (c as Vector2i).y]
+
+
+## Only the last pick of the last step can be checked fully; earlier ones are checked when
+## the action is complete.
+func _pick_check(value: Variant) -> RuleResult:
+	var s := _step()
+	var last := _step_i == _steps.size() - 1 and _picks.size() + 1 >= int(s.get("count", 1))
+	if not last:
+		return RuleResult.allow()
+	return engine.validate(state, _pick_action(value))
+
+
+func _pick_hover(screen: Vector2) -> void:
+	var v: Variant = _pick_value(screen)
+	var plan := {}
+	var s := _step()
+	var picked: Array = []
+	for st_i in range(_steps.size()):
+		var st: Dictionary = _steps[st_i]
+		if String(st.get("pick", "")) == "cell":
+			var val: Variant = _params.get(String(st["param"])) if st_i < _step_i else null
+			if st_i == _step_i:
+				picked.append_array(_picks)
+			elif val is Array and not (val as Array).is_empty():
+				picked.append_array(val if val[0] is Array else [val])
+	if not picked.is_empty():
+		var flat: Array = []
+		for p: Variant in picked:
+			if p is Array and (p as Array).size() == 2 and p[0] is Array:
+				flat.append_array(p)
+			else:
+				flat.append(p)
+		plan["picked"] = flat
+	var r := _pick_check(v) if v != null else RuleResult.allow()
+	_pick_reason = "" if r.ok else "[%s]" % r.reason
+	if v is Array:
+		plan["hover_cell"] = v
+		plan["hover_ok"] = r.ok
+		if s.has("weapon"):
+			var w := Weapons.find(state.unit(unit_id), String(s["weapon"]))
+			var ap := Areas.plan(state, state.unit(unit_id), w, Vector2i(int(v[0]), int(v[1])))
+			if ap.get("ok", false):
+				plan["area"] = ap["cells"]
+		elif int(s.get("area", 0)) > 0:
+			var cells: Array = []
+			for c: Vector2i in view.map.grid.cells_within(Vector2i(int(v[0]), int(v[1])), int(s["area"])):
+				if view.map.has_cell(c):
+					cells.append([c.x, c.y])
+			plan["area"] = cells
+	elif v is String:
+		view.labels.hover_unit = v
+	view.overlays.show_plan(plan)
+	_set_hint()
+
+
+func _pick_click(screen: Vector2) -> void:
+	var v: Variant = _pick_value(screen)
+	if v == null:
+		return
+	var r := _pick_check(v)
+	if not r.ok:
+		_pick_reason = "[%s]" % r.reason
+		_set_hint()
+		return
+	if v is String and _picks.has(v):
+		return  # each target once
+	_picks.append(v)
+	if _picks.size() >= int(_step().get("count", 1)):
+		_pick_finish_step()
+	else:
+		_pick_hover(screen)
+
+
+## Ends the current step (also early, for "up to N" and optional steps).
+func _pick_finish_step() -> void:
+	var s := _step()
+	if s.is_empty():
+		return
+	if _picks.is_empty() and not s.get("optional", false):
+		return
+	if not _picks.is_empty():
+		_params[String(s["param"])] = ActionInputs.value_of(s, _picks)
+	_picks = []
+	_step_i += 1
+	if _step_i >= _steps.size():
+		_ask_pick()
+	else:
+		_set_hint()
+
+
+func _ask_pick() -> void:
+	var action := {"type": selected.get("type", ""), "actor": unit_id, "params": _params}
+	var r := engine.validate(state, action)
+	if not r.ok:
+		_ask("[color=#ff8a7a]%s: %s[/color]" % [selected.get("name", ""), r.reason], {})
+		return
+	var warn := ""
+	for w: Variant in selected.get("warnings", []):
+		warn += "
+[color=#ffc857]⚠ %s[/color]" % (w as Dictionary).get("text", "")
+	if selected.has("table_note"):
+		warn += "
+[color=#e0b050]Table: %s[/color]" % selected["table_note"]
+	_ask("%s?%s" % [selected.get("name", ""), warn], action)
 
 
 func _ask(text: String, action: Dictionary) -> void:

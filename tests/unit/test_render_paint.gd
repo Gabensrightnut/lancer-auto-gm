@@ -71,3 +71,15 @@ func test_preview_control_builds_the_loadout() -> void:
 	expect(pv.get_paint().is_empty(), "reset clears to factory")
 	expect(pv.presets().size() > 5, "factory plus data presets")
 	pv.free()
+
+
+func test_merged_parts_keep_their_paint() -> void:
+	for frame_id: String in ["mf_lancaster", "mf_standard_pattern_i_everest"]:
+		var m := _model(frame_id)
+		var unpainted := 0
+		for mi: MeshInstance3D in m.find_children("Merged", "MeshInstance3D", true, false):
+			for s in range(mi.mesh.get_surface_count()):
+				if mi.mesh.surface_get_material(s) == null and mi.get_surface_override_material(s) == null:
+					unpainted += 1
+		expect_eq(unpainted, 0, "%s: every merged surface keeps its material" % frame_id)
+		m.free()

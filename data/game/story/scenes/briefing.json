@@ -12,6 +12,32 @@
     {
      "if": [
       {
+       "var": "identity"
+      },
+      {
+       "not": {
+        "flag": "identity_told"
+       }
+      }
+     ],
+     "next": "identity"
+    },
+    {
+     "if": [
+      {
+       "var": "legacy_line"
+      },
+      {
+       "not": {
+        "flag": "legacy_told"
+       }
+      }
+     ],
+     "next": "legacy"
+    },
+    {
+     "if": [
+      {
        "var": "downtime_recap"
       },
       {
@@ -56,6 +82,29 @@
    "effects": [
     {
      "set_flag": "recap_told:{operation}"
+    }
+   ],
+   "next": "open"
+  },
+  "legacy": {
+   "speaker": "narrator",
+   "line": "{legacy_line}",
+   "effects": [
+    {
+     "set_flag": "legacy_told"
+    }
+   ],
+   "next": "open"
+  },
+  "identity": {
+   "speaker": "narrator",
+   "line": [
+    "{identity}. This is where your story starts.",
+    "Who you are: {identity}. Your first job is waiting."
+   ],
+   "effects": [
+    {
+     "set_flag": "identity_told"
     }
    ],
    "next": "open"

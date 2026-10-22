@@ -12,7 +12,8 @@ extends RefCounted
 ## `blocked` cells (deployment zones, objectives) are kept low, open and safe.
 
 ## Landscapes the generator can build, with their weight when picked at random.
-const LANDSCAPES := {"grassy_hills": 4, "desert_mesas": 2, "tundra": 2, "volcanic": 1, "alien_wilds": 1, "crystal_fields": 1, "toxic_marsh": 1, "city": 3}
+const LANDSCAPES := {"grassy_hills": 4, "desert_mesas": 2, "tundra": 2, "volcanic": 1, "alien_wilds": 1, "crystal_fields": 1,
+	"toxic_marsh": 1, "city": 3, "station": 1, "starship": 1, "moon": 1, "asteroid": 1, "ocean": 1, "jungle": 2}
 ## Cultures that fit each landscape ("" = wilderness, no settlement).
 const CULTURES := {
 	"grassy_hills": ["", "", "medieval", "old_west", "east_asian", "union", "retro"],
@@ -22,6 +23,12 @@ const CULTURES := {
 	"alien_wilds": ["", ""],
 	"crystal_fields": ["", ""],
 	"toxic_marsh": ["", ""],
+	"station": [""],
+	"starship": [""],
+	"moon": ["", "", "union", "retro"],
+	"asteroid": [""],
+	"ocean": ["", "east_asian", "retro", "union"],
+	"jungle": ["", "", "east_asian", "medieval"],
 	"city": ["ruins", "cyberpunk", "burning", "union", "retro", "east_asian", "medieval", "old_west"],
 }
 
@@ -58,6 +65,26 @@ static func describe(landscape: String, culture: String) -> String:
 	return cult if landscape == "city" else "%s, %s" % [land, cult]
 
 
+## Weather that suits each landscape ("" = clear), picked with the world RNG. Look only:
+## any rules effect comes from an environment the mission sets (see weather.json).
+const WEATHER := {
+	"grassy_hills": ["", "", "", "rain", "storm", "mist"], "desert_mesas": ["", "", "", "sandstorm"],
+	"tundra": ["", "snow", "snow", "blizzard"], "volcanic": ["ashfall", "ashfall", ""], "alien_wilds": ["", "spores", "storm"],
+	"crystal_fields": ["", "", "sandstorm"], "toxic_marsh": ["spores", "mist", "storm"], "city": ["", "", "rain", "storm", "mist"],
+	"station": [""], "starship": [""], "moon": [""], "asteroid": [""], "ocean": ["", "", "rain", "storm"],
+	"jungle": ["", "rain", "rain", "mist", "storm"],
+}
+
+
+static func pick_weather(rng: RandomNumberGenerator, landscape: String, culture: String = "") -> String:
+	var options: Array = WEATHER.get(landscape, [""])
+	if culture == "burning":
+		return "ashfall"
+	if culture == "cyberpunk":
+		options = ["rain", "rain", "storm"]
+	return str(options[rng.randi_range(0, options.size() - 1)])
+
+
 ## Kit name for the renderer ("landscape" or "landscape/culture").
 static func kit(landscape: String, culture: String) -> String:
 	return landscape if culture == "" else "%s/%s" % [landscape, culture]
@@ -86,6 +113,18 @@ static func generate(rng: RandomNumberGenerator, w: int, h: int, shape: GridLayo
 			g._alien(2.5, 0.4)
 		"city":
 			g._city(culture)
+		"station":
+			g._station(6)
+		"starship":
+			g._station(4)
+		"moon":
+			g._moon(false)
+		"asteroid":
+			g._moon(true)
+		"ocean":
+			g._ocean()
+		"jungle":
+			g._jungle()
 		_:
 			g._hills()
 	if landscape != "city" and culture != "":
@@ -397,6 +436,222 @@ func _plaza(c0: int, r0: int, block: int) -> void:
 				var col := map.column(cell)
 				col.ground = 1
 				_tag(col, ["wall"])  # monument plinths, planters
+
+
+# --- Space, moons, sea and jungle ------------------------------------------------------
+
+## Station or ship interior: the deck split into rooms by bulkheads (3 levels: full-height
+## walls, hard cover and line-of-sight blockers) with doorways; rooms are cargo bays
+## (containers), machinery rooms, hangars (open) or plain. Some bulkhead runs are
+## destructible. `min_room` is the smallest room side (ships have tighter rooms).
+func _station(min_room: int) -> void:
+	_fill(func(_c: int, _r: int) -> int: return 0)
+	var rooms: Array[Rect2i] = []
+	_split(Rect2i(0, 0, w, h), min_room, rooms, 0)
+	for room in rooms:
+		var kind := rng.randf()
+		var inner := room.grow(-1)
+		if inner.size.x < 2 or inner.size.y < 2:
+			continue
+		if kind < 0.35:
+			# Cargo bay: rows of shipping containers, 1-2 stacked, with aisles.
+			for r in range(inner.position.y, inner.end.y, 3):
+				for c in range(inner.position.x, inner.end.x - 1, 3):
+					if rng.randf() < 0.65:
+						var high := 1 if rng.randf() < 0.6 else 2
+						for k in range(2):
+							_raise(_cell(c + k, r), high, ["container"])
+		elif kind < 0.55:
+			# Machinery: a few big blocks (reactors, pumps) with leaking coolant (dangerous).
+			for i in range(maxi(1, inner.get_area() / 25)):
+				var at := Vector2i(rng.randi_range(inner.position.x, inner.end.x - 2), rng.randi_range(inner.position.y, inner.end.y - 2))
+				var size := rng.randi_range(1, 2)
+				for dr in range(size):
+					for dc in range(size):
+						_raise(_cell(at.x + dc, at.y + dr), 2, ["machinery"])
+				if rng.randf() < 0.4:
+					var leak := _cell(at.x + size, at.y)
+					if _free(leak):
+						_tag(map.column(leak), [BattleMap.TAG_DANGEROUS, "dangerous_energy"])
+		elif kind < 0.7:
+			# Debris and loose cargo: difficult ground.
+			for i in range(maxi(1, inner.get_area() / 20)):
+				var at := _cell(rng.randi_range(inner.position.x, inner.end.x - 1), rng.randi_range(inner.position.y, inner.end.y - 1))
+				for cell in _blob(at, rng.randi_range(2, 4)):
+					if _free(cell):
+						_tag(map.column(cell), [BattleMap.TAG_DIFFICULT, "rubble"])
+		# else: hangar or plain room, left open.
+
+
+## Binary space partition into rooms; walls are drawn on each split line with doorways.
+func _split(r: Rect2i, min_room: int, rooms: Array[Rect2i], depth: int) -> void:
+	var can_x := r.size.x >= min_room * 2 + 1
+	var can_y := r.size.y >= min_room * 2 + 1
+	if (not can_x and not can_y) or (depth > 1 and rng.randf() < 0.15) or depth > 6:
+		rooms.append(r)
+		return
+	var vertical := can_x and (not can_y or r.size.x > r.size.y or (r.size.x == r.size.y and rng.randf() < 0.5))
+	var destructible := rng.randf() < 0.3
+	if vertical:
+		var x := rng.randi_range(r.position.x + min_room, r.end.x - min_room - 1)
+		_wall_line(Vector2i(x, r.position.y), Vector2i(0, 1), r.size.y, destructible)
+		_split(Rect2i(r.position.x, r.position.y, x - r.position.x, r.size.y), min_room, rooms, depth + 1)
+		_split(Rect2i(x + 1, r.position.y, r.end.x - x - 1, r.size.y), min_room, rooms, depth + 1)
+	else:
+		var y := rng.randi_range(r.position.y + min_room, r.end.y - min_room - 1)
+		_wall_line(Vector2i(r.position.x, y), Vector2i(1, 0), r.size.x, destructible)
+		_split(Rect2i(r.position.x, r.position.y, r.size.x, y - r.position.y), min_room, rooms, depth + 1)
+		_split(Rect2i(r.position.x, y + 1, r.size.x, r.end.y - y - 1), min_room, rooms, depth + 1)
+
+
+## A bulkhead along `n` cells from `start` (map col/row), with 1-2 doorways 2-3 wide.
+func _wall_line(start: Vector2i, step: Vector2i, n: int, destructible: bool) -> void:
+	var doors: Array[int] = []
+	for i in range(1 if n < 12 else 2):
+		doors.append(rng.randi_range(1, maxi(1, n - 4)))
+	var width := rng.randi_range(2, 3)
+	for i in range(n):
+		var open := false
+		for dpos in doors:
+			if i >= dpos and i < dpos + width:
+				open = true
+		if open:
+			continue
+		var p := start + step * i
+		var cell := _cell(p.x, p.y)
+		if not map.has_cell(cell) or blocked.has(cell):
+			continue
+		var col := map.column(cell)
+		col.ground = 3
+		col.tags = PackedStringArray(["bulkhead", BattleMap.TAG_DESTRUCTIBLE] if destructible else ["bulkhead"])
+
+
+## Raises a free cell by `levels` with tags (no-op on blocked or used cells).
+func _raise(cell: Vector2i, levels: int, tags: Array) -> void:
+	if not _free(cell):
+		return
+	var col := map.column(cell)
+	col.ground += levels
+	_tag(col, tags)
+
+
+## Airless moon or asteroid: grey plains pocked with craters (raised rims, 1-2 levels:
+## cover), boulders, loose scree (difficult). Asteroids are rougher, with rock spires and
+## crevasses (impassable). Low gravity is look only here; its rules come from environments.
+func _moon(asteroid: bool) -> void:
+	var noise := _noise(rng.randf_range(0.04, 0.07))
+	_fill(func(c: int, r: int) -> int: return clampi(int(floor((noise.get_noise_2d(c, r) + (0.2 if asteroid else 0.0)) * 2.0)), 0, 2 if asteroid else 1))
+	var area := w * h
+	for i in range(maxi(2, area / (160 if asteroid else 120))):
+		var center := map.grid.to_world(_random_cell())
+		var radius := rng.randf_range(2.5, 5.5)
+		for cell in cells:
+			if blocked.has(cell):
+				continue
+			var dist := map.grid.to_world(cell).distance_to(center)
+			var col := map.column(cell)
+			if dist < radius - 0.8:
+				col.ground = 0
+			elif dist < radius + 0.6:
+				col.ground = mini(col.ground + (2 if radius > 4.0 else 1), 3)
+				_tag(col, ["rock"])
+	_patches(area / 70, Vector2i(1, 2), ["rock"], 1)
+	_patches(area / 90, Vector2i(3, 7), [BattleMap.TAG_DIFFICULT], 0, true)
+	if asteroid:
+		for i in range(area / 200):
+			var at := _random_cell()
+			if _free(at):
+				var col := map.column(at)
+				col.ground = mini(col.ground + rng.randi_range(3, 5), 7)
+				_tag(col, ["rock", BattleMap.TAG_IMPASSABLE])
+		for i in range(maxi(1, area / 500)):
+			for cell in _blob(_random_cell(), rng.randi_range(3, 6)):
+				if _free(cell):
+					var col := map.column(cell)
+					col.ground = 0
+					_tag(col, [BattleMap.TAG_IMPASSABLE, "chasm"])
+
+
+## Open sea (shallow water: difficult) with sandy islands (palms: soft cover) and steel
+## platforms on pylons (2 levels up) joined by walkways you can pass under, carrying
+## containers and machinery (hard cover).
+func _ocean() -> void:
+	_fill(func(_c: int, _r: int) -> int: return 0)
+	for cell in cells:
+		if not blocked.has(cell):
+			_tag(map.column(cell), [BattleMap.TAG_DIFFICULT, "water"])
+	var area := w * h
+	var noise := _noise(0.09)
+	for cell in cells:
+		if blocked.has(cell):
+			continue
+		var p := map.grid.to_world(cell)
+		if noise.get_noise_2d(p.x, p.z) > 0.35:
+			var col := map.column(cell)
+			col.ground = 1
+			col.tags = PackedStringArray()
+	for cell in cells:
+		var col := map.column(cell)
+		if col.ground == 1 and col.tags.is_empty() and rng.randf() < 0.25:
+			_tag(col, [Sight.TAG_SOFT_COVER, BattleMap.TAG_DIFFICULT, "woods"])
+	var platforms: Array[Vector2i] = []
+	for i in range(maxi(2, area / 180)):
+		var c0 := rng.randi_range(2, w - 8)
+		var r0 := rng.randi_range(5, h - 10)
+		var pw := rng.randi_range(4, 7)
+		var ph := rng.randi_range(3, 5)
+		for r in range(r0, r0 + ph):
+			for c in range(c0, c0 + pw):
+				var cell := _cell(c, r)
+				if not map.has_cell(cell) or blocked.has(cell):
+					continue
+				var col := map.column(cell)
+				col.ground = 2
+				col.tags = PackedStringArray(["platform"])
+		platforms.append(Vector2i(c0 + pw / 2, r0 + ph / 2))
+		# Deck cargo.
+		for k in range(rng.randi_range(1, 3)):
+			var at := _cell(rng.randi_range(c0, c0 + pw - 1), rng.randi_range(r0, r0 + ph - 1))
+			if map.has_cell(at) and map.column(at).has_tag("platform") and not blocked.has(at):
+				var col := map.column(at)
+				col.ground += 1
+				col.tags = PackedStringArray(["container" if rng.randf() < 0.6 else "machinery"])
+	# Walkways between neighboring platforms: 2 levels up with open water underneath.
+	for i in range(platforms.size() - 1):
+		var a := platforms[i]
+		var b := platforms[i + 1]
+		var steps := maxi(absi(b.x - a.x), absi(b.y - a.y))
+		for k in range(steps + 1):
+			var t := float(k) / maxf(1.0, steps)
+			var p := Vector2i(int(round(lerpf(a.x, b.x, t))), int(round(lerpf(a.y, b.y, t))))
+			var cell := _cell(p.x, p.y)
+			if not map.has_cell(cell) or blocked.has(cell):
+				continue
+			var col := map.column(cell)
+			if col.ground == 0:
+				col.ground = 2
+				col.gap_bottom = 0
+				col.gap_top = 2
+				col.tags = PackedStringArray(["platform"])
+
+
+## Dense jungle: rolling ground, a river, and woods nearly everywhere (soft cover, difficult),
+## with clearings, rocky outcrops and mud.
+func _jungle() -> void:
+	var noise := _noise(rng.randf_range(0.04, 0.06))
+	_fill(func(c: int, r: int) -> int: return clampi(int(floor((noise.get_noise_2d(c, r) + 0.35) * 2.2)), 0, 3))
+	if rng.randf() < 0.8:
+		_river()
+	var area := w * h
+	var woods := _noise(0.12)
+	for cell in cells:
+		if blocked.has(cell) or not map.column(cell).tags.is_empty():
+			continue
+		var p := map.grid.to_world(cell)
+		if woods.get_noise_2d(p.x, p.z) > -0.15:
+			_tag(map.column(cell), [Sight.TAG_SOFT_COVER, BattleMap.TAG_DIFFICULT, "woods"])
+	_patches(area / 90, Vector2i(1, 3), ["rock"], 2)
+	_patches(area / 160, Vector2i(2, 5), [BattleMap.TAG_DIFFICULT])
 
 
 # --- Settlements -------------------------------------------------------------------------

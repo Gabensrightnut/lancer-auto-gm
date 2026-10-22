@@ -54,6 +54,8 @@ static func build(t: TerrainRenderer, root: Node3D, b: Rect2, height_fn: Callabl
 				_white_towers(node, arch)
 			"space_elevator":
 				_space_elevator(node)
+			"rig":
+				_rig(node)
 
 
 static func _mat(color: Color, metal: float = 0.1, rough: float = 0.8, emit: Color = Color.BLACK) -> Material:
@@ -268,6 +270,45 @@ static func _white_towers(n: Node3D, arch: Dictionary) -> void:
 		MeshKit.part(n, SmoothKit.loft([{"y": 0.0, "w": r * 2.45, "d": r * 0.6, "n": 2.0}, {"y": h * 0.85, "w": r * 1.4, "d": r * 0.4, "n": 2.0}], 12), glass, p + Vector3(0, h * 0.05, 0))
 		for k in range(4):
 			_cyl(n, r * (1.15 - k * 0.12), 0.25, p + Vector3.UP * h * (0.3 + 0.15 * k), glow)
+
+
+## An offshore platform on legs with a derrick tower, cranes and a gas flare.
+static func _rig(n: Node3D) -> void:
+	var steel := _mat(Color(0.45, 0.47, 0.5), 0.7, 0.45)
+	var red := _mat(Color(0.7, 0.2, 0.12), 0.3, 0.6)
+	var yellow := _mat(Color(0.85, 0.65, 0.15), 0.3, 0.6)
+	for sx: float in [-1.0, 1.0]:
+		for sz: float in [-1.0, 1.0]:
+			_cyl(n, 1.0, 14.0, Vector3(sx * 7.0, -6.0, sz * 6.0), steel)
+	_box(n, Vector3(20, 2.0, 17), Vector3(0, 9.0, 0), steel)
+	_box(n, Vector3(10, 4.0, 8), Vector3(-4, 12.0, -3), red)
+	for k in range(6):
+		var y := 10.0 + k * 3.0
+		var wdt := 4.0 - k * 0.5
+		for s2: float in [-1.0, 1.0]:
+			_box(n, Vector3(0.3, 3.2, 0.3), Vector3(5 + s2 * wdt * 0.5, y + 1.6, 3 + s2 * wdt * 0.5), steel, Vector3(0, 0, s2 * 6))
+	_cyl(n, 0.25, 4.0, Vector3(5, 28, 3), steel, 0.05)
+	_box(n, Vector3(14, 0.6, 0.6), Vector3(-2, 15, 6), yellow, Vector3(0, 30, 18))
+	var flare := Node3D.new()
+	flare.position = Vector3(10, 18, -8)
+	n.add_child(flare)
+	_box(flare, Vector3(0.4, 10, 0.4), Vector3(0, -5, 0), steel, Vector3(0, 0, -30))
+	var fire := CPUParticles3D.new()
+	fire.amount = 40
+	fire.lifetime = 1.2
+	fire.direction = Vector3.UP
+	fire.spread = 12.0
+	fire.initial_velocity_min = 3.0
+	fire.initial_velocity_max = 5.0
+	fire.scale_amount_min = 3.0
+	fire.scale_amount_max = 5.0
+	fire.position = Vector3(2.5, 4, 0)
+	var q := QuadMesh.new()
+	q.size = Vector2(1.0, 1.4)
+	q.material = WorldHazards._quad_material(Color(1.6, 1.2, 0.9), true)
+	fire.mesh = q
+	fire.color_ramp = WorldHazards._ramp([[0.0, Color(1, 0.9, 0.5, 0.0)], [0.2, Color(1, 0.6, 0.2, 0.9)], [1.0, Color(0.6, 0.15, 0.0, 0.0)]])
+	flare.add_child(fire)
 
 
 ## A tether climbing out of sight from a far base, with a station ring partway up and a

@@ -16,6 +16,10 @@ extends RefCounted
 ##   level_up {}                                     level_picks {pilot, trigger, mech_skill}
 ##   start_downtime {long}                           downtime_action {pilot, action, ...action params}
 ##   downtime_choose {picks: [option ids]}           end_downtime {}
+##   set_bondmate {pilot, mate}                      end_campaign {}  (retire the squad)
+##   session_zero {identity, patron, history: [{question, a, b}], tone, focus, content_off: []}
+##   battle_events {events: [battle events]}  (host, each batch: the enemy commander may offer terms)
+##   parley {}                                        the squad calls on the enemy commander to stand down
 ## "seat" "gm" (the host / procedural GM) may act for anyone.
 
 const REF_FLOW := "Core p.40: the structure of play"
@@ -36,9 +40,10 @@ func submit(story: StoryState, campaign: Campaign, action: Dictionary) -> Dictio
 	var events := _resolve(story, campaign, action)
 	events.append_array(_run_ai(story, campaign))
 	Squadmate.observe(story, campaign, events)
+	events.append_array(Bonds.observe(story, campaign, events))
 	# AI squadmates talk it over after the debrief, and a little when downtime starts.
 	if events.any(func(x: Dictionary) -> bool: return str(x.get("type", "")) == "debrief"):
-		events.append_array(Squadmate.banter(story, campaign, 2))
+		events.append_array(Squadmate.banter(story, campaign, int(campaign.options.get("banter_lines", 2))))
 	elif events.any(func(x: Dictionary) -> bool: return str(x.get("type", "")) == "downtime_started"):
 		events.append_array(Squadmate.banter(story, campaign, 1))
 	events.append_array(Tutorial.observe_story(story, campaign, events))
@@ -186,6 +191,30 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 			var r := Downtime.choice_refusal(story, p.get("picks", []), pid)
 			if not r.is_empty():
 				return r
+		"set_bondmate":
+			if not _controls(story, seat, str(p.get("pilot", ""))):
+				return _no("That isn't your pilot.")
+			var why := Bonds.bondmate_refusal(story, campaign, str(p.get("pilot", "")), str(p.get("mate", "")))
+			if why != "":
+				return _no(why, Bonds.REF_BONDED)
+		"session_zero":
+			if seat != "gm":
+				return _no("The table sets this up together; the host enters it.")
+			var why := SessionZero.refusal(story, campaign, p)
+			if why != "":
+				return _no(why, "Core p.40-41")
+		"battle_events":
+			if seat != "gm":
+				return _no("The host reports the battle.")
+		"parley":
+			var why := Rivals.parley_refusal(story, seat)
+			if why != "":
+				return _no(why, Rivals.REF_EARLY)
+		"end_campaign":
+			if seat != "gm":
+				return _no("The host decides when the campaign ends.")
+			if story.phase not in ["downtime", "briefing"]:
+				return _no("A campaign can end between missions: in downtime or at a briefing.")
 		"end_downtime":
 			if story.phase != "downtime":
 				return _no("Not in downtime.")
@@ -208,6 +237,10 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 			if persona == "":
 				persona = Squadmate.suggest(campaign.pilots[str(p["pilot"])])
 			story.seats[str(p.get("seat", seat))] = {"pilot": str(p["pilot"]), "ai": bool(p.get("ai", false)), "persona": persona}
+			# Every pilot who can speak has a full portrait (kept on the pilot record for the builder).
+			var pilot_rec: Dictionary = campaign.pilots[str(p["pilot"])]
+			if not pilot_rec.get("portrait") is Dictionary or int((pilot_rec["portrait"] as Dictionary).get("version", 1)) < 2:
+				pilot_rec["portrait"] = PortraitSpec.for_pilot(pilot_rec)
 			return [{"type": "seat_set", "seat": p.get("seat", seat), "pilot": p["pilot"], "ai": bool(p.get("ai", false))}]
 		"enter_hub":
 			var events: Array = []
@@ -312,6 +345,19 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 			return Downtime.perform(story, campaign, pid, str(p["action"]), p)
 		"downtime_choose":
 			return Downtime.choose(story, campaign, p.get("picks", []), _choice_pilot(story, seat, p))
+		"set_bondmate":
+			var bp: Dictionary = campaign.pilots[str(p["pilot"])]
+			bp["bondmate"] = str(p["mate"])
+			bp["bondmate_label"] = str(Bonds.get_bond(story, str(p["pilot"]), str(p["mate"]))["label"])
+			return [{"type": "bondmate_set", "pilot": p["pilot"], "mate": p["mate"], "rule_ref": Bonds.REF_BONDED}]
+		"end_campaign":
+			return Ending.conclude(story, campaign, "")
+		"session_zero":
+			return SessionZero.apply(story, campaign, p)
+		"battle_events":
+			return Rivals.observe(story, campaign, p.get("events", []))
+		"parley":
+			return Rivals.demand(story, campaign, seat)
 		"end_downtime":
 			story.phase = "briefing"
 			var recap: Array = (story.downtime.get("log", []) as Array).duplicate(true)
@@ -405,6 +451,16 @@ func _finish_mission(story: StoryState, campaign: Campaign, p: Dictionary) -> Ar
 			events.append_array(StoryEffects.apply({"standing": "$npc.faction", "add": 1}, story, campaign, dctx))
 		events.append({"type": "deal_" + ("kept" if won else "off"), "npc": npc_id, "reward": deal["reward"], "rule_ref": "Core p.40-43: reserves"})
 	events.append_array(StoryArc.advance(story, campaign, hook, won))
+	# What became of the enemy commander (Rivals).
+	events.append_array(Rivals.after_mission(story, outcome, hook))
+	# The GM's bond rewards were for this mission only (Core p.50).
+	story.flags.erase(Bonds.REWARDS)
+	# Has the campaign told its story? It ends after the level up (or now, if nobody's left).
+	var why := Ending.due(story, campaign)
+	if why == "fallen":
+		events.append_array(Ending.conclude(story, campaign, why))
+	elif why != "":
+		story.flags["_ending_due"] = why
 	story.last_mission = {"number": story.mission_number, "outcome": outcome, "reason": str(p.get("reason", "")), "hook": hook.get("short_title", hook.get("title", "")),
 		"place": hook.get("place", ""), "patron": hook.get("patron", ""), "enemy": hook.get("enemy", ""), "summary": (p.get("summary", {}) as Dictionary).duplicate(true),
 		"twist": hook.get("twist", {}).get("reveal", "")}
@@ -442,6 +498,10 @@ func _level_up(story: StoryState, campaign: Campaign) -> Array:
 		if seat != "" and story.is_ai(seat):
 			events.append_array(_ai_level_picks(campaign, pid, picks))
 	story.phase = "level_up"
+	if story.flags.has("_ending_due"):
+		var why := str(story.flags["_ending_due"])
+		story.flags.erase("_ending_due")
+		events.append_array(Ending.conclude(story, campaign, why))
 	return events
 
 

@@ -55,6 +55,9 @@ func test_tutorial_from_menu_to_debrief() -> void:
 	expect(store.has_mission(c.id))
 	expect(s.mission.flavor.get("hook", {}).get("tutorial", false), "the battle is the tutorial's drill")
 	expect(s.host.is_ai_seat("p2") and not s.host.is_ai_seat("p1"), "you fly p1, the AI flies your squadmate")
+	var mate_orders: Dictionary = s.director.orders.get("p2", {})
+	expect(str(mate_orders.get("stance", "")) != "", "the AI squadmate fights to its character (Squadmate.orders): %s" % str(s.director.orders))
+	expect(not s.director.orders.has("p1"), "no orders for your own mech")
 	for u: Unit in s.host.state.units_on_side(Mission.ENEMIES):
 		expect_eq(u.content_id, "training_drone", "training targets only")
 
@@ -118,4 +121,51 @@ func test_story_mission_twist_reaches_the_screen() -> void:
 	expect_eq(seen.size(), 1, "the player's screen got the twist once")
 	if not seen.is_empty():
 		expect_eq(seen[0]["twist"]["reveal"], "New orders: take the target intact.")
+	preload("res://tests/unit/test_campaign_saves.gd")._remove(store.dir)
+
+
+func test_story_campaign_retire_and_sequel() -> void:
+	_store()
+	var db := MissionTest.db()
+	GameFlow.story = null
+	var c := GameFlow.start_story_campaign(store, db, "Long Road", 3, 0, "Standard", 2)
+	expect(GameFlow.is_story(c))
+	expect_eq(int(c.options["campaign_arcs"]), 2, "campaign length saved in the campaign's options")
+	var story := GameFlow.story
+	expect_eq(story.seats.size(), 3)
+	expect(not story.is_ai("p1") and story.is_ai("p2") and story.is_ai("p3"), "you fly p1; AI squadmates in the rest")
+	expect(str(story.seats["p2"].get("persona", "")) != "", "AI squadmates get a persona")
+	expect(not GameFlow.story_events.is_empty(), "the hub has events to show when it opens")
+	expect(GameFlow.session_zero_pending(c), "session zero comes first")
+	expect(story.hooks.is_empty(), "no jobs until session zero is done (its choices shape them)")
+	var sz := GameFlow.story_engine.submit(story, c, {"type": "session_zero", "seat": "gm", "params": {"tone": "heroic", "focus": "balanced", "content_off": []}})
+	expect(sz["ok"], str(sz.get("reason", "")))
+	var board := GameFlow.finish_session_zero(c, store)
+	expect(not GameFlow.session_zero_pending(c))
+	expect(board.any(func(e: Dictionary) -> bool: return e.get("type", "") == "hook_added"), "the first jobs go on the board")
+	expect(not story.hooks.is_empty(), "jobs on the board at the first hub")
+	expect(not GameFlow.session_zero_pending(store.load_campaign(c.id)["campaign"]), "saved as done")
+	expect(not GameFlow.session_zero_pending(GameFlow.start_tutorial(store, db)), "the tutorial has no session zero")
+	GameFlow.open_story(c, db)
+	story = GameFlow.story
+	expect_eq(store.load_campaign(c.id)["error"], "", "saved")
+	# Retire the squad: allowed between missions, then the epilogue.
+	expect_eq(GameFlow.retire_refusal(c), {}, "retiring is allowed at a briefing")
+	var r := GameFlow.story_engine.submit(story, c, {"type": "end_campaign", "seat": "gm", "params": {}})
+	expect(r["ok"], str(r.get("reason", "")))
+	expect(r["events"].any(func(e: Dictionary) -> bool: return e.get("type", "") == "campaign_ended"), "the epilogue's data")
+	expect_eq(story.phase, "ending")
+	expect(not GameFlow.retire_refusal(c).is_empty(), "can't retire twice")
+	# A new campaign with the same pilots.
+	var old_pilots := c.pilots.keys()
+	old_pilots.sort()
+	var c2 := GameFlow.start_sequel(c, store, db)
+	expect(c2.id != c.id)
+	var new_pilots := c2.pilots.keys()
+	new_pilots.sort()
+	expect_eq(new_pilots, old_pilots, "the same pilots")
+	expect(GameFlow.is_story(c2) and int(c2.options["campaign_arcs"]) == 2, "same options")
+	expect(GameFlow.story != story and GameFlow.story.phase != "ending", "a fresh story")
+	expect_eq(StoryState.of(store.load_campaign(c.id)["campaign"]).phase, "ending", "the old campaign is saved with its ending")
+	expect_eq(store.load_campaign(c2.id)["error"], "", "the sequel is saved")
 	preload("res://tests/unit/test_campaign_saves.gd")._remove(store.dir)

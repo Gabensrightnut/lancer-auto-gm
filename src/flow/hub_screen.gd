@@ -3,14 +3,22 @@ extends Node
 ## walk around, briefing, job board, debrief, level up, downtime) inside the game flow. When
 ## the squad puts boots on the ground the job becomes a battle (GameFlow.start_story_mission);
 ## after it the hub opens again with the debrief. The campaign is saved after every story
-## step. A Menu button (bottom left) opens the pilot builder (talent and license picks after
-## leveling up), invites friends online, settings and Save and quit.
+## step. The Menu (button bottom left, or Esc) opens the pilot builder (talent and license
+## picks after leveling up), invites friends online, retires the squad (ends the campaign),
+## settings and Save and quit. When the campaign ends the story's EpilogueScreen shows; from it
+## the same pilots can start a new campaign (GameFlow.start_sequel) or go back to the menu.
 ##
 ## Online: the host's hub UI talks to a StoryHostEngine (every action goes through the
 ## StorySession, so friends see it); a friend's hub UI talks to their StoryClient and shows
-## its mirror of the host's story, and follows the host into each battle.
+## its mirror of the host's story, and follows the host into each battle. Where everyone's
+## pilot is walking is shared too (cosmetic, not game state): each screen sends its own pilot's
+## spot a few times a second ({"hub_pos": [x, z, facing]}), the host passes them on to everyone,
+## and other players' pilots glide to where their player has them.
 
 const HUB_SCENE := "res://scenes/explore/hub.tscn"
+const SESSION_ZERO_SCENE := "res://scenes/story/session_zero.tscn"
+## Seconds between position updates sent.
+const SEND_EVERY := 0.15
 
 var campaign: Campaign
 var hub: HubScene
@@ -20,6 +28,10 @@ var room_label: Label
 var story_client: StoryClient
 var client: NetClient
 var _seat := "p1"
+var _send_left := 0.0
+var _last_sent: Array = []
+## seat -> [Vector3, facing] where other players' pilots are heading.
+var _targets: Dictionary = {}
 
 
 func _ready() -> void:
@@ -34,7 +46,10 @@ func _ready() -> void:
 		# Opened on its own (screenshots, development): the tutorial's opening, saved apart
 		# from the player's campaigns.
 		MenuSession.store = SaveStore.new("user://example_saves")
-		campaign = GameFlow.start_tutorial(MenuSession.store, db)
+		if "stage:session_zero" in OS.get_cmdline_user_args():
+			campaign = GameFlow.start_story_campaign(MenuSession.store, db, "Example", 3, 0, "Standard")
+		else:
+			campaign = GameFlow.start_tutorial(MenuSession.store, db)
 		MenuSession.campaign = campaign
 	GameFlow.open_story(campaign, db)
 	_seat = _my_seat()
@@ -45,6 +60,7 @@ func _ready() -> void:
 	hub.setup(StoryHostEngine.new(db, session), GameFlow.story, campaign, db, _seat)
 	hub.mission_requested.connect(_on_mission_requested)
 	hub.story_events.connect(_on_story_events)
+	_hook_epilogue()
 	var pending := GameFlow.story_events
 	GameFlow.story_events = []
 	if not pending.is_empty():
@@ -52,10 +68,104 @@ func _ready() -> void:
 	if GameFlow.story_host != null:
 		session.resync()
 		_show_room(GameFlow.story_host.room_code)
+		_listen_as_host()
+	_show_ending_if_over()
+	# Screenshot staging: the menu (stage:menu) or the squad retired (stage:retire).
+	if "stage:menu" in OS.get_cmdline_user_args():
+		_open_menu.call_deferred()
+	elif "stage:retire" in OS.get_cmdline_user_args():
+		_retire.call_deferred()
+	if GameFlow.session_zero_pending(campaign) and not "stage:menu" in OS.get_cmdline_user_args():
+		_show_session_zero()
 
 
-func _on_story_events(_events: Array) -> void:
+## Before a new campaign's first briefing: who the squad is, who gives the orders, history
+## between the pilots, tone and content (the story's SessionZeroScreen, Core p.40-41).
+func _show_session_zero() -> void:
+	var sz := (load(SESSION_ZERO_SCENE) as PackedScene).instantiate() as SessionZeroScreen
+	var layer := CanvasLayer.new()
+	layer.layer = 8
+	add_child(layer)
+	layer.add_child(sz)
+	sz.bind(hub.engine, hub.story, campaign)
+	sz.done.connect(func(events: Array) -> void:
+		layer.queue_free()
+		hub._handle(events)
+		hub._handle(GameFlow.finish_session_zero(campaign, MenuSession.store, hub.engine)))
+
+
+func _on_story_events(events: Array) -> void:
 	GameFlow.save_story(campaign, MenuSession.store)
+	if events.any(func(e: Dictionary) -> bool: return str(e.get("type", "")) == "campaign_ended"):
+		hub.tutorial_panel.visible = false
+
+
+## The epilogue's buttons go through the flow: "New campaign with the same pilots" saves and
+## opens the sequel (the hub's own handler would leave it unsaved); "Main menu" leaves.
+func _hook_epilogue() -> void:
+	hub.menu_requested.connect(_on_menu_requested)
+	if hub.epilogue.sequel_requested.is_connected(hub._sequel):
+		hub.epilogue.sequel_requested.disconnect(hub._sequel)
+	hub.epilogue.sequel_requested.connect(_on_sequel)
+
+
+func _show_ending_if_over() -> void:
+	var ending: Dictionary = hub.story.flags.get(Ending.KEY, {})
+	if hub.story.phase == "ending" and not ending.is_empty():
+		hub.epilogue.show_ending(ending)
+		hub.tutorial_panel.visible = false
+
+
+func _on_menu_requested() -> void:
+	_leave("main")
+
+
+func _on_sequel() -> void:
+	if story_client != null:
+		hub.hud.toast("The host starts the next campaign. Join their new room when they invite you.", StoryStyle.BLUE)
+		return
+	var net := MenuSession.net(self)
+	if net != null and GameFlow.story_host != null:
+		net.leave()  # the new campaign gets its own room (Invite friends online again)
+	var c := GameFlow.start_sequel(campaign, MenuSession.store, MenuSession.content())
+	MenuSession.campaign = c
+	MenuSession.go(self, "hub")
+
+
+## Ends the campaign now (StoryEngine end_campaign): the epilogue follows.
+func _retire() -> void:
+	menu_layer.visible = false
+	var r := hub.engine.submit(hub.story, campaign, {"type": "end_campaign", "seat": "gm", "params": {}})
+	if not r.get("ok", false):
+		hub.hud.toast(str(r.get("reason", "")), StoryStyle.RED)
+		return
+	hub._handle(r.get("events", []))
+
+
+func _confirm_retire() -> void:
+	var dlg := ConfirmationDialog.new()
+	dlg.title = "Retire the squad?"
+	dlg.dialog_text = "This ends the campaign here. Every pilot gets an epilogue, and afterwards the same pilots can start a new campaign. The campaign can't be continued after this."
+	dlg.ok_button_text = "Retire the squad"
+	dlg.theme = MenuTheme.theme()
+	dlg.confirmed.connect(_retire)
+	dlg.visibility_changed.connect(func() -> void:
+		if not dlg.visible:
+			dlg.queue_free())
+	add_child(dlg)
+	dlg.popup_centered(Vector2i(620, 220))
+
+
+## Esc opens the menu when nothing in the hub is open (the hub closes its own panels first).
+func _input(ev: InputEvent) -> void:
+	if not (ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_ESCAPE) or hub == null:
+		return
+	if menu_layer.visible:
+		menu_layer.visible = false
+		get_viewport().set_input_as_handled()
+	elif not (hub.dialogue.visible or hub.downtime_screen.visible or hub.gear_panel.visible or hub.hud.board_open() or hub.epilogue.visible or hub.level_panel.visible):
+		_open_menu()
+		get_viewport().set_input_as_handled()
 
 
 ## The first seat played at this screen (AI squadmates and friends sit in the others).
@@ -99,10 +209,58 @@ func _ready_as_friend(db: ContentDB) -> void:
 	hub.setup(story_client, story_client.story, campaign, db, _seat)
 	story_client.mirror_changed.connect(_on_mirror)
 	story_client.refused.connect(_on_refused)
+	_hook_epilogue()
+	_show_ending_if_over()
 	if client != null:
 		client.lobby_updated.connect(_on_host_lobby)
 		client.connection_lost.connect(_on_connection_lost)
 	_show_room("")
+
+
+## The host's room: friends' walking positions come in through the lobby channel.
+func _listen_as_host() -> void:
+	if not GameFlow.story_host.lobby_message.is_connected(_on_friend_message):
+		GameFlow.story_host.lobby_message.connect(_on_friend_message)
+
+
+func _on_friend_message(seat: String, msg: Dictionary) -> void:
+	var at := HubScreenPositions.parse(msg.get("hub_pos"))
+	if at.is_empty() or seat == _seat:
+		return
+	_targets[seat] = at
+	GameFlow.story_host.send_lobby({"hub_pos": {seat: msg["hub_pos"]}})
+
+
+## Everyone's pilots on the host's screen and the friends' (the host passes each one on).
+func _process(delta: float) -> void:
+	if hub == null or hub.avatars.is_empty() or (story_client == null and GameFlow.story_host == null):
+		return
+	_send_left -= delta
+	if _send_left <= 0.0:
+		_send_left = SEND_EVERY
+		_send_position()
+	for seat: String in _targets:
+		var fig: PilotFigure = hub.avatars.get(seat)
+		if fig == null or seat == _seat:
+			continue
+		var goal: Array = _targets[seat]
+		var pos: Vector3 = fig.position.move_toward(goal[0], HubScene.WALK_SPEED * 1.4 * delta)
+		hub.set_avatar_position(seat, pos, lerp_angle(fig.rotation.y, float(goal[1]), 0.3))
+
+
+func _send_position() -> void:
+	var me: PilotFigure = hub.avatars.get(_seat)
+	if me == null:
+		return
+	var data := HubScreenPositions.pack(me.position, me.rotation.y)
+	if data == _last_sent:
+		return
+	_last_sent = data
+	if story_client != null:
+		if client != null:
+			client.transport.send(NetTransport.HOST_PEER, {"t": NetProtocol.LOBBY, "hub_pos": data})
+	else:
+		GameFlow.story_host.send_lobby({"hub_pos": {_seat: data}})
 
 
 ## A new view of the host's story: copied into the objects the hub's panels already hold.
@@ -113,6 +271,8 @@ func _on_mirror(s: StoryState, c: Campaign, events: Array) -> void:
 	if where != JSON.stringify([hub.story.hub.get("name", ""), hub.story.hub.get("seed", "")]):
 		hub.rebuild()
 	hub._handle(events)
+	if hub.story.phase == "ending":
+		hub.tutorial_panel.visible = false
 
 
 func _on_refused(reason: String, _rule_ref: String) -> void:
@@ -121,6 +281,12 @@ func _on_refused(reason: String, _rule_ref: String) -> void:
 
 ## The host started the battle: follow them in.
 func _on_host_lobby(data: Dictionary) -> void:
+	if data.get("hub_pos") is Dictionary:
+		for seat: String in data["hub_pos"]:
+			var at := HubScreenPositions.parse(data["hub_pos"][seat])
+			if not at.is_empty() and seat != _seat:
+				_targets[seat] = at
+		return
 	if data.get("started", false) and client != null:
 		GameFlow.session = BattleSession.for_client(client)
 		MenuSession.go(self, "battle")
@@ -210,6 +376,16 @@ func _open_menu() -> void:
 		btn.custom_minimum_size = Vector2(0, 50)
 		btn.pressed.connect(item[1])
 		b.add_child(btn)
+	if story_client == null and hub.story.phase != "ending":
+		var why := GameFlow.retire_refusal(campaign)
+		var retire := Button.new()
+		retire.text = "Retire the squad (end the campaign)"
+		retire.custom_minimum_size = Vector2(0, 50)
+		retire.add_theme_color_override("font_color", MenuTheme.WARN)
+		retire.disabled = not why.is_empty()
+		retire.tooltip_text = str(why.get("reason", "")) if not why.is_empty() else "End the campaign here: an epilogue for every pilot, then the same pilots can start a new campaign."
+		retire.pressed.connect(_confirm_retire)
+		b.add_child(retire)
 	center.add_child(p)
 	menu_layer.visible = true
 
@@ -224,6 +400,7 @@ func _host_online() -> void:
 	var host := GameFlow.host_story_online(campaign, MenuSession.content(), MenuSession.store, [_seat])
 	net.host = host
 	host.room_opened.connect(_show_room)
+	_listen_as_host()
 	host.open_failed.connect(func(why: String) -> void: room_label.text = why)
 	room_label.text = "Opening a room..."
 	net.open_online(host)

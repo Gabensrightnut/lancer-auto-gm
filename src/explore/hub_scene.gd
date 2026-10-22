@@ -12,6 +12,8 @@ extends Node3D
 signal story_events(events: Array)
 ## A scene started a fight or the squad took a job: build the mission (CampaignLoop).
 signal mission_requested(hook: Dictionary)
+## The campaign ended and the player wants the main menu.
+signal menu_requested
 
 const WALK_SPEED := 4.2
 ## The world/maps session's culture kits for hub towns (buildings, props, plaza, sky). Used
@@ -48,6 +50,8 @@ var hud: HubHud
 var level_panel: LevelUpPanel
 var gear_panel: PilotGearPanel
 var tutorial_panel: TutorialPanel
+var epilogue: EpilogueScreen
+var codex: CodexPanel
 
 
 func setup(e: StoryEngine, s: StoryState, c: Campaign, content: ContentDB, seat: String = "p1") -> void:
@@ -372,7 +376,7 @@ func _physics_process(delta: float) -> void:
 	var me: PilotFigure = avatars.get(local_seat)
 	if me == null:
 		return
-	var busy := dialogue.visible or downtime_screen.visible or hud.board_open() or level_panel.visible or gear_panel.visible
+	var busy := dialogue.visible or downtime_screen.visible or hud.board_open() or level_panel.visible or gear_panel.visible or codex.visible
 	var dir := Vector3.ZERO
 	if not busy:
 		var f := Vector3(-sin(_yaw), 0, -cos(_yaw))
@@ -540,10 +544,17 @@ func _unhandled_input(ev: InputEvent) -> void:
 					downtime_screen.visible = not downtime_screen.visible
 					downtime_screen.refresh()
 					hud.set_busy(downtime_screen.visible)
+			KEY_K:
+				if not dialogue.visible:
+					codex.visible = not codex.visible
+					if codex.visible:
+						codex.open()
+					hud.set_busy(codex.visible)
 			KEY_J:
 				if not dialogue.visible:
 					hud.toggle_board()
 			KEY_ESCAPE:
+				codex.visible = false
 				downtime_screen.visible = false
 				gear_panel.visible = false
 				hud.close_board()
@@ -592,9 +603,17 @@ func _build_ui() -> void:
 	level_panel.story_events.connect(_handle)
 	popup = StoryCheckPopup.new()
 	ui.add_child(popup)
+	codex = CodexPanel.new()
+	ui.add_child(codex)
+	epilogue = EpilogueScreen.new()
+	ui.add_child(epilogue)
+	epilogue.sequel_requested.connect(_sequel)
+	epilogue.menu_requested.connect(func() -> void: menu_requested.emit())
 	tutorial_panel = TutorialPanel.new()
 	ui.add_child(tutorial_panel)
 	tutorial_panel.bind(campaign)
+	tutorial_panel.codex_requested.connect(func(q: String) -> void: codex.open(q))
+	hud.codex_requested.connect(func() -> void: codex.open())
 
 
 func _center(c: Control) -> void:
@@ -634,6 +653,10 @@ func _handle(events: Array) -> void:
 				hud.toast("%s's kit: %s" % [who, ", ".join(PackedStringArray((e["gear"] as Array).map(func(g: Variant) -> String: return str(db.get_entry("pilot_gear", str(g)).get("name", g)))))], StoryStyle.DIM)
 			"banter":
 				hud.toast("%s: \"%s\"" % [who, e["text"]], StoryStyle.TEXT)
+			"bond_changed", "bond_reward":
+				hud.toast(str(e["text"]), StoryStyle.BLUE)
+			"campaign_ended":
+				epilogue.show_ending(e["ending"])
 			"pilot_rested":
 				hud.toast("%s rests: HP %d" % [who, int(e["hp"])], StoryStyle.GREEN)
 			"ai_chose":
@@ -665,6 +688,14 @@ func _handle(events: Array) -> void:
 	story_events.emit(events)
 
 
+## The same pilots in a new campaign, at a new hub.
+func _sequel() -> void:
+	var next := CampaignLoop.sequel(campaign, story, engine)
+	ui.queue_free()
+	setup(engine, next["story"], next["campaign"], db, local_seat)
+	_handle(next["events"])
+
+
 # --- Screenshots -------------------------------------------------------------------------
 
 ## godot --path . -s res://tools/screenshot.gd -- res://scenes/explore/hub.tscn "out_%s.png" 30
@@ -680,12 +711,76 @@ func screenshot_setup(args: Array) -> Array:
 			culture = str(a).substr(8)
 	var d := HubDemo.make(12, culture)
 	setup(d["engine"], d["story"], d["campaign"], d["db"], "p1")
+	if args.has("ending"):
+		_stage_ending()
+		return ["ending"]
+	if args.has("codex"):
+		return ["codex"]
+	if args.has("parley"):
+		StorySettings.persist = false
+		return ["parley", "log"]
 	return ["walk", "talk", "choices", "check", "downtime", "supplies", "gear", "board", "briefing", "levelup"]
+
+
+## Plays a short campaign to its end (simulated results) for the epilogue screenshot.
+func _stage_ending() -> void:
+	campaign.options["campaign_arcs"] = 1
+	var guard := 0
+	while story.phase != "ending" and guard < 12:
+		guard += 1
+		if story.phase == "downtime":
+			while not story.all_choices().is_empty():
+				var pc: Dictionary = story.all_choices()[0]
+				engine.submit(story, campaign, {"type": "downtime_choose", "seat": "gm", "params": {"pilot": pc["pilot"], "picks": (pc["options"] as Array).slice(0, int(pc["count"])).map(func(o: Dictionary) -> String: return o["id"])}})
+			engine.submit(story, campaign, {"type": "end_downtime", "seat": "gm", "params": {}})
+		var hook: Dictionary = story.hooks[0]
+		for h: Dictionary in story.hooks:
+			if h.has("arc"):
+				hook = h
+		engine.submit(story, campaign, {"type": "choose_hook", "seat": "gm", "params": {"hook": hook["id"]}})
+		Dialogue.close(story)
+		engine.submit(story, campaign, {"type": "confirm_reserves", "seat": "gm", "params": {}})
+		engine.submit(story, campaign, {"type": "mission_finished", "seat": "gm", "params": {"outcome": "victory", "reason": "",
+			"summary": {"rounds": 5, "kills": 4, "lost": [], "mvp": "Kettle"}, "dead": [story.pilot_of_seat("p4")] if guard == 2 else []}})
+		Dialogue.close(story)
+		var r := engine.submit(story, campaign, {"type": "level_up", "seat": "gm", "params": {}})
+		_handle(r["events"])
+		if story.phase != "ending":
+			for pid: String in story.pending_picks:
+				engine.submit(story, campaign, {"type": "level_picks", "seat": "gm", "params": {"pilot": pid, "trigger": "sk_spot", "mech_skill": "hull"}})
+			engine.submit(story, campaign, {"type": "start_downtime", "seat": "gm", "params": {}})
 
 
 func screenshot_stage(tag: String) -> void:
 	var me: PilotFigure = avatars.get(local_seat)
 	match tag:
+		"codex":
+			codex.open("engaged")
+		"parley":
+			# Mid-battle terms with the enemy commander (Rivals), shown over the hub for the picture.
+			if Dialogue.is_open(story):
+				_handle(Dialogue.close(story))
+			engine.submit(story, campaign, {"type": "end_downtime", "seat": "gm", "params": {}})
+			Dialogue.close(story)
+			engine.submit(story, campaign, {"type": "choose_hook", "seat": "gm", "params": {"hook": story.hooks[0]["id"]}})
+			Dialogue.close(story)
+			engine.submit(story, campaign, {"type": "confirm_reserves", "seat": "gm", "params": {}})
+			CampaignLoop.build_mission(campaign, story, db)
+			var b := Rivals.battle(story)
+			story.npcs[b["rival"]]["personality"] = "honorable"
+			var evs: Array = []
+			for id: String in b["enemy_ids"]:
+				if id != str(b["unit"]):
+					evs.append({"type": "unit_destroyed", "unit": id})
+			_handle(engine.submit(story, campaign, {"type": "battle_events", "seat": "gm", "params": {"events": evs}})["events"])
+			var guard := 0
+			while Dialogue.offered(story).is_empty() and Dialogue.is_open(story) and guard < 4:
+				dialogue.advance()
+				guard += 1
+		"log":
+			StorySettings.set_text_scale(1.3)
+			dialogue.refresh()
+			dialogue.toggle_log()
 		"tutorial_briefing":
 			dialogue.advance()
 		"tutorial_hub":

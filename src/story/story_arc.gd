@@ -24,7 +24,7 @@ static func ensure(story: StoryState, campaign: Campaign) -> Dictionary:
 	if story.hub.is_empty():
 		return {}
 	if story.arc.is_empty() or str(story.arc.get("hub", "")) != str(story.hub.get("id", "")):
-		start(story)
+		start(story, campaign)
 	if story.arc.is_empty():
 		return {}
 	for h: Dictionary in story.hooks:
@@ -38,25 +38,29 @@ static func ensure(story: StoryState, campaign: Campaign) -> Dictionary:
 	return hook
 
 
-static func start(story: StoryState) -> void:
-	var arcs: Array = data().get("arcs", [])
+static func start(story: StoryState, campaign: Campaign = null) -> void:
+	var arcs: Array = (data().get("arcs", []) as Array).filter(func(a: Dictionary) -> bool: return SessionZero.allowed(campaign, "arcs", str(a["id"])))
 	var conflict: Dictionary = story.hub.get("conflict", {})
 	if arcs.is_empty() or conflict.is_empty():
 		story.arc = {}
 		return
+	# The table's tone (session zero) shifts which situations come up.
+	var w := func(a: Dictionary) -> int: return maxi(1, roundi(float(a.get("weight", 1)) * 10.0 * SessionZero.arc_weight(campaign, str(a["id"]))))
 	var total := 0
 	for a: Dictionary in arcs:
-		total += int(a.get("weight", 1))
+		total += int(w.call(a))
 	var roll := story.dice.die(maxi(total, 1))
 	var pick: Dictionary = arcs[0]
 	for a: Dictionary in arcs:
-		roll -= int(a.get("weight", 1))
+		roll -= int(w.call(a))
 		if roll <= 0:
 			pick = a
 			break
 	var names: Array = data().get("rival_names", ["the other squad"])
 	story.arc = {"id": str(pick["id"]), "name": str(pick["name"]), "stage": 0, "hub": str(story.hub["id"]),
 		"a": str(conflict["a"]), "b": str(conflict["b"]), "rival": str(names[story.dice.die(names.size()) - 1])}
+	# The other side has one commander for the whole situation (Rivals).
+	story.arc["commander"] = Rivals.make(story, campaign, str(conflict["b"]), str(pick["id"]), str(story.arc["rival"]) if str(pick["id"]) == "rivalry" else "")
 	story.add_log("A new situation at %s: %s" % [story.hub.get("name", ""), conflict.get("summary", "")])
 
 
@@ -87,7 +91,8 @@ static func stage_hook(story: StoryState, campaign: Campaign) -> Dictionary:
 			tid = "raid_depot"
 	var patron := _npc_of(story, str(story.arc[side]))
 	var other := str(story.arc["b" if side == "a" else "a"])
-	var hook := MissionHooks.make(story, campaign, tid, {"patron": patron, "rival": other, "twist": str(stage.get("twist", ""))})
+	var hook := MissionHooks.make(story, campaign, tid, {"patron": patron, "rival": other, "twist": str(stage.get("twist", "")),
+		"commander": str(story.arc.get("commander", "")) if side == "a" else ""})
 	if hook.is_empty():
 		return {}
 	hook["enemy"] = "%s's forces" % other if kind != "side_a" or n > 0 else hook["enemy"]

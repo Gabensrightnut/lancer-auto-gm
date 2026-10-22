@@ -5,6 +5,9 @@ extends Control
 var side: VBoxContainer
 var join_status: Label
 var continue_button: Button
+## The rules reference (the story's CodexPanel), over the menu.
+var codex: CodexPanel
+var codex_dim: ColorRect
 
 
 func _ready() -> void:
@@ -55,9 +58,13 @@ func _ready() -> void:
 	var tutorial_button := MenuTheme.big_button("Tutorial", "pilot", MenuTheme.GOOD)
 	tutorial_button.pressed.connect(_show_tutorial)
 	left.add_child(tutorial_button)
+	var codex_button := MenuTheme.big_button("Codex", "compendium")
+	codex_button.tooltip_text = "The rules reference: search any rule, status, action, frame or piece of gear."
+	codex_button.pressed.connect(func() -> void: codex.open(""))
 	var join_button := MenuTheme.big_button("Join online", "orbital", MenuTheme.maker_color("IPS-N"))
 	join_button.pressed.connect(_show_join)
 	left.add_child(join_button)
+	left.add_child(codex_button)
 	var settings_button := MenuTheme.big_button("Settings", "system")
 	settings_button.pressed.connect(func() -> void:
 		MenuSession.back_to = "main"
@@ -77,10 +84,22 @@ func _ready() -> void:
 	row.add_child(side)
 	if "stage:tutorial" in OS.get_cmdline_user_args():
 		_show_tutorial()  # screenshots
+	elif "stage:new" in OS.get_cmdline_user_args():
+		_show_new()
 	elif saves.is_empty():
 		_show_new()
 	else:
 		_show_continue()
+	codex_dim = ColorRect.new()
+	codex_dim.color = Color(0, 0, 0, 0.75)
+	codex_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	codex_dim.visible = false
+	add_child(codex_dim)
+	codex = CodexPanel.new()
+	add_child(codex)
+	codex.visibility_changed.connect(func() -> void: codex_dim.visible = codex.visible)
+	if "stage:codex" in OS.get_cmdline_user_args():
+		codex.open.call_deferred("engaged")  # screenshots
 	(continue_button if not saves.is_empty() else new_button).grab_focus()
 
 
@@ -130,6 +149,34 @@ func _show_new() -> void:
 	for p in LobbyModel.PRESETS:
 		preset.add_item(p)
 	body.add_child(_field("GM style", preset))
+	# Story campaign (hub, jobs, downtime between missions) or missions only (lobby to battle).
+	var story_mode := {"on": true}
+	var style := HBoxContainer.new()
+	style.add_theme_constant_override("separation", 8)
+	var group := ButtonGroup.new()
+	var arcs := OptionButton.new()
+	for n: int in GameFlow.ARC_CHOICES:
+		arcs.add_item(GameFlow.ARC_CHOICES[n], n)
+	arcs.select(arcs.get_item_index(GameFlow.DEFAULT_ARCS))
+	var arcs_field := _field("Campaign length", arcs)
+	var arcs_note := MenuTheme.label("A story is one situation at a hub (a feud, a threat) played out over several jobs. After this many, the campaign ends with an epilogue for each pilot, and the same pilots can start a new one.", 15, MenuTheme.MUTED, true)
+	for pair: Array in [["Story campaign", true], ["Missions only", false]]:
+		var b := Button.new()
+		b.text = pair[0]
+		b.toggle_mode = true
+		b.button_group = group
+		b.button_pressed = pair[1]
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.tooltip_text = "Between missions your pilots walk a hub town: jobs, people, downtime." if pair[1] else "Straight from one generated mission to the next, with leveling up in between."
+		b.toggled.connect(func(on: bool) -> void:
+			if on:
+				story_mode["on"] = pair[1]
+				arcs_field.visible = pair[1]
+				arcs_note.visible = pair[1])
+		style.add_child(b)
+	body.add_child(_field("Play as", style))
+	body.add_child(arcs_field)
+	body.add_child(arcs_note)
 	var desc := MenuTheme.label("", 15, MenuTheme.MUTED, true)
 	var show_desc := func(i: int) -> void: desc.text = str(GmSettings.presets().get(LobbyModel.PRESETS[i], {}).get("description", ""))
 	preset.item_selected.connect(show_desc)
@@ -140,10 +187,16 @@ func _show_new() -> void:
 	go.custom_minimum_size = Vector2(0, 54)
 	go.add_theme_font_override("font", MenuTheme.bold_font())
 	go.pressed.connect(func() -> void:
+		MenuSession.lobby = null
+		if story_mode["on"]:
+			MenuSession.campaign = null
+			MenuSession.campaign = GameFlow.start_story_campaign(MenuSession.store, MenuSession.content(), name_edit.text.strip_edges(), pilots.get_selected_id(),
+				ll.get_selected_id(), LobbyModel.PRESETS[preset.selected], arcs.get_selected_id())
+			MenuSession.go(self, "hub")
+			return
 		var c := MenuSession.new_campaign(name_edit.text.strip_edges(), pilots.get_selected_id(), ll.get_selected_id(), LobbyModel.PRESETS[preset.selected])
 		MenuSession.store.save_campaign(c)
 		MenuSession.campaign = c
-		MenuSession.lobby = null
 		MenuSession.go(self, "lobby"))
 	body.add_child(go)
 
@@ -188,6 +241,11 @@ func _show_tutorial() -> void:
 	hints.text = "Teaching hints: explain each rule the first time it comes up"
 	hints.button_pressed = true
 	body.add_child(hints)
+	var t_arcs := OptionButton.new()
+	for n: int in GameFlow.ARC_CHOICES:
+		t_arcs.add_item(GameFlow.ARC_CHOICES[n], n)
+	t_arcs.select(t_arcs.get_item_index(GameFlow.DEFAULT_ARCS))
+	body.add_child(_field("Campaign length (after the drill it's a real campaign)", t_arcs))
 	body.add_child(MenuTheme.label("You can turn hints off any time from the in-game menu.", 15, MenuTheme.MUTED, true))
 	var go := Button.new()
 	go.text = "START THE TUTORIAL  ›"
@@ -196,7 +254,7 @@ func _show_tutorial() -> void:
 	go.pressed.connect(func() -> void:
 		MenuSession.campaign = null
 		MenuSession.lobby = null
-		var c := GameFlow.start_tutorial(MenuSession.store, MenuSession.content(), name_edit.text.strip_edges(), callsign.text.strip_edges(), hints.button_pressed, look["portrait"])
+		var c := GameFlow.start_tutorial(MenuSession.store, MenuSession.content(), name_edit.text.strip_edges(), callsign.text.strip_edges(), hints.button_pressed, look["portrait"], t_arcs.get_selected_id())
 		MenuSession.campaign = c
 		MenuSession.go(self, "hub"))
 	body.add_child(go)
@@ -258,7 +316,7 @@ func _load_campaign(id: String) -> void:
 	MenuSession.campaign = r["campaign"]
 	MenuSession.lobby = null
 	if MenuSession.store.has_mission(id):
-		var s := GameFlow.resume_mission(MenuSession.store, MenuSession.campaign)
+		var s := GameFlow.resume_mission(MenuSession.store, MenuSession.campaign, MenuSession.content())
 		if s != null:
 			var net := MenuSession.net(self)
 			if net != null and not (s.host.export_seats()["tokens"] as Dictionary).is_empty():
@@ -276,3 +334,9 @@ static func _field(label_text: String, control: Control) -> VBoxContainer:
 	v.add_child(MenuTheme.label(label_text.to_upper(), 14, MenuTheme.MUTED))
 	v.add_child(control)
 	return v
+
+
+func _unhandled_input(ev: InputEvent) -> void:
+	if codex != null and codex.visible and ev is InputEventKey and ev.pressed and (ev as InputEventKey).keycode == KEY_ESCAPE:
+		codex.visible = false
+		get_viewport().set_input_as_handled()
