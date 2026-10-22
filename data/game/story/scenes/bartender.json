@@ -1,0 +1,407 @@
+{
+ "_note": "Our own writing. The bartender: Get a Damn Drink happens where there's a drink to get (Core p.54). The brawl is combat in narrative play, resolved as a skill check (Core p.48).",
+ "id": "bartender",
+ "start": "greet",
+ "nodes": {
+  "greet": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@greet_bartender",
+   "effects": [
+    {
+     "set_flag": "met:{npc_id}"
+    }
+   ],
+   "next": "describe",
+   "branch": [
+    {
+     "if": [
+      {
+       "deal": "$npc",
+       "state": "lost"
+      },
+      {
+       "not": {
+        "flag": "deal_off_said:{npc_id}"
+       }
+      }
+     ],
+     "next": "deal_off"
+    },
+    {
+     "if": {
+      "flag": "met:{npc_id}"
+     },
+     "next": "greet_again"
+    }
+   ]
+  },
+  "greet_again": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": "@greet_bartender",
+   "next": "menu",
+   "branch": [
+    {
+     "if": [
+      {
+       "deal": "$npc",
+       "state": "lost"
+      },
+      {
+       "not": {
+        "flag": "deal_off_said:{npc_id}"
+       }
+      }
+     ],
+     "next": "deal_off"
+    }
+   ]
+  },
+  "describe": {
+   "speaker": "narrator",
+   "line": "@describe_npc",
+   "next": "menu"
+  },
+  "farewell": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@farewell",
+   "end": true
+  },
+  "check_ok": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": "@check_success",
+   "next": "menu"
+  },
+  "check_bad": {
+   "speaker": "npc",
+   "expression": "angry",
+   "line": "@check_fail",
+   "next": "menu"
+  },
+  "favor": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@rep_favor_intro",
+   "effects": [
+    {
+     "downtime": "dt_get_connected",
+     "subject": "$npc"
+    }
+   ],
+   "next": "menu"
+  },
+  "deal_offer": {
+   "speaker": "npc",
+   "line": "@deal_offer",
+   "choices": [
+    {
+     "id": "deal_yes",
+     "text": [
+      "Deal. We'll do the job.",
+      "You've got yourself a squad."
+     ],
+     "tags": [
+      "practical",
+      "greedy",
+      "bold"
+     ],
+     "effects": [
+      {
+       "deal": {
+        "template": "$npc.want_hook",
+        "fallback": "clear_raiders"
+       }
+      },
+      {
+       "log": "Deal with {npc}: a job for {npc_deal_reward}."
+      }
+     ],
+     "next": "deal_done"
+    },
+    {
+     "id": "deal_no",
+     "text": [
+      "Not right now.",
+      "We'll think about it."
+     ],
+     "tags": [
+      "cautious",
+      "leave"
+     ],
+     "pinned": true,
+     "next": "menu"
+    }
+   ]
+  },
+  "deal_done": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": [
+    "Good. It's on the board. Don't let me down.",
+    "Then we have an understanding."
+   ],
+   "next": "menu"
+  },
+  "deal_waiting": {
+   "speaker": "npc",
+   "line": "@deal_waiting",
+   "next": "menu"
+  },
+  "deal_off": {
+   "speaker": "npc",
+   "expression": "worried",
+   "line": "@deal_off",
+   "effects": [
+    {
+     "set_flag": "deal_off_said:{npc_id}"
+    }
+   ],
+   "next": "menu"
+  },
+  "pay_favor": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": [
+    "Good. Here's what we need from you.",
+    "I was hoping you'd remember. There's a job.",
+    "A favor for a favor. Here's the job."
+   ],
+   "effects": [
+    {
+     "hook": "favor_owed",
+     "patron": "$npc"
+    },
+    {
+     "log": "{npc} called in the favor: a new job is on the board."
+    }
+   ],
+   "next": "menu"
+  },
+  "menu": {
+   "speaker": "npc",
+   "line": "@drink_offer",
+   "choices": [
+    {
+     "id": "drink",
+     "text": [
+      "Pour me one. Let's see where the night goes. (Get a Damn Drink: your downtime action)",
+      "Get a damn drink. (downtime action)"
+     ],
+     "condition": [
+      {
+       "phase": "downtime"
+      },
+      {
+       "downtime_left": true
+      }
+     ],
+     "tags": [
+      "bold",
+      "curious"
+     ],
+     "effects": [
+      {
+       "ui": "downtime",
+       "action": "dt_get_a_damn_drink"
+      }
+     ],
+     "next": "menu"
+    },
+    {
+     "id": "rumors",
+     "text": [
+      "Heard anything interesting?",
+      "What's the talk around {hub}?",
+      "Any news?"
+     ],
+     "tags": [
+      "curious"
+     ],
+     "next": "rumor"
+    },
+    {
+     "id": "eavesdrop",
+     "text": "Listen in on the corner booth.",
+     "trigger": "sk_word_on_the_street",
+     "tags": [
+      "curious",
+      "deceptive"
+     ],
+     "check": {
+      "skills": [
+       "sk_word_on_the_street",
+       "sk_act_unseen_or_unheard"
+      ],
+      "goal": "eavesdrop:{npc_id}",
+      "consequence": "You get caught listening (standing with {hub_faction} -1).",
+      "success": "check_ok",
+      "fail": "check_bad",
+      "success_effects": [
+       {
+        "reserve": "reserve_knowledge",
+        "name": "Gossip from {hub}",
+        "source": "Overheard at the bar"
+       },
+       {
+        "set_flag": "eavesdrop:{npc_id}"
+       }
+      ],
+      "fail_effects": [
+       {
+        "standing": "$hub.faction",
+        "add": -1
+       }
+      ],
+      "tags": [
+       "streets",
+       "crowds",
+       "crime"
+      ]
+     },
+     "condition": [
+      {
+       "not": {
+        "flag": "eavesdrop:{npc_id}"
+       }
+      }
+     ]
+    },
+    {
+     "id": "brawl",
+     "text": "Someone just insulted the squad. Knock them down.",
+     "trigger": "sk_apply_fists_to_faces",
+     "tags": [
+      "aggressive",
+      "bold"
+     ],
+     "check": {
+      "skills": [
+       "sk_apply_fists_to_faces",
+       "sk_assault"
+      ],
+      "goal": "brawl:{npc_id}",
+      "consequence": "You get clocked in the face for 1 damage (Core p.48: minor harm).",
+      "success": "check_ok",
+      "fail": "check_bad",
+      "success_effects": [
+       {
+        "set_flag": "won_bar_fight"
+       },
+       {
+        "set_flag": "brawl:{npc_id}"
+       }
+      ],
+      "fail_effects": [
+       {
+        "harm": 1
+       }
+      ],
+      "difficult": true,
+      "tags": [
+       "combat",
+       "streets"
+      ]
+     },
+     "condition": [
+      {
+       "not": {
+        "flag": "brawl:{npc_id}"
+       }
+      }
+     ]
+    },
+    {
+     "id": "favor",
+     "text": "Can you help us out for the next mission? (Get Connected: your downtime action)",
+     "condition": [
+      {
+       "phase": "downtime"
+      },
+      {
+       "downtime_left": true
+      },
+      {
+       "standing": "$npc.faction",
+       "min": -2
+      }
+     ],
+     "tags": [
+      "practical",
+      "greedy"
+     ],
+     "next": "favor"
+    },
+    {
+     "id": "pay_favor",
+     "text": "About the favor we owe {npc_faction}...",
+     "condition": {
+      "obligation": "$npc.faction"
+     },
+     "tags": [
+      "honest"
+     ],
+     "priority": 3,
+     "next": "pay_favor"
+    },
+    {
+     "id": "deal",
+     "text": [
+      "Is there something we could do for you, in exchange for {npc_deal_reward}?",
+      "What would it take to get {npc_deal_reward} from you?"
+     ],
+     "condition": [
+      {
+       "deal": "$npc",
+       "state": "none"
+      },
+      {
+       "not": {
+        "phase": "mission"
+       }
+      }
+     ],
+     "tags": [
+      "greedy",
+      "practical",
+      "kind"
+     ],
+     "next": "deal_offer"
+    },
+    {
+     "id": "deal_wait",
+     "text": "About our deal...",
+     "condition": {
+      "deal": "$npc",
+      "state": "accepted"
+     },
+     "tags": [
+      "honest"
+     ],
+     "next": "deal_waiting"
+    },
+    {
+     "id": "leave",
+     "text": [
+      "That's all for now.",
+      "I should go.",
+      "Thanks. See you around.",
+      "We'll talk later."
+     ],
+     "tags": [
+      "leave"
+     ],
+     "pinned": true,
+     "next": "farewell"
+    }
+   ]
+  },
+  "rumor": {
+   "speaker": "npc",
+   "line": "@rumor",
+   "next": "menu"
+  }
+ }
+}

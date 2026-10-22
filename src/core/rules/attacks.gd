@@ -70,7 +70,11 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 			out["thrown"] = true
 	out["kind"] = kind
 	out["reach"] = reach
-	if area_origin == null and dist > reach:
+	var in_reach := Sight.within(state, a_body, t_body, reach)
+	if area_origin == null and in_reach["grey_area"] != "":
+		out["grey_area"] = in_reach["grey_area"]
+		return fail.call("Whether that's in reach depends on how your table measures range up and down.", "Core p.64 Range")
+	if area_origin == null and not in_reach["ok"]:
 		return fail.call("Out of %s: %d spaces away, %s reaches %d." % ["Threat" if kind == KIND_MELEE and not out.has("thrown") else "Range", dist, w.get("name", "the weapon"), reach], "glossary: Range" if kind == KIND_RANGED else "glossary: Threat")
 	var ignores_los := Weapons.has_tag(w, "tg_arcing") or Weapons.has_tag(w, "tg_seeking")
 	# Area attacks take cover and line of sight from the area's origin (glossary: Blast, Burst).
@@ -111,7 +115,7 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 		sources.append(_src("Target Braced", "difficulty", "actions: Brace"))
 		diff += 1
 	var roll_kinds := ["attack", "melee_attack" if kind == KIND_MELEE else "ranged_attack"]
-	for src: Dictionary in Effects.accuracy_sources(attacker, roll_kinds, "", opts.get("reaction", false)):
+	for src: Dictionary in Effects.accuracy_sources(attacker, roll_kinds, "", opts.get("reaction", false), String(w.get("type", ""))):
 		sources.append(src)
 		if src["kind"] == "accuracy":
 			acc += int(src["value"])
@@ -163,6 +167,8 @@ static func weapon_ready(attacker: Unit, w: Dictionary, improvised: bool = false
 		return RuleResult.deny("%s needs reloading (Stabilize reloads it)." % w.get("name", "That weapon"), "tags: Loading")
 	if Weapons.has_tag(w, "tg_limited") and int(ws["uses"]) <= 0:
 		return RuleResult.deny("%s is out of charges until a Full Repair." % w.get("name", "That weapon"), "tags: Limited")
+	if not ws.get("charged", true):
+		return RuleResult.deny("%s is recharging (Recharge %d+)." % [w.get("name", "That weapon"), int(ws.get("recharge", 6))], "tags: Recharge")
 	return RuleResult.allow()
 
 
@@ -213,6 +219,10 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		check["target_label"] = p["defense_name"]
 		if check["success"]:
 			result = "crit" if check["crit"] else "hit"
+		if Effects.has(target, "attack_paralysis") and int(check["d20"]) <= 2:
+			# Gorgon Metastatic Paralysis: a 1-2 misses and Stuns the attacker.
+			result = "miss"
+			check["paralysis"] = true
 	events.append({"type": "attack_rolled", "attacker": attacker.id, "target": target.id,
 		"weapon": w.get("key", ""), "weapon_name": w.get("name", ""), "kind": kind, "check": check,
 		"result": result, "cover": p["cover"].get("cover", "none") if p["cover"] is Dictionary else "none",
@@ -220,6 +230,8 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		"lock_on_consumed": p["lock_on"], "rule_ref": p["rule_ref"]})
 	if not opts.get("skip_spend", false):
 		events.append_array(_spend_weapon(state, attacker, w))
+	if check.get("paralysis", false):
+		events.append_array(Combat.add_status(state, attacker, "Stunned", target.id, attacker.id))
 	if result != "miss":
 		events.append_array(_hit(state, attacker, w, target, result == "crit", opts))
 	elif Weapons.tag_value(w, "tg_reliable") > 0:
@@ -243,6 +255,8 @@ static func _spend_weapon(state: GameState, attacker: Unit, w: Dictionary) -> Ar
 		ws["loaded"] = false
 	if Weapons.has_tag(w, "tg_limited"):
 		ws["uses"] = int(ws["uses"]) - 1
+	if ws.has("recharge"):
+		ws["charged"] = false
 	var self_heat := Weapons.tag_value(w, "tg_heat_self")
 	if self_heat > 0:
 		events.append_array(Combat.apply_heat(state, attacker, self_heat, "Heat (Self): " + String(w.get("name", ""))))
@@ -298,8 +312,9 @@ static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array,
 		brace = d.get("take", false)
 	if brace:
 		events.append_array(Reactions.brace(state, target, attacker.id))
-	events.append_array(Combat.deal_damage(state, target, parts, {"source": attacker.id, "ap": ap, "resist_all": brace,
-		"area": area, "distance": Sight.unit_distance(state, attacker, target)}))
+	var aegis := brace and Effects.has(target, "flash_aegis")
+	events.append_array(Combat.deal_damage(state, target, parts, {"source": attacker.id, "ap": ap, "resist_all": brace and not aegis,
+		"damage_to_one": aegis, "area": area, "distance": Sight.unit_distance(state, attacker, target)}))
 	return events
 
 
@@ -393,6 +408,7 @@ static func knock_back(state: GameState, target: Unit, origin: Vector2i, spaces:
 	target.cell = Vector2i(last[0], last[1])
 	var events: Array[Dictionary] = [{"type": "moved", "unit": target.id, "path": path, "mode": "involuntary", "cost": 0, "rule_ref": "tags: Knockback"}]
 	events.append_array(Effects.punish_movement(state, target))
+	events.append_array(Abilities.check_mines(state, target, path))
 	if Movement.placement(state, target.size, target.cell, target.level)["airborne"] and not target.flying:
 		events.append_array(Combat.begin_falling(target, "Knocked off a ledge."))
 	events.append_array(Combat.after_movement(state))
@@ -447,7 +463,10 @@ static func tech_target_check(state: GameState, user: Unit, target: Unit, action
 		return RuleResult.deny("Shut Down mechs are immune to tech actions.", "statuses: Shut Down")
 	if target.kind == Unit.KIND_PILOT and action != "scan" and action != "lock_on":
 		return RuleResult.deny("Pilots on foot are BIOLOGICAL: immune to tech actions except Lock On and Scan.", "Core p.74 Fighting on the Ground")
-	if Sight.unit_distance(state, user, target) > user.sensors:
+	var in_sensors := Sight.within(state, Sight.body_of(state, user), Sight.body_of(state, target), user.sensors)
+	if in_sensors["grey_area"] != "":
+		return Rulings.needed(in_sensors["grey_area"])
+	if not in_sensors["ok"]:
 		return RuleResult.deny("Out of Sensors range (%d)." % user.sensors, "glossary: Sensors")
 	if not Sight.unit_line_of_sight(state, user, target):
 		return RuleResult.deny("No line of sight to the target.", Sight.REF_LOS)

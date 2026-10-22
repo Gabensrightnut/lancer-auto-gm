@@ -99,11 +99,11 @@ func test_prepared_skirmish_fires_when_a_hostile_moves_adjacent() -> void:
 
 func test_eject_dismount_and_mount() -> void:
 	_setup(Vector2i(9, 9))
-	var out := F.act(e, s, "eject", "a", {"to": [4, 0]})
+	var out := F.act(e, s, "eject", "a", {"to": [6, 0]})
 	expect(F.ok(out), F.reason(out))
 	var pilot := s.unit("a_pilot")
 	expect(pilot != null and Combat.is_present(pilot))
-	expect_eq(pilot.cell, Vector2i(4, 0))
+	expect_eq(pilot.cell, Vector2i(6, 0), "6 spaces in the chosen direction (suggested Eject ruling)")
 	expect(a.has_status("Impaired"))
 	expect_eq(s.active_unit, "a_pilot", "the pilot carries on the turn")
 	expect(not TurnRules.takes_turns(a), "an empty mech takes no turns")
@@ -120,7 +120,7 @@ func test_eject_dismount_and_mount() -> void:
 	_next_turn(a)
 	expect(F.ok(F.act(e, s, "dismount", "a")))
 	expect(Combat.is_present(pilot))
-	expect(not F.ok(F.act(e, s, "eject", "a", {"to": [4, 0]})))
+	expect(not F.ok(F.act(e, s, "eject", "a", {"to": [6, 0]})))
 
 
 func test_pilot_weapons_and_down_and_out() -> void:
@@ -241,3 +241,33 @@ func test_search_ties_go_to_the_searcher() -> void:
 	F.load_dice(s, [10, 10])
 	var out := F.act(e, s, "search", "a", {"target": "t"})
 	expect(F.events_of(out, "searched")[0]["found"], "a tie: the one who started the contest wins (Core p.13)")
+
+
+func test_same_size_grapple_contest() -> void:
+	_setup(Vector2i(1, 0))
+	F.load_dice(s, [15])
+	F.act(e, s, "grapple", "a", {"target": "t"})
+	expect(not t.has_status("Immobilized") and not a.has_status("Immobilized"), "same Size: nobody is held yet")
+	_next_turn(t)
+	F.load_dice(s, [12, 12])
+	var out := F.act(e, s, "grapple_contest", "t")
+	expect(F.ok(out), F.reason(out))
+	expect(a.has_status("Immobilized"), "a tie: t started the contest and wins (Core p.13, p.69)")
+	F.act(e, s, "move", "t", {"to": [2, 1]})
+	expect_eq(a.cell, Vector2i(1, 1), "the winner counts as larger and drags the loser")
+
+
+func test_destroyed_mechs_pilot_stays_inside_and_may_exit() -> void:
+	_setup(Vector2i(9, 9))
+	var pilot := Pilots.ensure_pilot(s, a)
+	expect(not Combat.is_present(pilot), "protected inside an intact mech")
+	Combat.destroy(s, a, "test")
+	expect(Combat.is_present(pilot), "a wreck no longer protects the pilot (Core p.74)")
+	expect(TurnRules.takes_turns(pilot))
+	s.active_unit = ""
+	s.acted = PackedStringArray()
+	s.turn_side = "players"
+	F.act(e, s, "start_turn", pilot.id)
+	var out := F.act(e, s, "dismount", pilot.id)
+	expect(F.ok(out), F.reason(out))
+	expect(not pilot.counters.has("mounted_in"), "climbed out (Core p.80: 'you may still exit it')")

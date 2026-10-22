@@ -4,8 +4,8 @@ extends RefCounted
 ##
 ## Book rules used: actions Ram, Grapple, Ram/Grapple (NPC: +1/2/3 by tier), Jumping and
 ## Climbing (glossary).
-## PROVISIONAL (docs/RULES_TODO.md "Grapple", "Jump"): same-Size grapples immobilize nobody
-## until the contested Hull check at the start of a turn is automated (not yet); a grappled smaller
+## Same-Size grapples immobilize nobody until someone wins the start-of-turn contest
+## (GrappleContest). PROVISIONAL (docs/RULES_TODO.md "Jump"): a grappled smaller
 ## character is dragged by the same step when the larger one moves, and the grapple ends if
 ## it can't follow; a horizontal jump must keep its height (it can cross pits and lower
 ## ground but not anything taller) and lands at the highest ground at or below that height;
@@ -176,6 +176,43 @@ class EndGrapple:
 		return CloseCombat.end_grapple(state, u, "let go")
 
 
+class GrappleContest:
+	extends TurnAction
+	## Same-Size grapples: at the start of your turn you can make a contested Hull check; the
+	## winner counts as larger (the loser is Immobilized and dragged) until the next contest
+	## (Core p.69). You started the contest, so you win ties (Core p.13).
+
+	func type() -> String:
+		return "grapple_contest"
+
+	func cost() -> String:
+		return TurnRules.FREE
+
+	func check(state: GameState, u: Unit, _params: Dictionary) -> RuleResult:
+		if not u.counters.has("grapple"):
+			return RuleResult.deny("You aren't in a grapple.", CloseCombat.REF_GRAPPLE)
+		var other := state.unit(String(u.counters["grapple"]["with"]))
+		if other == null or other.size != u.size:
+			return RuleResult.deny("Only same-Size grapples are contested this way.", CloseCombat.REF_GRAPPLE)
+		if u.turn.get("acted", false) or u.turn.get("moved", false) or u.turn.get("grapple_contest", false):
+			return RuleResult.deny("Only at the start of your turn.", CloseCombat.REF_GRAPPLE)
+		return RuleResult.allow()
+
+	func apply(state: GameState, u: Unit, _params: Dictionary) -> Array[Dictionary]:
+		u.turn["grapple_contest"] = true
+		var other := state.unit(String(u.counters["grapple"]["with"]))
+		var mine := Combat.skill_check(state, u, "hull", "Grapple contest: Hull", 0)
+		var theirs := Combat.skill_check(state, other, "hull", "Grapple contest: Hull", 0)
+		var won: bool = int(mine["total"]) >= int(theirs["total"])
+		var winner: Unit = u if won else other
+		var loser: Unit = other if won else u
+		var events: Array[Dictionary] = [{"type": "contested_check", "unit": u.id, "against": other.id, "check": mine, "contest": theirs, "success": won, "rule_ref": CloseCombat.REF_GRAPPLE}]
+		if winner.has_status("Immobilized") and winner.statuses["Immobilized"].get("source", "") == "Grapple":
+			events.append_array(Combat.remove_status(winner, "Immobilized", "won the grapple contest"))
+		events.append_array(Combat.add_status(state, loser, "Immobilized", "Grapple"))
+		return events
+
+
 class BreakFree:
 	extends TurnAction
 	## Quick action for the grappled: contested Hull check.
@@ -272,7 +309,11 @@ class Jump:
 		if not r.ok:
 			return r
 		if u.has_status("Slowed") or u.has_status("Prone"):
-			return RuleResult.deny("Slowed: your only movement is your standard move.", "statuses: Slowed")
+			match Rulings.choice(state, "slowed_jump"):
+				"":
+					return Rulings.needed("slowed_jump")
+				"no":
+					return RuleResult.deny("Slowed: your only movement is your standard move (table ruling: no jumping).", "Core p.78 Slowed")
 		if u.turn.get("braced", false) or u.turn.get("prepared_lock", false):
 			return RuleResult.deny("You can't move this turn.", TurnRules.REF_BRACE)
 		if int(u.turn.get("move_spent", 0)) > 0 or u.turn.get("stood_up", false):

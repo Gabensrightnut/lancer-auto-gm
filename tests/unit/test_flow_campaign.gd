@@ -138,10 +138,14 @@ func test_solo_campaign_loop_end_to_end() -> void:
 	var s2 := GameFlow.start_mission(lobby2, store)
 	s2.start()
 	var me2 := ScriptedPlayer.new(s2)
+	# Play until the first autosave exists, then quit mid-mission (fights can end quickly).
 	for i in range(30):
 		s2.poll(1.0)
 		me2.act()
+		if store.has_mission(loaded.id) and s2.host.state.phase == GameState.PHASE_COMBAT 				and int(store.load_mission(loaded.id)["data"]["state"].get("round", 0)) >= 1:
+			break
 	expect(not s2.over)
+	expect(store.has_mission(loaded.id), "a turn ended and the mission autosaved")
 	var at_quit := JSON.stringify(s2.host.state.to_dict())
 	# Quit to the menu mid-mission, then Continue.
 	GameFlow.session = null

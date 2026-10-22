@@ -28,7 +28,7 @@ const REACTION := "reaction"
 ## Units that take turns: not destroyed, not deployables.
 static func takes_turns(u: Unit) -> bool:
 	if u.kind == Unit.KIND_PILOT and not u.destroyed and u.counters.has("mounted_in"):
-		return false  # acts through its mech
+		return Combat.is_present(u)  # acts through its mech, unless the mech was destroyed
 	return Combat.is_present(u) and u.kind != Unit.KIND_DEPLOYABLE and not u.counters.get("empty", false)
 
 
@@ -106,6 +106,10 @@ static func begin_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 		u.counters.erase("prepared")
 		events.append({"type": "prepared_lost", "unit": u.id, "rule_ref": "actions: Prepare"})
 	events.append({"type": "turn_started", "unit": u.id, "round": state.round_number})
+	u.counters.erase("ability_round_uses")  # X/round: from the start of your turn (tags: Round)
+	events.append_array(Combat.expire_at_turn_start(state, u))
+	events.append_array(Abilities.expire(state, u, "start"))
+	events.append_array(Abilities.recharge_roll(state, u))
 	events.append_array(Effects.turn_started(state, u))
 	return events
 
@@ -118,7 +122,15 @@ static func finish_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 		events.append_array(Combat.end_of_turn_checks(state, u))
 	events.append_array(Combat.fall_all(state, u))
 	events.append_array(Combat.expire_statuses(state, u))
+	events.append_array(Abilities.expire(state, u, "end"))
+	Abilities.arm_mines(state, u)
 	events.append_array(Combat.tick_meltdown(state, u))
+	var wreck := state.unit(String(u.counters.get("mounted_in", "")))
+	if wreck != null and wreck.counters.has("unstable_explosion"):
+		wreck.counters["unstable_explosion"] = int(wreck.counters["unstable_explosion"]) - 1
+		if int(wreck.counters["unstable_explosion"]) <= 0:
+			wreck.counters.erase("unstable_explosion")
+			events.append_array(Pilots.explode(state, wreck, "Unstable System: the wreck explodes."))
 	state.acted.append(u.id)
 	state.active_unit = ""
 	events.append({"type": "turn_ended", "unit": u.id})

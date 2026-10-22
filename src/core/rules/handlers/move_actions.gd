@@ -26,9 +26,7 @@ static func _plan_result(plan: Dictionary) -> RuleResult:
 	if not plan["ok"]:
 		return RuleResult.deny(plan["reason"], plan["rule_ref"])
 	if plan.get("grey_area", "") != "":
-		return RuleResult.ruling_needed(Movement.RULING_UNEVEN,
-			"Can a big mech stand across uneven ground (some of its spaces higher than others)? The book doesn't say.",
-			Movement.REF_PROVISIONAL, ["allow", "forbid"])
+		return Rulings.needed(String(plan["grey_area"]))
 	return RuleResult.allow()
 
 
@@ -84,6 +82,7 @@ static func _do_move(state: GameState, u: Unit, plan: Dictionary, mode: String, 
 		events.append_array(Combat.begin_falling(u, "Jump jets: the Boost didn't end on a surface."))
 		events.append_array(Combat.fall_unit(state, u))
 	events.append_array(Effects.moved(state, u, mode))
+	events.append_array(Abilities.check_mines(state, u, path))
 	events.append_array(CloseCombat.drag_partner(state, u, from, from_level))
 	events.append_array(Combat.after_movement(state))
 	events.append_array(Reactions.prepared_triggers(state, u))
@@ -126,8 +125,10 @@ class Move:
 			return events
 		var plan := MoveActions._plan(state, u, params, Movement.MODE_MOVE)
 		u.turn["move_spent"] = int(u.turn.get("move_spent", 0)) + int(plan["cost"])
-		if plan["stopped_by"] != "" or teleport:
+		if plan["stopped_by"] != "":
 			u.turn["move_spent"] = u.speed  # lose any unused movement (statuses: Engaged)
+		if teleport and Rulings.ask(state, "teleport_move_cost") == "whole_move":
+			u.turn["move_spent"] = u.speed
 		events.append_array(MoveActions._do_move(state, u, plan, "walk", bool(params.get("fly", false))))
 		return events
 

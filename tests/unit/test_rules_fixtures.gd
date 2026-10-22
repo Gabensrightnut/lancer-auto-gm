@@ -27,6 +27,9 @@ static func state(shape: GridLayout.Shape = GridLayout.Shape.SQUARE, w: int = 12
 	var s := GameState.new(7, shape)
 	s.map = BattleMap.flat(shape, w, h)
 	s.dice = LoadedDice.new(7)
+	# The table chose the suggested reading for every open rules question (tests that check a
+	# ruling clear or change it).
+	Rulings.apply_suggested(s)
 	return s
 
 

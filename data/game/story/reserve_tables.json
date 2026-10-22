@@ -1,0 +1,9 @@
+{
+  "_note": "The book's three 1d20 reserve tables (Core p.51-52), in table order: entry n covers rolls 2n-1 and 2n. Ids only; names and descriptions come from data/lancer-data/reserves.json.",
+  "Resource": ["reserve_access", "reserve_backing", "reserve_supplies", "reserve_disguise", "reserve_diversion",
+    "reserve_blackmail", "reserve_reputation", "reserve_safe_harbor", "reserve_tracking", "reserve_knowledge"],
+  "Mech": ["reserve_ammo", "reserve_rented_gear", "reserve_extra_repairs", "reserve_core_battery", "reserve_deployable_shield",
+    "reserve_redundant_repair", "reserve_systems_reinforcement", "reserve_smart_ammo", "reserve_boosted_servos", "reserve_jump_jets"],
+  "Tactical": ["reserve_scouting", "reserve_vehicle", "reserve_reinforcements", "reserve_environmental_shielding", "reserve_accuracy",
+    "reserve_bombardment", "reserve_extended_harness", "reserve_ambush", "reserve_orbital_drop", "reserve_nhp_assistant"]
+}

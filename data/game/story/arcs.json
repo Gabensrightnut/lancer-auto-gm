@@ -1,0 +1,46 @@
+{
+  "_note": "Our own writing. Arc shapes: a situation over a few missions at one hub, escalating to a reveal and a confrontation (patterns: docs/research/lancer_campaigns.md section 5). The arc's next hook is always on the job board; finishing it (win or lose: every mission advances the story, and pilots level up either way, Core p.40) moves the arc on. 'on_win' / 'on_loss' are story effects; stage text uses {a}/{b} (the conflict's sides), {rival} (a recurring enemy squad name) and the hook placeholders.",
+  "arcs": [
+    {"id": "escalation", "weight": 3, "name": "Escalation",
+      "stages": [
+        {"hook": "side_a", "beat": ["It starts small: a job for {a}, the kind lancers take every week."]},
+        {"hook": "side_a", "beat": ["{b} has noticed you. The next job won't be quiet."], "twist": "third_party"},
+        {"hook": "side_b_strike", "beat": ["{b} moves openly now. This is the fight that decides {hub}."], "final": true}
+      ],
+      "on_win": [{"standing": "$arc.a", "add": 1}, {"set_flag": "arc_escalation_won"}],
+      "on_loss": [{"standing": "$arc.a", "add": -1}, {"set_flag": "arc_escalation_lost"}]},
+    {"id": "investigation", "weight": 2, "name": "Who Is Behind It",
+      "stages": [
+        {"hook": "investigate_tip", "beat": ["Something is wrong in {hub}, and nobody will say what."]},
+        {"hook": "side_a", "beat": ["A lead points at {b}, or at someone who wants it to look that way."], "twist": "patron_lied"},
+        {"hook": "side_b_strike", "beat": ["You know who did it. Now you have to make it stick."], "final": true}
+      ],
+      "on_win": [{"set_flag": "arc_truth_found"}],
+      "on_loss": [{"set_flag": "arc_truth_buried"}]},
+    {"id": "rivalry", "weight": 2, "name": "The Other Squad",
+      "stages": [
+        {"hook": "side_a", "beat": ["Another lancer squad, {rival}, is working for {b}."], "twist": "rival_squad"},
+        {"hook": "side_a", "beat": ["{rival} again. They're good, and they're learning how you fight."], "twist": "rival_squad"},
+        {"hook": "hunt_rivals", "beat": ["Time to settle it with {rival}, one way or another."], "final": true}
+      ],
+      "on_win": [{"set_flag": "rival_beaten"}, {"standing": "$arc.a", "add": 1}],
+      "on_loss": [{"set_flag": "rival_won"}]},
+    {"id": "siege", "weight": 2, "name": "Hold the Town",
+      "stages": [
+        {"hook": "cover_evacuation", "beat": ["{b} is coming for {hub}. Get the people who can't fight somewhere safe."]},
+        {"hook": "raid_depot", "beat": ["Strike first: hit {b} before they're ready."]},
+        {"hook": "hold_the_line", "beat": ["They're here. Hold {hub}."], "final": true}
+      ],
+      "on_win": [{"standing": "$hub.faction", "add": 2}, {"set_flag": "town_held"}],
+      "on_loss": [{"standing": "$hub.faction", "add": -1}, {"set_flag": "town_fell"}]},
+    {"id": "two_masters", "weight": 1, "name": "Two Masters",
+      "stages": [
+        {"hook": "side_a", "beat": ["{a} offers you work. So does {b}. Both say it's the right side."]},
+        {"hook": "side_b", "beat": ["Each side wants you to do something the other can't forgive."], "twist": "orders_change"},
+        {"hook": "side_a", "beat": ["You can't keep both. Choose."], "final": true}
+      ],
+      "on_win": [{"set_flag": "two_masters_resolved"}],
+      "on_loss": [{"set_flag": "two_masters_burned"}]}
+  ],
+  "rival_names": ["the Ninth Lantern", "Grey Choir", "the Ashfall Company", "Seven Dogs", "Iron Tithe", "the Quiet Hands", "Red Meridian", "the Sable Line"]
+}

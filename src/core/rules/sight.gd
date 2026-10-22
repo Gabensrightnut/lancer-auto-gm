@@ -16,11 +16,12 @@ extends RefCounted
 ##   significantly obstructed (smoke, foliage...), or the target is obscured by hard cover it
 ##   isn't adjacent to. Hard and soft don't stack. Characters shoot over cover no bigger than
 ##   themselves.
-## PROVISIONAL (docs/RULES_TODO.md "Line of sight in 3D", "Distance in 3D", "Cover geometry"):
+## Engine geometry (docs/RULES_TODO.md "Engine geometry"; the book describes a flat map):
 ## - Lines are sampled between the middles of the spaces (voxels) characters fill, plus the
 ##   tops of their heads for line of sight; a column's terrain "size" is its height above the
 ##   target's base.
-## - Distance in 3D: the larger of ground distance between footprints and the height gap.
+## - Adjacency counts height (Core p.62); Range/Threat/Sensors with height follow the table's
+##   "distance_3d" ruling (range_distance).
 ## - A column tagged "soft_cover" is soft cover over its whole height.
 ## Only ranged attacks are affected by cover (Core p.64: melee and tech attacks ignore cover).
 
@@ -67,13 +68,38 @@ static func is_solid(map: BattleMap, cell: Vector2i, level: int) -> bool:
 	return not (c.gap_top > 0 and level >= c.gap_bottom and level < c.gap_top)
 
 
-## Distance in spaces between two bodies. PROVISIONAL: larger of ground and height distance.
+## Distance in spaces in any direction: the larger of ground distance and height gap
+## (adjacency, Core p.62). For Range/Threat/Sensors use range_distance().
 static func distance(state: GameState, a: Body, b: Body) -> int:
 	var flat := state.map.grid.footprint_distance(a.cells, b.cells)
 	var a_top := a.level + a.height - 1
 	var b_top := b.level + b.height - 1
 	var vertical := maxi(0, maxi(b.level - a_top, a.level - b_top))
 	return maxi(flat, vertical)
+
+
+## Distance for Range, Threat and Sensors. When heights differ, the table's "distance_3d"
+## ruling decides between spaces in any direction and ground only; `ask` pauses to ask during
+## resolution, otherwise previews use the suggested reading.
+static func range_distance(state: GameState, a: Body, b: Body, ask: bool = false) -> int:
+	var full := distance(state, a, b)
+	var flat := state.map.grid.footprint_distance(a.cells, b.cells)
+	if full == flat:
+		return full
+	var c := Rulings.ask(state, "distance_3d") if ask else Rulings.choice_or_suggested(state, "distance_3d")
+	return flat if c == "ground_only" else full
+
+
+## Within `reach` under the table's distance ruling? Returns {ok, grey_area} where grey_area
+## names the ruling to ask when the readings disagree and the table hasn't decided.
+static func within(state: GameState, a: Body, b: Body, reach: int) -> Dictionary:
+	var full := distance(state, a, b)
+	var flat := state.map.grid.footprint_distance(a.cells, b.cells)
+	if (full <= reach) == (flat <= reach):
+		return {"ok": full <= reach, "grey_area": ""}
+	if not Rulings.decided(state, "distance_3d"):
+		return {"ok": false, "grey_area": "distance_3d"}
+	return {"ok": range_distance(state, a, b) <= reach, "grey_area": ""}
 
 
 static func unit_distance(state: GameState, a: Unit, b: Unit) -> int:
@@ -86,6 +112,9 @@ static func wreck_bodies(state: GameState) -> Array[Body]:
 	var out: Array[Body] = []
 	for u: Unit in state.units.values():
 		if u.destroyed and u.kind == Unit.KIND_MECH and not u.counters.get("vaporized", false):
+			out.append(body_of(state, u))
+		# PROVISIONAL (RULES_TODO "Deployables as cover"): solid deployed objects are hard cover.
+		elif not u.destroyed and u.kind == Unit.KIND_DEPLOYABLE and String(u.counters.get("deploy_type", "")) in ["Deployable", "Object"]:
 			out.append(body_of(state, u))
 	return out
 

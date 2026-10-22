@@ -1,0 +1,406 @@
+{
+ "_note": "Our own writing. A manufacturer's rep: explains licenses (manna exists but can't buy licensed gear; the rules don't track it, Core p.10, p.18) and can help with mech reserves through Get Connected (Core p.55).",
+ "id": "company_rep",
+ "start": "greet",
+ "nodes": {
+  "greet": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@greet_company_rep",
+   "effects": [
+    {
+     "set_flag": "met:{npc_id}"
+    }
+   ],
+   "next": "describe",
+   "branch": [
+    {
+     "if": [
+      {
+       "deal": "$npc",
+       "state": "lost"
+      },
+      {
+       "not": {
+        "flag": "deal_off_said:{npc_id}"
+       }
+      }
+     ],
+     "next": "deal_off"
+    },
+    {
+     "if": {
+      "flag": "met:{npc_id}"
+     },
+     "next": "greet_again"
+    }
+   ]
+  },
+  "greet_again": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": "@greet_company_rep",
+   "next": "menu",
+   "branch": [
+    {
+     "if": [
+      {
+       "deal": "$npc",
+       "state": "lost"
+      },
+      {
+       "not": {
+        "flag": "deal_off_said:{npc_id}"
+       }
+      }
+     ],
+     "next": "deal_off"
+    }
+   ]
+  },
+  "describe": {
+   "speaker": "narrator",
+   "line": "@describe_npc",
+   "next": "menu"
+  },
+  "farewell": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@farewell",
+   "end": true
+  },
+  "check_ok": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": "@check_success",
+   "next": "menu"
+  },
+  "check_bad": {
+   "speaker": "npc",
+   "expression": "angry",
+   "line": "@check_fail",
+   "next": "menu"
+  },
+  "favor": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@rep_favor_intro",
+   "effects": [
+    {
+     "downtime": "dt_get_connected",
+     "subject": "$npc"
+    }
+   ],
+   "next": "menu"
+  },
+  "deal_offer": {
+   "speaker": "npc",
+   "line": "@deal_offer",
+   "choices": [
+    {
+     "id": "deal_yes",
+     "text": [
+      "Deal. We'll do the job.",
+      "You've got yourself a squad."
+     ],
+     "tags": [
+      "practical",
+      "greedy",
+      "bold"
+     ],
+     "effects": [
+      {
+       "deal": {
+        "template": "$npc.want_hook",
+        "fallback": "clear_raiders"
+       }
+      },
+      {
+       "log": "Deal with {npc}: a job for {npc_deal_reward}."
+      }
+     ],
+     "next": "deal_done"
+    },
+    {
+     "id": "deal_no",
+     "text": [
+      "Not right now.",
+      "We'll think about it."
+     ],
+     "tags": [
+      "cautious",
+      "leave"
+     ],
+     "pinned": true,
+     "next": "menu"
+    }
+   ]
+  },
+  "deal_done": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": [
+    "Good. It's on the board. Don't let me down.",
+    "Then we have an understanding."
+   ],
+   "next": "menu"
+  },
+  "deal_waiting": {
+   "speaker": "npc",
+   "line": "@deal_waiting",
+   "next": "menu"
+  },
+  "deal_off": {
+   "speaker": "npc",
+   "expression": "worried",
+   "line": "@deal_off",
+   "effects": [
+    {
+     "set_flag": "deal_off_said:{npc_id}"
+    }
+   ],
+   "next": "menu"
+  },
+  "pay_favor": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": [
+    "Good. Here's what we need from you.",
+    "I was hoping you'd remember. There's a job.",
+    "A favor for a favor. Here's the job."
+   ],
+   "effects": [
+    {
+     "hook": "favor_owed",
+     "patron": "$npc"
+    },
+    {
+     "log": "{npc} called in the favor: a new job is on the board."
+    }
+   ],
+   "next": "menu"
+  },
+  "menu": {
+   "speaker": "npc",
+   "line": "@menu_prompt",
+   "choices": [
+    {
+     "id": "licenses",
+     "text": [
+      "How do I get new mechs and gear?",
+      "How do licenses work, exactly?",
+      "What would it take to fly something other than an Everest?"
+     ],
+     "tags": [
+      "curious"
+     ],
+     "next": "licenses"
+    },
+    {
+     "id": "reserves",
+     "text": [
+      "What are reserves?",
+      "What can you send with us on a mission?"
+     ],
+     "tags": [
+      "curious"
+     ],
+     "next": "reserves_info",
+     "condition": {
+      "not": {
+       "flag": "heard_reserves"
+      }
+     }
+    },
+    {
+     "id": "favor",
+     "text": "Can you help us out for the next mission? (Get Connected: your downtime action)",
+     "condition": [
+      {
+       "phase": "downtime"
+      },
+      {
+       "downtime_left": true
+      },
+      {
+       "standing": "$npc.faction",
+       "min": -2
+      }
+     ],
+     "tags": [
+      "practical",
+      "greedy"
+     ],
+     "next": "favor"
+    },
+    {
+     "id": "pay_favor",
+     "text": "About the favor we owe {npc_faction}...",
+     "condition": {
+      "obligation": "$npc.faction"
+     },
+     "tags": [
+      "honest"
+     ],
+     "priority": 3,
+     "next": "pay_favor"
+    },
+    {
+     "id": "charm",
+     "text": "Talk up the squad's record.",
+     "trigger": "sk_charm",
+     "tags": [
+      "diplomatic",
+      "bold"
+     ],
+     "check": {
+      "skills": [
+       "sk_charm",
+       "sk_show_off"
+      ],
+      "goal": "charm:{npc_id}",
+      "consequence": "{npc} decides you're all talk ({npc_faction} standing -1).",
+      "success": "check_ok",
+      "fail": "check_bad",
+      "success_effects": [
+       {
+        "standing": "$npc.faction",
+        "add": 1
+       },
+       {
+        "set_flag": "charm:{npc_id}"
+       }
+      ],
+      "fail_effects": [
+       {
+        "standing": "$npc.faction",
+        "add": -1
+       }
+      ],
+      "tags": [
+       "politics",
+       "fame"
+      ]
+     },
+     "condition": [
+      {
+       "not": {
+        "flag": "charm:{npc_id}"
+       }
+      }
+     ]
+    },
+    {
+     "id": "pull_rank",
+     "text": "Remind them who keeps {npc_faction}'s mechs in the field.",
+     "trigger": "sk_pull_rank",
+     "tags": [
+      "aggressive",
+      "bold"
+     ],
+     "check": {
+      "skills": [
+       "sk_pull_rank"
+      ],
+      "goal": "pull_rank:{npc_id}",
+      "consequence": "{npc} doesn't like being leaned on ({npc_faction} standing -1).",
+      "success": "check_ok",
+      "fail": "check_bad",
+      "success_effects": [
+       {
+        "standing": "$npc.faction",
+        "add": 1
+       },
+       {
+        "set_flag": "pull_rank:{npc_id}"
+       }
+      ],
+      "fail_effects": [
+       {
+        "standing": "$npc.faction",
+        "add": -1
+       }
+      ],
+      "difficult": true,
+      "tags": [
+       "military",
+       "nobles"
+      ]
+     },
+     "condition": [
+      {
+       "not": {
+        "flag": "pull_rank:{npc_id}"
+       }
+      }
+     ]
+    },
+    {
+     "id": "deal",
+     "text": [
+      "Is there something we could do for you, in exchange for {npc_deal_reward}?",
+      "What would it take to get {npc_deal_reward} from you?"
+     ],
+     "condition": [
+      {
+       "deal": "$npc",
+       "state": "none"
+      },
+      {
+       "not": {
+        "phase": "mission"
+       }
+      }
+     ],
+     "tags": [
+      "greedy",
+      "practical",
+      "kind"
+     ],
+     "next": "deal_offer"
+    },
+    {
+     "id": "deal_wait",
+     "text": "About our deal...",
+     "condition": {
+      "deal": "$npc",
+      "state": "accepted"
+     },
+     "tags": [
+      "honest"
+     ],
+     "next": "deal_waiting"
+    },
+    {
+     "id": "leave",
+     "text": [
+      "That's all for now.",
+      "I should go.",
+      "Thanks. See you around.",
+      "We'll talk later."
+     ],
+     "tags": [
+      "leave"
+     ],
+     "pinned": true,
+     "next": "farewell"
+    }
+   ]
+  },
+  "licenses": {
+   "speaker": "npc",
+   "line": "@license_explain",
+   "next": "menu"
+  },
+  "reserves_info": {
+   "speaker": "npc",
+   "line": "@reserves_explain",
+   "effects": [
+    {
+     "set_flag": "heard_reserves"
+    }
+   ],
+   "next": "menu"
+  }
+ }
+}
