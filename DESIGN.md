@@ -378,6 +378,9 @@ differently without an AI. Each game has a **seed**: share it to replay the same
 - **Switch any time:** take over an AI pilot mid-mission or hand yours to the AI. When a
   friend joins online, they can take over an AI pilot (drop-in); when they leave, the AI picks
   it back up.
+- **Fill empty multiplayer slots (optional):** a host setting, off by default. When on, any
+  seat with no player gets an AI pilot, so a 2-person online game can still run a full squad.
+  The host can choose per seat: AI, left empty, or reserved for a friend who joins later.
 - **AI squadmates** use the same tactics system as enemies (section 9), on your side: they
   follow the book's rules through the same rules engine, and only know what your squad knows
   (no peeking at hidden enemies or unscanned stats).
