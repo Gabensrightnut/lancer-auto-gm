@@ -70,4 +70,7 @@ static func state_of(u: Unit, w: Dictionary) -> Dictionary:
 			# +1 use of Limited gear per 2 Engineering (Core p.34).
 			uses = tag_value(w, "tg_limited") + u.engineering / 2
 		all[key] = {"loaded": true, "uses": uses, "destroyed": false}
+		if has_tag(w, "tg_recharge"):
+			all[key]["recharge"] = tag_value(w, "tg_recharge")
+			all[key]["charged"] = true
 	return all[key]

@@ -82,6 +82,7 @@ static func _do_move(state: GameState, u: Unit, plan: Dictionary, mode: String, 
 		events.append_array(Combat.begin_falling(u, "Jump jets: the Boost didn't end on a surface."))
 		events.append_array(Combat.fall_unit(state, u))
 	events.append_array(Effects.moved(state, u, mode))
+	events.append_array(Abilities.check_mines(state, u, path))
 	events.append_array(CloseCombat.drag_partner(state, u, from, from_level))
 	events.append_array(Combat.after_movement(state))
 	events.append_array(Reactions.prepared_triggers(state, u))

@@ -111,6 +111,9 @@ static func wreck_bodies(state: GameState) -> Array[Body]:
 	for u: Unit in state.units.values():
 		if u.destroyed and u.kind == Unit.KIND_MECH and not u.counters.get("vaporized", false):
 			out.append(body_of(state, u))
+		# PROVISIONAL (RULES_TODO "Deployables as cover"): solid deployed objects are hard cover.
+		elif not u.destroyed and u.kind == Unit.KIND_DEPLOYABLE and String(u.counters.get("deploy_type", "")) in ["Deployable", "Object"]:
+			out.append(body_of(state, u))
 	return out
 
 

@@ -106,6 +106,10 @@ static func begin_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 		u.counters.erase("prepared")
 		events.append({"type": "prepared_lost", "unit": u.id, "rule_ref": "actions: Prepare"})
 	events.append({"type": "turn_started", "unit": u.id, "round": state.round_number})
+	u.counters.erase("ability_round_uses")  # X/round: from the start of your turn (tags: Round)
+	events.append_array(Combat.expire_at_turn_start(state, u))
+	events.append_array(Abilities.expire(state, u, "start"))
+	events.append_array(Abilities.recharge_roll(state, u))
 	events.append_array(Effects.turn_started(state, u))
 	return events
 
@@ -118,6 +122,8 @@ static func finish_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 		events.append_array(Combat.end_of_turn_checks(state, u))
 	events.append_array(Combat.fall_all(state, u))
 	events.append_array(Combat.expire_statuses(state, u))
+	events.append_array(Abilities.expire(state, u, "end"))
+	Abilities.arm_mines(state, u)
 	events.append_array(Combat.tick_meltdown(state, u))
 	state.acted.append(u.id)
 	state.active_unit = ""

@@ -27,13 +27,15 @@ const DOUBLED_BY_EXPOSED := ["Kinetic", "Explosive", "Energy"]
 # --- Statuses -------------------------------------------------------------------------
 
 ## Adds a status. `next_turn_end_of` = a unit whose "end of next turn" ends it ("" = lasts).
-static func add_status(state: GameState, u: Unit, status: String, source: String, next_turn_end_of: String = "") -> Array[Dictionary]:
+static func add_status(state: GameState, u: Unit, status: String, source: String, next_turn_end_of: String = "", until_start_of: String = "") -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if status == "Prone" and u.flying:
 		return events  # Flying characters have IMMUNITY to PRONE (glossary: Flight/Hover).
 	if Effects.immune_to_status(u, status):
 		return [{"type": "status_blocked", "unit": u.id, "status": status, "reason": "Immune.", "rule_ref": "glossary: Immunity"}] as Array[Dictionary]
 	var entry := {"source": source}
+	if until_start_of != "":
+		entry["turn_start_of"] = until_start_of
 	if next_turn_end_of != "":
 		entry["turn_of"] = next_turn_end_of
 		# "Until the end of your next turn": if it's that unit's turn now, not this one.
@@ -60,6 +62,16 @@ static func remove_status(u: Unit, status: String, source: String = "") -> Array
 		return [] as Array[Dictionary]
 	u.statuses.erase(status)
 	return [{"type": "status_removed", "unit": u.id, "status": status, "source": source}] as Array[Dictionary]
+
+
+## Ends statuses that last "until the start of <u>'s next turn".
+static func expire_at_turn_start(state: GameState, u: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for x: Unit in state.units.values():
+		for status: String in x.statuses.keys():
+			if x.statuses[status].get("turn_start_of", "") == u.id:
+				events.append_array(remove_status(x, status, "expired"))
+	return events
 
 
 ## Ends statuses that last "until the end of <ended>'s next turn".
@@ -290,6 +302,7 @@ static func _system_trauma(state: GameState, u: Unit) -> Array[Dictionary]:
 			var sys: Dictionary = u.counters.get("systems", {})
 			sys[system] = {"destroyed": true}
 			u.counters["systems"] = sys
+			Abilities.source_state(u, system)["destroyed"] = true
 			events.append({"type": "equipment_destroyed", "unit": u.id, "system": system})
 		_:
 			events.append_array(_direct_hit(state, u))

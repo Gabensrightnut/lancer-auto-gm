@@ -68,10 +68,12 @@ static func has(u: Unit, kind: String) -> bool:
 
 ## Accuracy/Difficulty sources for a roll. `on` lists the roll types this counts as, e.g.
 ## ["attack", "ranged_attack"] or ["save"]. Returns sources for Dice.check.
-static func accuracy_sources(u: Unit, on: Array, skill: String = "", reaction: bool = false) -> Array:
+static func accuracy_sources(u: Unit, on: Array, skill: String = "", reaction: bool = false, weapon_type: String = "") -> Array:
 	var out: Array = []
 	for e: Dictionary in of(u, "accuracy"):
 		if not on.has(e.get("on", "")):
+			continue
+		if e.has("weapon_type") and e["weapon_type"] != weapon_type:
 			continue
 		if e.has("skill") and e["skill"] != skill:
 			continue
@@ -168,12 +170,17 @@ static func use_grant(u: Unit, e: Dictionary) -> void:
 
 
 ## Adds effects for the rest of the scene (e.g. a core power), with their statuses.
-static func activate(state: GameState, u: Unit, effects: Array, source: String) -> Array[Dictionary]:
+## `duration`: "scene", "start_next_turn" or "end_next_turn" (of `u`).
+static func activate(state: GameState, u: Unit, effects: Array, source: String, duration: String = "scene") -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	var active: Array = u.counters.get("active_effects", [])
 	for e: Dictionary in effects:
 		var copy := e.duplicate(true)
 		copy["label"] = copy.get("label", source)
+		if duration == "start_next_turn":
+			copy["expires"] = {"unit": u.id, "when": "start", "count": 1}
+		elif duration == "end_next_turn":
+			copy["expires"] = {"unit": u.id, "when": "end", "count": 2 if state.active_unit == u.id else 1}
 		active.append(copy)
 		if copy.get("kind", "") == "status" and copy.get("when", "always") == "always":
 			events.append_array(Combat.add_status(state, u, String(copy["status"]), source))

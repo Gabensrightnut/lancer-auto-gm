@@ -105,7 +105,10 @@ static func _others(state: GameState, u: Unit) -> Array[Dictionary]:
 		var wreck: bool = o.destroyed and o.kind == Unit.KIND_MECH and not o.counters.get("vaporized", false)
 		if not Combat.is_present(o) and not wreck:
 			continue
-		var object: bool = wreck or o.kind == Unit.KIND_DEPLOYABLE
+		var dtype := String(o.counters.get("deploy_type", ""))
+		if dtype == "Mine":
+			continue  # mines lie on the ground
+		var object: bool = wreck or (o.kind == Unit.KIND_DEPLOYABLE and dtype != "Drone")
 		var blocks: bool = (object or o.side != u.side) and o.size >= u.size
 		if o.kind == Unit.KIND_PILOT and u.kind != Unit.KIND_PILOT:
 			blocks = false  # mechs can always move through unmounted humans (Core p.62)

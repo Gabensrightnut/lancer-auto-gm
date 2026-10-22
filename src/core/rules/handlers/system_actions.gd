@@ -275,6 +275,7 @@ class CorePower:
 		var u := state.unit(action["actor"])
 		var core: Dictionary = u.loadout["core"]
 		u.counters["core_power"] = int(u.counters.get("core_power", 1)) - 1
+		u.counters["core_active"] = true  # its active actions become available (core_system active_actions)
 		var events: Array[Dictionary] = [{"type": "core_power", "unit": u.id, "core": core.get("name", ""),
 			"power": core.get("power", ""), "text": core.get("text", ""), "automated": core.get("automated", false),
 			"rule_ref": "frames: core_system"}]

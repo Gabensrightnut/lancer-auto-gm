@@ -1,0 +1,203 @@
+class_name AbilityActions
+extends RefCounted
+## The "activate" action for abilities (see Abilities), and the action-bar listing.
+
+
+class Activate:
+	extends ActionHandler
+	## {"type": "activate", "actor": unit, "params": {"ability": key, "to": [x, y] or [[x, y], ...]
+	## (deploy), "target": unit id (Invade options and abilities that target someone)}}
+
+	func type() -> String:
+		return "activate"
+
+	func validate(state: GameState, action: Dictionary) -> RuleResult:
+		var u := state.unit(action["actor"])
+		var r := TurnRules.check_own_turn(state, u)
+		if not r.ok:
+			return r
+		var params: Dictionary = action.get("params", {})
+		var a := Abilities.find(u, String(params.get("ability", "")))
+		r = Abilities.can_activate(state, u, a)
+		if not r.ok:
+			return r
+		if a.get("requires_core_active", false) and not u.counters.get("core_active", false):
+			return RuleResult.deny("Only while %s is active." % a["source_name"], "frames: core_system")
+		if a.get("activation", "") == "Protocol" and (u.turn.get("protocols", []) as Array).has(a["key"]):
+			return RuleResult.deny("Each Protocol only once per turn.", "Core p.73 Protocol")
+		r = TurnRules.can_spend(u, Abilities.cost_of(a), Abilities.economy_name(a))
+		if not r.ok:
+			return r
+		match a.get("kind", "action"):
+			"deploy":
+				var spots := AbilityActions.spots(params)
+				if spots.is_empty() or spots.size() > int(a.get("instances", 1)):
+					return RuleResult.deny("Choose where to deploy it (params.to).", Abilities.REF)
+				for c: Vector2i in spots:
+					var ok := Abilities.check_spot(state, u, a["deployable"], c)
+					if not ok.ok:
+						return ok
+			"action":
+				if a.get("activation", "") == "Invade":
+					return Attacks.tech_target_check(state, u, state.unit(String(params.get("target", ""))), "invade")
+		return RuleResult.allow()
+
+	func resolve(state: GameState, action: Dictionary) -> Array[Dictionary]:
+		var u := state.unit(action["actor"])
+		var params: Dictionary = action.get("params", {})
+		var a := Abilities.find(u, String(params["ability"]))
+		var acted: bool = u.turn.get("acted", false)
+		TurnRules.spend(u, Abilities.cost_of(a), Abilities.economy_name(a))
+		Abilities.spend(state, u, a)
+		if a.get("activation", "") == "Protocol":
+			u.turn["acted"] = acted  # a Protocol doesn't count as acting (tags: Ordnance)
+			var p: Array = u.turn.get("protocols", [])
+			p.append(a["key"])
+			u.turn["protocols"] = p
+		var events: Array[Dictionary] = [{"type": "activated", "unit": u.id, "ability": a["key"], "name": a["name"],
+			"source": a.get("source_name", ""), "activation": a.get("activation", ""), "automated": a.get("automated", false),
+			"detail": a.get("detail", ""), "rule_ref": Abilities.REF}]
+		match a.get("kind", "action"):
+			"deploy":
+				for c: Vector2i in AbilityActions.spots(params):
+					events.append_array(Abilities.deploy(state, u, a, c))
+			"recall":
+				events.append_array(Abilities.recall(state, u, a))
+			_:
+				var target := state.unit(String(params.get("target", "")))
+				var hit := true
+				if a.get("activation", "") == "Invade":
+					var r := Attacks.tech_attack(state, u, target, String(a["name"]), params)
+					events.append_array(r["events"])
+					hit = r["hit"]
+					if hit:
+						events.append_array(Combat.apply_heat(state, target, 2, u.id))
+				if hit:
+					events.append_array(AbilityActions.apply_ops(state, u, a, target))
+		return events
+
+
+static func spots(params: Dictionary) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	var v: Variant = params.get("to")
+	if v is Array and not (v as Array).is_empty() and v[0] is Array:
+		for c: Array in v:
+			out.append(Vector2i(int(c[0]), int(c[1])))
+	else:
+		var one: Variant = TurnAction.cell_param(params, "to")
+		if one != null:
+			out.append(one)
+	return out
+
+
+## Applies an ability's encoded ops; unencoded abilities go to the table as text.
+static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if not a.get("automated", false):
+		events.append({"type": "manual_effect", "unit": u.id, "source": a["name"], "text": a.get("detail", ""),
+			"note": "Not automated yet: the table applies this."})
+		return events
+	for op: Dictionary in a.get("ops", []):
+		var duration := String(op.get("duration", "scene"))
+		match op.get("op", ""):
+			"status":
+				var who: Unit = u if op.get("who", "self") == "self" else target
+				if who == null:
+					continue
+				if duration == "start_next_turn":
+					events.append_array(Combat.add_status(state, who, String(op["status"]), a["name"], "", u.id))
+				elif duration == "end_next_turn":
+					events.append_array(Combat.add_status(state, who, String(op["status"]), a["name"], who.id))
+				else:
+					events.append_array(Combat.add_status(state, who, String(op["status"]), a["name"]))
+			"self_effects":
+				events.append_array(Effects.activate(state, u, op.get("effects", []), String(a["name"]), duration))
+	return events
+
+
+## Basic actions shown on the action bar: [type, name, group, params-free check?].
+const BASIC := [
+	["move", "Move", "move"], ["boost", "Boost", "move"], ["jump", "Jump", "move"], ["stand_up", "Stand Up", "move"],
+	["bonus_move", "Extra Move", "move"], ["disengage", "Disengage", "move"],
+	["skirmish", "Skirmish", "attack"], ["barrage", "Barrage", "attack"], ["improvised_attack", "Improvised Attack", "attack"],
+	["ram", "Ram", "attack"], ["grapple", "Grapple", "attack"], ["fight", "Fight", "attack"],
+	["scan", "Scan", "tech"], ["lock_on", "Lock On", "tech"], ["invade", "Invade", "tech"], ["bolster", "Bolster", "tech"],
+	["full_tech", "Full Tech", "tech"],
+	["hide", "Hide", "other"], ["search", "Search", "other"], ["overcharge", "Overcharge", "other"],
+	["stabilize", "Stabilize", "other"], ["core_power", "Core Power", "core"], ["prepare", "Prepare", "other"],
+	["shut_down", "Shut Down", "other"], ["boot_up", "Boot Up", "other"], ["eject", "Eject", "other"],
+	["dismount", "Dismount", "other"], ["mount", "Mount", "other"], ["self_destruct", "Self-Destruct", "other"],
+	["end_grapple", "Let Go", "other"], ["break_free", "Break Free", "other"], ["grapple_contest", "Grapple Contest", "other"],
+]
+## Actions whose own check needs no target, so the bar can show exactly whether they work.
+const NO_TARGET := ["stand_up", "bonus_move", "disengage", "hide", "overcharge", "shut_down", "boot_up",
+	"core_power", "end_grapple", "break_free", "grapple_contest", "self_destruct"]
+
+
+## Everything `u` might do now, for the action bar. See RulesQueries.available_actions.
+static func listing(state: GameState, u: Unit) -> Array:
+	var out: Array = []
+	var own_turn := state.active_unit == u.id and state.pending.is_empty()
+	for b: Array in BASIC:
+		var h: Variant = RulesEngine.registry.get(b[0])
+		if h == null:
+			continue
+		var entry := {"id": b[0], "type": b[0], "params": {}, "name": b[1], "group": b[2], "available": false, "reason": "", "rule_ref": ""}
+		var r: RuleResult
+		if not own_turn:
+			r = RuleResult.deny("Not your turn.", TurnRules.REF_TURN_ORDER)
+		elif h is TurnAction:
+			var ta: TurnAction = h
+			if not ta.kinds().has(u.kind):
+				continue
+			entry["cost"] = ta.cost()
+			r = TurnRules.can_spend(u, ta.cost(), ta.economy_name()) if ta.cost() != "move" else RuleResult.allow()
+			if r.ok and NO_TARGET.has(b[0]):
+				r = (h as ActionHandler).validate(state, {"type": b[0], "actor": u.id, "params": {"delay": 1}})
+			elif r.ok and b[0] in ["move", "jump"]:
+				r = MoveActions._can_move_voluntarily(u)
+		else:
+			r = (h as ActionHandler).validate(state, {"type": b[0], "actor": u.id, "params": {}})
+		entry["available"] = r.ok
+		entry["reason"] = r.reason
+		entry["rule_ref"] = r.rule_ref
+		out.append(entry)
+	for w: Dictionary in u.loadout.get("weapons", []):
+		var ws := Weapons.state_of(u, w)
+		var ready := Attacks.weapon_ready(u, w)
+		out.append({"id": "weapon:" + String(w["key"]), "type": "skirmish", "params": {"weapon": w["key"]}, "name": w.get("name", ""),
+			"group": "weapon", "available": own_turn and ready.ok, "reason": ready.reason if own_turn else "Not your turn.",
+			"rule_ref": ready.rule_ref, "size": w.get("size", ""), "loading": {"has": Weapons.has_tag(w, "tg_loading"), "loaded": ws["loaded"]},
+			"uses_left": int(ws["uses"]), "recharge": {"value": int(ws.get("recharge", 0)), "charged": ws.get("charged", true)},
+			"destroyed": ws["destroyed"], "superheavy": w.get("size", "") == "Superheavy"})
+	for a: Dictionary in Abilities.all(u):
+		var src := Abilities.source_state(u, String(a["source_key"]))
+		var r := RuleResult.deny("Not your turn.", TurnRules.REF_TURN_ORDER)
+		if a.get("activation", "") == "Reaction":
+			r = RuleResult.deny("Reaction: offered when its trigger happens (%s)." % a.get("trigger", ""), "Core p.73 Reactions")
+		elif own_turn:
+			r = Abilities.can_activate(state, u, a)
+			if r.ok and a.get("requires_core_active", false) and not u.counters.get("core_active", false):
+				r = RuleResult.deny("Only while %s is active." % a["source_name"], "frames: core_system")
+			if r.ok:
+				r = TurnRules.can_spend(u, Abilities.cost_of(a), Abilities.economy_name(a))
+		var f := Abilities.frequency_of(a)
+		out.append({"id": "ability:" + String(a["key"]), "type": "activate", "params": {"ability": a["key"]}, "name": a["name"],
+			"group": "core" if a["source_key"] == "core" else ("reaction" if a.get("activation", "") == "Reaction" else "system"),
+			"source": a.get("source_name", ""), "activation": a.get("activation", ""), "cost": Abilities.cost_of(a),
+			"available": r.ok, "reason": r.reason, "rule_ref": r.rule_ref, "uses_left": int(src["uses"]),
+			"uses_max": Abilities.max_uses(u, String(a["source_key"])), "frequency": a.get("frequency", ""),
+			"used": Abilities._times_used(u, String(a["key"]), f.get("per", "scene")) if not f.is_empty() else 0,
+			"recharge": {"value": int(src.get("recharge", 0)), "charged": src.get("charged", true)},
+			"destroyed": src["destroyed"], "automated": a.get("automated", false), "detail": a.get("detail", ""), "kind": a.get("kind", "action")})
+	for reaction in ["brace", "overwatch"]:
+		if u.kind == Unit.KIND_DEPLOYABLE:
+			break
+		var rr := Reactions.can_react(u, reaction, state)
+		out.append({"id": "reaction:" + reaction, "type": "react", "params": {}, "name": reaction.capitalize(), "group": "reaction",
+			"available": rr.ok, "reason": rr.reason, "rule_ref": rr.rule_ref, "frequency": "1/round",
+			"used": 1 if (u.counters.get("reactions", []) as Array).has(reaction) else 0,
+			"policy": Reactions.policy(u, reaction)})
+	out.append({"id": "core_power_charges", "type": "", "name": "Core Power", "group": "status", "uses_left": int(u.counters.get("core_power", 0)),
+		"uses_max": 1 if u.loadout.has("core") else 0, "active": u.counters.get("core_active", false)})
+	return out

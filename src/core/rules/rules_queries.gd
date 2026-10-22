@@ -102,6 +102,18 @@ static func rulings(state: GameState) -> Array:
 	return out
 
 
+## Everything the unit might do now, for the action bar: basic actions, weapons, abilities
+## (systems, core, traits, talents, deployables), reactions and Core Power. Each entry:
+## {id, type (action to submit), params (template), name, group, available, reason, rule_ref,
+##  and where relevant: cost, activation, uses_left, uses_max, frequency, used, loading
+##  {has, loaded}, recharge {value, charged}, destroyed, automated, detail, policy}.
+static func available_actions(state: GameState, unit_id: String) -> Array:
+	var u := state.unit(unit_id)
+	if u == null:
+		return []
+	return AbilityActions.listing(state, u)
+
+
 ## Hostiles that could react (Overwatch) if the unit starts moving now.
 static func threatened_by(state: GameState, unit_id: String) -> Array[String]:
 	return Movement.threatened_by(state, state.unit(unit_id))

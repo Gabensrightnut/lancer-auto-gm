@@ -28,7 +28,7 @@ func _init() -> void:
 		PilotActions.Eject.new(), PilotActions.Dismount.new(), PilotActions.Mount.new(),
 		PilotActions.Fight.new(), PilotActions.SelfDestruct.new(), PilotActions.Prepare.new(),
 		PilotActions.DropPrepared.new(), SystemActions.CorePower.new(), MoveActions.BonusMove.new(),
-		Rulings.SetRuling.new(), CloseCombat.GrappleContest.new(),
+		Rulings.SetRuling.new(), CloseCombat.GrappleContest.new(), AbilityActions.Activate.new(),
 	]:
 		register(h)
 

@@ -115,7 +115,7 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 		sources.append(_src("Target Braced", "difficulty", "actions: Brace"))
 		diff += 1
 	var roll_kinds := ["attack", "melee_attack" if kind == KIND_MELEE else "ranged_attack"]
-	for src: Dictionary in Effects.accuracy_sources(attacker, roll_kinds, "", opts.get("reaction", false)):
+	for src: Dictionary in Effects.accuracy_sources(attacker, roll_kinds, "", opts.get("reaction", false), String(w.get("type", ""))):
 		sources.append(src)
 		if src["kind"] == "accuracy":
 			acc += int(src["value"])
@@ -167,6 +167,8 @@ static func weapon_ready(attacker: Unit, w: Dictionary, improvised: bool = false
 		return RuleResult.deny("%s needs reloading (Stabilize reloads it)." % w.get("name", "That weapon"), "tags: Loading")
 	if Weapons.has_tag(w, "tg_limited") and int(ws["uses"]) <= 0:
 		return RuleResult.deny("%s is out of charges until a Full Repair." % w.get("name", "That weapon"), "tags: Limited")
+	if not ws.get("charged", true):
+		return RuleResult.deny("%s is recharging (Recharge %d+)." % [w.get("name", "That weapon"), int(ws.get("recharge", 6))], "tags: Recharge")
 	return RuleResult.allow()
 
 
@@ -247,6 +249,8 @@ static func _spend_weapon(state: GameState, attacker: Unit, w: Dictionary) -> Ar
 		ws["loaded"] = false
 	if Weapons.has_tag(w, "tg_limited"):
 		ws["uses"] = int(ws["uses"]) - 1
+	if ws.has("recharge"):
+		ws["charged"] = false
 	var self_heat := Weapons.tag_value(w, "tg_heat_self")
 	if self_heat > 0:
 		events.append_array(Combat.apply_heat(state, attacker, self_heat, "Heat (Self): " + String(w.get("name", ""))))
@@ -397,6 +401,7 @@ static func knock_back(state: GameState, target: Unit, origin: Vector2i, spaces:
 	target.cell = Vector2i(last[0], last[1])
 	var events: Array[Dictionary] = [{"type": "moved", "unit": target.id, "path": path, "mode": "involuntary", "cost": 0, "rule_ref": "tags: Knockback"}]
 	events.append_array(Effects.punish_movement(state, target))
+	events.append_array(Abilities.check_mines(state, target, path))
 	if Movement.placement(state, target.size, target.cell, target.level)["airborne"] and not target.flying:
 		events.append_array(Combat.begin_falling(target, "Knocked off a ledge."))
 	events.append_array(Combat.after_movement(state))
