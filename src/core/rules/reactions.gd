@@ -259,28 +259,83 @@ static func prepared_triggers(state: GameState, mover: Unit) -> Array[Dictionary
 		var who: String = trig.get("who", "any")
 		if (who == "hostile" and p.side == mover.side) or (who == "ally" and p.side != mover.side):
 			continue
+		if not String(trig.get("event", "")) in ["moves_adjacent", "moves_within"]:
+			continue
 		var reach := 1 if trig.get("event", "") == "moves_adjacent" else int(trig.get("range", 1))
 		if Sight.unit_distance(state, p, mover) > reach:
 			continue
-		var d := offer(state, p, "prepared", {"trigger": mover.id, "action": prep["action"], "text": prep.get("text", "")}, {"take": true})
-		if not d.get("take", false):
+		events.append_array(_fire_prepared(state, p, mover))
+	return events
+
+
+## Prepare triggers on actions (actions: Prepare, "When X, then Y" where X is an action):
+## "acts" (optionally only trigger.actions types) and "attacks" (optionally trigger.target "me"
+## or "ally"). PROVISIONAL: the prepared action goes off after the triggering action resolves.
+static func prepared_after_action(state: GameState, action: Dictionary, done: Array[Dictionary]) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var actor := state.unit(String(action.get("actor", "")))
+	var type := String(action.get("type", ""))
+	if actor == null or state.reaction_run.get("in_prepared", false) or type in ["start_turn", "end_turn", "react", "prepare", "drop_prepared"]:
+		return events
+	var ids: Array = state.units.keys()
+	ids.sort()
+	for id: String in ids:
+		var p := state.unit(id)
+		if p == actor or not p.counters.has("prepared") or not Combat.is_present(p) or p.has_status("Stunned") or p.has_status("Jammed"):
 			continue
-		var action: Dictionary = prep["action"]
-		var params: Dictionary = (action.get("params", {}) as Dictionary).duplicate(true)
-		for k: String in params:
-			if params[k] is String and params[k] == "trigger":
-				params[k] = mover.id
-		p.counters.erase("prepared")
-		_mark_used(p, "prepared", state)
-		var h: TurnAction = RulesEngine.registry[action["type"]]
-		var r := h.check(state, p, params)
-		events.append({"type": "prepared_triggered", "unit": p.id, "trigger": mover.id, "action": action["type"], "ok": r.ok, "reason": r.reason, "rule_ref": "actions: Prepare"})
-		if not r.ok:
+		var trig: Dictionary = p.counters["prepared"]["trigger"]
+		var who: String = trig.get("who", "any")
+		if (who == "hostile" and p.side == actor.side) or (who == "ally" and p.side != actor.side):
 			continue
-		var running := state.reaction_run.is_empty()
-		state.reaction_run["in_prepared"] = true
-		events.append_array(h.apply(state, p, params))
-		state.reaction_run.erase("in_prepared")
-		if running:
-			state.reaction_run.clear()
+		match String(trig.get("event", "")):
+			"acts":
+				var only: Array = trig.get("actions", [])
+				if not only.is_empty() and not only.has(type):
+					continue
+			"attacks":
+				var hit_target := false
+				for ev: Dictionary in done:
+					if ev.get("type", "") != "attack_rolled" or ev.get("attacker", "") != actor.id:
+						continue
+					var tgt := state.unit(String(ev.get("target", "")))
+					match String(trig.get("target", "any")):
+						"me":
+							hit_target = hit_target or tgt == p
+						"ally":
+							hit_target = hit_target or (tgt != null and tgt != p and tgt.side == p.side)
+						_:
+							hit_target = true
+				if not hit_target:
+					continue
+			_:
+				continue
+		events.append_array(_fire_prepared(state, p, actor))
+	return events
+
+
+## Offers and takes `p`'s prepared action, set off by `trigger`.
+static func _fire_prepared(state: GameState, p: Unit, mover: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var prep: Dictionary = p.counters["prepared"]
+	var d := offer(state, p, "prepared", {"trigger": mover.id, "action": prep["action"], "text": prep.get("text", "")}, {"take": true})
+	if not d.get("take", false):
+		return events
+	var action: Dictionary = prep["action"]
+	var params: Dictionary = (action.get("params", {}) as Dictionary).duplicate(true)
+	for k: String in params:
+		if params[k] is String and params[k] == "trigger":
+			params[k] = mover.id
+	p.counters.erase("prepared")
+	_mark_used(p, "prepared", state)
+	var h: TurnAction = RulesEngine.registry[action["type"]]
+	var r := h.check(state, p, params)
+	events.append({"type": "prepared_triggered", "unit": p.id, "trigger": mover.id, "action": action["type"], "ok": r.ok, "reason": r.reason, "rule_ref": "actions: Prepare"})
+	if not r.ok:
+		return events
+	var running := state.reaction_run.is_empty()
+	state.reaction_run["in_prepared"] = true
+	events.append_array(h.apply(state, p, params))
+	state.reaction_run.erase("in_prepared")
+	if running:
+		state.reaction_run.clear()
 	return events

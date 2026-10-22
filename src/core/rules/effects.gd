@@ -164,7 +164,7 @@ static func grant(u: Unit, id: String, action: String, is_quick: bool) -> Dictio
 		if e.get("id", "") != id:
 			continue
 		var what: String = e.get("action", "")
-		if what != action and not (what == "any_quick" and is_quick) and not (what == "ram_or_grapple" and action in ["ram", "grapple"]):
+		if what != action and not (what == "any_quick" and is_quick) and not (what == "ram_or_grapple" and action in ["ram", "grapple"]) 				and not (what == "mount_or_dismount" and action in ["mount", "dismount"]):
 			continue
 		if e.get("needs", "") != "" and not u.turn.get(String(e["needs"]), false):
 			continue
