@@ -8,7 +8,7 @@ extends Node3D
 var content: ContentDB
 var view: BattleView
 var player: EventPlayer
-var rolls: RollDisplay
+var rolls: RollPopups
 var combat_log: CombatLog
 var hud: CockpitHUD
 var resources: ResourceCluster
@@ -59,7 +59,7 @@ func _build_ui() -> void:
 	hud = CockpitHUD.new()
 	hud.visible = false
 	_ui.add_child(hud)
-	rolls = RollDisplay.new()
+	rolls = RollPopups.new()
 	_ui.add_child(rolls)
 	combat_log = CombatLog.new()
 	combat_log.position = Vector2(1600 - 496, 70)
@@ -458,7 +458,7 @@ func _focus_for(key: String) -> void:
 # --- screenshots -----------------------------------------------------------------------
 
 func _battle_stage(tag: String) -> void:
-	rolls.hold_result = false
+	rolls.hold = false
 	Fx.speed = 4.0
 	await start_battle()
 	if tag == "turn_order":
@@ -470,9 +470,12 @@ func _battle_stage(tag: String) -> void:
 		return
 	if tag == "skill":
 		Fx.speed = 1.0
-		battle.popup.play({"label": "Engineering check: hold the reactor together", "skill": "Engineering", "d20": 14, "total": 16, "target": 10,
+		rolls.hold = true
+		player.play_event({"type": "skill_check", "unit": "everest", "check": {"label": "Engineering check", "skill": "Engineering", "d20": 14, "total": 16, "target": 10,
 			"success": true, "bonus_sources": [{"label": "Engineering", "value": 2}], "sources": [{"label": "Trained (trigger)", "kind": "accuracy"}],
-			"accuracy_roll": {"accuracy": 1, "difficulty": 0, "net": 1, "color": "blue", "dice": [3], "kept": 3, "value": 3}}, true)
+			"accuracy_roll": {"accuracy": 1, "difficulty": 0, "net": 1, "color": "blue", "dice": [3], "kept": 3, "value": 3}}})
+		view.tactical.look_at_point(view.units["everest"].global_position + Vector3.UP * 0.6, 6.0)
+		view.tactical.snap()
 		await get_tree().create_timer(3.0).timeout
 		return
 	battle._on_i_will_go("everest")
@@ -575,9 +578,8 @@ func screenshot_stage(tag: String) -> void:
 	_stop_battle()
 	view.overlays.clear()
 	player.cancel()
-	rolls.clear_now()
-	rolls.hold_result = false
-	player.rolls = null
+	rolls.clear_all()
+	rolls.hold = false
 	if view.camera_mode != "tactical":
 		_toggle_camera()
 	for c in view.fx_root.get_children():
@@ -609,12 +611,11 @@ func screenshot_stage(tag: String) -> void:
 			view.tactical.look_at_point(Vector3(7.5, 0.8, 6.8), 14.5)
 			view.tactical.snap()
 		"roll":
-			rolls.hold_result = true
-			player.rolls = rolls
+			rolls.hold = true
 			Fx.speed = 4.0
 			_focus_for("kinetic")
 			view.tactical.snap()
-			await player.play([ev["kinetic"][0]])
+			await player.play([ev["kinetic"][0], ev["kinetic"][1]])
 			Fx.speed = 1.0
 		"kinetic", "beam", "missile", "melee", "tech":
 			_focus_for(tag)
