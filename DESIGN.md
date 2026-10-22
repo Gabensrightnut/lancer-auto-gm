@@ -745,7 +745,7 @@ each with a narrow, self-contained brief, and a new piece only starts once one f
 - [ ] NPC book / NPC data
 - [ ] Campaign books you want to run
 - [x] Godot 4.7.2 installed at `A:\godot`
-- [x] Blender 5.2.2 at `A:blender-5.2.2-windows-x64`
+- [x] Blender 5.2.2 at `A:/blender-5.2.2-windows-x64`
 - [ ] Godot export templates (1.3 GB, needed to build the .exe)
 - [x] Repo visibility: **public**. Only our own code and Massif's published data go in it;
       rulebook text stays local and is never committed.
