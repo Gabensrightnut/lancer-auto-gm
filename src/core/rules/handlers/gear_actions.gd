@@ -184,6 +184,37 @@ class ShakeOff:
 		return events
 
 
+class FixHack:
+	extends TurnAction
+	## Hacker 2: undo an Invade. params: {"what": "life_support" | "hack_slash" (quick, Systems
+	## check) | "jam_cockpit" (full, Engineering check)}. The cost is checked here: the jammed
+	## cockpit needs the whole turn.
+
+	func type() -> String:
+		return "fix_hack"
+
+	func check(_state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		var what := String(params.get("what", ""))
+		if not (u.counters.get("hacked", {}) as Dictionary).has(what):
+			return RuleResult.deny("Nothing like that has been hacked.", "talents: Hacker")
+		if what == "jam_cockpit" and (int(u.turn.get("quick", 0)) > 0 or u.turn.get("full", false)):
+			return RuleResult.deny("Fixing the cockpit is a full action.", "talents: Hacker")
+		return RuleResult.allow()
+
+	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+		var what := String(params["what"])
+		var skill := "engineering" if what == "jam_cockpit" else "systems"
+		if what == "jam_cockpit":
+			u.turn["quick"] = 2
+			u.turn["full"] = true
+		var check := Combat.skill_check(state, u, skill, "Fix: " + what.capitalize(), Combat.CHECK_TARGET)
+		var events: Array[Dictionary] = [{"type": "skill_check", "unit": u.id, "check": check, "rule_ref": "talents: Hacker"}]
+		if check["success"]:
+			(u.counters["hacked"] as Dictionary).erase(what)
+			events.append({"type": "effect_ended", "unit": u.id, "effect": what.capitalize(), "reason": "fixed"})
+		return events
+
+
 class UseObject:
 	extends TurnAction
 	## Quick action: use an adjacent allied object that allows it (Restock Drone).

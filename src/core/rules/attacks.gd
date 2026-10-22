@@ -507,7 +507,7 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 	var total := 0
 	var shared: Dictionary = opts.get("shared_damage", {})
 	var damage: Array = w.get("damage", [])
-	var ap := Weapons.has_tag(w, "tg_ap") or Environments.weapons_ap(state)  # corrosive atmosphere
+	var ap: bool = Weapons.has_tag(w, "tg_ap") or Environments.weapons_ap(state) or attacker.counters.get("gunslinger_fire", false)  # corrosive atmosphere, Gunslinger 3
 	var obj := FrameSystems.object_damage(attacker, w, target)
 	if not obj.is_empty():
 		damage = obj  # Sherman COREBURN against objects and deployables

@@ -137,3 +137,49 @@ func _next(u: Unit) -> void:
 	s.round_number += 1
 	s.turn_side = u.side
 	F.act(e, s, "start_turn", u.id)
+
+
+func test_heavy_gunner_two_targets_and_pin() -> void:
+	_setup({"t_heavy_gunner": 3}, [{"weapons": ["mw_assault_rifle"]}, {"weapons": []}, {"weapons": ["mw_heavy_machine_gun"]}])
+	var t2 := F.mech(s, "t2", "enemies", Vector2i(4, 2))
+	var out := F.act(e, s, "activate", "a", {"ability": _key("Covering Fire"), "targets": ["t", "t2"]})
+	expect(F.ok(out), F.reason(out))
+	expect(t.has_status("Impaired") and t2.has_status("Impaired"), "two targets")
+	F.act(e, s, "end_turn", "a")
+	F.act(e, s, "start_turn", "t")
+	F.load_dice(s, [15, 6, 6, 6])
+	F.act(e, s, "move", "t", {"to": [6, 0]})
+	expect(t.has_status("Immobilized"), "Heavy Gunner 2: pinned by the hit")
+
+
+func test_walking_armory_rank_2_and_3() -> void:
+	_setup({"t_walking_armory": 3}, [{"weapons": ["mw_assault_rifle"]}])
+	t.armor = 2
+	F.load_dice(s, [20, 3, 3])
+	var out := F.act(e, s, "skirmish", "a", {"weapon": "0:0", "target": "t", "ammo": "sabot"})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(TalentRules.ammo_left(a), 6, "a crit spends no charges (rank 3)")
+	expect_eq(t.hp, 37, "Sabot: AP ignores Armor 2")
+
+
+func test_gunslinger_die() -> void:
+	_setup({"t_gunslinger": 3}, [{"weapons": ["mw_assault_rifle"]}, {"weapons": ["mw_pistol"]}], Vector2i(3, 0))
+	a.counters["gunslinger_die"] = 1
+	F.load_dice(s, [15, 2, 3, 3])
+	var out := F.act(e, s, "skirmish", "a", {"weapon": "1:0", "target": "t"})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(F.events_of(out, "bonus_damage").size() + F.events_of(out, "effect_triggered").filter(func(x: Dictionary) -> bool: return x["effect"] == "Gunslinger Die").size() >= 1, true)
+	expect_eq(int(a.counters["gunslinger_die"]), 6, "reset after the charged shot")
+
+
+func test_hacker_invade_options() -> void:
+	_setup({"t_hacker": 2}, [{"weapons": ["mw_assault_rifle"]}], Vector2i(3, 0))
+	F.load_dice(s, [19])
+	var out := F.act(e, s, "activate", "a", {"ability": _key("Hack./Slash"), "target": "t"})
+	expect(F.ok(out), F.reason(out))
+	F.act(e, s, "end_turn", "a")
+	F.act(e, s, "start_turn", "t")
+	expect(not F.ok(F.act(e, s, "scan", "t", {"target": "a"})), "no tech actions")
+	F.load_dice(s, [15])
+	F.act(e, s, "fix_hack", "t", {"what": "hack_slash"})
+	expect(F.ok(F.act(e, s, "scan", "t", {"target": "a"})), "rebooted")

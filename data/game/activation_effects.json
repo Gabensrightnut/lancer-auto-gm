@@ -900,5 +900,26 @@
       "label": "Covering Fire"
     }
   ],
-  "t_heavy_gunner:Covering Fire Attack": []
+  "t_heavy_gunner:Covering Fire Attack": [],
+  "t_hacker:Jam Cockpit": [
+    {
+      "op": "hacked",
+      "effect": "jam_cockpit",
+      "label": "Jam Cockpit"
+    }
+  ],
+  "t_hacker:Disable Life Support": [
+    {
+      "op": "hacked",
+      "effect": "life_support",
+      "label": "Disable Life Support"
+    }
+  ],
+  "t_hacker:Hack./Slash": [
+    {
+      "op": "hacked",
+      "effect": "hack_slash",
+      "label": "Hack./Slash"
+    }
+  ]
 }

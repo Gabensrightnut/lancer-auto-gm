@@ -104,7 +104,7 @@ static func _run(state: GameState, u: Unit, a: Dictionary, aux: bool) -> Array[D
 	var events := lunge + _fire(state, u, w, a, aux)
 	if not pre.is_empty():
 		events.push_front(pre)
-		events.append_array(TalentRules.shock_ammo(state, u, String(a.get("ammo", "")), state.unit(String(a.get("target", a.get("shock_target", ""))))))
+		events.append_array(TalentRules.shock_ammo(state, u, String(a.get("ammo", "")), state.unit(String(a.get("target", a.get("shock_target", "")))), events))
 	if WeaponRules.rules(w).get("backblast", false) and a.has("target") and state.unit(String(a["target"])) != null:
 		events.append_array(AttackActions.backblast(state, u, state.unit(String(a["target"]))))
 	return events

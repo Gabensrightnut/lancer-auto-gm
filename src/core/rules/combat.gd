@@ -30,6 +30,8 @@ const DOUBLED_BY_EXPOSED := ["Kinetic", "Explosive", "Energy"]
 static func add_status(state: GameState, u: Unit, status: String, source: String, next_turn_end_of: String = "", until_start_of: String = "") -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	status = Environments.slowed_becomes(state, u, status)  # high gravity
+	if status == "Shut Down" and u.counters.has("hacked"):
+		(u.counters["hacked"] as Dictionary).erase("hack_slash")  # Hack/Slash ends when it shuts down
 	if status == "Prone" and u.flying:
 		return events  # Flying characters have IMMUNITY to PRONE (glossary: Flight/Hover).
 	if status == "Prone" and not u.has_status("Prone"):
@@ -110,6 +112,9 @@ static func skill_check(state: GameState, u: Unit, skill: String, label: String,
 			bonus_acc += int(src["value"])
 		else:
 			diff += int(src["value"])
+	if is_save and (u.counters.get("hacked", {}) as Dictionary).has("life_support"):
+		diff += 1  # Hacker Disable Life Support
+		all_sources.append({"label": "Life support disabled", "kind": "difficulty", "type": "difficulty", "value": 1, "rule_ref": "talents: Hacker"})
 	if u.has_status("Impaired"):
 		diff += 1
 		all_sources.append({"label": "Impaired", "kind": "difficulty", "type": "difficulty", "value": 1, "rule_ref": "statuses: Impaired"})
