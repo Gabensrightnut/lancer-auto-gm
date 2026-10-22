@@ -253,6 +253,11 @@ void fragment() {
 	int kind = int(vcol.r * 16.0 + 0.5);
 	bool top = wnrm.y > 0.5;
 	float hcoord = abs(wnrm.x) > abs(wnrm.z) ? wpos.z : wpos.x;
+	// Natural faces (rock, soil): a coordinate that runs on across facets, so many-faceted
+	// boulders don't show a seam at every face. Built faces keep the per-face one.
+	if (kind <= 3) {
+		hcoord = wpos.x * 0.8 + wpos.z * 0.6;
+	}
 	vec3 col;
 	float rough = 0.9;
 	float metal = 0.0;
@@ -415,15 +420,23 @@ void fragment() {
 			metal = 0.6;
 			relief = -brace;
 		} else if (kind == 13) {
-			// Machinery: horizontal pipe bands and vertical ducts, a few lit indicators.
-			float pipe = 0.5 + 0.5 * cos(fract(wpos.y * 3.0) * 6.2832);
-			float duct = smoothstep(0.1, 0.0, abs(fract(hcoord * 0.7) - 0.5) - 0.38);
-			col = mix(metal_b, metal_a, pipe * 0.6) * (0.8 + 0.3 * n);
-			col = mix(col, metal_b * 0.6, duct * 0.6);
-			emit += strip_light * step(0.992, hash(floor(vec2(hcoord * 8.0, wpos.y * 8.0)))) * 2.5;
-			rough = 0.5;
-			metal = 0.7;
-			relief = pipe - duct;
+			// Machinery: housing panels, a louvred vent per panel, two pipes along the base, a
+			// few lit indicators.
+			vec2 q = vec2(hcoord * 1.2, wpos.y * 1.2);
+			vec2 f = fract(q);
+			float seam = max(smoothstep(0.47, 0.495, abs(f.x - 0.5)), smoothstep(0.47, 0.495, abs(f.y - 0.5)));
+			float vent = step(0.2, f.x) * step(f.x, 0.8) * step(0.25, f.y) * step(f.y, 0.6);
+			float louvre = smoothstep(0.3, 0.7, fract(f.y * 14.0));
+			col = mix(metal_b, metal_a, 0.35 + 0.3 * hash(floor(q))) * (0.85 + 0.2 * n);
+			col *= 1.0 - 0.45 * seam;
+			col = mix(col, col * mix(0.3, 0.8, louvre), vent);
+			float pipe_y = fract((wpos.y - floor_y) * 1.0);
+			float pipes = smoothstep(0.06, 0.0, abs(wpos.y - floor_y - 0.18)) + smoothstep(0.05, 0.0, abs(wpos.y - floor_y - 0.32));
+			col = mix(col, metal_a * 1.1, clamp(pipes, 0.0, 1.0));
+			emit += strip_light * step(0.985, hash(floor(vec2(hcoord * 6.0, wpos.y * 6.0)))) * (1.0 - vent) * 2.0;
+			rough = 0.6;
+			metal = 0.45;
+			relief = -seam - vent * (1.0 - louvre) * 0.6 + pipes * 0.5;
 		} else if (kind == 9) {
 			float d2 = top_y - wpos.y;
 			float girder = smoothstep(0.02, 0.0, abs(d2 - 0.18)) + smoothstep(0.015, 0.0, abs(d2 - 0.75));
@@ -493,11 +506,17 @@ void fragment() {
 	col *= 1.0 - (0.6 + 0.6 * backdrop_fade) * vcol.b;
 	emit *= 1.0 - clamp(vcol.b * 5.0, 0.0, 0.85);
 	// Surface relief: bump from the material's own height pattern plus fine grain.
-	float g0 = relief + fbm3((top ? wpos.xz : vec2(hcoord, wpos.y)) * 7.0) * 0.6;
+	vec2 gp = (top ? wpos.xz : vec2(hcoord, wpos.y)) * 7.0;
+	float grain_fade = 1.0 - smoothstep(0.25, 0.8, length(fwidth(gp)));
+	float g0 = relief + fbm3(gp) * 0.6 * grain_fade;
 	vec3 dpx = dFdx(wpos);
 	vec3 dpy = dFdy(wpos);
-	float dhx = dFdx(g0);
-	float dhy = dFdy(g0);
+	// Clamp the slope so sharp steps in the pattern (seams, cracks) shade as soft grooves
+	// instead of sparkling pixels up close, and fade fine grain where it would alias.
+	float lx = max(length(dpx), 1e-5);
+	float ly = max(length(dpy), 1e-5);
+	float dhx = clamp(dFdx(g0) / lx, -6.0, 6.0) * lx;
+	float dhy = clamp(dFdy(g0) / ly, -6.0, 6.0) * ly;
 	vec3 r1 = cross(dpy, wnrm);
 	vec3 r2 = cross(wnrm, dpx);
 	float det = dot(dpx, r1);

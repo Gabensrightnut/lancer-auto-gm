@@ -125,6 +125,11 @@ func build(root: Node3D) -> void:
 	if buildings.is_empty():
 		return
 	material = make_material(arch)
+	t.building_material = material
+	t.building_looks = {}
+	for b: Dictionary in buildings:
+		for c: Vector2i in b["cells"]:
+			t.building_looks[c] = {"color": b["color"], "seed": b["seed"], "type": b["type"], "top": b["top"]}
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	st.set_custom_format(0, SurfaceTool.CUSTOM_RGBA_FLOAT)

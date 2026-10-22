@@ -62,6 +62,18 @@ shudders and sinks, chunks fly, dust rolls out) and the board rebuilds from the 
 is left is exactly the new data: if the rules tagged the cell difficult it shows rubble; if
 not, only flat debris. `break_cells(cells, {cell: old_ground})` does the same for known cells.
 
+Buildings come down in pieces: each lost floor's wall panels (the building's own facade) peel
+off and topple outward from the top, floor slabs drop, debris and dust. City generation tags
+low buildings `destructible` (up to 3 levels; 4 in ruined/burning cities) and MapFairness keeps
+destructible cover balanced between the two halves.
+
+## Close-up (cockpit) detail
+
+Shaders clamp bump slopes and fade fine grain by pixel footprint, so seams and cracks read as
+soft grooves at mech-eye height instead of sparkling; natural faces use a coordinate that runs
+on across facets; building seeds are quantized (no per-pixel speckle). Preview the cockpit
+view with the `@eye` tag; `world_bench.gd` measures an `eye` camera too.
+
 ## What you see is what the rules use
 
 Every look comes from the map data. Nothing that looks like cover or an obstacle exists
@@ -141,7 +153,7 @@ volumetric fog, uses one shadow split, thins grass, trees, particles and lights,
 at 75% with FSR upscaling. The settings menu should call it and save the choice.
 
 ```bash
-$G --path . -s res://src/render/world/world_bench.gd -- high      # or medium / low, then kits
+$G --path . -s res://src/render/world/world_bench.gd -- high      # or medium / low, then kits (wide, close, eye cameras)
 ```
 
 RTX 3080, 1080p, generated 40x40 maps with 8 mechs, vsync off. Average fps across five kits
