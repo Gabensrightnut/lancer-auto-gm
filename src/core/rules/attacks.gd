@@ -42,6 +42,8 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 		return fail.call("No such weapon.", REF_SKIRMISH)
 	if target == null or target.destroyed:
 		return fail.call("No valid target.", REF_SKIRMISH)
+	if GearSystems.intangible(attacker) or GearSystems.intangible(target):
+		return fail.call("Intangible (FADE Cloak): it can't interact or be interacted with.", "systems: FADE Cloak")
 	if target == attacker:
 		return fail.call("You can't attack yourself.", REF_SKIRMISH)
 	if Effects.has(attacker, "no_attacks"):
@@ -966,6 +968,8 @@ static func tech_target_check(state: GameState, user: Unit, target: Unit, action
 		return RuleResult.deny("Jammed: you can't take tech actions.", "statuses: Jammed")
 	if target == null or target.destroyed:
 		return RuleResult.deny("No valid target.", "actions: Quick Tech")
+	if GearSystems.intangible(user) or GearSystems.intangible(target):
+		return RuleResult.deny("Intangible (FADE Cloak): it can't interact or be interacted with.", "systems: FADE Cloak")
 	if Effects.has(target, "aegis"):
 		return RuleResult.deny("Inside the Trueblack Aegis it's immune to all tech actions.", "frames: Napoleon core system")
 	if GearSystems.in_stasis(target):

@@ -272,6 +272,8 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				events.append_array(Attacks.attack(state, u, Weapons.find(u, "cbi:0"), target, {"fired_by_rule": true}))
 			"jackhammer":
 				events.append_array(TalentRules.jackhammer(state, u, target))
+			"fade":
+				events.append_array(GearSystems.fade(state, u, bool(op.get("on", true))))
 			"monitor":
 				events.append_array(GearSystems.monitor(state, u, target))
 			"roller_grenade":

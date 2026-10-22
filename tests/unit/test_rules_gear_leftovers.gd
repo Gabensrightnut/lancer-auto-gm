@@ -169,3 +169,19 @@ func test_gravity_gun() -> void:
 	var out := F.act(e, s, "skirmish", "a", {"weapon": "0:0", "aim": [6, 0]})
 	expect(F.ok(out), F.reason(out))
 	expect_eq(t.hp, 36, "failed the Hull save: 1d6 energy")
+
+
+func test_fade_cloak() -> void:
+	_setup(["ms_fade_cloak"], Vector2i(3, 0))
+	var out := F.act(e, s, "activate", "a", {"ability": _key("FADE Cloak")})
+	expect(F.ok(out), F.reason(out))
+	expect(not F.ok(F.act(e, s, "skirmish", "a", {"weapon": "0:0", "target": "t"})), "can't attack while intangible")
+	F.act(e, s, "end_turn", "a")
+	F.act(e, s, "start_turn", "t")
+	expect(not F.ok(F.act(e, s, "skirmish", "t", {"weapon": "0:0", "target": "a"})), "can't be attacked")
+	F.act(e, s, "end_turn", "t")
+	s.acted = PackedStringArray()
+	s.turn_side = "players"
+	F.load_dice(s, [2])
+	F.act(e, s, "start_turn", "a")
+	expect(not GearSystems.intangible(a), "rolled 3 or less: back in realspace this turn")

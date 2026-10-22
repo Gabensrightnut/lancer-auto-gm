@@ -153,6 +153,8 @@ static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dict
 	var events: Array[Dictionary] = []
 	if target.destroyed:
 		return events
+	if GearSystems.intangible(target) or GearSystems.intangible(state.unit(String(opts.get("source", "")))):
+		return events  # FADE Cloak: no damage taken or dealt while intangible
 	var source: String = opts.get("source", "")
 	if not opts.get("interceded", false):
 		var mate := TalentRules.intercede(state, target, state.unit(source), parts)
@@ -718,7 +720,7 @@ static func dangerous_roll(state: GameState, u: Unit, dtype: String) -> Array[Di
 # --- Engagement and Hidden ------------------------------------------------------------
 
 static func _is_character(u: Unit) -> bool:
-	return is_present(u) and u.kind != Unit.KIND_DEPLOYABLE
+	return is_present(u) and u.kind != Unit.KIND_DEPLOYABLE and not GearSystems.intangible(u)
 
 
 ## On the battlefield: not destroyed, and not a pilot riding inside a mech.

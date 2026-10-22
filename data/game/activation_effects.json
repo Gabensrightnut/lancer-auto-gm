@@ -1005,5 +1005,24 @@
       "op": "monitor",
       "label": "Monitor Module"
     }
+  ],
+  "ms_fade_cloak:FADE Cloak": [
+    {
+      "op": "fade",
+      "on": true
+    }
+  ],
+  "actions:ms_fade_cloak": [
+    {
+      "name": "Deactivate FADE Cloak",
+      "activation": "Quick",
+      "detail": "Come back into realspace.",
+      "ops": [
+        {
+          "op": "fade",
+          "on": false
+        }
+      ]
+    }
   ]
 }

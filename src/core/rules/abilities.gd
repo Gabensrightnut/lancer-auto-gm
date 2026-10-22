@@ -394,7 +394,7 @@ static func arm_mines(state: GameState, owner: Unit) -> void:
 ## PROVISIONAL (RULES_TODO "Mines"): the mine goes off after the move resolves.
 static func check_mines(state: GameState, mover: Unit, path: Array) -> Array[Dictionary]:
 	var events: Array[Dictionary] = GearSystems.check_snares(state, mover, path)
-	if mover.kind == Unit.KIND_DEPLOYABLE or Effects.has(mover, "mine_immune"):
+	if mover.kind == Unit.KIND_DEPLOYABLE or Effects.has(mover, "mine_immune") or GearSystems.intangible(mover):
 		return events  # Iskander Skeleton Key: never sets off mines unless it chooses to
 	for m: Unit in state.units.values():
 		if m.destroyed or m.counters.get("deploy_type", "") != "Mine" or not m.counters.get("armed", false):

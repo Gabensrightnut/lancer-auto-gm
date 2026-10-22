@@ -952,6 +952,34 @@ static func reload_one(state: GameState, u: Unit, key: String, source: String) -
 	return [{"type": "reloaded", "unit": u.id, "weapon": w["key"], "source": source}] as Array[Dictionary]
 
 
+## FADE Cloak: out of phase with realspace (active, and not back for this turn).
+static func intangible(u: Unit) -> bool:
+	return u != null and u.counters.get("fade", false) and not u.counters.get("fade_back", false)
+
+
+## FADE Cloak on: intangible for the scene, or until switched off.
+static func fade(state: GameState, u: Unit, on: bool) -> Array[Dictionary]:
+	u.counters["fade"] = on
+	u.counters.erase("fade_back")
+	if not on:
+		u.counters.erase("fade")
+	var events: Array[Dictionary] = [{"type": "effect_triggered", "unit": u.id, "effect": "FADE Cloak: " + ("intangible" if on else "back in realspace"), "target": u.id, "rule_ref": "systems: FADE Cloak"}]
+	events.append_array(Combat.refresh_engagement(state))
+	return events
+
+
+## Start of its turn: 1d6; on 3 or less it's back in realspace until the start of its next turn.
+static func fade_roll(state: GameState, u: Unit) -> Array[Dictionary]:
+	if not u.counters.get("fade", false):
+		return [] as Array[Dictionary]
+	var roll := state.dice.die(6)
+	u.counters["fade_back"] = roll <= 3
+	var events: Array[Dictionary] = [{"type": "effect_triggered", "unit": u.id, "effect": "FADE Cloak", "target": u.id, "roll": roll,
+		"text": "Back in realspace until your next turn." if roll <= 3 else "Still out of phase.", "rule_ref": "systems: FADE Cloak"}]
+	events.append_array(Combat.refresh_engagement(state))
+	return events
+
+
 ## Weapon and system reactions to an attack: Autopod (an ally's attack consumed Lock On on a
 ## target within 15: hit it automatically for 3 kinetic), Vorpal Gun (a hostile in Range and
 ## line of sight damaged an ally: attack it), Monitor Module (the monitored ally was attacked

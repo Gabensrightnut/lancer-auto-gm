@@ -129,6 +129,7 @@ static func begin_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 	events.append_array(FrameSystems.host_turn_started(state, u))
 	events.append_array(CoreBonuses.turn_started(state, u))
 	events.append_array(Environments.turn_started(state, u))
+	events.append_array(GearSystems.fade_roll(state, u))
 	return events
 
 
