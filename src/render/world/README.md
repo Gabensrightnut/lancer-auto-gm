@@ -323,9 +323,13 @@ spots, and stand/sit/work/hide points. `Interiors.build(layout)` builds it: wall
 with doorways and frames, floors with stair openings, a "Ceiling" node a camera can hide, one
 light per room, doors that `set_door()` swings or slides. Culture picks materials (planks,
 stone, plaster, neon-dark, white); ship kinds are metal with strip lights.
-Kinds now: `bar` (saloon: bar room, back room with the safe, stairs, upstairs corridor, three
+Story's own spot kinds and more: `office` (front office, back office with the safe, records),
+`inn` (common room, kitchen, five guest rooms upstairs), `market` (store floor with counter and
+shelves, storeroom), `warehouse`, `workshop` (mech gantry, benches, a loft up the stairs),
+`printer` (fabricator bed, hoppers, control room with the license vault), `house` (front room
+with a hearth, bedroom, pantry), `chapel` (pews, altar, vestry), `clinic` (waiting room, ward,
+surgery). Kinds also: `bar` (saloon: bar room, back room with the safe, stairs, upstairs corridor, three
 rooms and the owner's), `marshal` (front office, three barred cells, the marshal's office with
 a safe), `ship_deck` (bridge, captain's quarters, crew bunks, commons with stalls, engineering
 with the reactor and the NHP casing, cargo bay), `sleeper_vault` (rows of cryo pods, control
-gallery). Inn, office, warehouse, workshop, house, chapel and clinic are only data to add.
-Preview: `in-<kind>[~culture]@eye|top|up|<room id>`.
+gallery). Preview: `in-<kind>[~culture]@eye|top|up|<room id>`.
