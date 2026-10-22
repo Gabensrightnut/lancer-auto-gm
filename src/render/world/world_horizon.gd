@@ -16,8 +16,9 @@ static func build(t: TerrainRenderer, root: Node3D) -> void:
 	var b := t.bounds(0.0)
 	var edge := _edge_sampler(t, b)
 	var rivers := _rivers(t, b)
+	var amp := float(hz.get("land_height", 8.0))
 	var height_fn := func(x: float, z: float) -> float:
-		var h := _height(x, z, b, edge, land, float(hz.get("land_height", 8.0)))
+		var h := _height(x, z, b, edge, land, amp)
 		for r: Dictionary in rivers:
 			var k := _carve(r, x, z)
 			if k > 0.0:
@@ -254,37 +255,53 @@ static func _land(t: TerrainRenderer, root: Node3D, b: Rect2, height_fn: Callabl
 			hs[j * xs.size() + i] = height_fn.call(xs[i], zs[j])
 	var inner := b.grow(-0.3)
 	var w := xs.size()
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var vert := func(i: int, j: int) -> void:
-		var p := Vector3(xs[i], hs[j * w + i], zs[j])
-		var il := maxi(i - 1, 0)
-		var ir := mini(i + 1, w - 1)
+	var nz := zs.size()
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var cols := PackedColorArray()
+	var uv2 := PackedVector2Array()
+	verts.resize(w * nz)
+	norms.resize(w * nz)
+	cols.resize(w * nz)
+	uv2.resize(w * nz)
+	for j in range(nz):
 		var jl := maxi(j - 1, 0)
-		var jr := mini(j + 1, zs.size() - 1)
-		var dx := Vector3(xs[ir] - xs[il], hs[j * w + ir] - hs[j * w + il], 0)
-		var dz := Vector3(0, hs[jr * w + i] - hs[jl * w + i], zs[jr] - zs[jl])
-		var n := dz.cross(dx).normalized()
-		if n.y < 0:
-			n = -n
-		var dist := _dist(p.x, p.z, b)
-		var dim := 0.1 * smoothstep(0.0, 2.0, dist) + 0.25 * smoothstep(20.0, 140.0, dist)
-		st.set_color(Color(TerrainRenderer.KIND_GROUND / 16.0, WorldRand.f("l", i * 1000 + j), dim, 1.0))
-		# Soil/stone depth on slopes: measure from a little above this point.
-		st.set_uv2(Vector2(0, p.y + 0.05))
-		st.set_normal(n)
-		st.add_vertex(p)
-	for j in range(zs.size() - 1):
+		var jr := mini(j + 1, nz - 1)
+		for i in range(w):
+			var k := j * w + i
+			var il := maxi(i - 1, 0)
+			var ir := mini(i + 1, w - 1)
+			var p := Vector3(xs[i], hs[k], zs[j])
+			var dx := Vector3(xs[ir] - xs[il], hs[j * w + ir] - hs[j * w + il], 0)
+			var dz := Vector3(0, hs[jr * w + i] - hs[jl * w + i], zs[jr] - zs[jl])
+			var n := dz.cross(dx).normalized()
+			verts[k] = p
+			norms[k] = n if n.y >= 0.0 else -n
+			var dist := _dist(p.x, p.z, b)
+			cols[k] = Color(TerrainRenderer.KIND_GROUND / 16.0, WorldRand.f("l", k), 0.1 * smoothstep(0.0, 2.0, dist) + 0.25 * smoothstep(20.0, 140.0, dist), 1.0)
+			# Soil/stone depth on slopes: measured from a little above this point.
+			uv2[k] = Vector2(0, p.y + 0.05)
+	var idx := PackedInt32Array()
+	for j in range(nz - 1):
+		var zm := (zs[j] + zs[j + 1]) * 0.5
 		for i in range(w - 1):
-			var mid := Vector2((xs[i] + xs[i + 1]) * 0.5, (zs[j] + zs[j + 1]) * 0.5)
-			if inner.has_point(mid):
+			if inner.has_point(Vector2((xs[i] + xs[i + 1]) * 0.5, zm)):
 				continue
+			var a := j * w + i
 			# Clockwise seen from above = front face up.
-			for k: Array in [[i, j], [i + 1, j], [i + 1, j + 1], [i, j], [i + 1, j + 1], [i, j + 1]]:
-				vert.call(k[0], k[1])
+			idx.append_array([a, a + 1, a + w + 1, a, a + w + 1, a + w])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = norms
+	arrays[Mesh.ARRAY_COLOR] = cols
+	arrays[Mesh.ARRAY_TEX_UV2] = uv2
+	arrays[Mesh.ARRAY_INDEX] = idx
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	var mi := MeshInstance3D.new()
 	mi.name = "Land"
-	mi.mesh = st.commit()
+	mi.mesh = mesh
 	mi.material_override = t.material
 	root.add_child(mi)
 

@@ -26,7 +26,9 @@ static func build(t: TerrainRenderer, root: Node3D) -> void:
 	_glow_plants(t, root)
 	_railings(t, root)
 	WorldHazards.build(t, root)
+	TerrainRenderer._lap("board dressing")
 	WorldHorizon.build(t, root)
+	TerrainRenderer._lap("horizon")
 	WorldParticles.build(t, root)
 
 

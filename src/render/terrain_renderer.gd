@@ -65,14 +65,31 @@ func build(battle_map: BattleMap, kit_name: String = "grassy_hills") -> void:
 			_bottom = -BASE_DEPTH - CHASM_DEPTH
 			break
 	var city := CityBuilder.new(self)
+	_lap("start")
 	city.claim()
 	_build_blocks()
+	_lap("blocks")
 	_build_grid_lines()
 	_props = Node3D.new()
 	_props.name = "Props"
 	add_child(_props)
 	city.build(_props)
+	_lap("city")
 	WorldDressing.build(self, _props)
+	_lap("dressing")
+
+
+## Build timing for profiling: set TerrainRenderer.profile = true to print each step.
+static var profile := false
+static var _lap_t := 0
+
+
+static func _lap(step: String) -> void:
+	if profile:
+		var now := Time.get_ticks_msec()
+		if step != "start":
+			print("  terrain %s: %d ms" % [step, now - _lap_t])
+		_lap_t = now
 
 
 ## Sky, sun and fog for this board's style (BattleView calls it after build()).

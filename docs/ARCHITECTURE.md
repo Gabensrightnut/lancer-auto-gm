@@ -61,7 +61,10 @@ renderer + UI on each client (animate events, show the view)
   `neighbors`, `distance`, `line`, `cells_within`, `footprint`, `footprint_distance`,
   `to_world`, `from_world`.
 - `BattleMap` columns: `ground` (solid levels), optional `gap` (overhang/bridge space),
-  `tags` (`difficult`, `dangerous`, `impassable`, `destructible`).
+  `tags` (`difficult`, `dangerous`, `impassable`, `destructible`, `soft_cover`). Look-only
+  tags (`rock`, `woods`, `building`, `wall`, `water`, `ice`, `lava`, `toxic`, `crystal`,
+  `rubble`, `chasm`) pick how a column is drawn and never change rules; see
+  `src/render/world/README.md`.
 - Units have `cell` (footprint anchor), `level` (base height) and `size`. Size 1/2 and 1 use
   one space; larger sizes use `GridLayout.footprint`.
 

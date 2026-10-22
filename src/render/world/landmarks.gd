@@ -20,8 +20,8 @@ static func build(t: TerrainRenderer, root: Node3D, b: Rect2, height_fn: Callabl
 		# Spread them around the far side of the board (the camera usually looks north).
 		var a := deg_to_rad(-90.0 + (i - (list.size() - 1) * 0.5) * 38.0 + (WorldRand.f(kind, i) - 0.5) * 14.0)
 		var dist := r0 + 38.0 + 30.0 * WorldRand.f(kind, i + 10)
-		if kind in ["space_elevator", "monorail"]:
-			dist = r0 + 90.0
+		if kind in ["space_elevator", "monorail", "white_towers", "saucer_tower"]:
+			dist = r0 + 100.0 + 40.0 * WorldRand.f(kind, i + 20)
 		var p := Vector2(c.x + cos(a) * dist, c.y + sin(a) * dist)
 		var y: float = height_fn.call(p.x, p.y)
 		var node := Node3D.new()
