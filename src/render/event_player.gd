@@ -132,6 +132,14 @@ func play_event(e: Dictionary) -> void:
 			battle.refresh_map(current)
 			if Fx.speed > 0.0:
 				await Fx.wait(self, 0.6)
+		"cascade_check":
+			var cmv2 := _view(e.get("unit", ""))
+			_log("%s's NHP cascade check: d20 = %d%s" % [_name(e.get("unit", "")), int(e.get("roll", 0)), "  [color=#ff5544][b]CASCADE![/b][/color]" if e.get("cascade", false) else " (stable)"])
+			if cmv2 and Fx.speed > 0.0 and e.get("cascade", false):
+				cmv2.model.set_fx("cascade", 1.0)
+				Fx.float_text(battle.fx_root, cmv2.body_center() + Vector3.UP * 0.5, "NHP CASCADE", Color(1.0, 0.25, 0.2), 56)
+				Fx.light_flash(battle.fx_root, cmv2.body_center(), Color(1.0, 0.2, 0.15), 5.0, 3.5, 0.5)
+				await Fx.wait(self, 0.8)
 		"zone_created":
 			var z: Dictionary = e.get("zone", {})
 			battle.zones.add_zone(z)

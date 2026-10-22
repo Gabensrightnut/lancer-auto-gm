@@ -12,6 +12,22 @@ extends RefCounted
 ## RulesEngine.validate (no params, then a unit target, then a space).
 
 const AIMED_OPS := ["smoke", "blast_save", "napalm"]
+## Actions with a known param: [param, pick, who, label].
+const BY_TYPE := {
+	"climb_on": ["host", "unit", "ally", "Pick the adjacent mech with the MULE Harness"],
+	"board": ["mech", "unit", "ally", "Pick the adjacent mech to ride in"],
+	"disembark": ["to", "cell", "", "Pick a free space next to the mech"],
+	"cut_cable": ["target", "unit", "any", "Pick a character on the cable (next to you)"],
+	"use_object": ["object", "unit", "ally", "Pick the object next to you (Restock Drone...)"],
+	"mount": ["mech", "unit", "ally", "Pick the mech to climb into"],
+	"dismount": ["to", "cell", "", "Pick where to climb down"],
+	"eject": ["to", "cell", "", "Pick where to land (up to 6 away)"],
+	"grapple": ["target", "unit", "other", "Pick who to grapple"],
+	"ram": ["target", "unit", "other", "Pick who to ram"],
+	"improvised_attack": ["target", "unit", "other", "Pick a target"],
+	"search": ["target", "unit", "other", "Pick who to search for"],
+	"bolster": ["target", "unit", "ally", "Pick an ally to Bolster"],
+}
 const PROBE_RANGE := 8
 
 
@@ -20,7 +36,12 @@ static func steps(state: GameState, engine: RulesEngine, u: Unit, a: Dictionary)
 	var params: Dictionary = a.get("params", {})
 	if params.has("weapon") and type in ["skirmish", ""]:
 		return weapon_steps(u, Weapons.find(u, String(params["weapon"])))
+	if BY_TYPE.has(type):
+		var b: Array = BY_TYPE[type]
+		return [{"param": b[0], "pick": b[1], "count": 1, "who": b[2], "label": b[3]}]
 	match type:
+		"ai_control":
+			return []  # a protocol; take_back is set by the catalog
 		"activate":
 			return ability_steps(state, engine, u, Abilities.find(u, String(params.get("ability", ""))), a)
 		"core_power":
