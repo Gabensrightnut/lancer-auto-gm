@@ -1,0 +1,162 @@
+{
+ "_note": "Our own writing. The tutorial briefing: situation, goal and stakes (Core p.40-43), License Levels (p.18), the Everest (p.31).",
+ "id": "tutorial_briefing",
+ "start": "open",
+ "nodes": {
+  "open": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": [
+    "Listen up, rookies. I'm {npc}, and for the next few hours you belong to me. You're new pilots, License Level zero: everyone starts there. You'll fly the GMS Everest, the standard Union frame, with standard gear."
+   ],
+   "next": "how"
+  },
+  "how": {
+   "speaker": "npc",
+   "line": [
+    "Every mission starts like this: a briefing. I tell you the situation, you figure out the goal, and we both know the stakes. Today's situation: a live-fire range and a pack of training drones."
+   ],
+   "next": "stakes"
+  },
+  "stakes": {
+   "speaker": "npc",
+   "line": [
+    "{objective} {stakes}"
+   ],
+   "next": "question"
+  },
+  "question": {
+   "speaker": "narrator",
+   "line": "{question}",
+   "next": "questions"
+  },
+  "questions": {
+   "speaker": "npc",
+   "line": [
+    "Questions? Now's the time.",
+    "Anything else before you mount up?"
+   ],
+   "choices": [
+    {
+     "id": "ready",
+     "text": [
+      "Ready.",
+      "Let's do this."
+     ],
+     "tags": [
+      "bold",
+      "practical"
+     ],
+     "pinned": true,
+     "next": "close"
+    },
+    {
+     "id": "ll",
+     "text": "What's a License Level?",
+     "tags": [
+      "curious"
+     ],
+     "condition": {
+      "not": {
+       "flag": "tut_ll"
+      }
+     },
+     "effects": [
+      {
+       "set_flag": "tut_ll"
+      }
+     ],
+     "next": "ll"
+    },
+    {
+     "id": "everest",
+     "text": "Why the Everest?",
+     "tags": [
+      "curious"
+     ],
+     "condition": {
+      "not": {
+       "flag": "tut_everest"
+      }
+     },
+     "effects": [
+      {
+       "set_flag": "tut_everest"
+      }
+     ],
+     "next": "everest"
+    },
+    {
+     "id": "enemy",
+     "text": "What are we up against?",
+     "tags": [
+      "curious",
+      "cautious"
+     ],
+     "condition": {
+      "not": {
+       "flag": "tut_enemy"
+      }
+     },
+     "effects": [
+      {
+       "set_flag": "tut_enemy"
+      }
+     ],
+     "next": "enemy"
+    },
+    {
+     "id": "die",
+     "text": "Can we get hurt out there?",
+     "tags": [
+      "cautious"
+     ],
+     "condition": {
+      "not": {
+       "flag": "tut_die"
+      }
+     },
+     "effects": [
+      {
+       "set_flag": "tut_die"
+      }
+     ],
+     "next": "die"
+    }
+   ]
+  },
+  "ll": {
+   "speaker": "npc",
+   "line": "@license_explain",
+   "next": "questions"
+  },
+  "everest": {
+   "speaker": "npc",
+   "line": [
+    "Because every pilot in Union is licensed for it, from day one. It's tough, it's flexible, and it'll forgive your mistakes. Mostly."
+   ],
+   "next": "questions"
+  },
+  "enemy": {
+   "speaker": "npc",
+   "line": [
+    "Training drones. They shoot back, softly. Learn on them, so you don't learn on something real."
+   ],
+   "next": "questions"
+  },
+  "die": {
+   "speaker": "npc",
+   "line": [
+    "Not today. Your mech can be wrecked, and the printer will make you a new one. Out there, for real, it's another story."
+   ],
+   "next": "questions"
+  },
+  "close": {
+   "speaker": "npc",
+   "line": [
+    "Good. Check your reserves, then deploy. I'll be talking you through it the whole way."
+   ],
+   "end": true
+  }
+ }
+}

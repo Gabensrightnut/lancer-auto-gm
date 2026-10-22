@@ -117,7 +117,7 @@ func refresh() -> void:
 	var pilot: Dictionary = campaign.pilots.get(str(ctx.get("speaker", "")), {})
 	var speaker := str(story.dialogue.get("speaker", "npc"))
 	var expr := str(story.dialogue.get("expression", "neutral"))
-	_left.set_look(Portrait.look_for_pilot(pilot), expr if speaker == "pilot" else "neutral")
+	_left.set_look(Portrait.look_for_pilot(pilot), expr if speaker == "pilot" else str(story.dialogue.get("pilot_expression", "neutral")))
 	_right.set_look(npc.get("look", {}), expr if speaker == "npc" else "neutral")
 	_right.visible = not npc.is_empty()
 	_right_name.visible = _right.visible

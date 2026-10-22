@@ -2,59 +2,282 @@
   "_note": "Our own data. The people the squad can meet at a hub. 'offers' = book reserves (data/lancer-data/reserves.json) this kind of contact can help with when you Get Connected (Core p.55); 'trusted_offers' are added at Trusted standing (+2) or better. Standing is our own bookkeeping, not a book number: it only changes what's offered. 'faction': manufacturer = a licensed manufacturer (GMS if none), hub = the hub's faction, outside = a generated faction. 'scene' = dialogue scene in data/game/story/scenes/.",
   "roles": {
     "company_rep": {
-      "name": "Company rep", "scene": "company_rep", "spot": "office", "faction": "manufacturer",
-      "titles": ["Licensing Liaison", "Field Representative", "Account Manager", "Regional Rep", "Contract Officer", "Customer Relations Lead"],
-      "offers": ["reserve_extra_repairs", "reserve_rented_gear", "reserve_ammo", "reserve_core_battery"],
-      "trusted_offers": ["reserve_redundant_repair", "reserve_smart_ammo", "reserve_boosted_servos", "reserve_jump_jets", "reserve_deployable_shield"],
-      "tags": ["industry", "machines", "politics"]
+      "name": "Company rep",
+      "scene": "company_rep",
+      "spot": "office",
+      "faction": "manufacturer",
+      "titles": [
+        "Licensing Liaison",
+        "Field Representative",
+        "Account Manager",
+        "Regional Rep",
+        "Contract Officer",
+        "Customer Relations Lead"
+      ],
+      "offers": [
+        "reserve_extra_repairs",
+        "reserve_rented_gear",
+        "reserve_ammo",
+        "reserve_core_battery"
+      ],
+      "trusted_offers": [
+        "reserve_redundant_repair",
+        "reserve_smart_ammo",
+        "reserve_boosted_servos",
+        "reserve_jump_jets",
+        "reserve_deployable_shield"
+      ],
+      "tags": [
+        "industry",
+        "machines",
+        "politics"
+      ]
     },
     "quartermaster": {
-      "name": "Quartermaster", "scene": "quartermaster", "spot": "printer", "faction": "hub",
-      "titles": ["Quartermaster", "Supply Sergeant", "Stores Chief", "Logistics Officer", "Printer Bay Chief"],
-      "offers": ["reserve_supplies", "reserve_extended_harness", "reserve_environmental_shielding", "reserve_ammo"],
-      "trusted_offers": ["reserve_extra_repairs", "reserve_vehicle"],
-      "tags": ["military", "machines", "labor"]
+      "name": "Quartermaster",
+      "scene": "quartermaster",
+      "spot": "printer",
+      "faction": "hub",
+      "titles": [
+        "Quartermaster",
+        "Supply Sergeant",
+        "Stores Chief",
+        "Logistics Officer",
+        "Printer Bay Chief"
+      ],
+      "offers": [
+        "reserve_supplies",
+        "reserve_extended_harness",
+        "reserve_environmental_shielding",
+        "reserve_ammo"
+      ],
+      "trusted_offers": [
+        "reserve_extra_repairs",
+        "reserve_vehicle"
+      ],
+      "tags": [
+        "military",
+        "machines",
+        "labor"
+      ]
     },
     "bartender": {
-      "name": "Bartender", "scene": "bartender", "spot": "bar", "faction": "hub",
-      "titles": ["Bartender", "Barkeep", "Owner of the bar", "Night Manager", "Cantina Keeper"],
-      "offers": ["reserve_knowledge", "reserve_safe_harbor", "reserve_reputation"],
-      "trusted_offers": ["reserve_diversion", "reserve_tracking"],
-      "tags": ["crowds", "streets", "colonists"]
+      "name": "Bartender",
+      "scene": "bartender",
+      "spot": "bar",
+      "faction": "hub",
+      "titles": [
+        "Bartender",
+        "Barkeep",
+        "Owner of the bar",
+        "Night Manager",
+        "Cantina Keeper"
+      ],
+      "offers": [
+        "reserve_knowledge",
+        "reserve_safe_harbor",
+        "reserve_reputation"
+      ],
+      "trusted_offers": [
+        "reserve_diversion",
+        "reserve_tracking"
+      ],
+      "tags": [
+        "crowds",
+        "streets",
+        "colonists"
+      ]
     },
     "fixer": {
-      "name": "Fixer", "scene": "fixer", "spot": "market", "faction": "outside",
-      "titles": ["Broker", "Fixer", "Salvage Trader", "Smuggler", "Market Boss", "Dealer in Hard-to-Find Things"],
-      "offers": ["reserve_access", "reserve_disguise", "reserve_supplies"],
-      "trusted_offers": ["reserve_blackmail", "reserve_vehicle", "reserve_rented_gear"],
-      "tags": ["black_market", "crime", "streets"]
+      "name": "Fixer",
+      "scene": "fixer",
+      "spot": "market",
+      "faction": "outside",
+      "titles": [
+        "Broker",
+        "Fixer",
+        "Salvage Trader",
+        "Smuggler",
+        "Market Boss",
+        "Dealer in Hard-to-Find Things"
+      ],
+      "offers": [
+        "reserve_access",
+        "reserve_disguise",
+        "reserve_supplies"
+      ],
+      "trusted_offers": [
+        "reserve_blackmail",
+        "reserve_vehicle",
+        "reserve_rented_gear"
+      ],
+      "tags": [
+        "black_market",
+        "crime",
+        "streets"
+      ]
     },
     "faction_agent": {
-      "name": "Faction agent", "scene": "faction_agent", "spot": "office", "faction": "outside",
-      "titles": ["Envoy", "Field Agent", "Attaché", "Liaison Officer", "Commissioner", "Recruiter"],
-      "offers": ["reserve_backing", "reserve_scouting", "reserve_reinforcements"],
-      "trusted_offers": ["reserve_bombardment", "reserve_orbital_drop", "reserve_nhp_assistant", "reserve_ambush"],
-      "tags": ["politics", "military", "nobles"]
+      "name": "Faction agent",
+      "scene": "faction_agent",
+      "spot": "office",
+      "faction": "outside",
+      "titles": [
+        "Envoy",
+        "Field Agent",
+        "Attaché",
+        "Liaison Officer",
+        "Commissioner",
+        "Recruiter"
+      ],
+      "offers": [
+        "reserve_backing",
+        "reserve_scouting",
+        "reserve_reinforcements"
+      ],
+      "trusted_offers": [
+        "reserve_bombardment",
+        "reserve_orbital_drop",
+        "reserve_nhp_assistant",
+        "reserve_ambush"
+      ],
+      "tags": [
+        "politics",
+        "military",
+        "nobles"
+      ]
     },
     "local": {
-      "name": "Local", "scene": "local", "spot": "plaza", "faction": "hub",
-      "titles": ["Farmer", "Dock Worker", "Schoolteacher", "Shopkeeper", "Retired Miner", "Courier", "Water Engineer", "Street Preacher", "Medic", "Mechanic's Apprentice"],
-      "offers": ["reserve_knowledge", "reserve_safe_harbor", "reserve_tracking", "reserve_reputation"],
-      "trusted_offers": ["reserve_access", "reserve_ambush"],
-      "tags": ["colonists", "labor", "streets"]
+      "name": "Local",
+      "scene": "local",
+      "spot": "plaza",
+      "faction": "hub",
+      "titles": [
+        "Farmer",
+        "Dock Worker",
+        "Schoolteacher",
+        "Shopkeeper",
+        "Retired Miner",
+        "Courier",
+        "Water Engineer",
+        "Street Preacher",
+        "Medic",
+        "Mechanic's Apprentice"
+      ],
+      "offers": [
+        "reserve_knowledge",
+        "reserve_safe_harbor",
+        "reserve_tracking",
+        "reserve_reputation"
+      ],
+      "trusted_offers": [
+        "reserve_access",
+        "reserve_ambush"
+      ],
+      "tags": [
+        "colonists",
+        "labor",
+        "streets"
+      ]
     },
     "mechanic": {
-      "name": "Mechanic", "scene": "mechanic", "spot": "workshop", "faction": "hub",
-      "titles": ["Hangar Chief", "Mech Tech", "Rig Mechanic", "Fabricator", "Repair Crew Boss"],
-      "offers": ["reserve_extra_repairs", "reserve_ammo", "reserve_supplies"],
-      "trusted_offers": ["reserve_redundant_repair", "reserve_boosted_servos"],
-      "tags": ["machines", "repair", "industry"]
+      "name": "Mechanic",
+      "scene": "mechanic",
+      "spot": "workshop",
+      "faction": "hub",
+      "titles": [
+        "Hangar Chief",
+        "Mech Tech",
+        "Rig Mechanic",
+        "Fabricator",
+        "Repair Crew Boss"
+      ],
+      "offers": [
+        "reserve_extra_repairs",
+        "reserve_ammo",
+        "reserve_supplies"
+      ],
+      "trusted_offers": [
+        "reserve_redundant_repair",
+        "reserve_boosted_servos"
+      ],
+      "tags": [
+        "machines",
+        "repair",
+        "industry"
+      ]
+    },
+    "instructor": {
+      "name": "Drill instructor",
+      "scene": "instructor",
+      "spot": "plaza",
+      "faction": "hub",
+      "titles": [
+        "Drill Instructor",
+        "Senior Lancer",
+        "Training Officer"
+      ],
+      "offers": [
+        "reserve_extra_repairs",
+        "reserve_ammo",
+        "reserve_accuracy"
+      ],
+      "trusted_offers": [
+        "reserve_redundant_repair"
+      ],
+      "tags": [
+        "military"
+      ],
+      "tutorial_only": true
     }
   },
   "hub_roles": {
     "_note": "Which roles a hub of each kind has: always = every hub; extra = this many more picked from 'pool'.",
-    "town": {"always": ["company_rep", "quartermaster", "bartender", "mechanic"], "pool": ["local", "local", "fixer", "faction_agent", "local"], "extra": 3},
-    "base": {"always": ["company_rep", "quartermaster", "mechanic", "bartender"], "pool": ["faction_agent", "local", "local", "fixer"], "extra": 2},
-    "station": {"always": ["company_rep", "quartermaster", "bartender", "fixer"], "pool": ["local", "faction_agent", "mechanic", "local"], "extra": 2}
+    "town": {
+      "always": [
+        "company_rep",
+        "quartermaster",
+        "bartender",
+        "mechanic"
+      ],
+      "pool": [
+        "local",
+        "local",
+        "fixer",
+        "faction_agent",
+        "local"
+      ],
+      "extra": 3
+    },
+    "base": {
+      "always": [
+        "company_rep",
+        "quartermaster",
+        "mechanic",
+        "bartender"
+      ],
+      "pool": [
+        "faction_agent",
+        "local",
+        "local",
+        "fixer"
+      ],
+      "extra": 2
+    },
+    "station": {
+      "always": [
+        "company_rep",
+        "quartermaster",
+        "bartender",
+        "fixer"
+      ],
+      "pool": [
+        "local",
+        "faction_agent",
+        "mechanic",
+        "local"
+      ],
+      "extra": 2
+    }
   }
 }

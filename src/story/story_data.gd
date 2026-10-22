@@ -27,6 +27,8 @@ static func lint() -> Array:
 			var where := "%s/%s" % [sid, nid]
 			var n: Dictionary = nodes[nid]
 			_line(problems, where, n.get("line", ""), pools)
+			if n.has("expression") and not PortraitSpec.expression_ids().has(str(n["expression"])):
+				problems.append("%s: unknown expression %s" % [where, n["expression"]])
 			_next(problems, where, n.get("next", null), nodes)
 			for b: Dictionary in n.get("branch", []):
 				_next(problems, where, b.get("next"), nodes)

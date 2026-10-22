@@ -52,6 +52,17 @@ static func build_mission(campaign: Campaign, story: StoryState, db: ContentDB, 
 	var gen_opts := {"squad": squad(campaign, story), "db": db, "settings": GmSettings.from_dict(campaign.gm_settings) if not campaign.gm_settings.is_empty() else GmSettings.from_preset("Standard")}
 	if hook.has("sitrep"):
 		gen_opts["sitrep"] = hook["sitrep"]
+	if bool(hook.get("tutorial", false)):
+		# The drill: a small map, gentle GM, training targets only.
+		var tm: Dictionary = Tutorial.data().get("mission", {})
+		var all := UnitFactory.npc_templates()
+		var only := {}
+		for tid: String in tm.get("enemies", {"training_drone": 1}):
+			if all.has(tid):
+				only[tid] = all[tid]
+		gen_opts["npc_templates"] = only if not only.is_empty() else all
+		gen_opts["size"] = int(tm.get("size", 20))
+		gen_opts["settings"] = GmSettings.from_preset(str(tm.get("gm_preset", "Teaching")))
 	gen_opts.merge(opts, true)
 	var gen := MissionGenerator.generate(int(hook.get("seed", story.mission_number)), gen_opts)
 	var state: GameState = gen["state"]
@@ -104,6 +115,36 @@ static func _pilot_for_battle(db: ContentDB, p: Dictionary) -> Dictionary:
 			weapons.append(gid)
 	out["weapons"] = weapons
 	return out
+
+
+## Starts a new campaign the guided way (DESIGN.md section 8): a Union training base, a drill
+## instructor, and the drill as the first job, briefing first (Core p.40). Seats must be set.
+## Returns the events (tutorial prompts, the briefing conversation).
+static func start_tutorial(campaign: Campaign, story: StoryState, engine: StoryEngine) -> Array:
+	var cfg: Dictionary = Tutorial.data()
+	var hub_cfg: Dictionary = cfg.get("hub", {})
+	var events: Array = []
+	events.append_array(engine.submit(story, campaign, {"type": "enter_hub", "seat": "gm", "params": {"kind": hub_cfg.get("kind", "base"),
+		"seed": int(hub_cfg.get("seed", 1)), "culture": hub_cfg.get("culture", "union_core"), "no_jobs": true}})["events"])
+	if hub_cfg.has("name"):
+		story.hub["name"] = hub_cfg["name"]
+	# A training base has no local feud: the first real situation waits for the first real hub.
+	story.hub["conflict"] = {}
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([story.story_seed, "instructor"])
+	var inst := NpcGen.make_npc(rng, NameGen.new(rng), campaign, story.hub, "instructor", "tutorial_instructor")
+	story.npcs[inst["id"]] = inst
+	(story.hub["npcs"] as Array).push_front(inst["id"])
+	story.contacts.append(inst["id"])
+	var hook := MissionHooks.make(story, campaign, str(cfg.get("mission", {}).get("template", "tutorial_drill")), {"patron": inst["id"], "twist": ""})
+	hook.erase("twist")
+	hook["tutorial"] = true
+	hook["briefing_scene"] = "tutorial_briefing"
+	story.hooks = [hook]
+	story.arc = {}
+	story.phase = "briefing"
+	events.append_array(Tutorial.start(story))
+	return events
 
 
 ## The result for StoryEngine's mission_finished: outcome, and which pilots died or are

@@ -91,7 +91,7 @@ func refresh() -> void:
 		return
 	var vp := get_viewport_rect().size
 	var hub := story.hub
-	var t := "[b]%s[/b]\n[color=#9fb2c8]%s  ·  %s  ·  %s[/color]\n" % [hub.get("name", "?"), str(hub.get("kind", "")).capitalize(), hub.get("planet", ""), hub.get("faction", "")]
+	var t := "[b]%s[/b]\n[color=#9fb2c8]%s  ·  %s  ·  %s[/color]\n" % [hub.get("name", "?"), "%s, %s" % [str(hub.get("kind", "")).capitalize(), hub.get("culture_name", "")] if hub.has("culture_name") else str(hub.get("kind", "")).capitalize(), hub.get("planet", ""), hub.get("faction", "")]
 	var conflict: Dictionary = hub.get("conflict", {})
 	if not conflict.is_empty():
 		t += "[color=#d0b98a][i]%s[/i][/color]\n" % conflict.get("summary", "")
