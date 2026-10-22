@@ -189,7 +189,7 @@ static func can_spend(u: Unit, cost: String, action: String) -> RuleResult:
 		QUICK:
 			if braced and (int(t.get("quick", 0)) >= 1 or t.get("full", false)):
 				return RuleResult.deny("After Bracing you can only take one quick action this turn.", REF_BRACE)
-			var repeat: bool = (t.get("taken", []) as Array).has(action) and action != "quick_tech"
+			var repeat: bool = (t.get("taken", []) as Array).has(action) and not _repeatable(action)
 			if (int(t.get("quick", 0)) < 2 and not repeat) or int(t.get("free_quick", 0)) > 0:
 				return RuleResult.allow()
 			if repeat:
@@ -207,6 +207,12 @@ static func can_spend(u: Unit, cost: String, action: String) -> RuleResult:
 	return RuleResult.allow()
 
 
+## Quick actions that may be taken twice in a turn: Quick Tech (Core p.69); Skirmish too
+## with the Lancer Tactics "lt_split_barrage" variant.
+static func _repeatable(action: String) -> bool:
+	return action == "quick_tech" or (action == "skirmish" and Rulings.lancer_tactics(state_of(null), "lt_split_barrage"))
+
+
 ## The GameState a unit belongs to, for checks that need the map (set by RulesEngine).
 static var _state_ref: WeakRef = null
 
@@ -221,7 +227,7 @@ static func spend(u: Unit, cost: String, action: String) -> void:
 	match cost:
 		QUICK:
 			var taken: Array = t.get("taken", [])
-			var repeat: bool = taken.has(action) and action != "quick_tech"
+			var repeat: bool = taken.has(action) and not _repeatable(action)
 			if (int(t.get("quick", 0)) < 2 and not repeat):
 				t["quick"] = int(t.get("quick", 0)) + 1
 			else:

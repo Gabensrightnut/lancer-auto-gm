@@ -32,6 +32,7 @@ keeps the choices. An AI GM answers with the suggested reading and logs it. Code
 | `manticore_inferno_self` | Is the Manticore caught in its own charge-die inferno? | yes (a Burst that isn't an attack includes the user) / no | p.64, Manticore core |
 | `hologram_blast_targets` | Dusk Wing Hologram Teleport explosions: who is caught? | hostiles / every character but the Dusk Wing | p.64, Dusk Wing core |
 | `basilisk_failed_save` | Gorgon Basilisk: does a failed save stop the attack? | no attack / attack goes ahead | p.77, Gorgon core |
+| `lt_split_barrage`, `lt_repeat_quick_tech`, `lt_brace_prompt` | Lancer Tactics variants (DESIGN.md "Rule differences"): two Skirmishes from different mounts, the same Quick Tech twice, Brace offered only on big hits | book / lancer_tactics | p.60, 64, 69, 73 |
 | `extremesun_turns` | Extreme sun: 1d6 heat "at the end of a turn" if not in shade. Whose turn? | each character at the end of its own turn / everyone out of shade at the end of every turn | Environments (lancer-data environments.json) |
 
 ## Engine geometry (consistent with the book, which only describes a flat tabletop)

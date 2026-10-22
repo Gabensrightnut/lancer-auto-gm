@@ -256,6 +256,9 @@ class Skirmish:
 		var spin: Dictionary = WeaponRules.rules(w).get("spin_up", {})
 		if w.get("size", "") == "Superheavy" and not (spin.get("skirmish_only_standard", false) and not w.get("spun", false)):
 			return RuleResult.deny("Superheavy weapons can only be fired as part of a Barrage.", Attacks.REF_SKIRMISH)
+		if Rulings.lancer_tactics(state, "lt_split_barrage") and int(w.get("mount", -1)) >= 0 and (u.turn.get("skirmish_mounts", []) as Array).has(int(w.get("mount", -1))):
+			# Lancer Tactics split Barrage: the second shot must come from a different mount.
+			return RuleResult.deny("Already fired that mount this turn: use a weapon on another mount.", Attacks.REF_BARRAGE)
 		var r := AttackActions._check_attack(state, u, params, Attacks.REF_SKIRMISH)
 		if not r.ok or not params.has("aux"):
 			return r
@@ -265,6 +268,9 @@ class Skirmish:
 	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
 		var p := params.duplicate()
 		p["_action"] = "skirmish"
+		var sm: Array = u.turn.get("skirmish_mounts", [])
+		sm.append(int(Weapons.find(u, String(params.get("weapon", ""))).get("mount", -1)))
+		u.turn["skirmish_mounts"] = sm
 		var events := AttackActions._run(state, u, p, false)
 		if params.has("aux"):
 			var a: Dictionary = (params["aux"] as Dictionary).duplicate()
