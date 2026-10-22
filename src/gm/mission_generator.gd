@@ -4,17 +4,17 @@ extends RefCounted
 ## Same seed + options = same mission. Generation uses its own seeded RNG (setup, not play);
 ## the battle's dice are the GameState's, seeded with the same number.
 ##
-## Terrain kit so far: grassy hills (rolling heights 0-3, rock outcrops for hard cover, woods
-## for soft cover and difficult ground, muddy patches).
+## Terrain: TerrainGen builds a landscape (grassy hills, desert mesas, tundra, volcanic,
+## alien wilds, city) and, for some, a settlement in a culture's style (medieval, Old West,
+## retro, East Asian, Union; cities also ruins, cyberpunk, burning). The renderer's kit name
+## goes in mission.flavor["kit"] and the landscape's name in flavor["terrain"].
 ##
 ## opts: {"players": 1-4 (default 4), "sitrep": id (default: weighted pick),
 ##   "size": 20-40 (default: random), "shape": "hex"/"square" (default hex),
+##   "landscape": TerrainGen.LANDSCAPES key, "culture": culture id (default: seeded pick),
 ##   "settings": GmSettings, "db": ContentDB, "npc_templates": Dictionary,
 ##   "squad": Campaign.squad() entries [{seat, pilot, mech}] to field the campaign's pilots}
 ## Returns {"state": GameState (setup phase, seats p1..pN + gm), "mission": Mission}.
-
-const KIT := "grassy_hills"
-
 
 static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
@@ -35,7 +35,11 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	var state := GameState.new(mission_seed, shape)
 	var blocked := {}  # cells kept clear of rocks and woods (deployment, zones)
 	_layout_zones(m, rng, w, h, shape, blocked)
-	state.map = _grassy_hills(rng, w, h, shape, blocked)
+	# The world uses its own RNG so terrain changes never shift the rest of the mission.
+	var world_rng := RandomNumberGenerator.new()
+	world_rng.seed = hash([mission_seed, "world"])
+	var world := TerrainGen.pick(world_rng, str(opts.get("landscape", "")), str(opts.get("culture", "")))
+	state.map = TerrainGen.generate(world_rng, w, h, shape, blocked, world[0], world[1])
 	if m.sitrep_id in ["sitrep_holdout", "sitrep_gauntlet"]:
 		_fortify(state.map, rng, m.zones["zone"], shape)
 
@@ -44,7 +48,8 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	names_rng.seed = hash([mission_seed, "names"])
 	var names := NameGen.new(names_rng)
 	m.flavor = {"operation": names.operation(), "planet": names.planet(), "faction": names.faction(),
-		"team": names.team_name(), "cargo": names.cargo()}
+		"team": names.team_name(), "cargo": names.cargo(), "kit": TerrainGen.kit(world[0], world[1]),
+		"terrain": TerrainGen.describe(world[0], world[1])}
 	var players := clampi(int(opts.get("players", 4)), 1, 4)
 	state.seats["gm"] = {"name": "GM", "side": Mission.ENEMIES, "gm": true}
 	if opts.get("squad", []) is Array and not (opts.get("squad", []) as Array).is_empty():
@@ -134,60 +139,7 @@ static func _layout_zones(m: Mission, rng: RandomNumberGenerator, w: int, h: int
 			blocked[Vector2i(c[0], c[1])] = true
 
 
-# --- Terrain: grassy hills -------------------------------------------------------------
-
-static func _grassy_hills(rng: RandomNumberGenerator, w: int, h: int, shape: GridLayout.Shape, blocked: Dictionary) -> BattleMap:
-	var map := BattleMap.new(shape)
-	var noise := FastNoiseLite.new()
-	noise.seed = rng.randi()
-	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	noise.frequency = rng.randf_range(0.035, 0.06)
-	noise.fractal_octaves = 3
-	var cells: Array[Vector2i] = []
-	for r in range(h):
-		for c in range(w):
-			var cell := _cell(c, r, shape)
-			var n := noise.get_noise_2d(c, r)
-			var ground := clampi(int(floor((n + 0.4) * 2.4)), 0, 3)
-			if blocked.has(cell):
-				ground = mini(ground, 1)  # Deployment and objective ground stays gentle.
-			map.set_column(cell, ground)
-			cells.append(cell)
-	var area := w * h
-	# Rock outcrops: 1-3 spaces, 2 levels above the ground around them (hard cover).
-	for i in range(area / 55):
-		var at := cells[rng.randi_range(0, cells.size() - 1)]
-		for cell in _blob(map, rng, at, rng.randi_range(1, 3)):
-			if not blocked.has(cell):
-				var col := map.column(cell)
-				col.ground = mini(col.ground + 2, 5)
-	# Woods: soft cover, difficult to move through.
-	for i in range(area / 110):
-		var at := cells[rng.randi_range(0, cells.size() - 1)]
-		for cell in _blob(map, rng, at, rng.randi_range(3, 7)):
-			if not blocked.has(cell):
-				_tag(map.column(cell), [Sight.TAG_SOFT_COVER, BattleMap.TAG_DIFFICULT])
-	# Mud and brush: difficult terrain.
-	for i in range(area / 140):
-		var at := cells[rng.randi_range(0, cells.size() - 1)]
-		for cell in _blob(map, rng, at, rng.randi_range(2, 5)):
-			_tag(map.column(cell), [BattleMap.TAG_DIFFICULT])
-	return map
-
-
-## A connected patch of up to `n` cells grown from `at`.
-static func _blob(map: BattleMap, rng: RandomNumberGenerator, at: Vector2i, n: int) -> Array[Vector2i]:
-	var out: Array[Vector2i] = [at]
-	while out.size() < n:
-		var from := out[rng.randi_range(0, out.size() - 1)]
-		var next := map.grid.neighbors(from)
-		var cell: Vector2i = next[rng.randi_range(0, next.size() - 1)]
-		if map.has_cell(cell) and not out.has(cell):
-			out.append(cell)
-		elif rng.randf() < 0.2:
-			break
-	return out
-
+# --- Terrain (TerrainGen) -------------------------------------------------------------
 
 static func _tag(col: BattleMap.Column, tags: Array) -> void:
 	var have := col.tags  # Packed arrays are values: change a copy and put it back.
@@ -212,6 +164,7 @@ static func _fortify(map: BattleMap, rng: RandomNumberGenerator, zone: Array, _s
 		if rng.randf() < 0.45:
 			var col := map.column(cell)
 			col.ground += 1 if rng.randf() < 0.7 else 2
+			col.tags = PackedStringArray(["wall"])
 
 
 # --- Forces ------------------------------------------------------------------------------
@@ -360,6 +313,6 @@ static func _briefing(m: Mission, w: int, h: int, players: int, state: GameState
 		if s.get("id", "") == m.sitrep_id:
 			goal = str(s.get("pcVictory", ""))
 	var f := m.flavor
-	return "%s: %s on %s, grassy hills (%d x %d). %s, %d lancers, against %d %s units. Win: %s." % [
-		f.get("operation", "OPERATION"), m.sitrep_name, f.get("planet", "a frontier world"), w, h,
+	return "%s: %s on %s, %s (%d x %d). %s, %d lancers, against %d %s units. Win: %s." % [
+		f.get("operation", "OPERATION"), m.sitrep_name, f.get("planet", "a frontier world"), f.get("terrain", "grassy hills"), w, h,
 		f.get("team", "The squad"), players, enemies, f.get("faction", "hostile"), goal.trim_suffix(".")]

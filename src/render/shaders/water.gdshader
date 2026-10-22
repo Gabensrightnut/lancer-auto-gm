@@ -4,6 +4,8 @@ render_mode blend_mix, depth_draw_always, cull_back, specular_schlick_ggx;
 
 uniform vec3 shallow : source_color = vec3(0.16, 0.34, 0.36);
 uniform vec3 deep : source_color = vec3(0.05, 0.16, 0.22);
+// 1 = frozen: still, cracked, frosted ice.
+uniform float ice = 0.0;
 
 varying vec3 wpos;
 
@@ -21,7 +23,7 @@ void vertex() {
 
 void fragment() {
 	vec2 p = wpos.xz;
-	float t = TIME * 0.35;
+	float t = TIME * 0.35 * (1.0 - ice);
 	float n0 = noise(p * 3.0 + vec2(t, t * 0.6)) + noise(p * 7.0 - vec2(t * 1.3, t));
 	float nx = noise((p + vec2(0.05, 0.0)) * 3.0 + vec2(t, t * 0.6)) + noise((p + vec2(0.05, 0.0)) * 7.0 - vec2(t * 1.3, t));
 	float ny = noise((p + vec2(0.0, 0.05)) * 3.0 + vec2(t, t * 0.6)) + noise((p + vec2(0.0, 0.05)) * 7.0 - vec2(t * 1.3, t));
@@ -32,4 +34,12 @@ void fragment() {
 	METALLIC = 0.0;
 	SPECULAR = 0.6;
 	ALPHA = mix(0.72, 0.95, fres);
+	if (ice > 0.5) {
+		float frost = noise(p * 2.0) * 0.6 + noise(p * 9.0) * 0.4;
+		vec2 g = p * 1.7;
+		float crack = smoothstep(0.04, 0.0, abs(noise(g) - 0.5)) + smoothstep(0.03, 0.0, abs(noise(g * 2.3 + 4.0) - 0.5));
+		ALBEDO = mix(deep, shallow, 0.4 + 0.5 * frost) + vec3(crack * 0.25);
+		ROUGHNESS = 0.15 + 0.4 * frost;
+		ALPHA = 0.93;
+	}
 }
