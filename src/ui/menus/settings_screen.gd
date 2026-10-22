@@ -70,14 +70,19 @@ func _ready() -> void:
 	right.add_child(story_panel)
 	var kb := MenuTheme.body(keys)
 	kb.add_child(MenuTheme.label("Click a key, then press the new one. A key already in use swaps over.", 15, MenuTheme.MUTED, true))
+	var keys_scroll := ScrollContainer.new()
+	keys_scroll.custom_minimum_size = Vector2(0, 540)
+	keys_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	kb.add_child(keys_scroll)
 	keys_box = VBoxContainer.new()
 	keys_box.add_theme_constant_override("separation", 4)
-	kb.add_child(keys_box)
+	keys_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	keys_scroll.add_child(keys_box)
 	var reset := Button.new()
 	reset.text = "Reset keys to defaults"
 	reset.pressed.connect(func() -> void:
-		for a: String in GameSettings.ACTIONS:
-			s.keybinds[a] = int(GameSettings.ACTIONS[a][1])
+		for a: String in GameSettings.actions():
+			s.keybinds[a] = int(GameSettings.actions()[a][1])
 		_refresh_keys())
 	kb.add_child(reset)
 	_refresh_keys()
@@ -109,9 +114,9 @@ func _ready() -> void:
 func _refresh_keys() -> void:
 	for c in keys_box.get_children():
 		c.queue_free()
-	for a: String in GameSettings.ACTIONS:
+	for a: String in GameSettings.actions():
 		var h := HBoxContainer.new()
-		var l := MenuTheme.label(str(GameSettings.ACTIONS[a][0]), 17)
+		var l := MenuTheme.label(str(GameSettings.actions()[a][0]), 17)
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		h.add_child(l)
 		var b := Button.new()
@@ -129,7 +134,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 	var key := (event as InputEventKey).physical_keycode
 	var swapped := s.rebind(waiting_for_key, key)
-	saved_label.text = "Swapped with \"%s\"." % GameSettings.ACTIONS[swapped][0] if swapped != "" else ""
+	saved_label.text = "Swapped with \"%s\"." % GameSettings.actions()[swapped][0] if swapped != "" else ""
 	waiting_for_key = ""
 	get_viewport().set_input_as_handled()
 	_refresh_keys()

@@ -973,6 +973,12 @@ func _unhandled_input(ev: InputEvent) -> void:
 		if gm_panel.visible:
 			gm_panel.open()
 		get_viewport().set_input_as_handled()
+	elif InputMap.has_action("end_turn") and ev.is_action_pressed("end_turn") and turn.active and not turn.busy:
+		turn.end_turn()  # the End turn key (Settings)
+		get_viewport().set_input_as_handled()
+	elif InputMap.has_action("toggle_log") and ev.is_action_pressed("toggle_log"):
+		combat_log.visible = not combat_log.visible
+		get_viewport().set_input_as_handled()
 	elif InputMap.has_action("codex") and ev.is_action_pressed("codex"):
 		if codex.visible:
 			codex.visible = false
