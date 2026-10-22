@@ -32,9 +32,14 @@ func _init() -> void:
 	for kit: String in kits:
 		var weather := kit.get_slice("+", 1) if "+" in kit else "clear"
 		var parts := kit.get_slice("+", 0).split("/")
-		var g := MissionGenerator.generate(40, {"db": db, "size": 40, "landscape": parts[0], "culture": parts[1] if parts.size() > 1 else "", "weather": weather})
+		var sz := int(OS.get_environment("LANCER_BENCH_SIZE")) if OS.get_environment("LANCER_BENCH_SIZE") != "" else 40
+		var t_build := Time.get_ticks_msec()
+		var g := MissionGenerator.generate(40, {"db": db, "size": sz, "height": sz, "landscape": parts[0], "culture": parts[1] if parts.size() > 1 else "", "weather": weather})
 		var state: GameState = g["state"]
+		var t_gen := Time.get_ticks_msec() - t_build
+		t_build = Time.get_ticks_msec()
 		_view.set_map(state.map, g["mission"].flavor["kit"])
+		print("%-24s %dx%d  generate %d ms, build %d ms" % [kit, sz, sz, t_gen, Time.get_ticks_msec() - t_build])
 		_view.clear_units()
 		var v := ViewFilter.new().view_for(state, "gm")
 		var n := 0

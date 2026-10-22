@@ -212,3 +212,21 @@ Every edit is a GM action (`MapEditorModel` -> `gm_edit_terrain` / `gm_edit_obje
 Before a mission it runs on a private GameState; live, `start_live(engine, state, kit)` uses
 the mission's own, and `edited(events)` gives the host the events to send to every seat
 (clients refresh the board on `terrain_edited` and the zones on `objectives_changed`).
+
+## Map sizes, towns and materials
+
+- Generated maps are 30-60 per side, from squad size and sitrep (`missions.json` "map_sizes";
+  `MissionGenerator.map_size()`), usually longer than wide. The GM's approach dial keeps the
+  deployment zones that many rows apart on every sitrep (SitrepLayout's battle band); the rest
+  is flanking room. 60x60: generate 0.3-1.3 s, build about 2.7 s.
+- A fight in a hub's town (`generate(seed, {"hub": story.hub})`) is built from the hub's own
+  layout (HubLayout spots at about 2 m per space): the same buildings around the same plaza,
+  1-2 levels, real cover, destructible, plus houses along the streets, in the hub's culture.
+- Materials (Core p.68): `material_wood|stone|concrete|metal|fortified|hull` and `armor_N`
+  tags on built and natural cover (TerrainGen.MATERIALS: Old West/frontier/East Asian wood 0,
+  medieval stone 1 (town walls 2), cities concrete 1, Union fortified 3, station bulkheads 3,
+  starship hull 4, rock 2). The rules read `armor_N`; objects always have 5 Evasion and 10 HP
+  per Size 1 section. Hits (`TerrainRenderer.hit_terrain`, event terrain_damaged): wood
+  splinters, stone and concrete chip and puff dust, metal and fortified walls spark and dent.
+  `show_damage(state.terrain_damage)` deepens the cracks as a section wears down; destroyed
+  wood breaks into planks, metal into bent plates.

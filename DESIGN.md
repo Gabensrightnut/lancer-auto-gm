@@ -572,6 +572,12 @@ differently without an AI. Each game has a **seed**: share it to replay the same
   yourself, or let the AI pick (by role: e.g. "keep this pilot a support build").
 
 ### Dialogue scenes
+- **Three ways to talk:** third person (Lancer Tactics-style pop-up with portrait cards and a
+  speech bubble), first person (face to face: the camera holds on the speaker's 3D face, which
+  shows expressions, blinks and mouth movement, with subtitles and choices below), and
+  **radio/comms** (a pop-up in a radio frame with static, callsign and channel, for orders and
+  chatter over comms). Players pick first or third person any time; radio is used whenever the
+  speaker isn't present. Jammed pilots can't use comms (book: Jammed), so their radio cuts to static.
 - **Pop-up conversations in and out of battle,** like Lancer Tactics: character portrait
   cards on each side and a speech bubble from whoever's talking, over the live 3D scene.
   Click or press a key to advance; a log keeps every line.

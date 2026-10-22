@@ -61,7 +61,8 @@ func test_approach_dial_brings_deployment_closer() -> void:
 		return bottom - top - 1
 	expect_eq(gap.call(far), 34 - 2 * SitrepLayout.DEPTH, "0: deploy at the map edges")
 	expect(gap.call(near) <= 14 and gap.call(near) >= 13, "14: about fourteen rows apart (%d)" % gap.call(near))
+	# Every sitrep follows the dial now, so big maps don't start with long walks.
 	var control := SitrepLayout.layout("sitrep_control", 30, 34, GridLayout.Shape.SQUARE, rng, 14)
-	expect_eq(gap.call(control), 34 - 2 * SitrepLayout.DEPTH, "sitreps with zones keep their edges")
+	expect(gap.call(control) <= 14, "sitreps with zones follow the dial too (%d)" % gap.call(control))
 	expect_eq(GmSettings.from_preset("Standard").approach, 14.0)
 	expect(GmSettings.from_preset("Cautious").approach > GmSettings.from_preset("Standard").approach)

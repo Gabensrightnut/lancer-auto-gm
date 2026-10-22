@@ -9,8 +9,9 @@ static func play(t: TerrainRenderer, cells: Array, old_heights: Dictionary = {})
 	if not t.is_inside_tree():
 		return  # nothing on screen to animate (e.g. headless checks)
 	var host: Node = t.get_parent() if t.get_parent() else t
-	var chunk_color := WorldStyle.col(t.style, "ground.wall", Color(0.5, 0.48, 0.45))
 	for c: Vector2i in cells:
+		var mat := _material_at(t, c)
+		var chunk_color := _debris_color(t, c, mat)
 		var old := float(old_heights.get(c, t.map.ground_height(c) + 1)) * GridLayout.LEVEL_HEIGHT
 		var now := t.top_y(c)
 		var base := t.map.grid.to_world(c)
@@ -19,7 +20,10 @@ static func play(t: TerrainRenderer, cells: Array, old_heights: Dictionary = {})
 		fx.name = "Break"
 		host.add_child(fx)
 		fx.global_position = base + Vector3.UP * now
-		fx.add_child(_chunks(h, chunk_color, t.surface(c)))
+		fx.add_child(_chunks(h, chunk_color, t.surface(c), mat))
+		if mat in ["metal", "fortified", "hull"]:
+			Fx.sparks(fx, Vector3.UP * h * 0.6, Color(1.0, 0.75, 0.4), 30, 5.0)
+			Fx.light_flash(fx, Vector3.UP * h * 0.5, Color(1.0, 0.7, 0.4), 3.0, 4.0, 0.3)
 		if t.building_looks.has(c) and t.building_material != null:
 			_building_collapse(t, fx, c, h, now)
 			Fx.dust(fx, Vector3.UP * minf(h, 2.0) * 0.4, 18, Color(0.4, 0.38, 0.36, 0.45), 1.7, 1.2, 4.0)
@@ -120,7 +124,93 @@ static func _collapse(t: TerrainRenderer, fx: Node3D, cell: Vector2i, h: float) 
 	tw.tween_callback(mi.queue_free)
 
 
-static func _chunks(h: float, color: Color, _kind: int) -> CPUParticles3D:
+## The material of a column from its tags, or a best guess from what it looks like.
+static func _material_at(t: TerrainRenderer, c: Vector2i) -> String:
+	var col := t.map.column(c)
+	var m := TerrainRenderer.material_of(col)
+	if m != "":
+		return m
+	if col != null and (col.has_tag("bulkhead") or col.has_tag("machinery")):
+		return "fortified"
+	if col != null and col.has_tag("rock"):
+		return "stone"
+	return "concrete"
+
+
+static func _debris_color(t: TerrainRenderer, c: Vector2i, mat: String) -> Color:
+	match mat:
+		"wood":
+			return Color(0.45, 0.32, 0.2)
+		"stone":
+			return WorldStyle.col(t.style, "ground.rock_a", Color(0.55, 0.52, 0.48))
+		"metal", "fortified", "hull":
+			return WorldStyle.col(t.style, "ground.metal_a", Color(0.42, 0.44, 0.47))
+	return WorldStyle.col(t.style, "ground.wall", Color(0.5, 0.48, 0.45))
+
+
+## A hit that doesn't destroy the section: a puff of the material at the face toward the attacker.
+static func hit(t: TerrainRenderer, cell: Vector2i, amount: int, from: Vector3) -> void:
+	if not t.is_inside_tree() or not t.map.has_cell(cell):
+		return
+	var mat := _material_at(t, cell)
+	var center := t.map.grid.to_world(cell) + Vector3.UP * maxf(t.top_y(cell) - 0.4, 0.3)
+	var toward := (from - center) if from != Vector3.INF else Vector3(0, 0.3, 1)
+	toward.y = 0.0
+	var at := center + toward.normalized() * 0.45 if toward.length() > 0.01 else center
+	var fx := Node3D.new()
+	fx.name = "TerrainHit"
+	t.add_child(fx)
+	fx.global_position = at
+	var n := clampi(6 + amount * 2, 6, 30)
+	match mat:
+		"wood":
+			# Splinters: long thin shards, lots of them, light and quick.
+			var p := _burst(n + 8, 0.9, Color(0.5, 0.36, 0.22), toward)
+			p.mesh = MeshKit.chamfer_box(Vector3(0.03, 0.03, 0.22), 0.0)
+			p.particle_flag_align_y = true
+			fx.add_child(p)
+			Fx.dust(fx, Vector3.ZERO, 4, Color(0.55, 0.45, 0.3, 0.4), 0.4, 0.5, 1.0)
+		"metal", "fortified", "hull":
+			# Sparks and a bright dent flash; hardly any debris.
+			Fx.sparks(fx, Vector3.ZERO, Color(1.0, 0.8, 0.45), n + 10, 5.0)
+			Fx.light_flash(fx, Vector3.ZERO, Color(1.0, 0.75, 0.45), 2.5, 2.5, 0.2)
+			var dent := MeshKit.part(fx, MeshKit.sphere(0.12, 8), MeshKit.fx_material(Color(1.0, 0.6, 0.25), 3.0), Vector3.ZERO, Vector3.ZERO, Vector3(1, 1, 0.3))
+			var tw := dent.create_tween()
+			tw.tween_property(dent, "scale", Vector3(0.1, 0.1, 0.1), 0.5)
+		_:
+			# Stone and concrete: chips and a dust puff.
+			var p := _burst(n, 1.4, _debris_color(t, cell, mat), toward)
+			p.mesh = Flora.rock(_debris_color(t, cell, mat), 31)
+			p.scale_amount_min = 0.04
+			p.scale_amount_max = 0.1
+			fx.add_child(p)
+			Fx.dust(fx, Vector3.ZERO, 8, Color(0.5, 0.48, 0.45, 0.55), 0.7, 0.7, 1.6)
+	var timer := fx.get_tree().create_timer(3.0)
+	timer.timeout.connect(fx.queue_free)
+
+
+static func _burst(n: int, speed: float, color: Color, toward: Vector3) -> CPUParticles3D:
+	var p := CPUParticles3D.new()
+	p.one_shot = true
+	p.explosiveness = 0.95
+	p.amount = n
+	p.lifetime = 1.2
+	p.direction = (toward.normalized() + Vector3.UP * 0.6).normalized() if toward.length() > 0.01 else Vector3.UP
+	p.spread = 45.0
+	p.gravity = Vector3(0, -9.8, 0)
+	p.initial_velocity_min = speed
+	p.initial_velocity_max = speed * 2.5
+	p.angular_velocity_min = -400.0
+	p.angular_velocity_max = 400.0
+	var m := StandardMaterial3D.new()
+	m.albedo_color = color
+	m.roughness = 0.9
+	p.material_override = m
+	p.emitting = true
+	return p
+
+
+static func _chunks(h: float, color: Color, _kind: int, mat: String = "") -> CPUParticles3D:
 	var p := CPUParticles3D.new()
 	p.one_shot = true
 	p.explosiveness = 0.85
@@ -140,6 +230,14 @@ static func _chunks(h: float, color: Color, _kind: int) -> CPUParticles3D:
 	p.scale_amount_min = 0.5
 	p.scale_amount_max = 1.4
 	p.mesh = Flora.rock(color, 30)
+	if mat == "wood":
+		# Broken planks and beams instead of stones.
+		p.mesh = MeshKit.chamfer_box(Vector3(0.12, 0.12, 0.9), 0.01)
+		p.amount = int(p.amount * 1.3)
+	elif mat in ["metal", "fortified", "hull"]:
+		# Bent plates; fewer pieces, heavier.
+		p.mesh = MeshKit.chamfer_box(Vector3(0.9, 0.08, 0.6), 0.01)
+		p.amount = int(p.amount * 0.6)
 	var m := StandardMaterial3D.new()
 	m.albedo_color = color
 	m.roughness = 0.95

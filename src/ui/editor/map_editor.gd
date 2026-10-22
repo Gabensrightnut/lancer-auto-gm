@@ -12,7 +12,8 @@ extends Node3D
 signal edited(events: Array)
 signal play_requested(doc: MapDoc)
 
-const SIZES := [20, 24, 28, 32, 36, 40]
+## Map sizes offered (width x height): from small skirmishes to the biggest generated maps.
+const SIZES := [[24, 22], [30, 30], [36, 40], [44, 48], [50, 56], [60, 60]]
 
 var model := MapEditorModel.new()
 var view: BattleView
@@ -53,7 +54,7 @@ func _ready() -> void:
 	_build_ui()
 	model.changed.connect(_on_changed)
 	if model.doc == null:
-		start_prep(MapDoc.generated(1, 28, 24, GridLayout.Shape.HEX, "sitrep_control", "grassy_hills", ""))
+		start_prep(MapDoc.generated(1, 36, 40, GridLayout.Shape.HEX, "sitrep_control", "grassy_hills", ""))
 
 
 ## Editing a map before a mission.
@@ -268,7 +269,7 @@ func _build_ui() -> void:
 		_sync_controls())
 
 	_header(box, "Map")
-	_size_pick = _option(box, "Size", SIZES.map(func(n: int) -> String: return "%d x %d" % [n, int(n * 0.85)]), func(_i: int) -> void: pass)
+	_size_pick = _option(box, "Size", SIZES.map(func(n: Array) -> String: return "%d x %d" % [n[0], n[1]]), func(_i: int) -> void: pass)
 	_shape_pick = _option(box, "Grid", ["hex", "square"], func(_i: int) -> void: pass)
 	_seed_spin = _spin(box, "Seed", 1, 99999, 1, func(_v: float) -> void: pass)
 	var row := HBoxContainer.new()
@@ -405,15 +406,15 @@ func _new_map(generate: bool) -> void:
 	if model.live:
 		_status_text("Can't replace the map during a mission.")
 		return
-	var n: int = SIZES[_size_pick.selected]
+	var n: Array = SIZES[_size_pick.selected]
 	var shape := GridLayout.Shape.SQUARE if _shape_pick.selected == 1 else GridLayout.Shape.HEX
 	var sitrep := _sitrep_pick.get_item_text(_sitrep_pick.selected)
 	var doc: MapDoc
 	if generate:
 		var cult := _culture_pick.get_item_text(_culture_pick.selected)
-		doc = MapDoc.generated(int(_seed_spin.value), n, int(n * 0.85), shape, sitrep, _land_pick.get_item_text(_land_pick.selected), "" if cult == "(none)" else cult)
+		doc = MapDoc.generated(int(_seed_spin.value), n[0], n[1], shape, sitrep, _land_pick.get_item_text(_land_pick.selected), "" if cult == "(none)" else cult)
 	else:
-		doc = MapDoc.blank(n, int(n * 0.85), shape, sitrep)
+		doc = MapDoc.blank(n[0], n[1], shape, sitrep)
 		doc.landscape = _land_pick.get_item_text(_land_pick.selected)
 	start_prep(doc)
 
