@@ -99,7 +99,7 @@ func test_human_figure_dresses_from_the_portrait() -> void:
 	for m: MeshInstance3D in f.find_children("*", "MeshInstance3D", true, false):
 		if m.visible:
 			shown[String(m.name)] = true
-	expect(shown.has("Hat_helmet") and shown.has("Coat") and shown.has("Gear_pack"), "helmet, coat and pack are on: %s" % shown.keys())
+	expect(shown.has("Hat_helmet") and shown.has("Coat") and shown.has("Gear_pack"), "helmet, coat and pack are on: %s" % [shown.keys()])
 	expect(not shown.keys().any(func(n: String) -> bool: return n.begins_with("Hair_")), "a helmet hides the hair")
 	for a: String in ["idle", "walk", "run", "talk", "sneak", "sit", "aim", "hit", "fall"]:
 		expect(f.anim.has_animation(a), "has the %s animation" % a)
