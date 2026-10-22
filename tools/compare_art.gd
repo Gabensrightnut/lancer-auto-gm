@@ -1,6 +1,6 @@
 extends SceneTree
 ## Side-by-side check of a modeled frame against its reference art:
-##   godot --path . -s res://tools/compare_art.gd -- <frame_id> <art.png> <out.png> [yaw] [pitch] [guide.glb] [weapons] [top] [bottom]
+##   godot --path . -s res://tools/compare_art.gd -- <frame_id> <art.png> <out.png> [yaw] [pitch] [guide.glb[;guide2.glb@y]] [weapons] [top] [bottom]
 ## `top`/`bottom` are where the mech's body (feet to highest body part, weapons excluded)
 ## sits in the art, as fractions of the art's height, so both are drawn at the same scale.
 ## Renders the frame (MechBuilder, real loadout) at the art's angle on a plain background and
@@ -46,8 +46,10 @@ func _init() -> void:
 			panels.append(await _render(mm, w, y, pitch, null))
 	else:
 		panels = [art, await _render(model, w, yaw, pitch, null)]
-	if guide != "":
-		var g := _load_glb(guide)
+	# Several guides separated by ';'. A trailing '@y' marks a Y-up mesh (TripoSG); others are
+	# Z-up (TripoSR).
+	for gp: String in guide.split(";", false):
+		var g := _load_glb(gp.trim_suffix("@y"), gp.ends_with("@y"))
 		if g:
 			panels.append(await _render(g, w, yaw, pitch, model))
 	var img := Image.create(w * panels.size() + 12 * (panels.size() - 1), H, false, Image.FORMAT_RGBA8)
@@ -64,7 +66,7 @@ func _init() -> void:
 	quit()
 
 
-func _load_glb(path: String) -> Node3D:
+func _load_glb(path: String, y_up: bool = false) -> Node3D:
 	var doc := GLTFDocument.new()
 	var st := GLTFState.new()
 	if doc.append_from_file(path, st) != OK:
@@ -72,10 +74,12 @@ func _load_glb(path: String) -> Node3D:
 	var n := doc.generate_scene(st) as Node3D
 	var holder := Node3D.new()
 	holder.add_child(n)
-	n.rotation_degrees.x = -90.0  # TripoSR meshes are Z-up
-	n.rotation_degrees.y = 180.0
+	if not y_up:
+		n.rotation_degrees.x = -90.0  # TripoSR meshes are Z-up
+		n.rotation_degrees.y = 180.0
 	var mat := StandardMaterial3D.new()
-	mat.vertex_color_use_as_albedo = true
+	mat.vertex_color_use_as_albedo = not y_up  # TripoSR has colors; TripoSG is plain grey
+	mat.albedo_color = Color(0.72, 0.72, 0.74)
 	for m in n.find_children("*", "MeshInstance3D", true, false):
 		(m as MeshInstance3D).material_override = mat
 	return holder
