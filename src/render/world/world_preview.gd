@@ -34,7 +34,9 @@ func screenshot_stage(tag: String) -> void:
 	var map: BattleMap
 	var kit := ""
 	if map_name.begins_with("hub"):
-		await _hub(map_name.trim_prefix("hub").trim_prefix("-"), cam)
+		# hub-<culture>[~<dawn|day|evening|night>]
+		var hub_tag := map_name.trim_prefix("hub").trim_prefix("-")
+		await _hub(hub_tag.get_slice("~", 0), cam, hub_tag.get_slice("~", 1) if "~" in hub_tag else "day")
 		return
 	var sitrep := ""
 	if "^" in map_name:
@@ -223,8 +225,8 @@ var _hub_root: Node3D
 
 
 ## A small on-foot town laid out like the story hubs (HubLayout), dressed with WorldKits.
-## Tag: hub-<culture> (story or map culture id), views wide (default) or close.
-func _hub(culture: String, cam: String) -> void:
+## Tag: hub-<culture>[~time] (story or map culture id; time of day), views wide or close.
+func _hub(culture: String, cam: String, period: String = "day") -> void:
 	view.visible = false
 	if _hub_root:
 		_hub_root.queue_free()
@@ -239,7 +241,7 @@ func _hub(culture: String, cam: String) -> void:
 	sun.directional_shadow_max_distance = 80.0
 	_hub_root.add_child(sun)
 	view.world_env.environment = e
-	WorldKits.apply_hub_environment(culture, e, sun)
+	WorldKits.apply_hub_environment(culture, e, sun, period)
 	var colors := WorldKits.hub_ground(culture)
 	var ground := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
@@ -274,6 +276,7 @@ func _hub(culture: String, cam: String) -> void:
 	for i in range(4):
 		var p := MeshKit.part(_hub_root, MeshKit.cylinder(0.25, 1.8, 10), MeshKit.paint(Color(0.3, 0.4, 0.55), 0.1, 0.7, 0.0), Vector3(-2.0 + i * 1.3, 0.9, 5.5))
 		p.name = "Person"
+	WorldKits.set_hub_time(_hub_root, period)
 	var c3 := Camera3D.new()
 	c3.fov = 50
 	_hub_root.add_child(c3)
