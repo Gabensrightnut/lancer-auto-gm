@@ -613,6 +613,127 @@
       "There's my new squad. Questions? I've got time.",
       "Back from the range in one piece. That's the first lesson.",
       "At ease. What do you need?"
+    ],
+    "downtime_intro": [
+      "The squad has a few days at {hub} before the next job. Time to rest, repair, and see who owes who.",
+      "Downtime at {hub}. The mechs go into the printer bay for a full repair; the pilots go looking for whatever they need.",
+      "A breather at {hub}. Ten hours in a bunk, a fresh print of every mech, and a little time to call your own."
+    ],
+    "dt_buy_some_time_low": [
+      "{callsign} stalls as hard as they can, but it only buys a little time, and only by doing something drastic.",
+      "{callsign}'s delay works, barely. Whatever's coming is still coming soon."
+    ],
+    "dt_buy_some_time_mid": [
+      "{callsign} buys enough time, but it's getting precarious.",
+      "{callsign} keeps things from boiling over. For now. It won't hold forever."
+    ],
+    "dt_buy_some_time_high": [
+      "{callsign} buys all the time the squad needs.",
+      "Whatever was coming, {callsign} has pushed it well past the next mission."
+    ],
+    "dt_gather_information_low": [
+      "{callsign} digs too deep and has to choose between the answer and a clean getaway.",
+      "{callsign}'s questions get noticed."
+    ],
+    "dt_gather_information_mid": [
+      "{callsign} finds it: {subject}. Not without leaving a mess behind.",
+      "{callsign} gets the answer, and pays for it."
+    ],
+    "dt_gather_information_high": [
+      "{callsign} comes back with everything: {subject}, clean.",
+      "Nobody even noticed {callsign} looking."
+    ],
+    "dt_get_a_damn_drink_low": [
+      "{callsign} wakes up in a gutter with a headache and only one thing they're sure they still have.",
+      "Nobody's sure what happened to {callsign} last night. Least of all {callsign}."
+    ],
+    "dt_get_a_damn_drink_mid": [
+      "{callsign} has a night to remember: something gained, something lost.",
+      "{callsign} makes a friend, a scene, and a mistake, not necessarily in that order."
+    ],
+    "dt_get_a_damn_drink_high": [
+      "{callsign} has the best night anyone's had at {hub} in years, and walks out ahead.",
+      "Drinks with {callsign} turn into stories people will tell for a while."
+    ],
+    "dt_get_connected_low": [
+      "{callsign}'s contact will help, but only if the favor gets done right now.",
+      "{subject} can help {callsign}, but wants something first."
+    ],
+    "dt_get_connected_mid": [
+      "{subject} comes through for {callsign}. There'll be a favor to repay.",
+      "{callsign} gets the help, and a debt to go with it."
+    ],
+    "dt_get_connected_high": [
+      "{subject} helps {callsign}, no strings attached.",
+      "{callsign} asks; {subject} delivers. Just like that."
+    ],
+    "dt_get_creative_low": [
+      "{callsign}'s project, {subject}, goes nowhere this time.",
+      "{callsign} stares at the workbench for days. Nothing."
+    ],
+    "dt_get_creative_mid": [
+      "{callsign} makes real progress on {subject}. It needs a little more to be done.",
+      "{subject} is half-built on {callsign}'s bench, and looking promising."
+    ],
+    "dt_get_creative_high": [
+      "{callsign} finishes {subject} before the next mission.",
+      "It works. {callsign}'s {subject} is ready."
+    ],
+    "dt_get_focused": [
+      "{callsign} spends the downtime training: {subject}.",
+      "Hours of practice. {callsign} is better at {subject} now."
+    ],
+    "dt_get_organized": [
+      "{callsign} starts something: {subject}.",
+      "{callsign} puts people together around an idea: {subject}."
+    ],
+    "dt_power_at_a_cost": [
+      "{callsign} gets {subject}. The price is still to be paid.",
+      "{subject}: done. {callsign} knew it would cost something."
+    ],
+    "dt_scrounge_and_barter_low": [
+      "{callsign} finds {subject}, but there's a catch.",
+      "{callsign} comes back with {subject}, and a problem."
+    ],
+    "dt_scrounge_and_barter_mid": [
+      "{callsign} gets {subject}, and pays for it one way or another.",
+      "{subject}, acquired. {callsign} won't say what it cost."
+    ],
+    "dt_scrounge_and_barter_high": [
+      "{callsign} turns up {subject} without a hitch.",
+      "A good trade: {callsign} has {subject}."
+    ],
+    "downtime_recap_header": [
+      "Before the next briefing:",
+      "What the squad did with the time:"
+    ],
+    "arc_after_win": [
+      "Last time went your way, and {b} noticed.",
+      "{b} lost ground last time. They won't let it happen twice.",
+      "You won the last round against {b}. Word travels."
+    ],
+    "arc_after_loss": [
+      "Last time cost you, and {b} smells blood.",
+      "{b} came out ahead last time. Now they're bolder.",
+      "The last job against {b} went badly. This one has to count."
+    ],
+    "debrief_detail": [
+      "{rounds} rounds. {kills} of theirs down. {lost_line}",
+      "It took {rounds} rounds. You put down {kills}. {lost_line}",
+      "{kills} enemy units destroyed in {rounds} rounds. {lost_line}"
+    ],
+    "briefing_callback": [
+      "After {last_title}, {last_outcome_line}. People here remember.",
+      "Last time, at {last_place}, {last_outcome_line}. This one's different.",
+      "You all know how {last_title} went: {last_outcome_line}. Now, the next job."
+    ],
+    "briefing_recap": [
+      "{downtime_recap}"
+    ],
+    "debrief_fallen": [
+      "Before anything else: {fallen} didn't come back. We remember them.",
+      "{fallen} is gone. Take a moment.",
+      "We lost {fallen} out there. Nothing about this job was worth that."
     ]
   }
 }

@@ -140,6 +140,7 @@ static func apply(e: Dictionary, story: StoryState, campaign: Campaign, ctx: Dic
 			return []
 		var reward := str(npc.get("deal_reward", "reserve_backing"))
 		hook["deal"] = {"npc": npc_id, "reward": reward}
+		hook["short_title"] = hook["title"]
 		hook["title"] = "%s (deal with %s)" % [hook["title"], npc.get("name", "a contact")]
 		story.hooks.append(hook)
 		story.deals[npc_id] = {"state": "accepted", "hook": hook["id"], "reward": reward, "mission": story.mission_number,

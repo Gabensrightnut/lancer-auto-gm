@@ -161,6 +161,15 @@ func _build_choices(offered: Array) -> void:
 		head.text = "%s is speaking; their player chooses." % sp.get("callsign", "Another pilot")
 	_choices.add_child(head)
 	head.visible = head.text != ""
+	# Teamwork: anyone not rolling can help (+1) and share the consequences (Core p.45).
+	var me := story.pilot_of_seat(seat)
+	var speaker := str(story.dialogue.get("ctx", {}).get("speaker", ""))
+	if me != "" and me != speaker and offered.any(func(o: Dictionary) -> bool: return bool(o.get("check", {}).get("teamwork", false))):
+		var cb := CheckBox.new()
+		cb.text = "Help with the check (+1 to the roll, and you share any consequences)"
+		cb.button_pressed = bool(story.dialogue.get("helpers", {}).get(seat, true))
+		cb.toggled.connect(func(on: bool) -> void: _send({"type": "dialogue_help", "seat": seat, "params": {"on": on}}))
+		_choices.add_child(cb)
 	var i := 0
 	for o: Dictionary in offered:
 		i += 1

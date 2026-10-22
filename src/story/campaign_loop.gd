@@ -154,7 +154,7 @@ static func start_tutorial(campaign: Campaign, story: StoryState, engine: StoryE
 
 ## The result for StoryEngine's mission_finished: outcome, and which pilots died or are
 ## Down and Out (their pilot Units, matched back through the seat).
-static func mission_result(state: GameState, mission: Mission, story: StoryState) -> Dictionary:
+static func mission_result(state: GameState, mission: Mission, story: StoryState, events: Array = []) -> Dictionary:
 	var outcome := "victory" if mission.outcome == Mission.PLAYERS else ("defeat" if mission.outcome == Mission.ENEMIES else "draw")
 	var dead: Array = []
 	var down: Array = []
@@ -170,9 +170,46 @@ static func mission_result(state: GameState, mission: Mission, story: StoryState
 			dead.append(pid)
 		elif u.has_status("Down and Out"):
 			down.append(pid)
-	return {"outcome": outcome, "reason": mission.outcome_reason, "dead": dead, "down": down}
+	var summary := battle_summary(state, story, events)
+	if mission.rounds > 0:
+		summary["rounds"] = mini(int(summary["rounds"]), mission.rounds)
+	return {"outcome": outcome, "reason": mission.outcome_reason, "dead": dead, "down": down, "summary": summary}
 
 
-static func finish_mission(campaign: Campaign, story: StoryState, engine: StoryEngine, state: GameState, mission: Mission) -> Dictionary:
+## What happened in the fight, for the debrief and later briefings: rounds, enemies
+## destroyed, the squad's mechs lost (reprinted at the next full repair, Core p.82), pilots
+## who got out, and who did the most damage (when the battle's events are given).
+static func battle_summary(state: GameState, _story: StoryState, events: Array = []) -> Dictionary:
+	var kills := 0
+	var lost: Array = []
+	var ejected: Array = []
+	var names := {}
+	for u: Unit in state.units.values():
+		names[u.id] = u.name
+		if u.side == Mission.ENEMIES and u.destroyed:
+			kills += 1
+		if u.side == Mission.PLAYERS and u.kind != Unit.KIND_PILOT:
+			if u.destroyed:
+				lost.append(u.name)
+		if u.side == Mission.PLAYERS and u.kind == Unit.KIND_PILOT and not u.counters.has("mounted_in") and not u.destroyed:
+			ejected.append(u.name)
+	var dealt := {}
+	for e: Dictionary in events:
+		if str(e.get("type", "")) == "damage_dealt":
+			var src := str(e.get("source", ""))
+			var tgt: Unit = state.unit(str(e.get("target", "")))
+			var su: Unit = state.unit(src)
+			if su != null and su.side == Mission.PLAYERS and tgt != null and tgt.side != su.side:
+				dealt[src] = int(dealt.get(src, 0)) + int(e.get("amount", 0))
+	var mvp := ""
+	var best := 0
+	for k: String in dealt:
+		if int(dealt[k]) > best:
+			best = int(dealt[k])
+			mvp = str(names.get(k, k))
+	return {"rounds": state.round_number, "kills": kills, "lost": lost, "ejected": ejected, "mvp": mvp, "mvp_damage": best}
+
+
+static func finish_mission(campaign: Campaign, story: StoryState, engine: StoryEngine, state: GameState, mission: Mission, events: Array = []) -> Dictionary:
 	campaign.record_mission(state, mission)
-	return engine.submit(story, campaign, {"type": "mission_finished", "seat": "gm", "params": mission_result(state, mission, story)})
+	return engine.submit(story, campaign, {"type": "mission_finished", "seat": "gm", "params": mission_result(state, mission, story, events)})

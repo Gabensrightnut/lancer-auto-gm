@@ -6,6 +6,7 @@ extends PanelContainer
 ## show why.
 
 signal story_events(events: Array)
+signal close_requested
 
 var engine: StoryEngine
 var story: StoryState
@@ -21,11 +22,13 @@ var _preset: OptionButton
 var _trigger: OptionButton
 var _extra: Dictionary = {}  # name -> Control
 var _header: Label
+## false when it's laid out inside another screen (DowntimeScreen) instead of floating.
+var floating := true
 
 
 func _init() -> void:
 	add_theme_stylebox_override("panel", StoryStyle.panel())
-	custom_minimum_size = Vector2(1060, 0)
+	custom_minimum_size = Vector2(1000, 0)
 	var root := VBoxContainer.new()
 	root.add_theme_constant_override("separation", 8)
 	add_child(root)
@@ -35,7 +38,10 @@ func _init() -> void:
 	_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(_header)
 	var close := StoryStyle.button("Close (Esc)", 14)
-	close.pressed.connect(func() -> void: visible = false)
+	close.pressed.connect(func() -> void:
+		if floating:
+			visible = false
+		close_requested.emit())
 	top.add_child(close)
 	var intro := StoryStyle.label("Between missions each pilot usually gets one downtime action (Core p.53). What you gain becomes RESERVES for the next mission only. You've had a full repair: HP restored, mechs fixed and reprinted.", 14, StoryStyle.DIM, 720)
 	root.add_child(intro)
@@ -290,7 +296,9 @@ func _show_pending() -> void:
 		if str(old.name).begins_with("Pending"):
 			_result.remove_child(old)
 			old.queue_free()
-	var pc := story.pending_choice
+	var pc := story.first_choice_for(pilot_id())
+	if pc.is_empty() and seat == "gm":
+		pc = story.pending_choice
 	if pc.is_empty():
 		return
 	var box := VBoxContainer.new()
@@ -316,7 +324,7 @@ func _show_pending() -> void:
 
 
 func _choose(picks: Array) -> void:
-	var r := engine.submit(story, campaign, {"type": "downtime_choose", "seat": seat, "params": {"picks": picks}})
+	var r := engine.submit(story, campaign, {"type": "downtime_choose", "seat": seat, "params": {"picks": picks, "pilot": pilot_id()}})
 	if not r["ok"]:
 		_set_result([_l("✕ " + str(r["reason"]), 15, StoryStyle.RED)])
 		return
@@ -338,7 +346,7 @@ static func _l(text: String, size: int = 16, color: Color = StoryStyle.TEXT) -> 
 
 
 func _process(_delta: float) -> void:
-	if visible:
+	if visible and floating:
 		reset_size()
 		var vp := get_viewport_rect().size
 		position = ((vp - size) / 2.0).max(Vector2(8, 8))

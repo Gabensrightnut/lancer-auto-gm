@@ -60,7 +60,10 @@ static func band_of(total: int) -> String:
 static func start(story: StoryState, campaign: Campaign, long_downtime: bool = false) -> Array:
 	var cfg := config()
 	var n := int(cfg.get("long_downtime_actions", 2)) if long_downtime else int(cfg.get("actions_per_downtime", 1))
-	var events: Array = [{"type": "downtime_started", "actions": n, "long": long_downtime, "rule_ref": "Core p.50: downtime"}]
+	var events: Array = [{"type": "downtime_started", "actions": n, "long": long_downtime, "rule_ref": "Core p.50: downtime",
+		"narration": StoryText.line("@downtime_intro", story, campaign, {})}]
+	story.downtime["log"] = []
+	story.downtime["intro"] = events[0]["narration"]
 	var left := {}
 	var ids := campaign.pilots.keys()
 	ids.sort()
@@ -98,8 +101,8 @@ static func refusal(story: StoryState, campaign: Campaign, pid: String, action_i
 		return _no("Downtime actions happen in downtime, between missions. (Power at a Cost also works during a mission.)", "Core p.53")
 	if not in_mission and int(story.downtime.get("actions_left", {}).get(pid, 0)) <= 0:
 		return _no("%s has already used their downtime action. Usually a pilot gets one per downtime." % campaign.pilots[pid].get("name", "This pilot"), "Core p.53")
-	if not story.pending_choice.is_empty():
-		return _no("Finish the choice that's waiting first.", REF)
+	if not story.first_choice_for(pid).is_empty():
+		return _no("Finish the choice that's waiting for you first.", REF)
 	if cfg.has("requires") and not StoryConditions.check(cfg["requires"], story, campaign, {"speaker": pid}):
 		return _no(str(cfg.get("requires_reason", "Not possible here.")), REF)
 	if bool(cfg.get("requires_contact", false)):
@@ -135,6 +138,20 @@ static func refusal(story: StoryState, campaign: Campaign, pid: String, action_i
 
 
 static func perform(story: StoryState, campaign: Campaign, pid: String, action_id: String, params: Dictionary) -> Array:
+	var events := _perform(story, campaign, pid, action_id, params)
+	# Tell it as a story: one narrated line per result, kept for the downtime screen and the next briefing.
+	for e: Dictionary in events:
+		if str(e.get("type", "")) == "downtime_result" and not e.has("narration"):
+			var pool := action_id + ("_" + str(e["band"]) if e.has("band") else "")
+			var ctx := {"speaker": pid, "npc": str(params.get("npc", "")), "vars": {"subject": str(e.get("subject", ""))}}
+			e["narration"] = StoryText.line("@" + pool, story, campaign, ctx) if StoryText.pools().has(pool) else str(e.get("summary", ""))
+			if not story.downtime.has("log"):
+				story.downtime["log"] = []
+			(story.downtime["log"] as Array).append({"pilot": pid, "action": action_id, "band": e.get("band", ""), "text": e["narration"]})
+	return events
+
+
+static func _perform(story: StoryState, campaign: Campaign, pid: String, action_id: String, params: Dictionary) -> Array:
 	var cfg := action_cfg(action_id)
 	var pilot: Dictionary = campaign.pilots[pid]
 	var subject := _subject(params)
@@ -183,9 +200,11 @@ static func perform(story: StoryState, campaign: Campaign, pid: String, action_i
 	return events
 
 
-## Answers a pending choice with the picked option ids.
-static func choose(story: StoryState, campaign: Campaign, picks: Array) -> Array:
-	var pc := story.pending_choice
+## Answers a pending choice with the picked option ids: the first one waiting for `pid`
+## ("" = the one at the head of the queue).
+static func choose(story: StoryState, campaign: Campaign, picks: Array, pid: String = "") -> Array:
+	var pc := story.pending_choice if pid == "" else story.first_choice_for(pid)
+	_take(story, pc)
 	var ctx: Dictionary = pc.get("ctx", {})
 	var events: Array = []
 	var by_id := {}
@@ -222,20 +241,41 @@ static func choose(story: StoryState, campaign: Campaign, picks: Array) -> Array
 					events.append_array(_help(story, campaign, ctx))
 	# "Lose one" may not be the thing just gained (Get a Damn Drink).
 	var then: Array = pc.get("then", [])
-	story.pending_choice = {}
+	var front: Array = []
 	for nxt: Dictionary in then:
 		if str(nxt.get("step", "")) == "lose":
 			var gained: Array = picks.map(func(x: Variant) -> String: return str(x))
 			nxt["options"] = (nxt["options"] as Array).filter(func(o: Dictionary) -> bool: return not gained.has(str(o["id"])))
-		_push(story, nxt)
+		if not (nxt.get("options", []) as Array).is_empty():
+			front.append(nxt)
+	# Follow-up steps come next for the same pilot.
+	if not front.is_empty():
+		if not story.downtime.has("queue"):
+			story.downtime["queue"] = []
+		for i in range(front.size() - 1, -1, -1):
+			(story.downtime["queue"] as Array).push_front(front[i])
 	if story.pending_choice.is_empty():
 		_pop(story)
 	return events
 
 
-## {"ok", "reason"} for a pick list against the pending choice.
-static func choice_refusal(story: StoryState, picks: Array) -> Dictionary:
-	var pc := story.pending_choice
+## Takes a pending choice out of the head or the queue.
+static func _take(story: StoryState, pc: Dictionary) -> void:
+	if pc.is_empty():
+		return
+	if story.pending_choice == pc:
+		story.pending_choice = {}
+		_pop(story)
+		return
+	var q: Array = story.downtime.get("queue", [])
+	var i := q.find(pc)
+	if i >= 0:
+		q.remove_at(i)
+
+
+## {"ok", "reason"} for a pick list against the pending choice (the first one for `pid`).
+static func choice_refusal(story: StoryState, picks: Array, pid: String = "") -> Dictionary:
+	var pc := story.pending_choice if pid == "" else story.first_choice_for(pid)
 	if pc.is_empty():
 		return _no("Nothing is waiting for a choice.", REF)
 	if picks.size() != int(pc.get("count", 1)):
