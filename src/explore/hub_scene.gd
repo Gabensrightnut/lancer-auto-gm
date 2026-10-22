@@ -71,6 +71,7 @@ func setup(e: StoryEngine, s: StoryState, c: Campaign, content: ContentDB, seat:
 	campaign = c
 	db = content
 	local_seat = seat
+	BattleKeys.ensure()  # WASD / arrows and camera turning, even before any battle has run
 	_build_ui()
 	rebuild()
 
