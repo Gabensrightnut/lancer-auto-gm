@@ -46,7 +46,8 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	# The world uses its own RNG so terrain changes never shift the rest of the mission.
 	var world_rng := RandomNumberGenerator.new()
 	world_rng.seed = hash([mission_seed, "world"])
-	var bf := battlefield(rng, world_rng, m.sitrep_id, w, h, shape, str(opts.get("landscape", "")), str(opts.get("culture", "")), maxi(0, int(settings.approach) + int(settings.fight("approach", 0)))) \n		if doc == null else _doc_battlefield(doc, m.sitrep_id, rng)
+	var bf := battlefield(rng, world_rng, m.sitrep_id, w, h, shape, str(opts.get("landscape", "")), str(opts.get("culture", "")), maxi(0, int(settings.approach) + int(settings.fight("approach", 0)))) \
+		if doc == null else _doc_battlefield(doc, m.sitrep_id, rng)
 	state.map = bf["map"]
 	var layout: Dictionary = bf["layout"]
 	var fairness: Dictionary = bf["fairness"]

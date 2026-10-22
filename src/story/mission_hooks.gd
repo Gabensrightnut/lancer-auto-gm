@@ -49,8 +49,16 @@ static func make(story: StoryState, campaign: Campaign, template_id: String, opt
 		# The world's own landscape (Sector), else one of its culture kit's.
 		"landscape": str(story.hub["landscape"]) if str(story.hub.get("landscape", "")) != "" else _pick(rng, NpcGen.cultures().get(str(story.hub.get("culture", "")), {}).get("landscapes", [])),
 	}
+	# Fights in town (DESIGN: battles where the squad is): the job happens at one of the hub's
+	# own buildings, and world-maps builds the battle from the town's layout (town_for).
+	var spot := town_spot(story, str(t.get("town_spot", "")), rng)
+	if bool(t.get("in_town", false)) and not spot.is_empty():
+		hook["in_town"] = true
+		hook["on_foot"] = bool(t.get("on_foot", false))
+		hook["town_spot"] = str(spot["id"])
+		hook["place"] = str(spot.get("name", hook["place"]))
 	var ctx := {"hook": hook, "npc": patron_id, "vars": {"place": hook["place"], "enemy": hook["enemy"], "cargo": hook["cargo"],
-		"patron": hook["patron"], "hub": story.hub.get("name", "the settlement"), "rival": rival}}
+		"patron": hook["patron"], "hub": story.hub.get("name", "the settlement"), "rival": rival, "spot": str(spot.get("name", "the square"))}}
 	for k in ["title", "objective", "stakes", "question"]:
 		hook[k] = StoryText.fill(_pick(rng, t.get(k, [""])), story, campaign, ctx)
 	hook["success"] = (t.get("success", []) as Array).duplicate(true)
@@ -65,6 +73,10 @@ static func make(story: StoryState, campaign: Campaign, template_id: String, opt
 		hook["stakes"] = "%s %s" % [hook["stakes"], personal["line"]]
 	var twist := pick_twist(rng, str(opts.get("twist", "")), campaign)
 	if not twist.is_empty():
+		if twist.has("town"):
+			# Jumped before leaving town: the fight is at this spot (hidden with the twist).
+			twist["town"] = (twist["town"] as Dictionary).duplicate()
+			twist["town"]["spot"] = str(spot.get("id", "plaza"))
 		twist["reveal"] = StoryText.fill(str(twist["reveal"]), story, campaign, ctx)
 		twist["question"] = StoryText.fill(str(twist["question"]), story, campaign, ctx)
 		hook["twist"] = twist
@@ -77,6 +89,34 @@ static func make(story: StoryState, campaign: Campaign, template_id: String, opt
 ## or {} (data/game/story/twists.json). `wanted` forces one by id.
 ## The table's tone makes twists likelier or rarer, and content it switched off never comes up
 ## (SessionZero).
+## A building of the current hub for a fight in town: one of `kind` if it has one, else the
+## bar, the market or the square.
+static func town_spot(story: StoryState, kind: String, rng: RandomNumberGenerator) -> Dictionary:
+	var spots: Array = story.hub.get("spots", [])
+	for k: String in ([kind] if kind != "" else []) + ["bar", "market", "plaza"]:
+		var found: Array = spots.filter(func(s: Dictionary) -> bool: return str(s.get("kind", "")) == k)
+		if not found.is_empty():
+			return found[rng.randi_range(0, found.size() - 1)]
+	return spots[0] if not spots.is_empty() else {}
+
+
+## What world-maps needs to build a battle in the hub itself, or {} for a fight elsewhere: the
+## hub, its layout (the same spots the 3D town is built from) and where the fight starts.
+static func town_for(story: StoryState, hook: Dictionary) -> Dictionary:
+	var tw: Dictionary = hook.get("twist", {}).get("town", {})
+	if not bool(hook.get("in_town", false)) and tw.is_empty():
+		return {}
+	var at := str(hook.get("town_spot", tw.get("spot", "plaza")))
+	var spot: Dictionary = {}
+	for s: Dictionary in story.hub.get("spots", []):
+		if str(s["id"]) == at:
+			spot = s
+	return {"hub_id": str(story.hub.get("id", "")), "hub_name": str(story.hub.get("name", "")), "kind": str(story.hub.get("kind", "town")),
+		"culture": str(story.hub.get("culture", "")), "map_culture": str(hook.get("map_culture", "")), "landscape": str(story.hub.get("landscape", hook.get("landscape", ""))),
+		"seed": int(story.hub.get("seed", 0)), "spots": (story.hub.get("spots", []) as Array).duplicate(true),
+		"at": at, "at_name": str(spot.get("name", "")), "on_foot": bool(hook.get("on_foot", false)) or bool(tw.get("on_foot", false))}
+
+
 static func pick_twist(rng: RandomNumberGenerator, wanted: String = "", campaign: Campaign = null) -> Dictionary:
 	var d: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/game/story/twists.json"))
 	var list: Array = (d.get("twists", []) if d is Dictionary else []).filter(func(t: Dictionary) -> bool:
@@ -98,8 +138,11 @@ static func pick_twist(rng: RandomNumberGenerator, wanted: String = "", campaign
 			if roll <= 0:
 				pick = t
 				break
-	return {"id": pick["id"], "reveal": _pick(rng, pick.get("reveal", [""])), "question": str(pick.get("question", "")),
+	var out := {"id": pick["id"], "reveal": _pick(rng, pick.get("reveal", [""])), "question": str(pick.get("question", "")),
 		"effects": (pick.get("effects", []) as Array).duplicate(true)}
+	if pick.has("town"):
+		out["town"] = (pick["town"] as Dictionary).duplicate()
+	return out
 
 
 ## Fills the job board up to `count` hooks from the board templates (by weight), preferring

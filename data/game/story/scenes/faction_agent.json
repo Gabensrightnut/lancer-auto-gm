@@ -457,7 +457,7 @@
       "fail_effects": [
        {
         "start_combat": {
-         "hook": "trouble_followed",
+         "hook": "standoff",
          "on_foot": true,
          "patron": "$npc",
          "reason": "Talks with {npc_faction} broke down: their mechs move in while you're on foot."
@@ -479,7 +479,7 @@
      "effects": [
       {
        "start_combat": {
-        "hook": "trouble_followed",
+        "hook": "standoff",
         "on_foot": true,
         "patron": "$npc",
         "reason": "{npc_faction} called your bluff. Get to your mechs!"

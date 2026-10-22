@@ -137,6 +137,8 @@ static func apply(e: Dictionary, story: StoryState, campaign: Campaign, ctx: Dic
 	if e.has("start_combat"):
 		var spec: Dictionary = (e["start_combat"] as Dictionary).duplicate(true)
 		spec["reason"] = StoryText.fill(str(spec.get("reason", "")), story, campaign, ctx)
+		if spec.has("patron"):
+			spec["patron"] = str(R.call(spec["patron"]))
 		return [{"type": "combat_requested", "spec": spec, "rule_ref": "Core p.45: switching to mech combat"}]
 	if e.has("deal"):
 		var spec: Dictionary = e["deal"]
