@@ -215,10 +215,11 @@ class Prepare:
 	## the trigger happens, before the start of your next turn. Until then you can't move,
 	## act or react (actions: Prepare). Counts as taking the prepared action.
 	## params: {"action": {"type": "skirmish", "params": {"weapon": "0:0", "target": "trigger"}},
-	##  "trigger": {"event": "moves_adjacent" | "moves_within", "who": "hostile" | "ally" | "any",
-	##  "range": n}, "text": "When a hostile moves adjacent to me, I skirmish it"}
+	##  "trigger": {"event": "moves_adjacent" | "moves_within" | "acts" | "attacks", "who": "hostile" |
+	##  "ally" | "any", "range": n, "actions": [types] (acts), "target": "me" | "ally" | "any"
+	##  (attacks)}, "text": "When a hostile moves adjacent to me, I skirmish it"}
 	## A params value "trigger" means the character that set it off.
-	## PROVISIONAL (RULES_TODO "Prepare"): only movement triggers are supported so far.
+	## PROVISIONAL (RULES_TODO "Prepare"): action triggers go off after that action resolves.
 
 	func type() -> String:
 		return "prepare"
@@ -237,8 +238,8 @@ class Prepare:
 		var h: Variant = RulesEngine.registry.get(String(a.get("type", "")))
 		if not h is TurnAction or (h as TurnAction).cost() != TurnRules.QUICK or a["type"] == "prepare":
 			return RuleResult.deny("You can only Prepare a quick action.", "actions: Prepare")
-		if not ["moves_adjacent", "moves_within"].has(trig.get("event", "")):
-			return RuleResult.deny("Supported triggers: a character moves adjacent to you, or moves within a range.", "actions: Prepare")
+		if not ["moves_adjacent", "moves_within", "acts", "attacks"].has(trig.get("event", "")):
+			return RuleResult.deny("Triggers: a character moves adjacent to you or within a range, takes an action (optionally which), or attacks (you, an ally, or anyone).", "actions: Prepare")
 		var r := TurnRules.can_spend(u, TurnRules.QUICK, String(a["type"]))
 		if not r.ok:
 			return r

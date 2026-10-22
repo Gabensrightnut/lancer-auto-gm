@@ -145,6 +145,9 @@ func _run(state: GameState, action: Dictionary, decisions: Dictionary, result: R
 	state.reaction_run = {}
 	if asked.is_empty():
 		events.append_array(TerrainDamage.settle(state, made, String(action.get("actor", ""))))
+		var prepared := Reactions.prepared_after_action(state, action, events)
+		if not prepared.is_empty():
+			events.append_array(prepared)
 		return {"result": result, "events": events}
 	TerrainDamage.remove(state, made)
 	_restore(state, snap)
