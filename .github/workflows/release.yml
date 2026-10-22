@@ -1,5 +1,7 @@
 # Builds the Windows game and launcher and publishes a GitHub Release when a version tag is
 # pushed:   git tag v0.1.0 && git push origin v0.1.0
+# A dry run (Actions tab -> Release -> Run workflow) builds and tests the same way and attaches
+# the files to the run as an artifact, without publishing a release. Steps: docs/RELEASE.md.
 # The launcher looks for exactly these release files:
 #   LancerTTRPG-windows-<version>.zip   the game (exe + WebRTC add-on dll)
 #   LancerLauncher.exe                   the launcher (friends download this once)
@@ -9,6 +11,11 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version for the dry-run build (nothing is published)"
+        default: "0.0.0-dryrun"
 
 permissions:
   contents: write
@@ -24,7 +31,11 @@ jobs:
 
       - name: Read version from tag
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.]+)?$ ]]; then
             echo "Tag $GITHUB_REF_NAME is not like v1.2.3"; exit 1
           fi
@@ -67,7 +78,8 @@ jobs:
         run: |
           ~/godot/godot --headless --path . --import || true
           ~/godot/godot --headless --path launcher --import || true
-          ~/godot/godot --headless --path . -s res://tests/run_tests.gd
+          # A script parse error can make a flow test wait forever: cap the run.
+          timeout 45m ~/godot/godot --headless --path . -s res://tests/run_tests.gd
 
       - name: Export
         run: |
@@ -86,7 +98,18 @@ jobs:
           sha256sum "LancerTTRPG-windows-${VERSION}.zip" LancerLauncher.exe > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
+      - name: Keep the dry-run build
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lancer-ttrpg-${{ env.VERSION }}
+          path: |
+            build/LancerTTRPG-windows-${{ env.VERSION }}.zip
+            build/LancerLauncher.exe
+            build/SHA256SUMS.txt
+
       - name: Publish release
+        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

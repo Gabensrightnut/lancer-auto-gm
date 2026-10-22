@@ -1,0 +1,69 @@
+{
+  "_note": "Our own wording. The first-session setup the book suggests (Core p.40-41): who the squad is, who gives it orders, and some history between the pilots (the book's own d20 tables stay in the book; these lists are ours, in the same spirit), plus the table's tone, focus and content choices. Tone and focus only change which of our generated stories come up; content toggles take our own themes out of the generators. None of it changes a rule.",
+  "identity": [
+    "A mercenary company with a name still to make",
+    "Union regulars, a long way from home",
+    "Locals the Union recruited to defend their own world",
+    "A planetary guard's best and only lancers",
+    "Bounty hunters with very large guns",
+    "Corporate security that answers awkward questions",
+    "Explorers sent ahead of the colony ships",
+    "A crew of former smugglers going straight, mostly",
+    "Sworn knights of an old order",
+    "Pilgrims who fight for their faith",
+    "Test pilots for a company that isn't telling them everything",
+    "The last squad of a broken army",
+    "Rebels who need the frontier on their side",
+    "Volunteers who answered a call for help"
+  ],
+  "patrons": [
+    {"id": "pay", "text": "Whoever pays us", "roles": ["fixer", "faction_agent", "company_rep"]},
+    {"id": "officer", "text": "Our commanding officer", "roles": ["faction_agent"]},
+    {"id": "company", "text": "A corporate sponsor", "roles": ["company_rep"]},
+    {"id": "union", "text": "Our local Union liaison", "roles": ["faction_agent", "company_rep"]},
+    {"id": "faith", "text": "A faith and its leaders", "roles": ["local", "faction_agent"]},
+    {"id": "code", "text": "Our own code, and nobody else", "roles": ["local", "bartender"]},
+    {"id": "mentor", "text": "The mentor who founded the squad", "roles": ["faction_agent", "local"]},
+    {"id": "noble", "text": "A noble house we're sworn to", "roles": ["faction_agent"]},
+    {"id": "people", "text": "The people of the world we protect", "roles": ["local", "bartender"]},
+    {"id": "elders", "text": "The council of our organization", "roles": ["faction_agent", "local"]}
+  ],
+  "history": [
+    {"id": "childhood", "text": "Which of you grew up on the same street as me?", "bond": 3},
+    {"id": "nearly_killed", "text": "Which of you nearly got me killed, once?", "bond": -2},
+    {"id": "old_flame", "text": "Which of you did I fall for? Is it over?", "bond": 2},
+    {"id": "served", "text": "Which of you have I flown beside for years?", "bond": 3},
+    {"id": "distrust", "text": "Which of you doesn't trust me yet?", "bond": -1},
+    {"id": "drinking", "text": "Which of you closes down the bar with me?", "bond": 2},
+    {"id": "mentor", "text": "Which of you taught me to fly?", "bond": 2},
+    {"id": "stranded", "text": "Which of you was stranded with me, somewhere awful?", "bond": 3},
+    {"id": "first_drop", "text": "Which of you was there on my first drop?", "bond": 2},
+    {"id": "advice", "text": "Which of you comes to me for advice?", "bond": 1},
+    {"id": "secret", "text": "Which of you knows the thing I never talk about?", "bond": 2},
+    {"id": "figured_out", "text": "Which of you thinks you've got me figured out?", "bond": 0},
+    {"id": "rival", "text": "Which of you have I always tried to outdo?", "bond": -1},
+    {"id": "owe", "text": "Which of you do I owe my life to?", "bond": 3},
+    {"id": "surprise", "text": "Which of you never expected to see me again?", "bond": 1},
+    {"id": "stand_by", "text": "Which of you will stand by me, whatever happens?", "bond": 3}
+  ],
+  "tones": {
+    "hopeful": {"name": "Hopeful", "text": "People can be saved. Fewer twists, more jobs that help people.", "twist": 0.7, "arcs": {"siege": 1.5, "betrayal": 0.5, "rivalry": 0.8}},
+    "heroic": {"name": "Heroic", "text": "Big stakes, bold rescues, rivals worth beating.", "twist": 1.0, "arcs": {"rivalry": 1.5, "siege": 1.3, "manhunt": 1.2}},
+    "gritty": {"name": "Gritty", "text": "Nobody's clean. More twists, betrayals and hard choices.", "twist": 1.4, "arcs": {"betrayal": 1.8, "investigation": 1.3, "two_masters": 1.5}},
+    "mercenary": {"name": "Mercenary", "text": "It's a job. Deals, salvage and who pays best.", "twist": 1.0, "arcs": {"gold_rush": 1.8, "two_masters": 1.4, "escalation": 1.2}}
+  },
+  "focus": {
+    "combat": {"name": "Combat first", "text": "Get to the fights. Shorter downtime, less chatter between missions.", "long_downtime": false, "banter": 1},
+    "balanced": {"name": "Balanced", "text": "A bit of everything.", "long_downtime": false, "banter": 2},
+    "story": {"name": "Story first", "text": "Longer downtimes (two actions each, as the book allows for long ones, Core p.50) and more time with the squad.", "long_downtime": true, "banter": 3}
+  },
+  "content": {
+    "civilian_harm": {"name": "Civilians in danger", "text": "Twists where civilians get caught in the fighting."},
+    "nhp_themes": {"name": "NHP minds", "text": "Stories about NHPs as thinking, suffering minds."},
+    "betrayal": {"name": "Betrayal", "text": "Patrons who lie, leaks, turncoats, the betrayal arc."}
+  },
+  "content_tags": {
+    "twists": {"civilians": "civilian_harm", "nhp_involved": "nhp_themes", "patron_lied": "betrayal", "leak": "betrayal", "turncoat": "betrayal"},
+    "arcs": {"betrayal": "betrayal"}
+  }
+}

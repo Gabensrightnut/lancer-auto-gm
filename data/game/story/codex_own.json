@@ -1,0 +1,11 @@
+{
+  "_note": "Our own entries for the codex: this game's story features that aren't book rules, explained plainly and marked as such.",
+  "entries": [
+    {"title": "Standing", "text": "How a faction feels about your squad, from Hostile to Allied. It's this game's way of remembering who you've helped or crossed. It changes who talks to you, how they greet you, and what a contact can offer when you Get Connected. It never changes a roll."},
+    {"title": "Bonds", "text": "How the squad's pilots feel about each other, from Rivals to Inseparable, built from missions survived together, mourning, helping each other and drinking together. The book's own example of a rules effect is used: the GM may reward a new bond with +1 Accuracy on skill checks to help each other during the next mission (Core p.50). The Bonded talent's bondmate can only be replaced when the relationship has changed (Core p.90)."},
+    {"title": "Deals", "text": "Some people offer a job in exchange for a favor: do it, and they give you a reserve for the next mission. Lose the job and the offer is withdrawn, but you can still try another way, such as Get Connected."},
+    {"title": "Situations", "text": "Each hub has a conflict between two sides. Over a few missions the situation escalates, twists and comes to a head. Every mission moves it on, whether you win or lose."},
+    {"title": "Hub", "text": "A town, base or station where the squad walks around on foot between missions: talk to people, take downtime actions, pick jobs from the board."},
+    {"title": "Manna", "text": "The universal currency outside the Core (Core p.10). Prices come up in conversation, but the rules don't track money (Core p.18): your License Level and licenses decide what gear you can field."}
+  ]
+}

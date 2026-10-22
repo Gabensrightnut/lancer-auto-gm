@@ -151,3 +151,52 @@ func _local(root: Node3D, n: Node3D) -> Transform3D:
 		xf = (p as Node3D).transform * xf
 		p = p.get_parent()
 	return xf
+
+
+func test_destroyed_terrain_leaves_what_the_rules_say() -> void:
+	var map := _showcase(GridLayout.Shape.HEX)
+	var t := _build(map, "grassy_hills")
+	var newer := BattleMap.from_dict(map.to_dict())
+	var cleared: Array[Vector2i] = []
+	var rough: Array[Vector2i] = []
+	for c in newer.cells():
+		if newer.column(c).has_tag(BattleMap.TAG_DESTRUCTIBLE):
+			newer.column(c).ground = 0
+			if cleared.size() <= rough.size():
+				newer.column(c).tags = PackedStringArray()
+				cleared.append(c)
+			else:
+				newer.column(c).tags = PackedStringArray([BattleMap.TAG_DIFFICULT])
+				rough.append(c)
+	var broke := t.sync_map(newer)
+	expect_eq(broke.size(), cleared.size() + rough.size(), "every lowered destructible column breaks")
+	for c in cleared:
+		expect_eq(t.surface(c), TerrainRenderer.KIND_GROUND, "cleared %s is open ground" % c)
+	for c in rough:
+		expect_eq(t.surface(c), TerrainRenderer.KIND_ROUGH, "rubble %s is rough ground" % c)
+	for e: Array in _instances(t, "Rough") + _instances(t, "Rubble"):
+		var cell := newer.grid.from_world((e[0] as Transform3D).origin)
+		expect(newer.column(cell).has_tag(BattleMap.TAG_DIFFICULT), "rubble only on difficult ground (%s)" % cell)
+	expect(not _instances(t, "Debris").is_empty(), "cleared spots keep flat debris")
+	for e: Array in _instances(t, "Debris"):
+		var xf: Transform3D = e[0]
+		expect((xf * (e[1] as Mesh).get_aabb()).end.y - xf.origin.y <= WorldDressing.FLAT, "debris stays flat")
+	# A second sync with no change breaks nothing.
+	expect(t.sync_map(newer).is_empty(), "nothing more to break")
+	_free(t)
+
+
+func test_weather_is_look_only() -> void:
+	for w: String in WorldStyle.weathers():
+		var s := WorldStyle.resolve("grassy_hills+" + w)
+		expect(s.has("light") and s.has("sky"), "%s resolves" % w)
+		if w != "clear":
+			expect_eq(s["weather"], w)
+	# Same map with or without weather: same surfaces (no rules change).
+	var map := _showcase(GridLayout.Shape.SQUARE)
+	var a := _build(map, "grassy_hills")
+	var b := _build(map, "grassy_hills+storm")
+	for c in map.cells():
+		expect_eq(a.surface(c), b.surface(c))
+	_free(a)
+	_free(b)

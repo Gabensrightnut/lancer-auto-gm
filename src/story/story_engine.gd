@@ -17,6 +17,7 @@ extends RefCounted
 ##   start_downtime {long}                           downtime_action {pilot, action, ...action params}
 ##   downtime_choose {picks: [option ids]}           end_downtime {}
 ##   set_bondmate {pilot, mate}                      end_campaign {}  (retire the squad)
+##   session_zero {identity, patron, history: [{question, a, b}], tone, focus, content_off: []}
 ## "seat" "gm" (the host / procedural GM) may act for anyone.
 
 const REF_FLOW := "Core p.40: the structure of play"
@@ -40,7 +41,7 @@ func submit(story: StoryState, campaign: Campaign, action: Dictionary) -> Dictio
 	events.append_array(Bonds.observe(story, campaign, events))
 	# AI squadmates talk it over after the debrief, and a little when downtime starts.
 	if events.any(func(x: Dictionary) -> bool: return str(x.get("type", "")) == "debrief"):
-		events.append_array(Squadmate.banter(story, campaign, 2))
+		events.append_array(Squadmate.banter(story, campaign, int(campaign.options.get("banter_lines", 2))))
 	elif events.any(func(x: Dictionary) -> bool: return str(x.get("type", "")) == "downtime_started"):
 		events.append_array(Squadmate.banter(story, campaign, 1))
 	events.append_array(Tutorial.observe_story(story, campaign, events))
@@ -194,6 +195,12 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 			var why := Bonds.bondmate_refusal(story, campaign, str(p.get("pilot", "")), str(p.get("mate", "")))
 			if why != "":
 				return _no(why, Bonds.REF_BONDED)
+		"session_zero":
+			if seat != "gm":
+				return _no("The table sets this up together; the host enters it.")
+			var why := SessionZero.refusal(story, campaign, p)
+			if why != "":
+				return _no(why, "Core p.40-41")
 		"end_campaign":
 			if seat != "gm":
 				return _no("The host decides when the campaign ends.")
@@ -336,6 +343,8 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 			return [{"type": "bondmate_set", "pilot": p["pilot"], "mate": p["mate"], "rule_ref": Bonds.REF_BONDED}]
 		"end_campaign":
 			return Ending.conclude(story, campaign, "")
+		"session_zero":
+			return SessionZero.apply(story, campaign, p)
 		"end_downtime":
 			story.phase = "briefing"
 			var recap: Array = (story.downtime.get("log", []) as Array).duplicate(true)

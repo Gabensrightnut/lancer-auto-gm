@@ -137,6 +137,53 @@ static func plant(species: String, leaf: Color, bark: Color, variant: int = 0) -
 			add(st, blob(0.55, k + "c", 0.08, 0.45, 12), Transform3D(Basis(), Vector3(0, h, 0)), Color(leaf.r * 0.5, leaf.g * 0.5, leaf.b * 0.5, 0.35), 0.7)
 			# Glowing gills under the cap.
 			add(st, _arrays(MeshKit.cylinder(0.5, 0.05, 12, 0.15)), Transform3D(Basis(), Vector3(0, h - 0.12, 0)), Color(leaf.r, leaf.g, leaf.b, 0.0), 0.0)
+		"palm":
+			# A curved, ringed trunk and a crown of long drooping fronds.
+			var h := 1.8 + 0.5 * _r(k, 0)
+			var bend := Vector3(0.45 * (_r(k, 1) - 0.3), 0, 0.3 * (_r(k, 2) - 0.5))
+			var prev := Vector3.ZERO
+			for i in range(5):
+				var t := float(i + 1) / 5.0
+				var p := Vector3(0, h * t, 0) + bend * t * t
+				_trunk(st, prev, p, 0.07 - 0.02 * t, 0.06 - 0.02 * t, bark.lightened(0.08 * (i % 2)))
+				prev = p
+			for i in range(8):
+				var a := TAU * i / 8.0 + _r(k, i + 10) * 0.4
+				var dir := Vector3(cos(a), 0, sin(a))
+				var mid := prev + dir * 0.45 + Vector3.UP * 0.12
+				var tip := prev + dir * 0.85 + Vector3.DOWN * 0.3
+				var side := dir.cross(Vector3.UP) * 0.13
+				for seg: Array in [[prev, mid], [mid, tip]]:
+					var a0: Vector3 = seg[0]
+					var b0: Vector3 = seg[1]
+					var wa := 0.4 if a0 == prev else 1.0
+					var nrm := (b0 - a0).cross(side).normalized()
+					if nrm.y < 0:
+						nrm = -nrm
+					for v: Vector3 in [a0 - side * wa, a0 + side * wa, b0 + side * 0.4, a0 - side * wa, b0 + side * 0.4, b0 - side * 0.4]:
+						st.set_color(lf.lightened(0.05 * (i % 3)))
+						st.set_normal(nrm)
+						st.add_vertex(v)
+			add(st, blob(0.1, k + "nut", 0.2, 1.0, 6), Transform3D(Basis(), prev + Vector3(0, -0.08, 0)), Color(0.35, 0.28, 0.15, 1.0), 0.2)
+		"jungle_tree":
+			# A tall straight trunk on buttress roots, layered flat canopies and hanging vines.
+			var h := 2.4 + 0.6 * _r(k, 0)
+			_trunk(st, Vector3.ZERO, Vector3(0, h, 0), 0.12, 0.07, bark)
+			for i in range(4):
+				var a := TAU * i / 4.0 + _r(k, i)
+				_trunk(st, Vector3(cos(a), 0, sin(a)) * 0.3, Vector3(0, 0.5, 0), 0.05, 0.03, bark)
+			for layer in range(2):
+				var y := h * (0.75 + 0.25 * layer)
+				var rad := 0.75 - 0.2 * layer
+				for i in range(6):
+					var a := TAU * i / 6.0 + _r(k, i + 20 + layer * 10)
+					var p := Vector3(cos(a) * rad * 0.6, y, sin(a) * rad * 0.6)
+					add(st, blob(0.36 + 0.1 * _r(k, i + 40), k + str(layer * 10 + i), 0.25, 0.45, 9), Transform3D(Basis(), p), lf.lightened(0.06 * layer), 0.55)
+				add(st, blob(rad * 0.8, k + "c" + str(layer), 0.2, 0.4, 10), Transform3D(Basis(), Vector3(0, y + 0.05, 0)), lf.darkened(0.1), 0.6)
+			for i in range(6):
+				var a := TAU * i / 6.0 + _r(k, i + 60)
+				var top := Vector3(cos(a) * 0.6, h * 0.78, sin(a) * 0.6)
+				_trunk(st, top, top + Vector3(0, -0.8 - 0.6 * _r(k, i + 70), 0), 0.012, 0.008, Color(lf.r * 0.8, lf.g * 0.8, lf.b * 0.8, 0.5))
 		"cherry":
 			# Blossom tree: a crooked trunk and wide flat clouds of blossom.
 			var h := 1.2 + 0.4 * _r(k, 0)
