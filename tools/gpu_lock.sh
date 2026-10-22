@@ -4,7 +4,7 @@
 #   tools/gpu_lock.sh run <who> -- <command...>   waits for the lock, runs the command, releases it
 # The lock is local/gpu.lock (gitignored). A lock older than 45 minutes is treated as stale.
 set -u
-LOCK="$(dirname "$0")/../local/gpu.lock"
+LOCK="$(cd "$(git -C "$(dirname "$0")" rev-parse --git-common-dir)/.." && pwd)/local/gpu.lock"  # shared by every worktree
 mkdir -p "$(dirname "$LOCK")"
 [ "${1:-}" = run ] || { echo "usage: $0 run <who> -- <command...>"; exit 2; }
 WHO="$2"; shift 3
