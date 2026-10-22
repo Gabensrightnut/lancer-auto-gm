@@ -243,6 +243,22 @@ func _mission_panel() -> Control:
 		presets.add_child(btn)
 	b.add_child(presets)
 	b.add_child(MenuTheme.label(str(GmSettings.presets().get(lobby.options.get("preset", ""), {}).get("description", "")), 15, MenuTheme.MUTED, true))
+	b.add_child(_caption("Fight length"))
+	var lengths := HBoxContainer.new()
+	lengths.add_theme_constant_override("separation", 6)
+	var fl: Dictionary = GmSettings.fight_lengths()
+	for id: String in ["short", "standard", "long"]:
+		var btn := Button.new()
+		btn.text = str(fl.get(id, {}).get("label", id.capitalize()))
+		btn.toggle_mode = true
+		btn.button_pressed = lobby.options.get("fight_length", "standard") == id
+		btn.disabled = not lobby.is_host
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.tooltip_text = str(fl.get(id, {}).get("description", ""))
+		btn.pressed.connect(func() -> void: lobby.set_fight_length(id))
+		lengths.add_child(btn)
+	b.add_child(lengths)
+	b.add_child(MenuTheme.label(str(fl.get(lobby.options.get("fight_length", "standard"), {}).get("description", "")) + " Rules like HP and damage never change.", 15, MenuTheme.MUTED, true))
 	b.add_child(_caption("Battle grid"))
 	var grid := HBoxContainer.new()
 	grid.add_theme_constant_override("separation", 6)

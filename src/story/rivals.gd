@@ -157,7 +157,8 @@ static func setup_battle(story: StoryState, campaign: Campaign, state: GameState
 	story.flags[BATTLE] = {"rival": id, "unit": lead.id, "enemy_ids": enemies.map(func(u: Unit) -> String: return u.id),
 		"squad_ids": squad.map(func(u: Unit) -> String: return u.id), "enemy_down": [], "squad_down": [],
 		"rival_structure": lead.structure, "rival_max_structure": lead.max_structure, "rival_hp": lead.hp, "rival_max_hp": lead.max_hp, "rival_destroyed": false, "round": 0,
-		"offered": false, "demanded": false, "refused": false, "ended": "", "reason": "", "fate": ""}
+		"offered": false, "demanded": false, "refused": false, "ended": "", "reason": "", "fate": "",
+		"yield_at": float((GmSettings.from_dict(campaign.gm_settings) if not campaign.gm_settings.is_empty() else GmSettings.new()).fight("yield_at", 0.5))}
 	mission.flavor["commander"] = {"id": id, "name": call_name(r), "unit": lead.id, "personality": str(r.get("personality", "")),
 		"returning": int(r.get("met", 0)) > 0}
 
@@ -166,19 +167,21 @@ static func battle(story: StoryState) -> Dictionary:
 	return story.flags.get(BATTLE, {})
 
 
-## The fight has turned against the enemy: from round 2 on, half their force is down, or the
-## commander is badly hurt (last structure; below half HP for a one-structure NPC) with a
-## quarter of their force down. PROVISIONAL: our reading of "no questions as to the outcome"
-## (Core p.60), which the book leaves to the GM.
+## The fight has turned against the enemy: from round 2 on, a share of their force is down
+## (b["yield_at"], from the GM's fight length dial: half by default), or the commander is badly
+## hurt (last structure; below half HP for a one-structure NPC) with half that share down.
+## PROVISIONAL: our reading of "no questions as to the outcome" (Core p.60), which the book
+## leaves to the GM.
 static func enemy_losing(b: Dictionary) -> bool:
 	if b.is_empty() or int(b.get("round", 0)) < 2:
 		return false
 	var total := (b["enemy_ids"] as Array).size()
 	var down := (b["enemy_down"] as Array).size()
-	if total > 0 and down * 2 >= total:
+	var share := float(b.get("yield_at", 0.5))
+	if total > 0 and down >= ceili(total * share):
 		return true
 	var hurt := int(b["rival_structure"]) <= 1 if int(b["rival_max_structure"]) > 1 else (int(b.get("rival_max_hp", 0)) > 0 and int(b.get("rival_hp", 1)) * 2 < int(b["rival_max_hp"]))
-	return hurt and down * 4 >= total and down > 0
+	return hurt and down >= ceili(total * share / 2.0) and down > 0
 
 
 ## ...or against the squad: half its mechs are wrecked.

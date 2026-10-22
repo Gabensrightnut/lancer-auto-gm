@@ -285,6 +285,12 @@ static func reserve_name(rid: String) -> String:
 	return str(_reserve_names.get(rid, rid.trim_prefix("reserve_").capitalize()))
 
 
+## Is this one of the book's reserves (lancer-data reserves.json)?
+static func is_book_reserve(rid: String) -> bool:
+	reserve_name(rid)
+	return _reserve_names.has(rid)
+
+
 static func reserve_description(rid: String) -> String:
 	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(RESERVES_FILE))
 	for r: Dictionary in (data if data is Array else []):

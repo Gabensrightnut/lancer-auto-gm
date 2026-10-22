@@ -38,7 +38,7 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	# The world uses its own RNG so terrain changes never shift the rest of the mission.
 	var world_rng := RandomNumberGenerator.new()
 	world_rng.seed = hash([mission_seed, "world"])
-	var bf := battlefield(rng, world_rng, m.sitrep_id, w, h, shape, str(opts.get("landscape", "")), str(opts.get("culture", "")), int(settings.approach))
+	var bf := battlefield(rng, world_rng, m.sitrep_id, w, h, shape, str(opts.get("landscape", "")), str(opts.get("culture", "")), maxi(0, int(settings.approach) + int(settings.fight("approach", 0))))
 	state.map = bf["map"]
 	var layout: Dictionary = bf["layout"]
 	var fairness: Dictionary = bf["fairness"]
@@ -257,7 +257,7 @@ static func _add_campaign_squad(state: GameState, m: Mission, rng: RandomNumberG
 static func _add_enemies(state: GameState, m: Mission, rng: RandomNumberGenerator, cfg: Dictionary, players: int, settings: GmSettings, templates: Dictionary) -> void:
 	var pool := _enemy_pool(cfg, templates)
 	m.reinforcement_pool = pool.duplicate(true)
-	var budget := players * float(cfg.get("per_player", 1.5)) * settings.difficulty
+	var budget := players * float(cfg.get("per_player", 1.5)) * settings.difficulty * float(settings.fight("encounter", 1.0))
 	var free := _free_cells(m.deployment[Mission.ENEMIES], rng)
 	var n := 0
 	var guard := 0

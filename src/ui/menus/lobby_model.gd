@@ -27,7 +27,7 @@ var host: NetHost
 var mission: Mission
 var client: NetClient
 ## {"preset", "shape": "hex"/"square", "sitrep": "" (random), "seed": int, "fill_empty_with_ai": bool}
-var options: Dictionary = {"preset": "Standard", "shape": "hex", "sitrep": "", "seed": 0, "fill_empty_with_ai": false, "ai_squad_auto": true}
+var options: Dictionary = {"preset": "Standard", "shape": "hex", "sitrep": "", "seed": 0, "fill_empty_with_ai": false, "ai_squad_auto": true, "fight_length": "standard"}
 ## seat -> mode (host)
 var modes: Dictionary = {}
 ## seat -> pilot id (host)
@@ -52,6 +52,7 @@ static func for_host(the_campaign: Campaign, content: ContentDB, mission_seed: i
 	m.db = content
 	m.options["seed"] = mission_seed if mission_seed != 0 else int(Time.get_unix_time_from_system()) % 1000000
 	m.options["preset"] = str(the_campaign.gm_settings.get("preset", "Standard"))
+	m.options["fight_length"] = str(the_campaign.gm_settings.get("fight_length", "standard"))
 	var squad := the_campaign.squad()
 	for i in range(squad.size()):
 		var seat: String = squad[i]["seat"]
@@ -132,8 +133,22 @@ func assign_pilot(seat: String, pilot_id: String) -> void:
 func set_preset(preset: String) -> void:
 	if preset in PRESETS:
 		options["preset"] = preset
-		campaign.gm_settings = GmSettings.from_preset(preset).to_dict()
+		campaign.gm_settings = gm_settings_for(preset, str(options.get("fight_length", "standard"))).to_dict()
 		_rebuild()
+
+
+## Fight length (GmSettings.fight_lengths): short, standard or long. Kept in the campaign.
+func set_fight_length(id: String) -> void:
+	if GmSettings.fight_lengths().has(id):
+		options["fight_length"] = id
+		campaign.gm_settings["fight_length"] = id
+		_rebuild()
+
+
+static func gm_settings_for(preset: String, fight_length: String) -> GmSettings:
+	var s := GmSettings.from_preset(preset)
+	s.fight_length = fight_length if GmSettings.fight_lengths().has(fight_length) else "standard"
+	return s
 
 
 func set_shape(shape: String) -> void:
@@ -280,7 +295,7 @@ func start() -> Dictionary:
 	var problems := start_problems()
 	if not problems.is_empty():
 		return {"error": problems[0]}
-	var director := AiDirector.new(host, GmSettings.from_preset(options["preset"]), mission)
+	var director := AiDirector.new(host, gm_settings_for(options["preset"], str(options.get("fight_length", "standard"))), mission)
 	started = true
 	_broadcast()
 	return {"host": host, "director": director, "mission": mission}
@@ -301,7 +316,7 @@ func _rebuild() -> void:
 		squad.append({"seat": seat, "pilot": p, "mech": mech})
 	var gen: Dictionary = mission_builder.call(options) if mission_builder.is_valid() else MissionGenerator.generate(int(options["seed"]), {
 		"squad": squad, "shape": options["shape"], "sitrep": options["sitrep"], "db": db,
-		"settings": GmSettings.from_preset(options["preset"]), "players": squad.size()})
+		"settings": gm_settings_for(options["preset"], str(options.get("fight_length", "standard"))), "players": squad.size()})
 	var state: GameState = gen["state"]
 	campaign.prepare_mission(state)
 	mission = gen["mission"]

@@ -95,6 +95,10 @@ book in a way that changes the setting; parked.
 | Each world keeps its hub, people, job board and situation while the squad is away | Consistent | Our bookkeeping |
 | A world whose situation ended stays quiet for two missions before a new one starts there | Consistent | Campaign pacing is the GM's (p.40-44); our own number |
 | Standing shown on the map and in the hub, labelled as this game's own | Not a book rule (labelled) | Our bookkeeping; never changes a roll (codex: Standing) |
+| Human GM tools: scenes, briefings, jobs, commanders, NPCs written during play | GM's own | Whatever the GM writes is theirs, not checked against the book; the tools only use the game's own effects |
+| The GM hands out or takes back reserves | Canon | Reserves are the GM's to give (Core p.50-52) |
+| The GM reveals, hides or rewrites a twist | Canon | Goals and situations can change mid-mission (Core p.43) |
+| The GM sets faction standing | Not a book rule (labelled) | Our bookkeeping |
 
 ## When canon allows more than one answer
 
