@@ -26,6 +26,17 @@ var transport: NetTransport
 var room_code := ""
 var local_seats := PackedStringArray()
 
+## The procedural GM's seat (enemies, and host-only actions like starting combat).
+const GM_SEAT := "gm"
+
+## Seats an AI plays whenever no human is in them (drop-in: a friend who joins takes over,
+## and the AI picks the seat back up when they leave). The GM seat is AI unless set false.
+var ai_seats: Dictionary = {GM_SEAT: true}
+## Host option, off by default: every seat nobody is sitting in gets an AI pilot.
+var fill_empty_with_ai := false
+## Seats kept empty for a friend who joins later (never filled by the AI).
+var reserved_seats: Dictionary = {}
+
 var _peer_seat: Dictionary = {}  # peer -> seat
 var _seat_peer: Dictionary = {}  # seat -> connected peer
 var _seat_token: Dictionary = {}  # seat -> reconnect token (kept while the player is away)
@@ -69,6 +80,9 @@ func close() -> void:
 ## controls. Returns {"result": RuleResult, "events": Array}.
 func submit(seat: String, action: Dictionary) -> Dictionary:
 	var actor := state.unit(str(action.get("actor", "")))
+	if actor == null and seat != GM_SEAT:
+		# Actions without an actor (start_combat, gm_spawn, gm_end_mission...) are the host's.
+		return {"result": RuleResult.deny("Only the GM can do that.", ""), "events": []}
 	if actor != null and actor.controller != seat:
 		var no := RuleResult.deny("%s isn't yours to command." % actor.name if actor.name != "" else "That unit isn't yours to command.", "")
 		return {"result": no, "events": []}
@@ -91,7 +105,39 @@ func send_updates(events: Array = []) -> void:
 	updates_sent.emit(events)
 
 
-## seat -> {name, side, player, where: "local"/"remote"/"open", connected}
+## Lets the AI play `seat` (or hands it back to people). Works mid-mission.
+func set_seat_ai(seat: String, on: bool) -> void:
+	ai_seats[seat] = on
+	_seats_changed()
+
+
+func set_fill_empty_with_ai(on: bool) -> void:
+	fill_empty_with_ai = on
+	_seats_changed()
+
+
+func set_seat_reserved(seat: String, on: bool) -> void:
+	if on:
+		reserved_seats[seat] = true
+	else:
+		reserved_seats.erase(seat)
+	_seats_changed()
+
+
+## Is the AI playing this seat right now? A connected remote player always plays their seat;
+## a seat set to AI is played by the AI otherwise (also a local one); with "fill empty seats"
+## on, any seat nobody is sitting in (and not reserved) gets the AI too.
+func is_ai_seat(seat: String) -> bool:
+	if _seat_peer.has(seat):
+		return false
+	if ai_seats.get(seat, false):
+		return true
+	if seat in local_seats or reserved_seats.has(seat):
+		return false
+	return fill_empty_with_ai and state.seats.has(seat)
+
+
+## seat -> {name, side, player, where: "local"/"remote"/"open", connected, ai, reserved}
 func seat_table() -> Dictionary:
 	var table := {}
 	for seat: String in state.seats:
@@ -105,6 +151,7 @@ func seat_table() -> Dictionary:
 			"name": info.get("name", seat), "side": info.get("side", ""),
 			"player": _player_names.get(seat, ""), "where": where,
 			"connected": where == "local" or _seat_peer.has(seat),
+			"ai": is_ai_seat(seat), "reserved": reserved_seats.has(seat),
 		}
 	return table
 

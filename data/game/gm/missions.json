@@ -1,0 +1,18 @@
+{
+  "_note": "How generated missions set up each sitrep (rules text: data/lancer-data/sitreps.json). Our own data. Sitreps not listed here aren't generated yet.",
+  "sitreps": {
+    "sitrep_standardcombat": {"weight": 3, "rounds": 0, "zones": "none"},
+    "sitrep_control": {"weight": 2, "rounds": 6, "zones": "four_quadrants", "zone_size": 4},
+    "sitrep_holdout": {"weight": 1, "rounds": 6, "zones": "center", "zone_size": [10, 5], "start_points": 4},
+    "sitrep_gauntlet": {"weight": 1, "rounds": 8, "zones": "enemy_deployment"}
+  },
+  "_safety_note": "max_rounds stops a Basic Combat that nobody can finish (GM calls it a draw). It's a GM option, not a book rule.",
+  "max_rounds": 12,
+  "_budget_note": "PROVISIONAL encounter size: enemy budget = players x per_player x difficulty, each NPC costs its template 'cost' (default 1). Not the book's encounter guidance yet.",
+  "per_player": 1.5,
+  "map_sizes": {"min": 20, "max": 40},
+  "npc_stub": [
+    {"template": "training_drone", "role": "artillery", "cost": 1},
+    {"template": "training_brawler", "role": "striker", "cost": 1.5}
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "_note": "Starter player squads for generated missions (core book GMS frame and gear, License Level 0). Our own data.",
+  "lancers": [
+    {"name": "Everest (Assault)", "frame": "mf_standard_pattern_i_everest", "role": "striker",
+     "loadout": {"mounts": [{"weapons": ["mw_assault_rifle"]}, {"weapons": ["mw_pistol"]}, {"weapons": ["mw_heavy_machine_gun"]}], "systems": []}},
+    {"name": "Everest (Marksman)", "frame": "mf_standard_pattern_i_everest", "role": "artillery",
+     "loadout": {"mounts": [{"weapons": ["mw_assault_rifle"]}, {"weapons": ["mw_pistol"]}, {"weapons": ["mw_anti_materiel_rifle"]}], "systems": []}},
+    {"name": "Everest (Brawler)", "frame": "mf_standard_pattern_i_everest", "role": "defender",
+     "loadout": {"mounts": [{"weapons": ["mw_tactical_melee_weapon"]}, {"weapons": ["mw_pistol"]}, {"weapons": ["mw_heavy_melee_weapon"]}], "systems": []}},
+    {"name": "Everest (Support)", "frame": "mf_standard_pattern_i_everest", "role": "support",
+     "loadout": {"mounts": [{"weapons": ["mw_nexus_hunter_killer"]}, {"weapons": ["mw_pistol"]}, {"weapons": ["mw_heavy_machine_gun"]}], "systems": []}}
+  ]
+}

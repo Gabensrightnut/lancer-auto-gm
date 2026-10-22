@@ -66,10 +66,11 @@ func confirm_handoff() -> void:
 	_show(current_seat)
 
 
-## Hands the screen over if the unit now acting belongs to another seat at this screen.
+## Hands the screen over if the unit now acting belongs to another seat at this screen
+## (not for seats the AI is playing: their turns happen on whoever's screen is up).
 func check_turn() -> void:
 	var u := host.state.unit(host.state.active_unit)
-	if u != null and u.controller in seats and u.controller != current_seat:
+	if u != null and u.controller in seats and u.controller != current_seat and not host.is_ai_seat(u.controller):
 		pass_to(u.controller)
 
 
