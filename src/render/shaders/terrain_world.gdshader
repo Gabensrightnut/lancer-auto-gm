@@ -236,12 +236,20 @@ void fragment() {
 			col *= 1.0 - 0.25 * (1.0 - smoothstep(0.0, 0.3, vcol.a));
 			relief = n3 * 0.5 - seam;
 			rough = 0.95;
+		} else if (kind == 9) {
+			// Bridge deck: worn asphalt with patched seams.
+			col = mix(vec3(0.09, 0.09, 0.095), vec3(0.14, 0.135, 0.13), n2) * (0.85 + 0.3 * n3);
+			col = mix(col, wall_col * 0.7, 1.0 - smoothstep(0.0, 0.25, vcol.a));
+			float cr = smoothstep(0.03, 0.0, cracks(p * 1.7));
+			col *= 1.0 - 0.4 * cr;
+			rough = 0.85;
+			relief = n3 * 0.3 - cr;
 		} else {
 			// Chasm floor: nearly black, fogged.
 			col = vec3(0.02, 0.018, 0.02);
 		}
 	} else if (wnrm.y < -0.5) {
-		col = rock_b * 0.35;
+		col = kind == 9 ? wall_col * 0.45 : rock_b * 0.35;
 	} else {
 		vec2 p = vec2(hcoord, wpos.y);
 		float d = top_y - wpos.y;  // depth below the column's top
@@ -263,6 +271,14 @@ void fragment() {
 			col = wall_col * (0.75 + 0.35 * n) * (1.0 - 0.35 * seam);
 			col *= 0.7 + 0.3 * smoothstep(0.0, 0.5, wpos.y - (top_y - 2.0));
 			relief = n * 0.4 - seam;
+		} else if (kind == 9) {
+			float d2 = top_y - wpos.y;
+			float girder = smoothstep(0.02, 0.0, abs(d2 - 0.18)) + smoothstep(0.015, 0.0, abs(d2 - 0.75));
+			float joint = smoothstep(0.02, 0.0, abs(fract(hcoord * 0.5) - 0.5) - 0.48);
+			col = wall_col * (0.85 + 0.2 * n) * (1.0 - 0.35 * girder) * (1.0 - 0.3 * joint);
+			col *= 1.0 - 0.3 * smoothstep(0.4, 0.8, noise(vec2(hcoord * 6.0, wpos.y * 0.7)));
+			col *= 0.75 + 0.25 * smoothstep(0.0, 0.3, d2);
+			relief = n * 0.3 - girder - joint;
 		} else if (kind == 8) {
 			col = st * 0.35 * smoothstep(-4.0, 0.0, wpos.y);
 		} else {

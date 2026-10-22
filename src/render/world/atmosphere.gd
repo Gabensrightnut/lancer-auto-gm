@@ -59,6 +59,11 @@ static func apply(style: Dictionary, env: Environment, sun: DirectionalLight3D, 
 		env.volumetric_fog_anisotropy = float(light.get("volumetric_anisotropy", 0.6))
 		env.volumetric_fog_length = float(light.get("volumetric_length", 80.0))
 		env.volumetric_fog_sky_affect = 0.0
+	env.ssr_enabled = bool(light.get("ssr", false))
+	if env.ssr_enabled:
+		env.ssr_max_steps = 48
+		env.ssr_fade_in = 0.15
+		env.ssr_fade_out = 2.0
 	env.glow_enabled = true
 	env.glow_intensity = float(light.get("glow", 0.7))
 	env.glow_bloom = float(light.get("bloom", 0.04))

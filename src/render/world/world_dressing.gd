@@ -22,6 +22,7 @@ static func build(t: TerrainRenderer, root: Node3D) -> void:
 	_rough(t, root)
 	_woods(t, root)
 	_rocks(t, root)
+	_railings(t, root)
 	WorldHazards.build(t, root)
 	WorldHorizon.build(t, root)
 	WorldParticles.build(t, root)
@@ -188,7 +189,7 @@ static func _rough(t: TerrainRenderer, root: Node3D) -> void:
 			chunks[bucket if here == look else 3].append(Transform3D(b.scaled(Vector3(s * 1.3, minf(s * flat, FLAT * 0.8), s)), p + Vector3.UP * s * 0.12))
 		if here == "rubble" and WorldRand.f(key, 99) < 0.6:
 			var p := t.random_point(c, key, 98, 0.6)
-			sticks.append(Transform3D(Basis(Vector3.UP, WorldRand.f(key, 97) * TAU) * Basis(Vector3.FORWARD, 1.2), p + Vector3.UP * 0.05))
+			sticks.append(Transform3D(Basis(Vector3.UP, WorldRand.f(key, 97) * TAU) * Basis(Vector3.FORWARD, 1.35), p + Vector3.UP * 0.04))
 	var col := stone
 	match look:
 		"rubble":
@@ -205,7 +206,7 @@ static func _rough(t: TerrainRenderer, root: Node3D) -> void:
 	multi(root, "Rubble", Flora.rock(WorldStyle.col(t.style, "ground.wall", Color(0.55, 0.52, 0.48)), 13), chunks[3], mat, true)
 	if not sticks.is_empty():
 		var rebar := MeshKit.mech_material(Color(0.35, 0.2, 0.12), 0.5, 0.7, Color.BLACK, false)
-		multi(root, "Rebar", MeshKit.cylinder(0.012, 0.35, 4), sticks, rebar, false)
+		multi(root, "Rebar", MeshKit.cylinder(0.012, 0.3, 4), sticks, rebar, false)
 
 
 # --- Woods (soft cover) ------------------------------------------------------------------
@@ -305,3 +306,30 @@ static func _rocks(t: TerrainRenderer, root: Node3D) -> void:
 	mi.mesh = st.commit()
 	mi.material_override = t.material
 	root.add_child(mi)
+
+
+# --- Bridges -----------------------------------------------------------------------------
+
+## A low barrier along the open edges of bridge decks (a few centimeters: not cover).
+static func _railings(t: TerrainRenderer, root: Node3D) -> void:
+	var shape := MeshKit.cell_shape(t.map.grid)
+	var corners: PackedVector2Array = shape["corners"]
+	var edge_n: Array[Vector2i] = shape["edge_neighbors"]
+	var bars: Array = []
+	for c in t.map.cells():
+		if t.surface(c) != TerrainRenderer.KIND_BRIDGE:
+			continue
+		var top := t.top_y(c)
+		var center := t.map.grid.to_world(c)
+		for i in range(corners.size()):
+			var other := c + edge_n[i]
+			if t.map.has_cell(other) and (t.surface(other) == TerrainRenderer.KIND_BRIDGE or t.top_y(other) >= top):
+				continue
+			var a := corners[i] * 0.97
+			var b := corners[(i + 1) % corners.size()] * 0.97
+			var mid := (a + b) * 0.5
+			var along := Vector3(b.x - a.x, 0, b.y - a.y)
+			var basis := Basis(along.normalized(), Vector3.UP, along.normalized().cross(Vector3.UP))
+			bars.append(Transform3D((basis * Basis.from_scale(Vector3(along.length(), 0.06, 0.025))), center + Vector3(mid.x, top + 0.03, mid.y)))
+	var mat := MeshKit.mech_material(WorldStyle.col(t.style, "ground.wall", Color(0.6, 0.58, 0.55)).lightened(0.1), 0.2, 0.8, Color.BLACK, false)
+	multi(root, "Railings", MeshKit.chamfer_box(Vector3.ONE, 0.002), bars, mat, true)

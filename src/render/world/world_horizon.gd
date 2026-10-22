@@ -42,6 +42,7 @@ static func build(t: TerrainRenderer, root: Node3D) -> void:
 			_megastructures(root, b)
 		"skyline":
 			Skyline.build(t, root, b)
+			_ring(root, b, t.style, "foothills", 150.0, 4, 20.0, 18.0)
 	if hz.get("storm", false):
 		_storm(root, b, t.style)
 

@@ -31,6 +31,7 @@ const KIND_BED := 4
 const KIND_CRYSTAL := 6
 const KIND_WALL := 7
 const KIND_CHASM := 8
+const KIND_BRIDGE := 9
 ## Liquid look tags (the cell's rules come from its other tags, e.g. difficult/dangerous).
 const LIQUIDS := ["water", "toxic", "lava", "ice"]
 const GROUND_STYLES := {"grass": 0, "sand": 1, "snow": 2, "moss": 3, "paving": 4, "ash": 5}
@@ -172,6 +173,8 @@ func surface(cell: Vector2i) -> int:
 		return KIND_CRYSTAL
 	if col.has_tag("rock") or (col.has_tag(BattleMap.TAG_IMPASSABLE) and col.ground > 0):
 		return KIND_ROCK
+	if col.gap_top > 0 and col.gap_top > col.gap_bottom:
+		return KIND_BRIDGE
 	if col.has_tag("wall") or col.has_tag("building"):
 		return KIND_WALL
 	if col.has_tag(BattleMap.TAG_DIFFICULT):

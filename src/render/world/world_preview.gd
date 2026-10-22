@@ -1,6 +1,6 @@
 extends Node3D
 ## Battlefield preview: builds a board in one world style with a few mechs for scale, so
-## terrain and scenery can be checked by screenshot. Tags are "<map>[:<kit>][@<view>]":
+## terrain and scenery can be checked by screenshot. Tags are "<map>[=<landscape-culture>][@<view>]":
 ##   godot --path . -s res://tools/screenshot.gd -- res://scenes/world_preview.tscn "out_%s.jpg" 3 hills urban@close
 ## Maps: hills, urban, alien, gen<seed> (MissionGenerator). Views: wide (default), close,
 ## vista (low, no grid), top.
@@ -24,7 +24,8 @@ func screenshot_setup(args: Array) -> Array:
 
 func screenshot_stage(tag: String) -> void:
 	var at := tag.split("@")
-	var spec := at[0].split(":")
+	# "map=landscape-culture" (file-name safe) or "map:landscape/culture".
+	var spec := at[0].replace("=", ":").split(":")
 	var cam := at[1] if at.size() > 1 else "wide"
 	shape = GridLayout.Shape.SQUARE if spec[0].ends_with("_sq") else GridLayout.Shape.HEX
 	var map_name := spec[0].trim_suffix("_sq")
@@ -49,7 +50,7 @@ func screenshot_stage(tag: String) -> void:
 				map = DemoMap.build(shape)
 				kit = "urban_ruins"
 	if spec.size() > 1:
-		kit = spec[1]
+		kit = spec[1].replace("-", "/")
 	view.set_map(map, kit)
 	_place_mechs(map)
 	var lo := Vector3(INF, 0, INF)

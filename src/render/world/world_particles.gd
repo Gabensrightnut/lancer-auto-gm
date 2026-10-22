@@ -93,7 +93,7 @@ static func _make(kind: String, b: Rect2) -> CPUParticles3D:
 			p.gravity = Vector3(0, -9.0, 0)
 			p.initial_velocity_min = 9.0
 			p.initial_velocity_max = 11.0
-			color = Color(0.75, 0.82, 0.95, 0.35)
+			color = Color(0.7, 0.78, 0.95, 0.12)
 			height = 9.0
 		_:
 			return null
@@ -112,7 +112,7 @@ static func _make(kind: String, b: Rect2) -> CPUParticles3D:
 	if kind == "rain":
 		m.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
 		m.billboard_keep_scale = true
-		q.size = Vector2(0.012, 0.35)
+		q.size = Vector2(0.006, 0.3)
 	else:
 		m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
 		m.albedo_texture = Fx.soft_texture()
