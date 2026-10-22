@@ -258,6 +258,10 @@ const ARC_CHOICES := {1: "Short: 1 story", 2: "2 stories", 3: "Standard: 3 stori
 ## take their seats online). `arcs` = campaign length. Session zero comes first (Core p.40-41,
 ## the hub shows SessionZeroScreen): the job board fills only after it, so the table's choices
 ## (focus, content left out) shape the first jobs. Saved before it returns.
+## The authored main campaign (CampaignScript, data/game/story/campaign/).
+const MAIN_CAMPAIGN := "long_arrival"
+
+
 static func start_story_campaign(store: SaveStore, db: ContentDB, campaign_name: String, pilots: int, start_ll: int, preset: String, arcs: int = DEFAULT_ARCS, campaign_id: String = "", fight_length: String = "standard") -> Campaign:
 	var c := Campaign.create(campaign_name, {"start_ll": start_ll, "gm_preset": preset})
 	c.gm_settings["fight_length"] = fight_length
@@ -299,6 +303,13 @@ static func session_zero_pending(campaign: Campaign) -> bool:
 static func finish_session_zero(campaign: Campaign, store: SaveStore, engine: StoryEngine = null) -> Array:
 	campaign.options.erase("session_zero_pending")
 	var e: StoryEngine = engine if engine != null else story_engine
+	var main := str(campaign.options.get("main_campaign", ""))
+	if main != "":
+		# "Main campaign" on the new campaign form: the authored campaign starts now.
+		campaign.options.erase("main_campaign")
+		var ev := CampaignScript.begin(story, campaign, e, main)
+		save_story(campaign, store)
+		return ev
 	var r := e.submit(story, campaign, {"type": "enter_hub", "seat": "gm", "params": {"kind": str(story.hub.get("kind", "town")), "seed": int(story.hub.get("seed", _first_hub_seed(campaign)))}})
 	save_story(campaign, store)
 	return r.get("events", [])

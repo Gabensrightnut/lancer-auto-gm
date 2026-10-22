@@ -299,3 +299,57 @@ bulkheads are breakable more often than a station's; bunks, tables, consoles and
 - `boarding` (story map "docked"): the two docked hulls above.
 `MissionGenerator.generate(seed, {"boarding": {"kind": ..., "map": "docked" | "enemy_ship" |
 "own_ship"}})` picks the map; mission.flavor.boarding keeps the dict.
+
+## Hub day and night (story clock)
+
+`WorldKits.apply_hub_environment(culture, env, sun, period)` lays the clock's time of day
+(`TownLife.period`: dawn, day, evening, night; `WorldKits.TIMES`) over the culture's own look:
+low pink dawn sun from the east, the kit's own daylight, a gold evening sun in the west, blue
+moonlit night with stars. The neon city's kit is its night; by day it is a grey smoggy overcast
+with the signs still on. `WorldKits.set_hub_time(world, period)` switches the built town:
+lamps, lanterns and fires (lights with meta `hub_night_light`) burn at dawn, evening and night,
+and more windows are lit the later it gets. The hub scene calls both on every rebuild (waiting
+rebuilds it). Preview: `hub-<culture>~<period>[@close]`.
+
+## Interiors (`interiors.gd`, `data/game/interiors.json`)
+
+One shared kit for walking inside key buildings. A kind is data: rooms (rect, floor, `use`),
+doors (rooms, position, width, lock 0-2, kind door/hatch/bars/arch), stairs and extra
+containers. Furniture comes from the room's use (bar, bedroom, storage, office, study, cell,
+bridge, captain, bunks, commons, engineering, cargo, sleepers, control), placed clear of doors
+and stairs. `Interiors.layout(kind, culture, seed)` returns plain data for story: rooms (ids
+match TownLife's), doors with locks, containers (lock, `contents` for story to fill), sleep
+spots, and stand/sit/work/hide points. `Interiors.build(layout)` builds it: walls merged per line
+with doorways and frames, floors with stair openings, a "Ceiling" node a camera can hide, one
+light per room, doors that `set_door()` swings or slides. Culture picks materials (planks,
+stone, plaster, neon-dark, white); ship kinds are metal with strip lights.
+Story's own spot kinds and more: `office` (front office, back office with the safe, records),
+`inn` (common room, kitchen, five guest rooms upstairs), `market` (store floor with counter and
+shelves, storeroom), `warehouse`, `workshop` (mech gantry, benches, a loft up the stairs),
+`printer` (fabricator bed, hoppers, control room with the license vault), `house` (front room
+with a hearth, bedroom, pantry), `chapel` (pews, altar, vestry), `clinic` (waiting room, ward,
+surgery). Kinds also: `bar` (saloon: bar room, back room with the safe, stairs, upstairs corridor, three
+rooms and the owner's), `marshal` (front office, three barred cells, the marshal's office with
+a safe), `ship_deck` (bridge, captain's quarters, crew bunks, commons with stalls, engineering
+with the reactor and the NHP casing, cargo bay), `sleeper_vault` (rows of cryo pods, control
+gallery). Preview: `in-<kind>[~culture]@eye|top|up|<room id>`.
+
+## Exploring areas (mech scale, real time)
+
+`MissionGenerator.area(seed, {hub, region, landscape, culture, weather, size, shape})` makes the
+ground for a WorldSession / NetRoom area: the hub's town at mech scale in the middle (or the
+landscape's own settlement), countryside around it, roads along the middle row and column out
+to all four edges, and a level band `TerrainGen.AREA_EDGE` wide along every edge. Areas of one
+region (same `region`) look the same and meet on the same roads, so walking off one edge comes
+in on the next area's opposite edge. Fights start right there on the area's map. Returns {map,
+kit, region, name, center, entries {west, east, north, south}}. Preview: `area<seed>+town+<culture>`
+or `area<seed>+<landscape>[+<culture>]`.
+
+## Autumn forest and salt flats
+
+`autumn_forest` (base grassy_hills): rolling hills and denser woods in red, orange and gold,
+falling leaves (`particles: "leaves"`), soft gold light; medieval, East Asian, Old West or Union
+settlements. `salt_flats` (base desert_mesas; `TerrainGen._flats`): dead level white crust,
+cracked soft patches (difficult), low pressure ridges in straight runs (one level), rare rock
+islands, old mine spoil heaps; little cover, so the open ground is the danger. Old West, retro
+or industrial mining towns.

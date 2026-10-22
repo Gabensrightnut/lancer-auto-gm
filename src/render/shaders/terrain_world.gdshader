@@ -324,12 +324,13 @@ void fragment() {
 			// Road. vcol.g: 0.15 runs along x, 0.5 along z, 0.85 a crossing. UV: offset from the cell center.
 			vec2 loc = UV;
 			bool along_z = vcol.g > 0.3 && vcol.g < 0.7;
-			bool crossing = vcol.g > 0.7;
+			bool lot = vcol.g > 0.93;  // a yard, sidewalk or square: paving without markings
+			bool crossing = vcol.g > 0.7 && !lot;
 			float across = along_z ? loc.x : loc.y;   // distance from the lane's middle
 			float along = along_z ? wpos.z : wpos.x;
 			if (road_style == 0) {
 				col = mix(soil * 1.1, soil * 0.8, n2) * (0.85 + 0.25 * n3);
-				float rut = smoothstep(0.06, 0.0, abs(abs(across) - 0.22)) * (crossing ? 0.0 : 1.0);
+				float rut = smoothstep(0.06, 0.0, abs(abs(across) - 0.22)) * (crossing || lot ? 0.0 : 1.0);
 				col *= 1.0 - 0.3 * rut;
 				relief = n3 * 0.5 - rut;
 				rough = 0.95;
@@ -343,7 +344,7 @@ void fragment() {
 				vec2 g = abs(fract(p * vec2(1.0, 2.0)) - 0.5);
 				float seam = smoothstep(0.47, 0.49, max(g.x, g.y));
 				col = vec3(0.52, 0.54, 0.57) * (0.95 + 0.08 * n3) * (1.0 - 0.3 * seam);
-				float guide = smoothstep(0.03, 0.0, abs(across)) * (crossing ? 0.0 : 1.0);
+				float guide = smoothstep(0.03, 0.0, abs(across)) * (crossing || lot ? 0.0 : 1.0);
 				emit = strip_light * guide * 1.2;
 				rough = 0.35;
 				relief = -seam;
@@ -353,7 +354,12 @@ void fragment() {
 				float wet_r = smoothstep(0.6, 0.66, fbm3(p * 0.6 + 21.0)) * wetness;
 				rough = mix(0.8, 0.05, wet_r);
 				col *= 1.0 - 0.35 * wet_r;
-				if (!crossing) {
+				if (lot) {
+					// Sidewalk and lot: pale concrete slabs with seams.
+					vec2 g = abs(fract(wpos.xz * 1.6) - 0.5);
+					float seam = smoothstep(0.46, 0.49, max(g.x, g.y));
+					col = mix(vec3(0.3, 0.3, 0.3), vec3(0.4, 0.39, 0.37), n3) * (1.0 - 0.35 * seam) * (1.0 - 0.3 * wet_r);
+				} else if (!crossing) {
 					// Dashed lane line along the middle of the lane, solid edge lines.
 					float dash = step(0.5, fract(along * 0.9));
 					float lane = smoothstep(0.035, 0.015, abs(across)) * dash;
