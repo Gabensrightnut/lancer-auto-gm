@@ -62,6 +62,9 @@ func view_for(state: GameState, seat: String) -> Dictionary:
 		var visible := {}
 		for key: String in PUBLIC_FIELDS:
 			visible[key] = d[key]
+		var lost := mounts_lost(u)
+		if not lost.is_empty():
+			visible["mounts_lost"] = lost  # torn off for everyone to see (no stats)
 		units[id] = visible
 	full["units"] = units
 	full["objectives"] = objectives_for(state, seat)
@@ -107,6 +110,20 @@ func events_for(state: GameState, seat: String, events: Array) -> Array:
 				if e.get("type", "") in ["hp_changed", "heat_changed"]:
 					copy.erase(key)
 		out.append(copy)
+	return out
+
+
+## Mounts whose weapons System Trauma destroyed (Core p.80): what anyone looking at the mech
+## can see is missing, without its stats or gear. For the renderer (missing parts) on every
+## seat, including enemies that haven't scanned it.
+static func mounts_lost(u: Unit) -> Array:
+	var out: Array = []
+	var states: Dictionary = u.counters.get("weapons", {})
+	for w: Dictionary in u.loadout.get("weapons", []):
+		var m := int(w.get("mount", -1))
+		if m >= 0 and bool((states.get(String(w.get("key", "")), {}) as Dictionary).get("destroyed", false)) and not out.has(m):
+			out.append(m)
+	out.sort()
 	return out
 
 

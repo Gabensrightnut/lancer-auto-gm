@@ -375,6 +375,39 @@ static func start_story_mission(campaign: Campaign, db: ContentDB, store: SaveSt
 	return s
 
 
+## Player against player (PvpBattle): the squad split by a story choice. `groups` {"a": [seats],
+## "b": [seats]} (AI squadmates are already on their human's side), `allies` {"a"/"b": [{template,
+## count, name}]}, `id` story's name for the split. Seats in `local` are played here (hot-seat,
+## the screen is handed over between them); friends online keep their seats. The result comes
+## back from finish_mission (debrief "pvp", story event pvp_ended).
+static func start_pvp_mission(campaign: Campaign, db: ContentDB, store: SaveStore, groups: Dictionary, allies: Dictionary = {}, id: String = "", local: Array = []) -> BattleSession:
+	open_story(campaign, db)
+	var table: Dictionary = story_host.seat_table() if story_host != null else {}
+	var modes := {}
+	var pilots := {}
+	for entry: Dictionary in CampaignLoop.squad(campaign, story):
+		var seat := str(entry["seat"])
+		if story.is_ai(seat):
+			modes[seat] = "ai"
+		elif table.get(seat, {}).get("where", "") == "remote":
+			modes[seat] = "open"
+		else:
+			modes[seat] = "you" if local.is_empty() or seat in local else "open"
+		pilots[seat] = str(entry["pilot"].get("id", ""))
+	var the_story := story
+	var lobby := LobbyModel.for_mission(campaign, db, modes, pilots, func(opts: Dictionary) -> Dictionary:
+		var gen := CampaignLoop.build_mission(campaign, the_story, db, {"shape": opts.get("shape", "hex"), "sitrep": "sitrep_standardcombat"})
+		PvpBattle.split(gen, groups, allies, id)
+		return gen, story_host)
+	lobby.set_fill_empty(true)
+	for seat: String in modes:
+		lobby.ready[seat] = true
+	var s := start_mission(lobby, store)
+	if s != null:
+		s.host.set_seat_ai(PvpBattle.ALLY_SEAT_A, true)
+	return s
+
+
 ## AI squadmates fight the way their character would (Squadmate.orders: a stance from their
 ## frame's role or persona), given to the AI director when a story battle starts or resumes.
 static func apply_squad_orders(s: BattleSession, campaign: Campaign, db: ContentDB) -> void:
@@ -472,6 +505,13 @@ static func _finish_story_mission(s: BattleSession, campaign: Campaign, store: S
 		story_session._send(story_events)  # friends online get the debrief too
 	store.clear_mission(campaign.id)
 	debrief = {"story": true, "outcome": m.outcome, "reason": m.outcome_reason, "title": title_for(m.outcome), "campaign": campaign.name}
+	if PvpBattle.is_pvp(m):
+		# The squad fought itself: which group won goes back to the story (event pvp_ended
+		# {id, winner: "a"/"b"/"", reason, a, b}).
+		debrief["pvp"] = PvpBattle.result(m)
+		var e := PvpBattle.result(m)
+		e["type"] = "pvp_ended"
+		story_events.append(e)
 	session = null
 	return debrief
 

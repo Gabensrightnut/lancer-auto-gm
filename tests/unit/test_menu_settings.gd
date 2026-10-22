@@ -78,3 +78,24 @@ func test_old_saved_keys_are_dropped_once() -> void:
 	cfg.save(path)
 	expect_eq(GameSettings.load_settings(path).keybinds["end_turn"], KEY_X, "no clash with camera rotate right")
 	DirAccess.remove_absolute(path)
+
+
+## Exploring has its own keys (keybinds.json "context": "explore", story's actions): W walks
+## forward and also pans the battle camera; a clash only counts within the same context.
+func test_keys_by_context() -> void:
+	var s := GameSettings.load_settings("user://does_not_exist.cfg")
+	expect_eq(GameSettings.context_of("move_forward"), "explore")
+	expect_eq(GameSettings.context_of("cam_pan_up"), "battle")
+	expect_eq(GameSettings.context_of("confirm"), "both")
+	s.keybinds["move_forward"] = KEY_W
+	s.keybinds["cam_pan_up"] = KEY_W
+	expect(not s.conflicts().has("move_forward"), "W walks (exploring) and pans (battle): no clash")
+	var other := ""
+	for a: String in s.keybinds:
+		if a != "move_forward" and GameSettings.context_of(a) == "explore":
+			other = a
+			break
+	expect_eq(s.rebind(other, KEY_W), "move_forward", "the same key in the same context: they swap")
+	expect_eq(s.keybinds["cam_pan_up"], KEY_W, "the battle's W is untouched")
+	s.keybinds["move_forward"] = KEY_W  # a file edited by hand
+	expect(s.conflicts().has(other) and s.conflicts()[other].has("move_forward"), "flagged")
