@@ -29,6 +29,9 @@ const REACTION := "reaction"
 static func takes_turns(u: Unit) -> bool:
 	if u.kind == Unit.KIND_PILOT and not u.destroyed and u.counters.has("mounted_in"):
 		return Combat.is_present(u)  # acts through its mech, unless the mech was destroyed
+	var st := state_of(u)
+	if st != null and FrameSystems.riding(st, u):
+		return false  # Goblin Symbiosis: acts during its host's turn instead
 	return Combat.is_present(u) and u.kind != Unit.KIND_DEPLOYABLE and not u.counters.get("empty", false)
 
 
@@ -115,6 +118,7 @@ static func begin_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 	u.counters.erase("no_holograms")  # Dusk Wing: new holograms again from the start of its turn
 	events.append_array(Effects.turn_started(state, u))
 	events.append_array(Zones.turn_started(state, u))
+	events.append_array(FrameSystems.host_turn_started(state, u))
 	return events
 
 
@@ -122,6 +126,7 @@ static func begin_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 static func finish_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if not u.destroyed:
+		events.append_array(FrameSystems.host_turn_ending(state, u))
 		events.append_array(Effects.turn_ending(state, u))
 		events.append_array(Combat.end_of_turn_checks(state, u))
 	events.append_array(Combat.fall_all(state, u))
@@ -219,7 +224,7 @@ static func spend(u: Unit, cost: String, action: String) -> void:
 static func check_own_turn(state: GameState, u: Unit) -> RuleResult:
 	if state.phase != GameState.PHASE_COMBAT:
 		return RuleResult.deny("Combat hasn't started.", REF_TURN_ORDER)
-	if state.active_unit != u.id:
+	if state.active_unit != u.id and not (FrameSystems.riding(state, u) and FrameSystems.host_of(state, u).id == state.active_unit):
 		return RuleResult.deny("It isn't this unit's turn.", REF_TURN_ORDER)
 	if u.destroyed:
 		return RuleResult.deny("This mech has been destroyed.", "glossary: Structure")

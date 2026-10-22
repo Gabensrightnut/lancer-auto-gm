@@ -186,7 +186,8 @@ static func _defense(out: Dictionary, target: Unit, smart: bool) -> void:
 	if smart:
 		out["defense_name"] = "E-Defense"
 		# Smart: targets with no E-Defense count as having 8 (tags: Smart).
-		out["target_number"] = target.edef if target.edef > 0 else 8
+		var edef := FrameSystems.shared_stat(TurnRules.state_of(target), target, "edef") if target.counters.has("hosting") else target.edef
+		out["target_number"] = edef if edef > 0 else 8
 		return
 	out["defense_name"] = "Evasion"
 	var ev := target.evasion
@@ -596,9 +597,9 @@ static func pull_to(state: GameState, target: Unit, goal: Sight.Body, reach: int
 ## (Core p.64): tech attacks ignore cover and can't crit.
 static func tech_preview(state: GameState, attacker: Unit, target: Unit, opts: Dictionary = {}) -> Dictionary:
 	var out := {"ok": false, "reason": "", "rule_ref": "actions: Invade", "kind": KIND_TECH, "accuracy": 0,
-		"difficulty": 0, "sources": [], "bonus": attacker.tech_attack,
-		"bonus_sources": [{"label": "Tech Attack", "value": attacker.tech_attack}],
-		"defense_name": "E-Defense", "target_number": target.edef if target else 0, "lock_on": false}
+		"difficulty": 0, "sources": [], "bonus": FrameSystems.shared_stat(state, attacker, "tech_attack"),
+		"bonus_sources": [{"label": "Tech Attack", "value": FrameSystems.shared_stat(state, attacker, "tech_attack")}],
+		"defense_name": "E-Defense", "target_number": FrameSystems.shared_stat(state, target, "edef") if target else 0, "lock_on": false}
 	var r := tech_target_check(state, attacker, target)
 	if not r.ok:
 		out["reason"] = r.reason

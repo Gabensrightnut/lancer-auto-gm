@@ -114,6 +114,8 @@ static func skill_check(state: GameState, u: Unit, skill: String, label: String,
 		all_sources.append({"label": "Bolstered", "kind": "accuracy", "type": "accuracy", "value": 2, "rule_ref": "actions: Bolster"})
 		u.statuses.erase("Bolstered")
 	var bonus := int(u.get(skill)) if SKILLS.has(skill) else 0
+	if skill == "systems" and u.counters.has("hosting"):
+		bonus = FrameSystems.shared_stat(state, u, "systems")  # Goblin Symbiosis
 	if u.kind == Unit.KIND_PILOT:
 		bonus = u.grit  # unmounted characters add GRIT to attacks and saves (Core p.74)
 	var record := state.dice.check(bonus, acc, diff, target, all_sources)
@@ -377,6 +379,9 @@ static func apply_heat(state: GameState, u: Unit, amount: int, source: String, r
 	events.append({"type": "heat_changed", "unit": u.id, "amount": amount, "total": u.heat, "source": source})
 	if u.heat > u.heat_cap:
 		events.append_array(FrameSystems.vent_heat(state, u))  # Sherman Vent Heat
+	var goblin := FrameSystems.symbiont_of(state, u)
+	if goblin != null and not goblin.destroyed:
+		events.append_array(apply_heat(state, goblin, amount, source))  # the Goblin takes its host's heat
 	# Over HEAT CAP: 1 stress, an overheating check, clear all heat, then take the heat beyond
 	# what it took to exceed the cap, which can overheat again (Core p.81).
 	# How much carries over is the table's "heat_overflow" ruling.
@@ -734,6 +739,7 @@ static func refresh_hidden(state: GameState) -> Array[Dictionary]:
 
 ## After any movement: engagement, Hidden, grapples.
 static func after_movement(state: GameState) -> Array[Dictionary]:
+	FrameSystems.follow_hosts(state)
 	var events := refresh_hidden(state)
 	events.append_array(refresh_engagement(state))
 	events.append_array(CloseCombat.check_grapples(state))

@@ -583,7 +583,31 @@
         }
       ]
     },
-    "core": "manual"
+    "core": [],
+    "core_target": {
+      "who": "ally",
+      "mech": true,
+      "range": 1,
+      "larger": true,
+      "not_hosting": true,
+      "ops": [
+        {
+          "op": "attach"
+        }
+      ]
+    },
+    "core_actions": [
+      {
+        "name": "Detach",
+        "activation": "Quick",
+        "detail": "End Symbiosis: detach from your host.",
+        "ops": [
+          {
+            "op": "detach"
+          }
+        ]
+      }
+    ]
   },
   "mf_gorgon": {
     "traits": {

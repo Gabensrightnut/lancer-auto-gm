@@ -55,6 +55,10 @@ static func check_target(state: GameState, u: Unit, params: Dictionary) -> RuleR
 		return RuleResult.deny("Choose an allied character.", ref)
 	if spec.get("mech", false) and t.kind != Unit.KIND_MECH:
 		return RuleResult.deny("Choose a mech.", ref)
+	if spec.get("larger", false) and t.size <= u.size:
+		return RuleResult.deny("The host must be larger than you.", ref)
+	if spec.get("not_hosting", false) and t.counters.has("hosting"):
+		return RuleResult.deny("That mech already hosts a Goblin.", ref)
 	var reach: int = u.sensors if str(spec.get("range", "sensors")) == "sensors" else int(spec["range"])
 	if Sight.unit_distance(state, u, t) > reach:
 		return RuleResult.deny("It must be within range %d." % reach, ref)
@@ -82,6 +86,8 @@ static func apply_target(state: GameState, u: Unit, params: Dictionary) -> Array
 		t.counters["active_effects"] = active
 		u.counters["core_link"] = {"target": t.id, "label": label, "ends_on_stun": spec.get("ends_on_stun", false)}
 	for op: Dictionary in spec.get("ops", []):
+		if op.get("op", "") == "attach":
+			events.append_array(attach(state, u, t))
 		if op.get("op", "") == "maze":
 			# Minotaur Metafold Maze: Stunned; Systems save at +3 Difficulty at the end of each of
 			# its turns, +1 Accuracy per failed try.
@@ -114,6 +120,18 @@ static func on_status(state: GameState, u: Unit, status: String) -> Array[Dictio
 			var link: Dictionary = x.counters.get("core_link", {})
 			if link.get("ends_on_stun", false) and (x == u or String(link.get("target", "")) == u.id):
 				events.append_array(end_link(state, x, "Stunned"))
+	if status == "Stunned":
+		if u.counters.has("symbiosis"):
+			events.append_array(detach(state, u, "Stunned"))
+		elif u.counters.has("hosting"):
+			events.append_array(detach(state, symbiont_of(state, u), "host Stunned"))
+	if u.counters.has("hosting") and SystemActions.CONDITIONS.has(status):
+		var g := symbiont_of(state, u)
+		if g != null and not g.has_status(status):
+			# The Goblin takes any conditions its host takes.
+			var entry: Dictionary = u.statuses[status].duplicate()
+			g.statuses[status] = entry
+			events.append({"type": "status_added", "unit": g.id, "status": status, "source": entry.get("source", "")})
 	if (status == "Stunned" or status == "Jammed") and u.counters.has("apocalypse"):
 		u.counters["apocalypse_reset"] = true
 	return events
@@ -250,6 +268,8 @@ static func core_off(state: GameState, u: Unit) -> Array[Dictionary]:
 
 ## Limits on what `u` may do from frame systems (Napoleon Aegis, Barbarossa after firing).
 static func action_allowed(state: GameState, u: Unit, type: String) -> RuleResult:
+	if u.counters.has("symbiosis") and (NO_MOVE.has(type) or type == "overcharge"):
+		return RuleResult.deny("Attached by Symbiosis: you move with your host and can't move or Overcharge yourself.", "frames: Goblin core system")
 	if u.turn.get("rail_fired", false) and state.active_unit == u.id and not type in ["end_turn", "react", "set_reaction_policy", "set_ruling"]:
 		return RuleResult.deny("After firing the Apocalypse Rail you can't move or take any other actions this turn.", "frames: Barbarossa core system")
 	if Effects.has(u, "aegis") and not AEGIS_ALLOWED.has(type):
@@ -268,7 +288,7 @@ static func extra_cover(state: GameState, target: Unit, cover: Dictionary, attac
 	if cover.get("cover", "none") == "hard":
 		return cover
 	var give := ""
-	if Effects.has(target, "always_hard_cover"):
+	if Effects.has(target, "always_hard_cover") or target.counters.has("symbiosis"):
 		give = "hard"
 	elif cover.get("cover", "none") == "none":
 		if Effects.has(target, "soft_cover_aura") or Zones.soft_cover(state, target, attacker):
@@ -515,3 +535,117 @@ static func mine_reach(state: GameState, u: Unit) -> int:
 		if int(u.counters.get("launcher_round", -1)) != state.round_number:
 			return int(e.get("range", 15))
 	return 0
+
+
+# --- Goblin Symbiosis -----------------------------------------------------------------
+# The Goblin attaches to a larger, adjacent, willing allied mech: it occupies and moves with
+# the host's space, has hard cover, takes the host's conditions and heat; the host may use
+# the Goblin's Systems, E-Defense and Tech Attack. From the next round the Goblin takes no
+# turns of its own: it acts (2 quick or 1 full, no moving or Overcharge) during the host's
+# turn, which counts as its turn. Ends when either is Stunned or the Goblin detaches (quick).
+
+const NO_MOVE := ["move", "boost", "jump", "disengage", "bonus_move", "stand_up"]
+
+
+static func host_of(state: GameState, u: Unit) -> Unit:
+	return state.unit(String(u.counters.get("symbiosis", {}).get("host", "")))
+
+
+static func symbiont_of(state: GameState, host: Unit) -> Unit:
+	return state.unit(String(host.counters.get("hosting", "")))
+
+
+## Attached since an earlier round: it no longer takes turns of its own.
+static func riding(state: GameState, u: Unit) -> bool:
+	var sym: Dictionary = u.counters.get("symbiosis", {})
+	return not sym.is_empty() and state.round_number > int(sym.get("round", 0))
+
+
+static func attach(state: GameState, goblin: Unit, host: Unit) -> Array[Dictionary]:
+	goblin.counters["symbiosis"] = {"host": host.id, "round": state.round_number}
+	host.counters["hosting"] = goblin.id
+	goblin.cell = host.cell
+	goblin.level = host.level
+	return [{"type": "attached", "unit": goblin.id, "host": host.id, "rule_ref": "frames: Goblin core system"}] as Array[Dictionary]
+
+
+static func detach(state: GameState, goblin: Unit, why: String) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var host := host_of(state, goblin)
+	if host == null:
+		return events
+	goblin.counters.erase("symbiosis")
+	host.counters.erase("hosting")
+	events.append({"type": "detached", "unit": goblin.id, "host": host.id, "reason": why, "rule_ref": "frames: Goblin core system"})
+	# Out into a free space next to the host, if there is one.
+	var others := Movement._others(state, goblin)
+	var placed := false
+	for c in Sight.body_of(state, host).cells:
+		for n: Vector2i in state.map.grid.neighbors(c):
+			if placed:
+				break
+			var lv := Movement.surface_levels(state, goblin.size, n)
+			if lv.is_empty():
+				continue
+			var body := Sight.make_body(state, n, lv[0], goblin.size)
+			if Movement._blocked_by_unit(body, others, true) or Movement._overlaps(body, Sight.body_of(state, host)):
+				continue
+			var from := [goblin.cell.x, goblin.cell.y, goblin.level]
+			goblin.cell = n
+			goblin.level = lv[0]
+			events.append({"type": "moved", "unit": goblin.id, "path": [from, [n.x, n.y, lv[0]]], "mode": "involuntary", "cost": 0})
+			placed = true
+	# "When the effect ends, you don't take a turn until the next round."
+	if state.active_unit != goblin.id and not state.acted.has(goblin.id):
+		state.acted.append(goblin.id)
+	return events
+
+
+## After any movement: attached Goblins move with their hosts.
+static func follow_hosts(state: GameState) -> void:
+	for u: Unit in state.units.values():
+		var host := host_of(state, u)
+		if host != null:
+			u.cell = host.cell
+			u.level = host.level
+			u.flying = host.flying
+
+
+## The host's E-Defense / Tech Attack / Systems, or the Goblin's if better.
+static func shared_stat(state: GameState, host: Unit, stat: String) -> int:
+	var v := int(host.get(stat))
+	if state == null:
+		return v
+	var g := symbiont_of(state, host)
+	if g != null and Combat.is_present(g):
+		v = maxi(v, int(g.get(stat)))
+	return v
+
+
+## Host's turn begins/ends: it counts as the Goblin's turn too.
+static func host_turn_started(state: GameState, host: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var g := symbiont_of(state, host)
+	if g == null or not riding(state, g):
+		return events
+	g.turn = {"quick": 0, "full": false, "taken": [], "quick_tech": [], "move_spent": 0,
+		"moved": false, "acted": false, "overcharged": false, "free_quick": 0, "riding": true}
+	g.counters.erase("reactions")
+	g.counters.erase("ability_round_uses")
+	events.append_array(Combat.expire_at_turn_start(state, g))
+	events.append_array(Abilities.expire(state, g, "start"))
+	events.append_array(Effects.turn_started(state, g))
+	if not state.acted.has(g.id):
+		state.acted.append(g.id)
+	return events
+
+
+static func host_turn_ending(state: GameState, host: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var g := symbiont_of(state, host)
+	if g == null or not riding(state, g):
+		return events
+	events.append_array(Effects.turn_ending(state, g))
+	events.append_array(Combat.expire_statuses(state, g))
+	events.append_array(Abilities.expire(state, g, "end"))
+	return events
