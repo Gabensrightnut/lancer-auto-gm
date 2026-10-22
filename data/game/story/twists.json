@@ -254,6 +254,23 @@
           "set_flag": "turncoat_found"
         }
       ]
+    },
+    {
+      "id": "jumped_in_town",
+      "weight": 1,
+      "town": {
+        "on_foot": true
+      },
+      "reveal": [
+        "Before the squad is even out of {hub}, they're waiting outside {spot}. This fight happens in town.",
+        "You never make it to {place}: {enemy} are in the street outside {spot}, and they've seen you."
+      ],
+      "question": "Who told them where you'd be?",
+      "effects": [
+        {
+          "set_flag": "jumped_in_town"
+        }
+      ]
     }
   ]
 }

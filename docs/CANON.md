@@ -99,6 +99,7 @@ book in a way that changes the setting; parked.
 | The GM hands out or takes back reserves | Canon | Reserves are the GM's to give (Core p.50-52) |
 | The GM reveals, hides or rewrites a twist | Canon | Goals and situations can change mid-mission (Core p.43) |
 | The GM sets faction standing | Not a book rule (labelled) | Our bookkeeping |
+| Fights in town: defending the hub, a standoff outside a building, talks gone wrong, being jumped before leaving town; the battle uses the hub's own layout | Canon / Consistent | Switching from narrative play to mech combat where the characters are (Core p.45); goals change mid-mission (p.43); our own jobs and text |
 
 ## When canon allows more than one answer
 
