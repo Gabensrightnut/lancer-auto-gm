@@ -264,6 +264,14 @@ them, and they disappear when the turn moves on.
   Destructible terrain visibly breaks when destroyed.
 - The grid stays readable on top of everything (toggle-able grid lines, clear tile edges).
 
+### Every place is its own place
+- No two towns look the same: every hub and every map gets its own layout, building mix and
+  details, even within one culture and landscape.
+- Battles happen where you are on the world: fight in town, walk a mile down the road and get
+  ambushed, and the second map keeps the same region's look (landscape, culture, weather,
+  vegetation, building style) but with different buildings and terrain, as the next stretch of
+  the same place.
+
 ### Town fights and building toughness
 - A fight that breaks out in a town happens in that town: the battle map is built from the
   hub's own layout and culture kit at mech scale, so the saloon you walked into is the cover
