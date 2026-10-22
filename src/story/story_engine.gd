@@ -22,6 +22,9 @@ extends RefCounted
 ##   parley {}                                        the squad calls on the enemy commander to stand down
 ##   gm_scene / gm_twist / gm_standing / gm_reserve / gm_job / gm_edit_job / gm_remove_job / gm_npc
 ##                                                    a human GM's story tools (GmTools; gm seat)
+##   house_rule {id, on}  (host / GM: switch one of the story's house rules, StoryHouseRules)
+##   buy {item, pilot} / sell_salvage {} / use_printer {pilot} / restock {} / fight_for_it {item, pilot}
+##                                                    the money-and-supplies house rules (Economy)
 ##   travel {world}                                   go to another world of the sector (between missions; Sector)
 ## "seat" "gm" (the host / procedural GM) may act for anyone.
 
@@ -140,6 +143,9 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 				return _no("Missions are chosen at the briefing, between downtime and boots on the ground.", REF_FLOW)
 			if not story.hooks.any(func(h: Dictionary) -> bool: return h["id"] == str(p.get("hook", ""))):
 				return _no("That job isn't on offer.")
+			var flyable: Array = campaign.pilots.keys().filter(func(x: String) -> bool: return story.is_alive(x) and not Economy.wrecked(story, campaign).has(x))
+			if flyable.is_empty():
+				return _no("Every mech is wrecked. Get them reprinted at a printer first (the map shows which worlds have one). House rule: %s." % Economy.LABEL)
 		"confirm_reserves":
 			if story.phase != "reserves":
 				return _no("Reserves are set after the briefing, right before the mission.", "Core p.43: stage three, reserves")
@@ -217,8 +223,36 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 			if seat != "gm":
 				return _no("The squad travels together; the host moves it.")
 			var why_t := Sector.travel_refusal(story, str(p.get("world", "")))
+			if why_t == "":
+				why_t = Economy.travel_refusal(story, campaign, Sector.world(story, str(p.get("world", ""))))
 			if why_t != "":
 				return _no(why_t, Sector.REF)
+		"house_rule":
+			if seat != "gm":
+				return _no("The host (or a human GM) sets the house rules.")
+			var why_h := StoryHouseRules.refusal(str(p.get("id", "")))
+			if why_h != "":
+				return _no(why_h)
+		"buy", "sell_salvage", "use_printer", "restock", "fight_for_it":
+			if story.phase == "mission":
+				return _no("Not in the middle of a mission.")
+			var who := str(p.get("pilot", me))
+			if type in ["buy", "use_printer", "fight_for_it"] and (not campaign.pilots.has(who) or (seat != "gm" and not _controls(story, seat, who))):
+				return _no("Pick one of your pilots.")
+			var why_e := ""
+			match type:
+				"buy":
+					why_e = Economy.buy_refusal(story, campaign, str(p.get("item", "")))
+				"sell_salvage":
+					why_e = "Nothing to sell." if not StoryHouseRules.on(campaign, Economy.R_WALLET) or int(Economy.wallet(story).get("salvage", 0)) <= 0 else ""
+				"use_printer":
+					why_e = Economy.printer_refusal(story, campaign, who)
+				"restock":
+					why_e = Economy.restock_refusal(story, campaign)
+				"fight_for_it":
+					why_e = Economy.fight_refusal(story, campaign, str(p.get("item", "")))
+			if why_e != "":
+				return _no(why_e)
 		"parley":
 			var why := Rivals.parley_refusal(story, seat)
 			if why != "":
@@ -297,7 +331,7 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 				var push := NarrativeCheck.push_level(str(story.failed_goals.get(str(p["goal"]), "normal")), bool(campaign.options.get("allow_heroic_push", true)))
 				opts["risky"] = push["level"] == "risky"
 				opts["heroic"] = push["level"] == "heroic"
-			var rec := NarrativeCheck.roll(story.dice, campaign.pilots[me], opts)
+			var rec := NarrativeCheck.roll(story.dice, campaign.pilots[me], Economy.check_opts(story, campaign, me, opts))
 			var goal := str(p.get("goal", ""))
 			if goal != "":
 				if rec["success"]:
@@ -374,7 +408,20 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 		"battle_events":
 			return Rivals.observe(story, campaign, p.get("events", []))
 		"travel":
-			return Sector.travel(story, campaign, str(p["world"]))
+			var paid := Economy.pay_passage(story, campaign, Sector.world(story, str(p["world"])))
+			return paid + Sector.travel(story, campaign, str(p["world"]))
+		"house_rule":
+			return StoryHouseRules.set_rule(story, campaign, str(p["id"]), bool(p.get("on", true)))
+		"buy":
+			return Economy.buy(story, campaign, str(p["item"]), str(p.get("pilot", me)))
+		"sell_salvage":
+			return Economy.sell_salvage(story)
+		"use_printer":
+			return Economy.use_printer(story, campaign, str(p.get("pilot", me)))
+		"restock":
+			return Economy.restock(story, campaign)
+		"fight_for_it":
+			return Economy.fight_for(story, campaign, str(p["item"]), str(p.get("pilot", me)))
 		"parley":
 			return Rivals.demand(story, campaign, seat)
 		"end_downtime":
@@ -478,6 +525,8 @@ func _finish_mission(story: StoryState, campaign: Campaign, p: Dictionary) -> Ar
 	events.append_array(StoryArc.advance(story, campaign, hook, won))
 	# What became of the enemy commander (Rivals).
 	events.append_array(Rivals.after_mission(story, outcome, hook))
+	# House rules that are on: pay, salvage, rations, wrecked mechs (Economy).
+	events.append_array(Economy.after_mission(story, campaign, hook, won, p.get("summary", {})))
 	# The GM's bond rewards were for this mission only (Core p.50).
 	story.flags.erase(Bonds.REWARDS)
 	# Has the campaign told its story? It ends after the level up (or now, if nobody's left).
