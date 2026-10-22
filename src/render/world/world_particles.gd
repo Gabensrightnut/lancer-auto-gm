@@ -120,10 +120,6 @@ static func _make(kind: String, b: Rect2) -> CPUParticles3D:
 	q.material = m
 	p.mesh = q
 	if kind in ["spores", "embers"]:
-		var g := Gradient.new()
-		g.set_color(0, Color(1, 1, 1, 0))
-		g.add_point(0.2, Color(1, 1, 1, 1))
-		g.set_color(g.get_point_count() - 1, Color(1, 1, 1, 0))
-		p.color_ramp = g
+		p.color_ramp = WorldHazards._ramp([[0.0, Color(1, 1, 1, 0)], [0.2, Color(1, 1, 1, 1)], [1.0, Color(1, 1, 1, 0)]])
 		m.vertex_color_use_as_albedo = true
 	return p

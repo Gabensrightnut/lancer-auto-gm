@@ -49,9 +49,11 @@ static func multi(root: Node3D, node_name: String, mesh: Mesh, xforms: Array, ma
 	var mmi := MultiMeshInstance3D.new()
 	mmi.name = node_name
 	mmi.multimesh = mm
+	# Kept for checks (tests read placements back; a headless renderer doesn't store them).
+	mmi.set_meta("xforms", xforms)
 	mmi.material_override = mat
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	root.add_child(mmi)
+	root.add_child(mmi, true)
 	return mmi
 
 
@@ -81,19 +83,16 @@ static func _liquids(t: TerrainRenderer, root: Node3D) -> void:
 		if tag == "water":
 			kind = str(WorldStyle.value(t.style, "liquid.kind", "water"))
 		var m := ShaderMaterial.new()
-		var depth := 0.3
 		match kind:
 			"toxic":
 				m.shader = TOXIC_SHADER
 				m.set_shader_parameter("glow", WorldStyle.col(t.style, "liquid.shallow", Color(0.45, 1.0, 0.25)))
 				m.set_shader_parameter("deep", WorldStyle.col(t.style, "liquid.deep", Color(0.05, 0.18, 0.05)))
-				depth = 0.25
 			"lava":
 				m.shader = TOXIC_SHADER
 				m.set_shader_parameter("glow", Color(1.0, 0.42, 0.06))
 				m.set_shader_parameter("deep", Color(0.25, 0.04, 0.01))
 				m.set_shader_parameter("lava", 1.0)
-				depth = 0.2
 			_:
 				m.shader = WATER_SHADER
 				m.set_shader_parameter("shallow", WorldStyle.col(t.style, "liquid.shallow", Color(0.16, 0.34, 0.36)))
@@ -103,7 +102,7 @@ static func _liquids(t: TerrainRenderer, root: Node3D) -> void:
 		var st := SurfaceTool.new()
 		st.begin(Mesh.PRIMITIVE_TRIANGLES)
 		for c: Vector2i in by_tag[tag]:
-			var y := t.top_y(c) + depth
+			var y := t.top_y(c) - TerrainRenderer.LIQUID_SURFACE
 			var pts := t.cell_corners(c, y, -0.02)
 			var center := t.map.grid.to_world(c) + Vector3.UP * y
 			for i in range(pts.size()):
@@ -172,20 +171,22 @@ static func _rough(t: TerrainRenderer, root: Node3D) -> void:
 	var gstyle := str(WorldStyle.value(t.style, "ground.style", "grass"))
 	var look := str(WorldStyle.value(t.style, "flora.rough", ROUGH.get(gstyle, "stones")))
 	var stone := WorldStyle.col(t.style, "flora.stones", Color(0.5, 0.48, 0.45))
-	var chunks: Array = [[], [], []]
+	var chunks: Array = [[], [], [], []]
 	var sticks: Array = []
 	for c in t.map.cells():
 		if t.surface(c) != TerrainRenderer.KIND_ROUGH or t.structure_cells.has(c):
 			continue
 		var key := "r" + str(c)
-		var n := 7 if look in ["rubble", "scree"] else 5
+		var here := "rubble" if t.map.column(c).has_tag("rubble") else look
+		var n := 7 if here in ["rubble", "scree"] else 5
 		for i in range(n):
 			var p := t.random_point(c, key, i, 0.8)
 			var s := 0.07 + 0.11 * WorldRand.f(key, i + 20)
-			var flat := 0.45 if look != "ice" else 0.6
+			var flat := 0.45 if here != "ice" else 0.6
 			var b := Basis(Vector3.UP, WorldRand.f(key, i + 30) * TAU) * Basis(Vector3.RIGHT, (WorldRand.f(key, i + 40) - 0.5) * 0.6)
-			chunks[i % 3].append(Transform3D(b.scaled(Vector3(s * 1.3, minf(s * flat, FLAT * 0.8), s)), p + Vector3.UP * s * 0.12))
-		if look == "rubble" and WorldRand.f(key, 99) < 0.6:
+			var bucket: int = i % 2 + (1 if here == "rubble" and look != "rubble" else 0)
+			chunks[bucket if here == look else 3].append(Transform3D(b.scaled(Vector3(s * 1.3, minf(s * flat, FLAT * 0.8), s)), p + Vector3.UP * s * 0.12))
+		if here == "rubble" and WorldRand.f(key, 99) < 0.6:
 			var p := t.random_point(c, key, 98, 0.6)
 			sticks.append(Transform3D(Basis(Vector3.UP, WorldRand.f(key, 97) * TAU) * Basis(Vector3.FORWARD, 1.2), p + Vector3.UP * 0.05))
 	var col := stone
@@ -200,6 +201,8 @@ static func _rough(t: TerrainRenderer, root: Node3D) -> void:
 	for i in range(3):
 		var tint := col.darkened(0.12 * i) if look != "rubble" or i < 2 else Color(0.3, 0.29, 0.28)
 		multi(root, "Rough", Flora.rock(tint, 10 + i), chunks[i], mat, true)
+	# Rubble from broken structures on otherwise natural ground.
+	multi(root, "Rubble", Flora.rock(WorldStyle.col(t.style, "ground.wall", Color(0.55, 0.52, 0.48)), 13), chunks[3], mat, true)
 	if not sticks.is_empty():
 		var rebar := MeshKit.mech_material(Color(0.35, 0.2, 0.12), 0.5, 0.7, Color.BLACK, false)
 		multi(root, "Rebar", MeshKit.cylinder(0.012, 0.35, 4), sticks, rebar, false)

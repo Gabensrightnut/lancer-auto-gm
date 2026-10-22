@@ -75,24 +75,25 @@ static func _particles(points: PackedVector3Array, amount: int, life: float) -> 
 
 
 static func _flames(points: PackedVector3Array, hot: Color) -> CPUParticles3D:
-	var p := _particles(points, mini(points.size() * 6, 900), 0.7)
+	var p := _particles(points, mini(points.size() * 10, 1500), 0.8)
 	p.name = "Flames"
 	p.direction = Vector3.UP
-	p.spread = 12.0
-	p.gravity = Vector3(0, 0.6, 0)
-	p.initial_velocity_min = 0.15
-	p.initial_velocity_max = 0.45
-	p.scale_amount_min = 0.6
-	p.scale_amount_max = 1.2
+	p.spread = 8.0
+	p.gravity = Vector3(0, 0.5, 0)
+	p.initial_velocity_min = 0.2
+	p.initial_velocity_max = 0.5
+	p.scale_amount_min = 0.5
+	p.scale_amount_max = 1.0
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_POINTS
 	var curve := Curve.new()
 	curve.add_point(Vector2(0, 0.5))
 	curve.add_point(Vector2(0.3, 1.0))
 	curve.add_point(Vector2(1, 0.1))
 	p.scale_amount_curve = curve
-	p.color_ramp = _ramp([[0.0, Color(1, 0.95, 0.7, 0.0)], [0.15, Color(1, 0.85, 0.5, 0.9)], [0.5, Color(hot.r, hot.g, hot.b, 0.7)], [1.0, Color(hot.r * 0.5, hot.g * 0.2, 0.0, 0.0)]])
+	p.color_ramp = _ramp([[0.0, Color(1, 0.9, 0.6, 0.0)], [0.12, Color(1, 0.75, 0.35, 0.55)], [0.45, Color(hot.r, hot.g, hot.b, 0.4)], [1.0, Color(hot.r * 0.4, hot.g * 0.15, 0.0, 0.0)]])
 	var q := QuadMesh.new()
-	q.size = Vector2(0.28, 0.4)
-	q.material = _quad_material(Color(2.2, 2.0, 1.8), true)
+	q.size = Vector2(0.16, 0.3)
+	q.material = _quad_material(Color(1.3, 1.15, 1.0), true)
 	p.mesh = q
 	return p
 

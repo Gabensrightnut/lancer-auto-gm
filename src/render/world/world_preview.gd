@@ -42,6 +42,9 @@ func screenshot_stage(tag: String) -> void:
 			"alien":
 				map = DemoMap.build_alien(shape)
 				kit = "alien_wilds"
+			"truth":
+				map = DemoMap.build_showcase(shape)
+				kit = "grassy_hills"
 			_:
 				map = DemoMap.build(shape)
 				kit = "urban_ruins"
@@ -59,7 +62,17 @@ func screenshot_stage(tag: String) -> void:
 	var span := maxf(hi.x - lo.x, hi.z - lo.z)
 	var t := view.tactical
 	view.terrain.set_grid_visible(true)
+	if "," in cam:
+		# Custom camera: "x,z,distance,pitch,yaw[,grid]".
+		var v := cam.split(",")
+		t.look_at_point(Vector3(float(v[0]), 1.0, float(v[1])), float(v[2]))
+		t.pitch = float(v[3])
+		t.yaw = float(v[4])
+		view.terrain.set_grid_visible(v.size() < 6 or v[5] != "nogrid")
+		cam = "custom"
 	match cam:
+		"custom":
+			pass
 		"close":
 			t.look_at_point(mid + Vector3(-span * 0.12, 1.0, span * 0.08), 11.0)
 			t.pitch = -30
@@ -69,6 +82,24 @@ func screenshot_stage(tag: String) -> void:
 			t.look_at_point(mid + Vector3(0, 3.0, 0), span * 0.55)
 			t.pitch = -8
 			t.yaw = 30
+		"break":
+			# Knock down the destructible wall and watch it fall apart.
+			var old := {}
+			var cells: Array = []
+			for c in map.cells():
+				if map.column(c).has_tag(BattleMap.TAG_DESTRUCTIBLE):
+					old[c] = map.column(c).ground
+					cells.append(c)
+					map.column(c).ground = 0
+					map.column(c).tags = PackedStringArray(["difficult", "rubble"])
+			view.terrain.break_cells(cells, old)
+			t.look_at_point(mid + Vector3(-4.0, 0.5, 2.0), 8.0)
+			t.pitch = -30
+			t.yaw = -10
+			t.snap()
+			for i in range(18):
+				await get_tree().process_frame
+			return
 		"top":
 			t.look_at_point(mid, span * 1.25)
 			t.pitch = -80

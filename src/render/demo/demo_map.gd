@@ -133,3 +133,36 @@ static func build_alien(shape: GridLayout.Shape, size: int = HILLS_SIZE) -> Batt
 			tags = PackedStringArray(["difficult"])
 		map.set_column(cell, ground, tags)
 	return map
+
+
+# --- Rules showcase ----------------------------------------------------------------------
+
+## A small board with one of every terrain kind, to check that each looks like what the
+## rules say it is: woods (soft cover + difficult), rough ground (difficult), fire
+## (dangerous), a chasm and a sheer spire (impassable), destructible walls, a rock outcrop,
+## a river (difficult + water), a bridge with open space under it, and a terrace.
+static func build_showcase(shape: GridLayout.Shape) -> BattleMap:
+	var map := BattleMap.flat(shape, 16, 14 if shape == GridLayout.Shape.HEX else 12)
+	var areas := [
+		# [x0, z0, x1, z1, ground, tags, gap_bottom, gap_top]
+		[0.0, 0.0, 16.0, 3.0, 1, [], 0, 0],
+		[1.0, 4.0, 4.0, 7.0, 0, ["soft_cover", "difficult", "woods"], 0, 0],
+		[5.0, 4.0, 7.5, 6.5, 0, ["difficult"], 0, 0],
+		[8.5, 4.0, 10.5, 6.0, 0, ["dangerous"], 0, 0],
+		[11.5, 4.0, 14.0, 6.5, 0, ["impassable", "chasm"], 0, 0],
+		[14.5, 7.0, 15.5, 8.0, 3, ["impassable", "rock"], 0, 0],
+		[1.0, 8.5, 4.5, 9.4, 1, ["destructible", "wall"], 0, 0],
+		[5.5, 8.0, 7.0, 10.0, 2, ["rock"], 0, 0],
+		[0.0, 10.4, 16.0, 11.5, 0, ["difficult", "water"], 0, 0],
+		[8.0, 9.0, 9.6, 12.0, 1, [], 0, 0],
+		[8.0, 10.4, 9.6, 11.5, 1, [], 0, 1],
+		[10.5, 7.5, 13.0, 9.0, 2, [], 0, 0],
+	]
+	for cell in map.cells():
+		var p := map.grid.to_world(cell)
+		for b: Array in areas:
+			if p.x >= b[0] and p.x < b[2] and p.z >= b[1] and p.z < b[3]:
+				var col := map.set_column(cell, int(b[4]), PackedStringArray(b[5]))
+				col.gap_bottom = int(b[6])
+				col.gap_top = int(b[7])
+	return map

@@ -28,6 +28,7 @@ uniform float wetness = 0.0;
 varying vec3 wpos;
 varying vec4 vcol;
 varying float top_y;
+varying float breakable;
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 p) {
@@ -72,6 +73,7 @@ void vertex() {
 	lnrm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 	vcol = COLOR;
 	top_y = UV2.y;
+	breakable = UV2.x;
 }
 
 // Layered stone: warped horizontal strata with blocky fractures.
@@ -233,6 +235,7 @@ void fragment() {
 			col = wall_col * (0.8 + 0.3 * n3) * (1.0 - 0.3 * seam);
 			col *= 1.0 - 0.25 * (1.0 - smoothstep(0.0, 0.3, vcol.a));
 			relief = n3 * 0.5 - seam;
+			rough = 0.95;
 		} else {
 			// Chasm floor: nearly black, fogged.
 			col = vec3(0.02, 0.018, 0.02);
@@ -293,6 +296,15 @@ void fragment() {
 		// Ambient darkening toward the foot of tall walls.
 		col *= 0.62 + 0.38 * smoothstep(-0.6, 1.6, wpos.y - (top_y - 3.0));
 		bump = 1.4;
+	}
+	// Destructible terrain: a web of deep cracks and chipped, lighter edges.
+	if (breakable > 0.5) {
+		vec2 cp = top ? wpos.xz * 1.3 : vec2(hcoord * 1.3, wpos.y * 1.1);
+		float web = smoothstep(0.05, 0.0, cracks(cp)) * smoothstep(0.3, 0.55, fbm3(cp * 0.8 + 2.0));
+		float chip = smoothstep(0.12, 0.0, top_y - wpos.y) * smoothstep(0.55, 0.7, fbm3(cp * 3.0));
+		col = mix(col, col * 0.25, web);
+		col = mix(col, col * 1.35 + 0.05, chip);
+		relief -= web * 0.6;
 	}
 	col *= 0.92 + 0.16 * vcol.g;
 	col *= 1.0 - 0.6 * vcol.b;

@@ -19,6 +19,9 @@ const WORLD_SHADER := preload("res://src/render/shaders/terrain_world.gdshader")
 const BASE_DEPTH := 0.6
 ## How deep an impassable chasm looks.
 const CHASM_DEPTH := 3.0
+## Liquid beds sit this far below the cell's ground; the surface is just under ground level.
+const LIQUID_SINK := 0.35
+const LIQUID_SURFACE := 0.07
 ## Surface kinds, stored in vertex color red (kind / 16) for the terrain shader.
 const KIND_GROUND := 0
 const KIND_ROUGH := 1
@@ -106,7 +109,11 @@ func top_y(cell: Vector2i) -> float:
 
 ## Where a cell's visible floor is: its ground, or the bottom of a chasm.
 func floor_y(cell: Vector2i) -> float:
-	return -CHASM_DEPTH if is_chasm(cell) else top_y(cell)
+	if is_chasm(cell):
+		return -CHASM_DEPTH
+	if liquid_of(cell) != "":
+		return top_y(cell) - LIQUID_SINK
+	return top_y(cell)
 
 
 ## Cell outline corners in world space at height y.
@@ -186,7 +193,7 @@ func _spans(cell: Vector2i) -> Array[Vector2]:
 	if is_chasm(cell):
 		out.append(Vector2(_bottom, -CHASM_DEPTH))
 		return out
-	var top := col.ground * GridLayout.LEVEL_HEIGHT
+	var top := floor_y(cell)
 	if col.gap_top > 0 and col.gap_top > col.gap_bottom:
 		out.append(Vector2(_bottom, col.gap_bottom * GridLayout.LEVEL_HEIGHT))
 		if col.gap_top < col.ground:

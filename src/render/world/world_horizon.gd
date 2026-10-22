@@ -15,8 +15,16 @@ static func build(t: TerrainRenderer, root: Node3D) -> void:
 	var land := str(hz.get("land", "hills"))
 	var b := t.bounds(0.0)
 	var edge := _edge_sampler(t, b)
-	var height_fn := func(x: float, z: float) -> float: return _height(x, z, b, edge, land, float(hz.get("land_height", 8.0)))
+	var rivers := _rivers(t, b)
+	var height_fn := func(x: float, z: float) -> float:
+		var h := _height(x, z, b, edge, land, float(hz.get("land_height", 8.0)))
+		for r: Dictionary in rivers:
+			var k := _carve(r, x, z)
+			if k > 0.0:
+				h = lerpf(h, float(r["y"]) - 0.35, k)
+		return h
 	_land(t, root, b, height_fn)
+	_river_water(t, root, rivers)
 	_forest(t, root, b, height_fn, float(hz.get("forest", 0.0)))
 	var far_kind := str(hz.get("far", "mountains"))
 	if far_kind in ["mountains", "mesas", "volcanoes"]:
@@ -38,6 +46,121 @@ static func build(t: TerrainRenderer, root: Node3D) -> void:
 		_storm(root, b, t.style)
 
 
+## Liquids that reach the board's edge carry on outside: a meandering channel for each run
+## of edge cells on one side. Returns [{pts: Array[Vector2], width, y, kind}].
+static func _rivers(t: TerrainRenderer, b: Rect2) -> Array:
+	var sides := {}
+	for c in t.map.cells():
+		var l := t.liquid_of(c)
+		if l == "":
+			continue
+		var open := false
+		for n in t.map.grid.neighbors(c):
+			if not t.map.has_cell(n):
+				open = true
+				break
+		if not open:
+			continue
+		var p := t.map.grid.to_world(c)
+		var d := [p.x - b.position.x, b.end.x - p.x, p.z - b.position.y, b.end.y - p.z]
+		var side := 0
+		for i in range(4):
+			if d[i] < d[side]:
+				side = i
+		if d[side] > 1.0:
+			continue
+		var key := "%d|%s" % [side, l]
+		if not sides.has(key):
+			sides[key] = []
+		(sides[key] as Array).append([c, p])
+	var out: Array = []
+	var dirs := [Vector2(-1, 0), Vector2(1, 0), Vector2(0, -1), Vector2(0, 1)]
+	for key: String in sides:
+		var side := int(key.split("|")[0])
+		var along_x := side >= 2
+		var list: Array = sides[key]
+		list.sort_custom(func(a: Array, c: Array) -> bool: return ((a[1] as Vector3).x if along_x else (a[1] as Vector3).z) < ((c[1] as Vector3).x if along_x else (c[1] as Vector3).z))
+		# Split into runs of neighboring cells.
+		var runs: Array = [[list[0]]]
+		for i in range(1, list.size()):
+			var prev: Vector3 = (runs[-1] as Array)[-1][1]
+			var cur: Vector3 = list[i][1]
+			if (cur.x - prev.x if along_x else cur.z - prev.z) > 1.3:
+				runs.append([])
+			(runs[-1] as Array).append(list[i])
+		for run: Array in runs:
+			var lo: Vector3 = run[0][1]
+			var hi: Vector3 = run[-1][1]
+			var mid := (lo + hi) * 0.5
+			var width := (hi.x - lo.x if along_x else hi.z - lo.z) + 1.0
+			var dir: Vector2 = dirs[side]
+			var lateral := Vector2(dir.y, -dir.x)
+			var start := Vector2(mid.x, mid.z)
+			match side:
+				0: start.x = b.position.x - 0.5
+				1: start.x = b.end.x + 0.5
+				2: start.y = b.position.y - 0.5
+				_: start.y = b.end.y + 0.5
+			var pts: Array[Vector2] = []
+			var seed := WorldRand.f(key, run.size()) * 10.0
+			for i in range(40):
+				var dist := i * 2.0
+				var wiggle := sin(dist * 0.07 + seed) * minf(dist * 0.25, 7.0) + sin(dist * 0.19 + seed * 2.0) * minf(dist * 0.1, 2.0)
+				pts.append(start - dir * 0.6 + dir * dist + lateral * wiggle)
+			var c0: Vector2i = run[0][0]
+			out.append({"pts": pts, "width": width, "y": t.top_y(c0) - TerrainRenderer.LIQUID_SURFACE, "kind": t.liquid_of(c0),
+				"box": _poly_box(pts).grow(width * 0.5 + 3.0)})
+	return out
+
+
+static func _poly_box(pts: Array[Vector2]) -> Rect2:
+	var r := Rect2(pts[0], Vector2.ZERO)
+	for p in pts:
+		r = r.expand(p)
+	return r
+
+
+## How much a point is carved into a river channel: 1 in the bed, 0 past the banks.
+static func _carve(r: Dictionary, x: float, z: float) -> float:
+	var q := Vector2(x, z)
+	if not (r["box"] as Rect2).has_point(q):
+		return 0.0
+	var pts: Array[Vector2] = r["pts"]
+	var best := INF
+	for i in range(pts.size() - 1):
+		best = minf(best, Geometry2D.get_closest_point_to_segment(q, pts[i], pts[i + 1]).distance_to(q))
+	var half := float(r["width"]) * 0.5
+	return 1.0 - smoothstep(half - 0.1, half + 2.2, best)
+
+
+## Water ribbons along the river channels.
+static func _river_water(t: TerrainRenderer, root: Node3D, rivers: Array) -> void:
+	for r: Dictionary in rivers:
+		var pts: Array[Vector2] = r["pts"]
+		var half := float(r["width"]) * 0.5 + 0.35
+		var y := float(r["y"])
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		for i in range(pts.size() - 1):
+			var d0 := (pts[i + 1] - pts[i]).normalized()
+			var d1 := (pts[mini(i + 2, pts.size() - 1)] - pts[i + 1]).normalized() if i + 2 < pts.size() else d0
+			var n0 := Vector2(-d0.y, d0.x) * half
+			var n1 := Vector2(-d1.y, d1.x) * half
+			var a := Vector3(pts[i].x - n0.x, y, pts[i].y - n0.y)
+			var bb := Vector3(pts[i].x + n0.x, y, pts[i].y + n0.y)
+			var c := Vector3(pts[i + 1].x + n1.x, y, pts[i + 1].y + n1.y)
+			var d := Vector3(pts[i + 1].x - n1.x, y, pts[i + 1].y - n1.y)
+			MeshKit.add_quad(st, a, bb, c, d, Vector3.UP)
+		var mi := MeshInstance3D.new()
+		mi.name = "River"
+		mi.mesh = st.commit()
+		var liquid := t.find_child("Liquid_" + str(r["kind"]), true, false) as MeshInstance3D
+		if liquid:
+			mi.material_override = liquid.material_override
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(mi, true)
+
+
 ## Returns a function giving the ground height at the nearest board cell to (x, z).
 static func _edge_sampler(t: TerrainRenderer, b: Rect2) -> Callable:
 	var cache := {}
@@ -47,14 +170,16 @@ static func _edge_sampler(t: TerrainRenderer, b: Rect2) -> Callable:
 		var cell := t.map.grid.from_world(Vector3(cx, 0, cz))
 		if cache.has(cell):
 			return cache[cell]
-		var h := 0.0
-		if t.map.has_cell(cell):
-			h = t.top_y(cell)
-		else:
-			for n in t.map.grid.neighbors(cell):
-				if t.map.has_cell(n):
-					h = t.top_y(n)
-					break
+		# The lowest ground among this edge cell and its neighbors, so a lone pillar or wall
+		# at the edge doesn't drag the land up into a ramp.
+		var h := INF
+		var around: Array[Vector2i] = [cell]
+		around.append_array(t.map.grid.neighbors(cell))
+		for n in around:
+			if t.map.has_cell(n):
+				h = minf(h, maxf(t.floor_y(n), 0.0))
+		if h == INF:
+			h = 0.0
 		cache[cell] = h
 		return h
 
@@ -328,11 +453,7 @@ static func _volcano_glow(root: Node3D, pts: Array, amp: float, hot: Color) -> v
 		m.vertex_color_use_as_albedo = true
 		q.material = m
 		smoke.mesh = q
-		var g := Gradient.new()
-		g.set_color(0, Color(hot.r * 1.5, hot.g, hot.b * 0.5, 0.7))
-		g.add_point(0.25, Color(0.2, 0.15, 0.14, 0.5))
-		g.set_color(g.get_point_count() - 1, Color(0.15, 0.13, 0.13, 0.0))
-		smoke.color_ramp = g
+		smoke.color_ramp = WorldHazards._ramp([[0.0, Color(hot.r * 1.5, hot.g, hot.b * 0.5, 0.7)], [0.25, Color(0.2, 0.15, 0.14, 0.5)], [1.0, Color(0.15, 0.13, 0.13, 0.0)]])
 		smoke.visibility_aabb = AABB(Vector3(-200, -20, -200), Vector3(400, 300, 400))
 		root.add_child(smoke)
 
