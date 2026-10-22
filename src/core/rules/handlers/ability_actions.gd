@@ -272,6 +272,10 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				events.append_array(Attacks.attack(state, u, Weapons.find(u, "cbi:0"), target, {"fired_by_rule": true}))
 			"jackhammer":
 				events.append_array(TalentRules.jackhammer(state, u, target))
+			"last_argument":
+				# Hacker 3: burn equal to the target's current heat.
+				if Combat.is_present(target) and target.heat > 0:
+					events.append_array(Combat.deal_damage(state, target, [{"type": "Burn", "amount": target.heat}], {"source": u.id}))
 			"covering_fire":
 				events.append_array(TalentRules.covering_fire(state, u, TalentRules.covering_targets(state, u, params)))
 			"hacked":

@@ -73,6 +73,10 @@ extends RefCounted
 ##                           against the mark (Exemplar 2)
 ##   spotter_lock            end of its turn, if it didn't move and took Lock On: a free Lock On
 ##                           (Spotter 2)
+##   drone_pulse             1/round, an attack consuming Lock On: hostiles within 1 of each of its
+##                           drones take 1d6 energy, once each (Drone Commander 2)
+##   storm_effects           1/round, a Launcher hit with params.storm lightning|thunder
+##                           (Stormbringer 2)
 ##   prowl                   on its own turn: Hidden isn't lost to line of sight or leaving cover,
 ##                           Hide in plain sight, pass through enemies (Infiltrator 1)
 
@@ -395,6 +399,28 @@ static func on_hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		for o: Unit in state.units.values():
 			if o != target and o != attacker and o.side != attacker.side and Combat.is_present(o) and Sight.unit_distance(state, attacker, o) <= reach:
 				events.append_array(Combat.deal_damage(state, o, [{"type": "Kinetic", "amount": 3}], {"source": attacker.id}))
+	if w.get("type", "") == "Launcher" and Effects.has(attacker, "storm_effects") and String(opts.get("storm", "")) in ["lightning", "thunder"] and _round_ok(state, attacker, "storm_effects"):
+		# Stormbringer 2: Lightning (Hull save or knocked 3 away; the attacker is knocked back 3)
+		# or Thunder (Burst 2 around the target: Agility save or knocked back 1 from it).
+		_use_round(state, attacker, "storm_effects")
+		if String(opts["storm"]) == "lightning":
+			var save := Combat.skill_check(state, target, "hull", "Save vs Lightning", attacker.save_target, 0, 0, [], true)
+			events.append({"type": "skill_check", "unit": target.id, "check": save, "rule_ref": REF})
+			var from := attacker.cell
+			if not save["success"]:
+				events.append_array(Attacks.knock_back(state, target, from, 3, attacker))
+			events.append_array(Attacks.knock_back(state, attacker, target.cell, 3, attacker))
+		else:
+			var ids: Array = state.units.keys()
+			ids.sort()
+			for id: String in ids:
+				var o := state.unit(id)
+				if o == target or not Combat.is_present(o) or o.kind == Unit.KIND_DEPLOYABLE or Sight.unit_distance(state, o, target) > 2:
+					continue
+				var save := Combat.skill_check(state, o, "agility", "Save vs Thunder", attacker.save_target, 0, 0, [], true)
+				events.append({"type": "skill_check", "unit": o.id, "check": save, "rule_ref": REF})
+				if not save["success"]:
+					events.append_array(Attacks.knock_back(state, o, target.cell, 1, attacker))
 	if lock_on and w.get("type", "") == "Launcher" and Effects.has(attacker, "seismic_deluge") and _round_ok(state, attacker, "seismic_deluge"):
 		_use_round(state, attacker, "seismic_deluge")
 		events.append_array(Combat.add_status(state, target, "Prone", attacker.id))
@@ -647,6 +673,8 @@ static func after_attack(state: GameState, attacker: Unit, w: Dictionary, target
 			events.append({"type": "attack_rerolled", "attacker": attacker.id, "target": other.id, "source": "Executioner", "rule_ref": REF})
 			events.append_array(Attacks.attack(state, attacker, w, other, {"fired_by_rule": true, "skip_spend": true, "reroll": true}))
 	events.append_array(_exemplar_overwatch(state, attacker, target))
+	if opts.get("lock_on_consumed", false) and Effects.has(attacker, "drone_pulse") and _round_ok(state, attacker, "drone_pulse"):
+		events.append_array(_drone_pulse(state, attacker))
 	if result == "miss" or not Combat.is_present(target):
 		return events
 	if kind == Attacks.KIND_RANGED and Effects.has(target, "return_fire") and _round_ok(state, target, "return_fire") and Combat.is_present(attacker) \
@@ -677,6 +705,29 @@ static func after_attack(state: GameState, attacker: Unit, w: Dictionary, target
 					Reactions._mark_used(o, "flank", state)
 					events.append_array(Attacks.attack(state, o, fw, target, {"reaction": true, "half_damage": true}))
 				break
+	return events
+
+
+## Drone Commander 2: hostiles within Burst 1 of each of its drones take 1d6 energy, each
+## character once. PROVISIONAL: "characters of your choice" are the hostile ones; one roll.
+static func _drone_pulse(state: GameState, u: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var drones: Array = state.units.values().filter(func(o: Unit) -> bool: return o.counters.get("owner", "") == u.id and String(o.counters.get("deploy_type", "")) == "Drone" and Combat.is_present(o))
+	if drones.is_empty():
+		return events
+	_use_round(state, u, "drone_pulse")
+	var roll := state.dice.roll("1d6")
+	events.append({"type": "effect_triggered", "unit": u.id, "effect": "Drone Commander: pulse", "target": u.id, "roll": roll, "rule_ref": REF})
+	var hit := {}
+	var ids: Array = state.units.keys()
+	ids.sort()
+	for d: Unit in drones:
+		for id: String in ids:
+			var o := state.unit(id)
+			if hit.has(id) or o.side == u.side or not Combat.is_present(o) or o.kind == Unit.KIND_DEPLOYABLE or Sight.unit_distance(state, d, o) > 1:
+				continue
+			hit[id] = true
+			events.append_array(Combat.deal_damage(state, o, [{"type": "Energy", "amount": int(roll["total"])}], {"source": u.id}))
 	return events
 
 

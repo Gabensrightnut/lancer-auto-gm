@@ -924,5 +924,12 @@
   ],
   "t_gunslinger:Return Fire": [],
   "t_bonded:Intercede": [],
-  "t_tactician:Flank": []
+  "t_tactician:Flank": [],
+  "t_hacker:Last Argument of Kings": [
+    {
+      "op": "last_argument",
+      "tech_attack": true,
+      "label": "Last Argument of Kings"
+    }
+  ]
 }

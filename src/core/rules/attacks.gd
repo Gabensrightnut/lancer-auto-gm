@@ -481,7 +481,9 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		events.append_array(AISystems.ark_backlash(state, attacker, target, w))
 	if not opts.get("reaction", false):
 		events.append_array(AISystems.scylla(state, attacker, target))
-	events.append_array(TalentRules.after_attack(state, attacker, w, target, kind, result, opts))
+	var aopts := opts.duplicate()
+	aopts["lock_on_consumed"] = p["lock_on"]
+	events.append_array(TalentRules.after_attack(state, attacker, w, target, kind, result, aopts))
 	Effects.attacked(state, attacker, String(opts.get("action", "attack")))
 	return events
 

@@ -257,3 +257,22 @@ func test_spotter_free_lock_on() -> void:
 	t.statuses.erase("Lock On")
 	F.act(e, s, "end_turn", "a")
 	expect(t.has_status("Lock On"), "a free Lock On at the end of a still turn")
+
+
+func test_last_argument_of_kings() -> void:
+	_setup({"t_hacker": 3}, [{"weapons": ["mw_assault_rifle"]}], Vector2i(3, 0))
+	t.heat = 4
+	F.load_dice(s, [19])
+	var out := F.act(e, s, "activate", "a", {"ability": _key("Last Argument of Kings"), "target": "t"})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(t.burn, 4, "burn equal to its heat")
+
+
+func test_stormbringer_thunder() -> void:
+	_setup({"t_stormbringer": 2}, [{"weapons": ["mw_rocket_propelled_grenade"]}], Vector2i(5, 0))
+	var near := F.mech(s, "near", "enemies", Vector2i(7, 1))
+	a.loadout["weapons"] = [F.weapon("0:0", "Rocket", "Main", "Launcher", "1d6", 10)]
+	F.load_dice(s, [15, 3, 3, 2])
+	var out := F.act(e, s, "skirmish", "a", {"weapon": "0:0", "target": "t", "storm": "thunder"})
+	expect(F.ok(out), F.reason(out))
+	expect(F.events_of(out, "skill_check").any(func(x: Dictionary) -> bool: return x["unit"] == "near"), "Thunder: Agility saves around the target")

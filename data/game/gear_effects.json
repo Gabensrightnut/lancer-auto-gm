@@ -312,6 +312,11 @@
         "kind": "drone_hp_bonus",
         "value": 5
       }
+    ],
+    "2": [
+      {
+        "kind": "drone_pulse"
+      }
     ]
   },
   "t_executioner": {
@@ -447,6 +452,11 @@
     "1": [
       {
         "kind": "seismic_deluge"
+      }
+    ],
+    "2": [
+      {
+        "kind": "storm_effects"
       }
     ]
   },
