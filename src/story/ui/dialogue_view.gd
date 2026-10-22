@@ -3,7 +3,7 @@ extends Control
 ## Pop-up conversation over the live 3D scene, in the style of Lancer Tactics (our own art):
 ## the speaking pilot's portrait card on the left, the other person's on the right, a speech
 ## bubble from whoever is talking, and 4-6 replies to pick from. Click or Space advances;
-## 1-6 pick a reply. Shows who decides (the speaking pilot's player, or a squad vote) and
+## 1-8 pick a reply. Shows who decides (the speaking pilot's player, or a squad vote) and
 ## what AI squadmates chose and why. A log (L) scrolls back through every conversation.
 ## Reading options (StorySettings, per player): text size, and skipping lines already read.
 ##
@@ -354,25 +354,32 @@ func _draw_tail() -> void:
 
 
 func _draw_radio() -> void:
-	var r := Rect2(Vector2.ZERO, _radio.size)
-	var col := StoryStyle.RED if story != null and bool(story.dialogue.get("jammed", false)) else Color(0.3, 0.95, 0.55)
-	_radio.draw_rect(r, Color(col, 0.9), false, 2.0)
-	_radio.draw_rect(Rect2(0, 0, r.size.x, 26), Color(0.0, 0.06, 0.03, 0.85))
+	draw_comms(_radio, _radio.size, story != null and bool(story.dialogue.get("jammed", false)), _flicker)
+
+
+## The comms frame (scanlines, static, flickering signal bars; red and full of static when
+## Jammed) drawn on `ci` over a `size` area. Shared with battle barks heard over the radio.
+static func draw_comms(ci: CanvasItem, size: Vector2, jammed: bool, flicker: float, header: float = 26.0) -> void:
+	var r := Rect2(Vector2.ZERO, size)
+	var col := StoryStyle.RED if jammed else Color(0.3, 0.95, 0.55)
+	ci.draw_rect(r, Color(col, 0.9), false, 2.0)
+	if header > 0.0:
+		ci.draw_rect(Rect2(0, 0, r.size.x, header), Color(0.0, 0.06, 0.03, 0.85))
 	# Scanlines over the portrait, and a little static.
-	var y := 30.0
+	var y := header + 4.0
 	while y < r.size.y:
-		_radio.draw_line(Vector2(4, y), Vector2(r.size.x - 4, y), Color(0, 0, 0, 0.28), 1.0)
+		ci.draw_line(Vector2(4, y), Vector2(r.size.x - 4, y), Color(0, 0, 0, 0.28), 1.0)
 		y += 3.0
 	var rng := RandomNumberGenerator.new()
-	rng.seed = int(_flicker * 30.0)
-	var n := 160 if story != null and bool(story.dialogue.get("jammed", false)) else 30
+	rng.seed = int(flicker * 30.0)
+	var n := 160 if jammed else 30
 	for i in range(n):
-		_radio.draw_rect(Rect2(rng.randf_range(4, r.size.x - 6), rng.randf_range(30, r.size.y - 4), 2, 1), Color(0.8, 1.0, 0.85, rng.randf_range(0.1, 0.5)))
+		ci.draw_rect(Rect2(rng.randf_range(4, r.size.x - 6), rng.randf_range(header + 4.0, r.size.y - 4), 2, 1), Color(0.8, 1.0, 0.85, rng.randf_range(0.1, 0.5)))
 	# Signal strength bars, flickering.
-	var bars := 4 if story != null and not bool(story.dialogue.get("jammed", false)) else 0
+	var bars := 0 if jammed else 4
 	for i in range(4):
-		var on := i < bars and (i < 3 or sin(_flicker * 9.0) > -0.2)
-		_radio.draw_rect(Rect2(r.size.x - 40 + i * 8, 20 - i * 4, 5, 2 + i * 4), Color(col, 0.95 if on else 0.18))
+		var on := i < bars and (i < 3 or sin(flicker * 9.0) > -0.2)
+		ci.draw_rect(Rect2(r.size.x - 40 + i * 8, maxf(header, 24.0) - 4 - i * 4, 5, 2 + i * 4), Color(col, 0.95 if on else 0.18))
 
 
 func _refresh_log() -> void:
@@ -469,7 +476,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 					choose(str(o["id"]))
 					get_viewport().set_input_as_handled()
 					return
-		elif k >= KEY_1 and k <= KEY_6:
+		elif k >= KEY_1 and k <= KEY_8:
 			var offered := Dialogue.offered(story)
 			var i := k - KEY_1
 			if i < offered.size():

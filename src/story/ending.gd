@@ -35,6 +35,9 @@ static func due(story: StoryState, campaign: Campaign) -> String:
 	var alive: Array = campaign.pilots.keys().filter(func(p: String) -> bool: return story.is_alive(p))
 	if alive.is_empty():
 		return "fallen"
+	# The main campaign ends with its final battle (CampaignScript).
+	if CampaignScript.active(campaign):
+		return "campaign" if str(CampaignScript.state(story).get("ending", "")) != "" else ""
 	var rec := arc_record(story)
 	if int(rec["won"]) + int(rec["lost"]) >= int(campaign.options.get("campaign_arcs", 3)):
 		return "arcs"
@@ -69,6 +72,8 @@ static func conclude(story: StoryState, campaign: Campaign, why: String) -> Arra
 		"fallen": story.dead.keys().map(func(p: String) -> String: return str(campaign.pilots.get(p, {}).get("callsign", "")))}
 	var ending := {"kind": kind, "label": d.get("kinds", {}).get(kind, kind), "title": title, "why": why if why != "" else "retired",
 		"summary": summary, "epilogues": epilogues, "name": campaign.name}
+	if CampaignScript.active(campaign):
+		CampaignScript.decorate(story, campaign, ending)
 	story.flags[KEY] = ending
 	story.phase = "ending"
 	story.add_log("The campaign is over: %s." % ending["label"])

@@ -87,6 +87,18 @@ func refresh() -> void:
 				f.tooltip_text = "Can't afford it? Take a job for the seller instead."
 				f.pressed.connect(func() -> void: _send({"type": "fight_for_it", "params": {"item": item, "pilot": _me()}}))
 				row.add_child(f)
+		if not Economy.communal(story):
+			var ex := HBoxContainer.new()
+			_box.add_child(ex)
+			var el := StoryStyle.label("Change money (only here):", 13, StoryStyle.DIM)
+			el.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			ex.add_child(el)
+			var b1 := StoryStyle.button("50 manna → %s" % Economy.currency(story), 13)
+			b1.pressed.connect(func() -> void: _send({"type": "exchange", "params": {"to_manna": false, "amount": 50}}))
+			ex.add_child(b1)
+			var b2 := StoryStyle.button("All %s → manna" % Economy.symbol(story), 13)
+			b2.pressed.connect(func() -> void: _send({"type": "exchange", "params": {"to_manna": true, "amount": Economy.local(story)}}))
+			ex.add_child(b2)
 		if int(Economy.wallet(story).get("salvage", 0)) > 0:
 			var sb := StoryStyle.button("Sell the salvage (%d manna)" % int(Economy.wallet(story)["salvage"]), 14)
 			sb.pressed.connect(func() -> void: _send({"type": "sell_salvage", "params": {}}))

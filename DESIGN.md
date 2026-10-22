@@ -743,6 +743,18 @@ Outcomes come from what players actually do in the world:
 - **The campaign remembers:** every branch, theft, insult or kindness changes who helps or
   hinders you later in the main campaign.
 
+### Other campaigns: a pirate career
+- Besides the main campaign and generated campaigns, players can pick other story lines. First:
+  **Pirate career**: the squad raids ships and stations for most of the game, with lots of fights
+  and quick leveling (by the book every mission gives +1 License Level, so short raids level you
+  fast, Core p.18). Union and corporate bounties escalate into the story: hunters, a bounty arc,
+  and an ending that depends on how far you went. Canon-consistent: piracy is a real threat in the
+  setting (Core p.126) and boarding a hostile ship is a book mission goal (Core p.42).
+- **Loot, selling it, and upgrading your own ship** (better parts, printer supplies, a bigger
+  ship) isn't in the book (it doesn't track money or ships), so it only works with house rules:
+  the wallet rule plus a new **"Your own ship"** house rule (a squad ship with upgrade slots).
+  Without them, raids pay out in Reserves, as the book does.
+
 ## House rules (toggles, all off by default)
 
 A **House Rules** page in settings lists optional rules as on/off switches that can be flipped

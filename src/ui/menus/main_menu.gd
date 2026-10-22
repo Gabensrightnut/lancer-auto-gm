@@ -65,6 +65,10 @@ func _ready() -> void:
 	join_button.pressed.connect(_show_join)
 	left.add_child(join_button)
 	left.add_child(codex_button)
+	var editor_button := MenuTheme.big_button("Map editor", "nested-hexagons")
+	editor_button.tooltip_text = "Build or change a battlefield: height, terrain, deployment zones and objectives. Save it, or play it right away."
+	editor_button.pressed.connect(func() -> void: MenuSession.go(self, "map_editor"))
+	left.add_child(editor_button)
 	var settings_button := MenuTheme.big_button("Settings", "system")
 	settings_button.pressed.connect(func() -> void:
 		MenuSession.back_to = "main"

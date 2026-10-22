@@ -60,7 +60,12 @@ static func resolve(kit: String) -> Dictionary:
 	style["landscape"] = land_id
 	style["culture"] = ""
 	if parts.size() > 1 and cults.has(parts[1]):
-		style = merge(style, (cults[parts[1]] as Dictionary).duplicate(true))
+		var cult := (cults[parts[1]] as Dictionary).duplicate(true)
+		var in_city: Dictionary = cult.get("in_city", {})
+		cult.erase("in_city")
+		style = merge(style, cult)
+		if bool(style.get("urban", false)) and not in_city.is_empty():
+			style = merge(style, in_city)  # the culture's own city: its sky, light and palette
 		style["culture"] = parts[1]
 		style["culture_name"] = (cults[parts[1]] as Dictionary).get("name", parts[1])
 		style["name"] = (lands[land_id] as Dictionary).get("name", land_id)

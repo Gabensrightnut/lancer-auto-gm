@@ -153,7 +153,8 @@
       "map_culture": "old_west",
       "landscapes": [
         "desert_mesas",
-        "grassy_hills"
+        "grassy_hills",
+        "city"
       ],
       "door_gap": 3.4
     },
@@ -232,7 +233,8 @@
       "map_culture": "medieval",
       "landscapes": [
         "grassy_hills",
-        "tundra"
+        "tundra",
+        "city"
       ]
     },
     "cyberpunk": {

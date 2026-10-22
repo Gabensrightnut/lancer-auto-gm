@@ -1,0 +1,15 @@
+{
+  "_comment": "House rule 'Origin perks' (your idea, not a book rule): small combat perks from a pilot's origin (pilot.origin, from the story session's origin customizer). employers: former employer name -> the manufacturer whose frames the pilot knows (frames.json 'source').",
+  "employers": {
+    "GMS": "GMS",
+    "General Massive Systems": "GMS",
+    "IPS-N": "IPS-N",
+    "IPS-Northstar": "IPS-N",
+    "SSC": "SSC",
+    "Smith-Shimano": "SSC",
+    "Smith-Shimano Corpro": "SSC",
+    "HORUS": "HORUS",
+    "HA": "HA",
+    "Harrison Armory": "HA"
+  }
+}

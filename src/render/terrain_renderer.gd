@@ -36,6 +36,9 @@ const KIND_BULKHEAD := 10
 const KIND_CONTAINER := 11
 const KIND_DECK := 12
 const KIND_MACHINERY := 13
+const KIND_ROAD := 14
+const KIND_FARM := 15
+const ROAD_STYLES := {"dirt": 0, "cobble": 1, "asphalt": 2, "panels": 3}
 ## Liquid look tags (the cell's rules come from its other tags, e.g. difficult/dangerous).
 const LIQUIDS := ["water", "toxic", "lava", "ice"]
 const GROUND_STYLES := {"grass": 0, "sand": 1, "snow": 2, "moss": 3, "paving": 4, "ash": 5, "deck": 6, "regolith": 7}
@@ -164,6 +167,8 @@ static func make_material(s: Dictionary) -> ShaderMaterial:
 	for k: String in pairs:
 		if g.has(k):
 			m.set_shader_parameter(pairs[k], WorldStyle.color(g[k]))
+	var road: String = str(WorldStyle.value(s, "architecture.street.road", g.get("road", "asphalt" if s.has("architecture") else "dirt")))
+	m.set_shader_parameter("road_style", ROAD_STYLES.get(road, 2))
 	for k: String in ["strata", "soil_depth", "wetness", "vein_strength", "columnar", "rim_strength", "rim_glow", "backdrop_fade"]:
 		if g.has(k):
 			m.set_shader_parameter(k, float(g[k]))
@@ -242,6 +247,10 @@ func surface(cell: Vector2i) -> int:
 		return KIND_CRYSTAL
 	if col.has_tag("rock") or (col.has_tag(BattleMap.TAG_IMPASSABLE) and col.ground > 0):
 		return KIND_ROCK
+	if col.has_tag("road") and not col.has_tag(BattleMap.TAG_DANGEROUS) and col.gap_top == 0:
+		return KIND_ROAD
+	if col.has_tag("farm"):
+		return KIND_FARM
 	if col.has_tag("bulkhead"):
 		return KIND_BULKHEAD
 	if col.has_tag("container"):
@@ -327,6 +336,11 @@ func _build_blocks() -> void:
 		var center := map.grid.to_world(cell)
 		var kind := surface(cell)
 		var variation := WorldRand.f(str(cell))
+		if kind == KIND_ROAD:
+			# Roads carry their direction for the lane markings (shader): along x, along z, crossing.
+			variation = 0.85 if col.has_tag("crossing") else (0.5 if col.has_tag("road_z") else 0.15)
+		elif kind == KIND_FARM:
+			variation = (0.75 if col.has_tag("dry") else 0.25) + 0.2 * WorldRand.f(str(cell), 3)
 		var base_col := Color(kind / 16.0, variation, 0.0, 1.0)
 		# UV2.x: 0 sturdy, 1 + damage fraction for destructible (the shader cracks it deeper).
 		var flags := 0.0
@@ -417,7 +431,8 @@ func _tri_colored(st: SurfaceTool, v: Array, alphas: Array, base: Color) -> void
 		col.a = alphas[k]
 		st.set_color(col)
 		st.set_normal(Vector3.UP)
-		st.set_uv(Vector2((v[k] as Vector3).x, (v[k] as Vector3).z))
+		# Tops: UV is the offset from the cell's center (for road markings).
+		st.set_uv(Vector2((v[k] as Vector3).x - a.x, (v[k] as Vector3).z - a.z))
 		st.add_vertex(v[k])
 
 

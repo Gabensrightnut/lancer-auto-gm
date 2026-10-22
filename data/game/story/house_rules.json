@@ -1,35 +1,188 @@
 {
   "_note": "Our own house rules (DESIGN.md 'House rules'): the user's ideas, previously parked because the book doesn't track them (CANON.md). All off by default; switchable at any time. Nothing of a rule shows while it's off, and turning one on mid-campaign starts it cleanly. Prices and amounts are our own numbers.",
   "rules": [
-    {"id": "hr_wallet", "name": "Tracked wallet", "source": "Your idea", "label": "Your idea, not a book rule",
-     "text": "The squad carries manna (Union's currency, Core p.10) and each world's local money. Food, drinks, lodging, travel, information, pilot supplies and repair kits have prices; patrons pay for jobs; salvage from a won fight can be sold. The book doesn't track money: by the book, manna is there in the story but nobody counts it."},
-    {"id": "hr_printers", "name": "Printer scarcity", "source": "Your idea", "label": "Your idea, not a book rule",
-     "text": "Some frontier worlds have no printer. A mech wrecked in battle stays wrecked until the squad reaches a world with a printer and pays for printer access (with the wallet on) or calls in a favor. By the book, printers are everywhere and Full Repair reprints a wrecked mech (Core p.31, p.82)."},
-    {"id": "hr_paid_travel", "name": "Paid travel", "source": "Your idea", "label": "Your idea, not a book rule",
-     "text": "Squads working for a company, Union or an order ride free; independents buy passage (manna with the wallet on, otherwise a favor owed). By the book travel is part of the story and has no cost."},
-    {"id": "hr_fight_for_it", "name": "Can't afford it? Fight for it", "source": "Your idea", "label": "Your idea, not a book rule",
-     "text": "When the squad can't pay for something, the seller offers a job instead: win it and you get what you wanted. Lose, and the deal is off, but you can come back and pay with salvage or money."},
-    {"id": "hr_survival", "name": "Food and water", "source": "Your idea", "label": "Your idea, not a book rule",
-     "text": "The squad needs food and water: every mission uses a day's rations for each pilot. Without them pilots go hungry: +1 Difficulty on skill checks out of the mech until they eat, and 1 damage after a second hungry mission. Buy, scrounge or get rations at a friendly hub. By the book there's no survival meter."}
+    {
+      "id": "hr_wallet",
+      "name": "Tracked wallet",
+      "source": "Your idea",
+      "label": "Your idea, not a book rule",
+      "text": "Every world has its own money, good only on that world: change it at a hub. Manna, Union's currency outside the Core (Core p.10), works everywhere, but what it buys depends on the world: a rich, well-supplied world gives you less for your manna than a poor frontier one. In the Union Core, which the book calls communal and post-capital (Core p.10), basics like food, drink and a bed cost nothing. Food, drinks, lodging, travel, information, pilot supplies and repair kits have prices; patrons pay for jobs; salvage from a won fight can be sold. The book doesn't track money: by the book, manna is there in the story but nobody counts it."
+    },
+    {
+      "id": "hr_printers",
+      "name": "Printer scarcity",
+      "source": "Your idea",
+      "label": "Your idea, not a book rule",
+      "text": "Some frontier worlds have no printer. A mech wrecked in battle stays wrecked until the squad reaches a world with a printer and pays for printer access (with the wallet on) or calls in a favor. By the book, printers are everywhere and Full Repair reprints a wrecked mech (Core p.31, p.82)."
+    },
+    {
+      "id": "hr_paid_travel",
+      "name": "Paid travel",
+      "source": "Your idea",
+      "label": "Your idea, not a book rule",
+      "text": "Squads working for a company, Union or an order ride free; independents buy passage (manna with the wallet on, otherwise a favor owed). By the book travel is part of the story and has no cost."
+    },
+    {
+      "id": "hr_fight_for_it",
+      "name": "Can't afford it? Fight for it",
+      "source": "Your idea",
+      "label": "Your idea, not a book rule",
+      "text": "When the squad can't pay for something, the seller offers a job instead: win it and you get what you wanted. Lose, and the deal is off, but you can come back and pay with salvage or money."
+    },
+    {
+      "id": "hr_survival",
+      "name": "Food and water",
+      "source": "Your idea",
+      "label": "Your idea, not a book rule",
+      "text": "The squad needs food and water: every mission uses a day's rations for each pilot. Without them pilots go hungry: +1 Difficulty on skill checks out of the mech until they eat, and 1 damage after a second hungry mission. Buy, scrounge or get rations at a friendly hub. By the book there's no survival meter."
+    }
   ],
   "wallet": {
-    "start_manna": 600, "start_local": 120,
-    "pay": {"default": 400, "rescue": 300, "escort_convoy": 450, "recover_cargo": 500, "data_heist": 600, "champion_duel": 500, "defend_town": 250, "standoff": 0, "trouble_followed": 0, "tutorial_drill": 0},
-    "salvage_per_kill": 40,
-    "rate": {"default": 4, "union_core": 1, "cyberpunk": 2, "retrofuturistic": 3, "frontier_colony": 5, "old_west": 6, "medieval_tech": 6, "east_asian": 3}
+    "start_manna": 600,
+    "start_local": 120,
+    "pay": {
+      "default": 400,
+      "rescue": 300,
+      "escort_convoy": 450,
+      "recover_cargo": 500,
+      "data_heist": 600,
+      "champion_duel": 500,
+      "defend_town": 250,
+      "standoff": 0,
+      "trouble_followed": 0,
+      "tutorial_drill": 0
+    },
+    "salvage_per_kill": 40
   },
-  "currencies": {"default": "scrip", "frontier_colony": "colony scrip", "old_west": "dollars", "medieval_tech": "crowns", "cyberpunk": "creds", "retrofuturistic": "credits", "east_asian": "yuan", "union_core": "manna"},
   "prices": {
-    "drink": {"name": "A round of drinks", "local": 6},
-    "food": {"name": "Food and water for the squad (2 days)", "local": 12, "rations": 2},
-    "lodging": {"name": "A room for the night (rest: half your HP back)", "local": 15},
-    "information": {"name": "Paying for information", "local": 30},
-    "supplies": {"name": "Pilot supplies (the Supplies reserve)", "manna": 120, "reserve": "reserve_supplies"},
-    "repair_kit": {"name": "A repair kit (custom reserve: patch up between fights)", "manna": 90, "custom": "Repair kit"},
-    "printer": {"name": "Printer access to reprint a wrecked mech", "manna": 300},
-    "passage_local": {"name": "Passage inside the system", "manna": 80},
-    "passage_gate": {"name": "Passage through the blink gate", "manna": 250}
+    "drink": {
+      "name": "A round of drinks",
+      "local": 6
+    },
+    "food": {
+      "name": "Food and water for the squad (2 days)",
+      "local": 12,
+      "rations": 2
+    },
+    "lodging": {
+      "name": "A room for the night (rest: half your HP back)",
+      "local": 15
+    },
+    "information": {
+      "name": "Paying for information",
+      "local": 30
+    },
+    "supplies": {
+      "name": "Pilot supplies (the Supplies reserve)",
+      "manna": 120,
+      "reserve": "reserve_supplies"
+    },
+    "repair_kit": {
+      "name": "A repair kit (custom reserve: patch up between fights)",
+      "manna": 90,
+      "custom": "Repair kit"
+    },
+    "printer": {
+      "name": "Printer access to reprint a wrecked mech",
+      "manna": 300
+    },
+    "passage_local": {
+      "name": "Passage inside the system",
+      "manna": 80
+    },
+    "passage_gate": {
+      "name": "Passage through the blink gate",
+      "manna": 250
+    }
   },
-  "survival": {"start_rations_per_pilot": 3, "free_restock_standing": 0, "harm_after_hungry": 2},
-  "printers": {"no_printer_chance": {"frontier_colony": 60, "old_west": 50, "medieval_tech": 50, "east_asian": 20, "retrofuturistic": 10, "cyberpunk": 0, "union_core": 0}}
+  "survival": {
+    "start_rations_per_pilot": 3,
+    "free_restock_standing": 0,
+    "harm_after_hungry": 2
+  },
+  "printers": {
+    "no_printer_chance": {
+      "frontier_colony": 60,
+      "old_west": 50,
+      "medieval_tech": 50,
+      "east_asian": 20,
+      "retrofuturistic": 10,
+      "cyberpunk": 0,
+      "union_core": 0
+    }
+  },
+  "currency_names": {
+    "default": [
+      "{world} scrip",
+      "{world} mark",
+      "{world} credit",
+      "{world} bit"
+    ],
+    "frontier_colony": [
+      "{world} scrip",
+      "{world} ration chit",
+      "{world} share"
+    ],
+    "old_west": [
+      "{world} dollar",
+      "{world} silver",
+      "{world} buck"
+    ],
+    "medieval_tech": [
+      "{world} crown",
+      "{world} sovereign",
+      "{world} shilling"
+    ],
+    "cyberpunk": [
+      "{world} cred",
+      "{world} chip",
+      "{world} token"
+    ],
+    "retrofuturistic": [
+      "{world} credit",
+      "{world} atom",
+      "{world} unit"
+    ],
+    "east_asian": [
+      "{world} yuan",
+      "{world} mon",
+      "{world} ryo"
+    ]
+  },
+  "wealth": {
+    "_note": "How well-off a world is, 1 (poor frontier) to 5 (rich): manna buys more on poor worlds and less on rich ones.",
+    "frontier_colony": [
+      1,
+      2
+    ],
+    "old_west": [
+      1,
+      3
+    ],
+    "medieval_tech": [
+      2,
+      3
+    ],
+    "east_asian": [
+      2,
+      4
+    ],
+    "retrofuturistic": [
+      3,
+      4
+    ],
+    "cyberpunk": [
+      3,
+      5
+    ],
+    "union_core": [
+      5,
+      5
+    ]
+  },
+  "communal_free": [
+    "drink",
+    "food",
+    "lodging"
+  ]
 }

@@ -143,8 +143,8 @@ func test_talking_offers_at_most_six_choices_and_respects_triggers() -> void:
 	while Dialogue.offered(s).is_empty() and Dialogue.is_open(s) and guard < 5:
 		e.submit(s, c, {"type": "dialogue_next", "seat": "p1"})
 		guard += 1
-	var ids: Array = Dialogue.offered(s).map(func(o: Dictionary) -> String: return o["id"])
-	expect(ids.size() >= 4 and ids.size() <= Dialogue.MAX_CHOICES, "4-6 choices, got %s" % [ids])
+	var ids: Array = Dialogue.offered(s).filter(func(o: Dictionary) -> bool: return not bool(o.get("extra", false))).map(func(o: Dictionary) -> String: return o["id"])
+	expect(ids.size() >= 4 and ids.size() <= Dialogue.MAX_CHOICES, "4-6 choices (plus the tone replies), got %s" % [ids])
 	expect(ids.has("charm"), "Ama has Charm, so the Charm option shows")
 	expect(not ids.has("pull_rank"), "no Pull Rank trigger, no Pull Rank option")
 	expect(ids.has("leave"), "leaving is always offered")

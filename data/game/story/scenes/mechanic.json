@@ -69,6 +69,28 @@
    "line": "@farewell",
    "end": true
   },
+  "bristle": {
+   "speaker": "npc",
+   "expression": "angry",
+   "line": [
+    "Careful.",
+    "Say that again. I dare you.",
+    "You want to think very hard about your next words.",
+    "Charming. Anything else?"
+   ],
+   "next": "menu"
+  },
+  "pushed": {
+   "speaker": "npc",
+   "expression": "worried",
+   "line": [
+    "I've told you what I know.",
+    "Drop it.",
+    "You're pushing your luck.",
+    "Some things aren't your business."
+   ],
+   "next": "menu"
+  },
   "check_ok": {
    "speaker": "npc",
    "expression": "smiling",
@@ -356,7 +378,37 @@
      "next": "deal_waiting"
     },
     {
+     "id": "insult",
+     "once": true,
+     "tone": "insult",
+     "tags": [
+      "insult"
+     ],
+     "next": "bristle",
+     "text": [
+      "Is the service always this slow, or just for us?",
+      "You're not as important as you think you are.",
+      "I've met smarter rocks.",
+      "Do you ever stop talking?"
+     ]
+    },
+    {
+     "id": "push",
+     "once": true,
+     "tone": "push",
+     "tags": [
+      "push"
+     ],
+     "next": "pushed",
+     "text": [
+      "Come on. I know you know more than that.",
+      "What are you hiding?",
+      "That's not the whole story, is it?"
+     ]
+    },
+    {
      "id": "leave",
+     "tone": "leave",
      "text": [
       "That's all for now.",
       "I should go.",
