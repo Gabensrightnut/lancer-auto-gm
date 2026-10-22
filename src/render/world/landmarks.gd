@@ -2,7 +2,8 @@ class_name Landmarks
 extends RefCounted
 ## Big recognizable structures far beyond the board that say what kind of world this is:
 ## a castle on a hill, a frontier water tower and windmill, atomic-age domes and a monorail,
-## pagodas and a shrine gate, white Union towers and a space elevator rising into orbit.
+## pagodas and a shrine gate, white Union towers and a space elevator rising into orbit,
+## factory smokestacks, harbor container cranes.
 ## horizon.landmarks lists them. Scenery only (far outside the map).
 
 const SPOTS := 7
@@ -56,6 +57,10 @@ static func build(t: TerrainRenderer, root: Node3D, b: Rect2, height_fn: Callabl
 				_space_elevator(node)
 			"rig":
 				_rig(node)
+			"smokestacks":
+				_smokestacks(node, arch)
+			"cranes":
+				_cranes(node, arch)
 
 
 static func _mat(color: Color, metal: float = 0.1, rough: float = 0.8, emit: Color = Color.BLACK) -> Material:
@@ -335,3 +340,57 @@ static func _space_elevator(n: Node3D) -> void:
 	n.add_child(climber)
 	MeshKit.part(climber, SmoothKit.rounded_box(Vector3(3.0, 5.0, 3.0), 1.0), white)
 	MeshKit.part(climber, MeshKit.cylinder(1.6, 0.3, 12), glow, Vector3(0, -2.6, 0))
+
+
+## A factory hall with three tall brick chimneys, smoke leaning with the wind.
+static func _smokestacks(n: Node3D, arch: Dictionary) -> void:
+	var brick := _mat(WorldStyle.color(arch.get("landmark_color", "#8a5a44")), 0.0, 0.95)
+	var metal := _mat(Color(0.36, 0.36, 0.38), 0.6, 0.5)
+	_box(n, Vector3(26, 9, 12), Vector3(0, 4.5, 0), metal)
+	_box(n, Vector3(26.4, 0.6, 12.4), Vector3(0, 9.2, 0), _mat(Color(0.28, 0.28, 0.3), 0.4, 0.6))
+	for i in range(3):
+		var x := -8.0 + i * 8.0
+		var hgt := 30.0 + 6.0 * WorldRand.f("stack", i)
+		_cyl(n, 1.7, hgt, Vector3(x, 0, -2.0), brick, 1.15, 12)
+		_cyl(n, 1.3, 0.8, Vector3(x, hgt - 0.4, -2.0), metal, 1.3, 12)
+		var smoke := CPUParticles3D.new()
+		smoke.name = "StackSmoke"
+		smoke.amount = WorldQuality.particles(36)
+		smoke.lifetime = 14.0
+		smoke.preprocess = 14.0
+		smoke.direction = Vector3(0.3, 1, 0.1)
+		smoke.spread = 8.0
+		smoke.gravity = Vector3(0.5, 0.25, 0.1)
+		smoke.initial_velocity_min = 1.2
+		smoke.initial_velocity_max = 2.0
+		smoke.scale_amount_min = 1.0
+		smoke.scale_amount_max = 2.4
+		smoke.position = Vector3(x, hgt + 0.5, -2.0)
+		var q := QuadMesh.new()
+		q.size = Vector2(3.0, 3.0)
+		q.material = WorldHazards._quad_material(Color(1, 1, 1), false)
+		smoke.mesh = q
+		smoke.color_ramp = WorldHazards._ramp([[0.0, Color(0.55, 0.52, 0.5, 0.0)], [0.1, Color(0.6, 0.58, 0.55, 0.5)], [1.0, Color(0.7, 0.68, 0.66, 0.0)]])
+		smoke.visibility_aabb = AABB(Vector3(-60, -10, -60), Vector3(120, 120, 120))
+		n.add_child(smoke)
+
+
+## Two harbor container cranes: four legs, a cross girder, and a long boom out over the water.
+static func _cranes(n: Node3D, arch: Dictionary) -> void:
+	var paint := _mat(WorldStyle.color(arch.get("landmark_color", "#e8a020")), 0.4, 0.5)
+	var dark := _mat(Color(0.2, 0.2, 0.22), 0.5, 0.5)
+	for k in range(2):
+		var c := Node3D.new()
+		c.position = Vector3(-10.0 + k * 20.0, 0, 0)
+		n.add_child(c)
+		for x: float in [-4.0, 4.0]:
+			for z: float in [-5.0, 5.0]:
+				_box(c, Vector3(0.8, 22.0, 0.8), Vector3(x, 11.0, z), paint)
+			_box(c, Vector3(0.6, 0.6, 10.8), Vector3(x, 6.0, 0), paint)
+		_box(c, Vector3(9.0, 1.4, 1.2), Vector3(0, 22.0, -5.0), paint)
+		_box(c, Vector3(9.0, 1.4, 1.2), Vector3(0, 22.0, 5.0), paint)
+		# Boom over the water (+Z) and back stay with the machinery house.
+		_box(c, Vector3(2.0, 1.6, 44.0), Vector3(0, 23.5, 10.0), paint)
+		_box(c, Vector3(4.0, 3.0, 5.0), Vector3(0, 25.5, -6.0), dark)
+		_box(c, Vector3(0.3, 12.0, 0.3), Vector3(0, 29.0, -3.0), paint, Vector3(-20, 0, 0))
+		_box(c, Vector3(1.6, 1.0, 2.4), Vector3(0, 22.4, 18.0 + 6.0 * WorldRand.f("crane", k)), dark)

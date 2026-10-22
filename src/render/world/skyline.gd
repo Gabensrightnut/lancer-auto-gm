@@ -57,11 +57,11 @@ static func build(t: TerrainRenderer, root: Node3D, b: Rect2) -> void:
 				col.a = WorldRand.f(key, 90 + k)
 				var inset := 0.08 + 0.15 * WorldRand.f(key, 95 + k)
 				var r := lot.grow(-inset)
-				_box(st, r, 0.0, h, col, type)
+				var plain := _tower(st, r, h, col, type, key, k, roofs)
 				if h > 4.0:
 					roofs.append([Vector3(r.get_center().x, h, r.get_center().y), minf(r.size.x, r.size.y), dd])
 				# Setback crown on tall buildings.
-				if h > 8.0 and WorldRand.f(key, 100 + k) < 0.6:
+				if plain and h > 8.0 and WorldRand.f(key, 100 + k) < 0.6:
 					var r2 := r.grow(-minf(r.size.x, r.size.y) * 0.18)
 					_box(st, r2, h, h + h * (0.12 + 0.2 * WorldRand.f(key, 110 + k)), col, type)
 				count += 1
@@ -77,6 +77,8 @@ static func build(t: TerrainRenderer, root: Node3D, b: Rect2) -> void:
 	# No shadows: long evening shadows from the skyline would darken the board.
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(mi)
+	_spires(root, roofs)
+	_ground_traffic(root, b, x0, z0, nx, nz, block, street, arch)
 	var fires := WorldQuality.lights(int(sky.get("fires", 0)))
 	if fires > 0:
 		_fires(root, roofs, fires, WorldStyle.color(arch.get("fire", "#ff6a1a")))
@@ -168,6 +170,56 @@ static func _lots(r: Rect2, key: String) -> Array:
 		Rect2(r.position + Vector2(r.size.x * sx, r.size.y * sz), Vector2(r.size.x * (1.0 - sx), r.size.y * (1.0 - sz)))]
 
 
+## A skyline building of varied shape: a plain block, stepped tiers, an eight-sided tower,
+## twin towers with a sky bridge, or a slab with a split crown; tall ones may get a spire.
+static func _tower(st: SurfaceTool, r: Rect2, h: float, col: Color, type: int, key: String, k: int, roofs: Array) -> bool:
+	var shape := WorldRand.f(key, 200 + k)
+	if h < 6.0 or shape < 0.35:
+		_box(st, r, 0.0, h, col, type)
+		return true
+	elif shape < 0.55:
+		var rr := r
+		var y := 0.0
+		for i in range(3):
+			var top := h * (0.55 + 0.45 * (i + 1) / 3.0) if i < 2 else h
+			_box(st, rr, y, top, col, type)
+			y = top
+			rr = rr.grow(-minf(rr.size.x, rr.size.y) * 0.15)
+	elif shape < 0.75:
+		_prism(st, r, h, col, type, 8)
+	elif shape < 0.88:
+		var half := r.size.x * 0.4
+		_box(st, Rect2(r.position, Vector2(half, r.size.y)), 0.0, h, col, type)
+		_box(st, Rect2(r.position + Vector2(r.size.x - half, 0), Vector2(half, r.size.y)), 0.0, h * 0.85, col, type)
+		_box(st, Rect2(r.position + Vector2(half, r.size.y * 0.35), Vector2(r.size.x - 2 * half, r.size.y * 0.3)), h * 0.55, h * 0.6, col, type)
+	else:
+		_box(st, r, 0.0, h * 0.85, col, type)
+		var crown := r.grow(-minf(r.size.x, r.size.y) * 0.1)
+		_box(st, Rect2(crown.position, Vector2(crown.size.x * 0.5, crown.size.y)), h * 0.85, h, col, type)
+		_box(st, Rect2(crown.position + Vector2(crown.size.x * 0.5, 0), Vector2(crown.size.x * 0.5, crown.size.y)), h * 0.85, h * 0.93, col, type)
+	if h > 18.0 and WorldRand.f(key, 220 + k) < 0.4:
+		roofs.append([Vector3(r.get_center().x, h, r.get_center().y), -1.0, 0.0])  # spire
+	return false
+
+
+## An n-sided tower inscribed in the rectangle.
+static func _prism(st: SurfaceTool, r: Rect2, h: float, col: Color, type: int, n: int) -> void:
+	var c := Vector3(r.get_center().x, 0, r.get_center().y)
+	var rad := minf(r.size.x, r.size.y) * 0.5
+	var pts: Array[Vector3] = []
+	for i in range(n):
+		var a := TAU * (i + 0.5) / n
+		pts.append(c + Vector3(cos(a), 0, sin(a)) * rad)
+	for i in range(n):
+		var a := pts[i]
+		var b := pts[(i + 1) % n]
+		CityBuilder._wall(st, a, b, -0.6, h, ((a + b) * 0.5 - c).normalized(), col, Color(a.distance_to(b), h, 0.0, type))
+	for i in range(n):
+		st.set_color(col)
+		st.set_custom(0, Color(1.0, h, 0.0, type))
+		MeshKit.add_tri(st, c + Vector3.UP * h, pts[i] + Vector3.UP * h, pts[(i + 1) % n] + Vector3.UP * h, Vector3.UP)
+
+
 ## A box building on a rectangle from y0 to y1: four facades and a roof.
 static func _box(st: SurfaceTool, r: Rect2, y0: float, y1: float, col: Color, type: int) -> void:
 	var c := [Vector3(r.position.x, 0, r.position.y), Vector3(r.end.x, 0, r.position.y), Vector3(r.end.x, 0, r.end.y), Vector3(r.position.x, 0, r.end.y)]
@@ -178,3 +230,45 @@ static func _box(st: SurfaceTool, r: Rect2, y0: float, y1: float, col: Color, ty
 		var out := ((a + bb) * 0.5 - center).normalized()
 		CityBuilder._wall(st, a, bb, y0 - (0.6 if y0 <= 0.0 else 0.0), y1, out, col, Color(a.distance_to(bb), y1, 0.0, type))
 	CityBuilder._cap(st, c[0], c[1], c[2], c[3], y1, col, Color(1.0, y1, 0.0, type))
+
+
+## Thin spires with a red aircraft light on some of the tallest towers.
+static func _spires(root: Node3D, roofs: Array) -> void:
+	var mat := MeshKit.mech_material(Color(0.6, 0.62, 0.65), 0.8, 0.3, Color.BLACK, false)
+	var red := MeshKit.fx_material(Color(1.0, 0.15, 0.1), 3.0)
+	var n := 0
+	for r: Array in roofs:
+		if float(r[1]) >= 0.0 or n >= 14:
+			continue
+		n += 1
+		var at: Vector3 = r[0]
+		var hgt := 4.0 + 6.0 * WorldRand.f("spire", n)
+		var sp := MeshKit.part(root, MeshKit.cylinder(0.25, hgt, 6, 0.04), mat, at + Vector3.UP * hgt * 0.5)
+		sp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var lamp := MeshKit.part(root, MeshKit.sphere(0.35, 6), red, at + Vector3.UP * hgt)
+		lamp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+
+## Cars driving the city's streets beyond the board (the gaps between the skyline's blocks).
+static func _ground_traffic(root: Node3D, b: Rect2, x0: float, z0: float, nx: int, nz: int, block: float, street: float, arch: Dictionary) -> void:
+	var kinds: Array = (arch.get("street", {}) as Dictionary).get("vehicles", ["car"])
+	kinds = kinds.filter(func(k: String) -> bool: return k != "wreck")
+	if kinds.is_empty():
+		return
+	var lanes: Array = []
+	for i in range(nx + 1):
+		var x := x0 + i * (block + street) - street * 0.5
+		if x > b.position.x - 2.0 and x < b.end.x + 2.0:
+			continue
+		lanes.append([Vector3(x, 0.0, z0), Vector3(0, 0, 1), nz * (block + street)])
+	for j in range(nz + 1):
+		var z := z0 + j * (block + street) - street * 0.5
+		if z > b.position.y - 2.0 and z < b.end.y + 2.0:
+			continue
+		lanes.append([Vector3(x0, 0.0, z), Vector3(1, 0, 0), nx * (block + street)])
+	if lanes.is_empty():
+		return
+	var traffic := GroundTraffic.new()
+	traffic.name = "GroundTraffic"
+	traffic.setup(lanes.slice(0, WorldQuality.scenery(16)), kinds)
+	root.add_child(traffic)
