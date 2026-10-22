@@ -81,6 +81,12 @@
    "line": "@check_fail",
    "next": "menu"
   },
+  "bg_ack": {
+   "speaker": "npc",
+   "expression": "surprised",
+   "line": "@background_ack",
+   "next": "menu"
+  },
   "favor": {
    "speaker": "npc",
    "expression": "neutral",
@@ -141,7 +147,10 @@
    "expression": "smiling",
    "line": [
     "Good. It's on the board. Don't let me down.",
-    "Then we have an understanding."
+    "Then we have an understanding.",
+    "Done. I'll hold up my end.",
+    "Pleasure doing business.",
+    "It's a deal. Don't make me regret it."
    ],
    "next": "menu"
   },
@@ -175,6 +184,9 @@
      "patron": "$npc"
     },
     {
+     "set_flag": "favor_job_posted:{npc_faction}"
+    },
+    {
      "log": "{npc} called in the favor: a new job is on the board."
     }
    ],
@@ -190,6 +202,7 @@
    "choices": [
     {
      "id": "checks",
+     "once": true,
      "text": "How do skill checks work out of the mech?",
      "tags": [
       "curious"
@@ -233,6 +246,7 @@
     },
     {
      "id": "reserves",
+     "once": true,
      "text": "What are reserves, again?",
      "tags": [
       "curious"
@@ -241,6 +255,7 @@
     },
     {
      "id": "downtime",
+     "once": true,
      "text": "What should I do with my downtime?",
      "tags": [
       "curious",
@@ -250,6 +265,7 @@
     },
     {
      "id": "standing",
+     "once": true,
      "text": "How do I get people on our side?",
      "tags": [
       "curious",
@@ -280,6 +296,7 @@
     },
     {
      "id": "jobs",
+     "once": true,
      "text": "Where do we find work?",
      "tags": [
       "practical"

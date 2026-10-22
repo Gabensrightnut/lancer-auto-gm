@@ -81,6 +81,12 @@
    "line": "@check_fail",
    "next": "menu"
   },
+  "bg_ack": {
+   "speaker": "npc",
+   "expression": "surprised",
+   "line": "@background_ack",
+   "next": "menu"
+  },
   "favor": {
    "speaker": "npc",
    "expression": "neutral",
@@ -141,7 +147,10 @@
    "expression": "smiling",
    "line": [
     "Good. It's on the board. Don't let me down.",
-    "Then we have an understanding."
+    "Then we have an understanding.",
+    "Done. I'll hold up my end.",
+    "Pleasure doing business.",
+    "It's a deal. Don't make me regret it."
    ],
    "next": "menu"
   },
@@ -175,6 +184,9 @@
      "patron": "$npc"
     },
     {
+     "set_flag": "favor_job_posted:{npc_faction}"
+    },
+    {
      "log": "{npc} called in the favor: a new job is on the board."
     }
    ],
@@ -186,6 +198,7 @@
    "choices": [
     {
      "id": "gear",
+     "once": true,
      "text": [
       "I want to change my pilot gear.",
       "Let me look at the racks."
@@ -202,6 +215,7 @@
     },
     {
      "id": "printing",
+     "once": true,
      "text": [
       "Can you print me a new mech?",
       "What happens when my mech gets wrecked?"
@@ -213,6 +227,7 @@
     },
     {
      "id": "supplies",
+     "once": true,
      "text": [
       "What supplies do we need for a mission?",
       "Food, water, repair kits: how does that work out here?"
@@ -226,6 +241,7 @@
     },
     {
      "id": "licenses",
+     "once": true,
      "text": [
       "Why can't I just requisition a better frame?",
       "How do I get access to other manufacturers' gear?"
@@ -237,6 +253,7 @@
     },
     {
      "id": "rest",
+     "once": true,
      "text": [
       "Is there a bunk somewhere? We need an hour's rest.",
       "We'll rest up here for an hour."
@@ -283,9 +300,16 @@
     {
      "id": "pay_favor",
      "text": "About the favor we owe {npc_faction}...",
-     "condition": {
-      "obligation": "$npc.faction"
-     },
+     "condition": [
+      {
+       "obligation": "$npc.faction"
+      },
+      {
+       "not": {
+        "flag": "favor_job_posted:{npc_faction}"
+       }
+      }
+     ],
      "tags": [
       "honest"
      ],
@@ -369,6 +393,7 @@
     },
     {
      "id": "deal_wait",
+     "once": true,
      "text": "About our deal...",
      "condition": {
       "deal": "$npc",

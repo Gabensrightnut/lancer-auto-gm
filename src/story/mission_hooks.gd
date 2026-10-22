@@ -57,6 +57,11 @@ static func make(story: StoryState, campaign: Campaign, template_id: String, opt
 	# Helping one side of the hub's conflict costs you with the other (our bookkeeping).
 	if rival != "":
 		hook["success"].append({"standing": "$hook.rival", "add": -1})
+	# A job that touches a pilot's past (Core p.43: stakes tied to backgrounds).
+	var personal := BackgroundStory.personal_for(story, campaign, template_id, rng)
+	if not personal.is_empty():
+		hook["personal"] = personal
+		hook["stakes"] = "%s %s" % [hook["stakes"], personal["line"]]
 	var twist := pick_twist(rng, str(opts.get("twist", "")))
 	if not twist.is_empty():
 		twist["reveal"] = StoryText.fill(str(twist["reveal"]), story, campaign, ctx)

@@ -51,16 +51,27 @@ static func pool_line(pool: String, story: StoryState, ctx: Dictionary = {}) -> 
 	return str(lines[_pick_index(pool + ":" + str(npc.get("id", "")), lines.size(), story)])
 
 
-## Variant index from the story dice, never the last one used for this pool.
+## Variant index from the story dice, like drawing from a shuffled deck: every variant of a
+## pool is used once before any repeats, and never the same one twice in a row.
 static func _pick_index(key: String, n: int, story: StoryState) -> int:
 	if n <= 1:
 		return 0
-	var last := int(story.line_memory.get(key, -1))
-	var i := story.dice.die(n) - 1
-	if i == last:
-		i = (i + 1 + story.dice.die(n - 1) - 1) % n
-	story.line_memory[key] = i
-	return i
+	var mem: Variant = story.line_memory.get(key, [])
+	var used: Array = mem if mem is Array else []
+	var left: Array = []
+	for i in range(n):
+		if not used.has(i):
+			left.append(i)
+	if left.is_empty():
+		var last: int = int(used.back()) if not used.is_empty() else -1
+		used = []
+		for i in range(n):
+			if i != last:
+				left.append(i)
+	var pick: int = int(left[story.dice.die(left.size()) - 1])
+	used.append(pick)
+	story.line_memory[key] = used
+	return pick
 
 
 static func pools() -> Dictionary:

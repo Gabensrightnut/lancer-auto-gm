@@ -182,7 +182,15 @@
       "Anything else?",
       "Go on.",
       "What'll it be, pilot?",
-      "I'm listening."
+      "I'm listening.",
+      "Something else on your mind?",
+      "Ask away.",
+      "What else?",
+      "Still here? Good. What is it?",
+      "Talk to me.",
+      "Mm?",
+      "Anything I can help with?",
+      "Out with it, pilot."
     ],
     "farewell": [
       "Stay alive out there.",
@@ -227,7 +235,9 @@
     ],
     "gear_explain": [
       "Pilot gear isn't licensed. Take what you need: one set of armor, up to two weapons, up to three other pieces. That's the limit for a mission, because that's what you can actually carry.",
-      "Armor, two weapons, three other bits of kit. More than that and you're a pack mule, not a pilot."
+      "Armor, two weapons, three other bits of kit. More than that and you're a pack mule, not a pilot.",
+      "Carry what keeps you alive: armor, two weapons, three more bits. That's the rule.",
+      "Kit limit's simple: one armor, two guns, three gadgets. Choose well."
     ],
     "reserves_explain": [
       "Reserves are whatever extra you bring to the next mission: spare repairs, a favor, a map, a ride out. They last one mission. Use them or lose them.",
@@ -241,17 +251,27 @@
     "drink_offer": [
       "Something to take the edge off? Or are you here to make friends?",
       "Drink, or just company?",
-      "On the house tonight. Mostly."
+      "On the house tonight. Mostly.",
+      "Another round?",
+      "Still thirsty, or just curious?",
+      "What can I get you?",
+      "Pull up a stool."
     ],
     "barter_intro": [
       "Name what you're after. I'll tell you what it'll cost. Sometimes manna, usually a favor.",
       "Everything's got a price. Even here. Especially here.",
-      "You want it, I can find it. Maybe."
+      "You want it, I can find it. Maybe.",
+      "Back again? Let's deal.",
+      "I might have something for you. Might.",
+      "What are you buying with, pilot? Favors? Secrets?"
     ],
     "agent_job_intro": [
       "We have a job. It's not pleasant, but it matters.",
       "{npc_faction} needs something done, and your squad is close.",
-      "There's work. Paid in favors, as always."
+      "There's work. Paid in favors, as always.",
+      "We should talk business.",
+      "There's always work for people like you.",
+      "My employer has needs. You have skills."
     ],
     "local_want_line": [
       "Honestly? What I'd want is {npc_want}.",
@@ -261,7 +281,10 @@
     "mechanic_creative": [
       "Want to build something? Bring me an idea and some time, and we'll see.",
       "Bay three's free if you want to tinker. Don't weld anything to the ceiling again.",
-      "I've got tools, you've got ideas. Let's make something."
+      "I've got tools, you've got ideas. Let's make something.",
+      "Grab a wrench or get out of the way.",
+      "Something rattling? Or something new?",
+      "Workshop's open. Mind the sparks."
     ],
     "check_success": [
       "...All right. You've convinced me.",
@@ -293,19 +316,26 @@
       "Get your reserves in order. You deploy soon.",
       "Gear up. We go when you're ready.",
       "That's the job. Questions, now, or never.",
-      "Boots on the ground in a few hours."
+      "Boots on the ground in a few hours.",
+      "Mount up when you're ready.",
+      "Briefing's over. Go check your mechs.",
+      "Make it count out there."
     ],
     "debrief_victory": [
       "It's done. Good work, all of you.",
       "We got it done. {hub} owes you.",
       "Clean. Mostly. Well flown.",
-      "You came through. I'll remember that."
+      "You came through. I'll remember that.",
+      "Solid work. That's the job done.",
+      "You did what you were asked, and then some."
     ],
     "debrief_defeat": [
       "We lost that one. It's not the end, but it hurts.",
       "Not every mission goes our way. We regroup.",
       "That went badly. We'll have to live with it.",
-      "Get some rest. We'll talk about what went wrong."
+      "Get some rest. We'll talk about what went wrong.",
+      "We'll recover from this. We have to.",
+      "Not our day. We learn and go again."
     ],
     "debrief_draw": [
       "Neither side got what it wanted. That's something, I suppose.",
@@ -313,7 +343,10 @@
     ],
     "debrief_level": [
       "Whatever happened out there, you learned from it. Every pilot's License Level goes up after a mission, win or lose.",
-      "You're all a License Level higher now. That means new triggers, talents and license ranks. Spend them well."
+      "You're all a License Level higher now. That means new triggers, talents and license ranks. Spend them well.",
+      "Every one of you comes out of this a License Level higher. That's how it works, good day or bad.",
+      "Level up, pilots. New license rank, new trigger, new talent. You earned them out there.",
+      "Whatever the result, you're better pilots than you were this morning. One more License Level each."
     ],
     "supplies_explain": [
       "Everyday food, water and a bunk come with the job; nobody counts rations for you. What you plan for is the extra: kit for crossing hostile ground, spare repair materials for your mech, and what you carry yourself.",
@@ -326,13 +359,15 @@
     ],
     "deal_offer": [
       "Tell you what. Help me with {npc_want}, and I'll see you get {npc_deal_reward} for your next drop.",
-      "There is something. {npc_want}. Do that, and {npc_deal_reward} is yours for the next mission.",
+      "There is something: {npc_want}. Do that, and {npc_deal_reward} is yours for the next mission.",
       "A trade, then. You handle {npc_want}; I come through with {npc_deal_reward}."
     ],
     "deal_waiting": [
       "The job's on the board. Do it, and we're square.",
       "Still waiting on that job, pilot.",
-      "You know where to find the work. I'll keep my end ready."
+      "You know where to find the work. I'll keep my end ready.",
+      "The deal stands. The job's still open.",
+      "We have an arrangement. I'm waiting on your end."
     ],
     "deal_thanks": [
       "You came through. Here's my end, as promised.",
@@ -734,6 +769,13 @@
       "Before anything else: {fallen} didn't come back. We remember them.",
       "{fallen} is gone. Take a moment.",
       "We lost {fallen} out there. Nothing about this job was worth that."
+    ],
+    "background_ack": [
+      "Huh. You know what you're talking about.",
+      "Takes one to know one.",
+      "Well. That changes things.",
+      "Not many pilots would say that. Thank you.",
+      "You've been there, haven't you?"
     ]
   }
 }

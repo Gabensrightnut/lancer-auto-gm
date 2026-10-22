@@ -1,46 +1,357 @@
 {
   "_note": "Our own writing. Arc shapes: a situation over a few missions at one hub, escalating to a reveal and a confrontation (patterns: docs/research/lancer_campaigns.md section 5). The arc's next hook is always on the job board; finishing it (win or lose: every mission advances the story, and pilots level up either way, Core p.40) moves the arc on. 'on_win' / 'on_loss' are story effects; stage text uses {a}/{b} (the conflict's sides), {rival} (a recurring enemy squad name) and the hook placeholders.",
   "arcs": [
-    {"id": "escalation", "weight": 3, "name": "Escalation",
+    {
+      "id": "escalation",
+      "weight": 3,
+      "name": "Escalation",
       "stages": [
-        {"hook": "side_a", "beat": ["It starts small: a job for {a}, the kind lancers take every week."]},
-        {"hook": "side_a", "beat": ["{b} has noticed you. The next job won't be quiet."], "twist": "third_party"},
-        {"hook": "side_b_strike", "beat": ["{b} moves openly now. This is the fight that decides {hub}."], "final": true}
+        {
+          "hook": "side_a",
+          "beat": [
+            "It starts small: a job for {a}, the kind lancers take every week."
+          ]
+        },
+        {
+          "hook": "side_a",
+          "beat": [
+            "{b} has noticed you. The next job won't be quiet."
+          ],
+          "twist": "third_party"
+        },
+        {
+          "hook": "side_b_strike",
+          "beat": [
+            "{b} moves openly now. This is the fight that decides {hub}."
+          ],
+          "final": true
+        }
       ],
-      "on_win": [{"standing": "$arc.a", "add": 1}, {"set_flag": "arc_escalation_won"}],
-      "on_loss": [{"standing": "$arc.a", "add": -1}, {"set_flag": "arc_escalation_lost"}]},
-    {"id": "investigation", "weight": 2, "name": "Who Is Behind It",
+      "on_win": [
+        {
+          "standing": "$arc.a",
+          "add": 1
+        },
+        {
+          "set_flag": "arc_escalation_won"
+        }
+      ],
+      "on_loss": [
+        {
+          "standing": "$arc.a",
+          "add": -1
+        },
+        {
+          "set_flag": "arc_escalation_lost"
+        }
+      ]
+    },
+    {
+      "id": "investigation",
+      "weight": 2,
+      "name": "Who Is Behind It",
       "stages": [
-        {"hook": "investigate_tip", "beat": ["Something is wrong in {hub}, and nobody will say what."]},
-        {"hook": "side_a", "beat": ["A lead points at {b}, or at someone who wants it to look that way."], "twist": "patron_lied"},
-        {"hook": "side_b_strike", "beat": ["You know who did it. Now you have to make it stick."], "final": true}
+        {
+          "hook": "investigate_tip",
+          "beat": [
+            "Something is wrong in {hub}, and nobody will say what."
+          ]
+        },
+        {
+          "hook": "side_a",
+          "beat": [
+            "A lead points at {b}, or at someone who wants it to look that way."
+          ],
+          "twist": "patron_lied"
+        },
+        {
+          "hook": "side_b_strike",
+          "beat": [
+            "You know who did it. Now you have to make it stick."
+          ],
+          "final": true
+        }
       ],
-      "on_win": [{"set_flag": "arc_truth_found"}],
-      "on_loss": [{"set_flag": "arc_truth_buried"}]},
-    {"id": "rivalry", "weight": 2, "name": "The Other Squad",
+      "on_win": [
+        {
+          "set_flag": "arc_truth_found"
+        }
+      ],
+      "on_loss": [
+        {
+          "set_flag": "arc_truth_buried"
+        }
+      ]
+    },
+    {
+      "id": "rivalry",
+      "weight": 2,
+      "name": "The Other Squad",
       "stages": [
-        {"hook": "side_a", "beat": ["Another lancer squad, {rival}, is working for {b}."], "twist": "rival_squad"},
-        {"hook": "side_a", "beat": ["{rival} again. They're good, and they're learning how you fight."], "twist": "rival_squad"},
-        {"hook": "hunt_rivals", "beat": ["Time to settle it with {rival}, one way or another."], "final": true}
+        {
+          "hook": "side_a",
+          "beat": [
+            "Another lancer squad, {rival}, is working for {b}."
+          ],
+          "twist": "rival_squad"
+        },
+        {
+          "hook": "side_a",
+          "beat": [
+            "{rival} again. They're good, and they're learning how you fight."
+          ],
+          "twist": "rival_squad"
+        },
+        {
+          "hook": "hunt_rivals",
+          "beat": [
+            "Time to settle it with {rival}, one way or another."
+          ],
+          "final": true
+        }
       ],
-      "on_win": [{"set_flag": "rival_beaten"}, {"standing": "$arc.a", "add": 1}],
-      "on_loss": [{"set_flag": "rival_won"}]},
-    {"id": "siege", "weight": 2, "name": "Hold the Town",
+      "on_win": [
+        {
+          "set_flag": "rival_beaten"
+        },
+        {
+          "standing": "$arc.a",
+          "add": 1
+        }
+      ],
+      "on_loss": [
+        {
+          "set_flag": "rival_won"
+        }
+      ]
+    },
+    {
+      "id": "siege",
+      "weight": 2,
+      "name": "Hold the Town",
       "stages": [
-        {"hook": "cover_evacuation", "beat": ["{b} is coming for {hub}. Get the people who can't fight somewhere safe."]},
-        {"hook": "raid_depot", "beat": ["Strike first: hit {b} before they're ready."]},
-        {"hook": "hold_the_line", "beat": ["They're here. Hold {hub}."], "final": true}
+        {
+          "hook": "cover_evacuation",
+          "beat": [
+            "{b} is coming for {hub}. Get the people who can't fight somewhere safe."
+          ]
+        },
+        {
+          "hook": "raid_depot",
+          "beat": [
+            "Strike first: hit {b} before they're ready."
+          ]
+        },
+        {
+          "hook": "hold_the_line",
+          "beat": [
+            "They're here. Hold {hub}."
+          ],
+          "final": true
+        }
       ],
-      "on_win": [{"standing": "$hub.faction", "add": 2}, {"set_flag": "town_held"}],
-      "on_loss": [{"standing": "$hub.faction", "add": -1}, {"set_flag": "town_fell"}]},
-    {"id": "two_masters", "weight": 1, "name": "Two Masters",
+      "on_win": [
+        {
+          "standing": "$hub.faction",
+          "add": 2
+        },
+        {
+          "set_flag": "town_held"
+        }
+      ],
+      "on_loss": [
+        {
+          "standing": "$hub.faction",
+          "add": -1
+        },
+        {
+          "set_flag": "town_fell"
+        }
+      ]
+    },
+    {
+      "id": "two_masters",
+      "weight": 1,
+      "name": "Two Masters",
       "stages": [
-        {"hook": "side_a", "beat": ["{a} offers you work. So does {b}. Both say it's the right side."]},
-        {"hook": "side_b", "beat": ["Each side wants you to do something the other can't forgive."], "twist": "orders_change"},
-        {"hook": "side_a", "beat": ["You can't keep both. Choose."], "final": true}
+        {
+          "hook": "side_a",
+          "beat": [
+            "{a} offers you work. So does {b}. Both say it's the right side."
+          ]
+        },
+        {
+          "hook": "side_b",
+          "beat": [
+            "Each side wants you to do something the other can't forgive."
+          ],
+          "twist": "orders_change"
+        },
+        {
+          "hook": "side_a",
+          "beat": [
+            "You can't keep both. Choose."
+          ],
+          "final": true
+        }
       ],
-      "on_win": [{"set_flag": "two_masters_resolved"}],
-      "on_loss": [{"set_flag": "two_masters_burned"}]}
+      "on_win": [
+        {
+          "set_flag": "two_masters_resolved"
+        }
+      ],
+      "on_loss": [
+        {
+          "set_flag": "two_masters_burned"
+        }
+      ]
+    },
+    {
+      "id": "betrayal",
+      "weight": 2,
+      "name": "The Wrong Side",
+      "stages": [
+        {
+          "hook": "side_a",
+          "beat": [
+            "{a} hires you, and pays well. Maybe too well."
+          ]
+        },
+        {
+          "hook": "side_a",
+          "beat": [
+            "Something about {a}'s orders doesn't sit right. The targets keep getting softer."
+          ],
+          "twist": "patron_lied"
+        },
+        {
+          "hook": "side_b",
+          "beat": [
+            "The truth's out: {a} has been using you. {b} is offering a way to set it right."
+          ],
+          "final": true
+        }
+      ],
+      "on_win": [
+        {
+          "standing": "$arc.a",
+          "add": -2
+        },
+        {
+          "standing": "$arc.b",
+          "add": 2
+        },
+        {
+          "set_flag": "turned_on_patron"
+        }
+      ],
+      "on_loss": [
+        {
+          "standing": "$arc.b",
+          "add": -1
+        },
+        {
+          "set_flag": "betrayal_unresolved"
+        }
+      ]
+    },
+    {
+      "id": "manhunt",
+      "weight": 2,
+      "name": "The Hunt",
+      "stages": [
+        {
+          "hook": "investigate_tip",
+          "beat": [
+            "Someone working for {b} has been seen near {hub}. {a} wants them found."
+          ]
+        },
+        {
+          "hook": "extract_person",
+          "beat": [
+            "You know where they're hiding. Getting them out alive is another matter."
+          ],
+          "twist": "inside_help"
+        },
+        {
+          "hook": "hunt_rivals",
+          "beat": [
+            "{b}'s lancers want their person back. They're coming."
+          ],
+          "final": true
+        }
+      ],
+      "on_win": [
+        {
+          "standing": "$arc.a",
+          "add": 1
+        },
+        {
+          "set_flag": "manhunt_done"
+        }
+      ],
+      "on_loss": [
+        {
+          "set_flag": "quarry_escaped"
+        }
+      ]
+    },
+    {
+      "id": "gold_rush",
+      "weight": 2,
+      "name": "Strike It Rich",
+      "stages": [
+        {
+          "hook": "explore_derelict",
+          "beat": [
+            "Something valuable came down near {hub}. Everyone knows it now."
+          ]
+        },
+        {
+          "hook": "secure_site",
+          "beat": [
+            "You found it first. {b} wants it anyway."
+          ],
+          "twist": "third_party"
+        },
+        {
+          "hook": "hold_the_line",
+          "beat": [
+            "Every crew in the region is converging on the find. Hold it."
+          ],
+          "final": true
+        }
+      ],
+      "on_win": [
+        {
+          "standing": "$arc.a",
+          "add": 1
+        },
+        {
+          "reserve": "reserve_supplies",
+          "to": "squad",
+          "name": "A share of the find",
+          "source": "The strike"
+        },
+        {
+          "set_flag": "find_secured"
+        }
+      ],
+      "on_loss": [
+        {
+          "set_flag": "find_lost"
+        }
+      ]
+    }
   ],
-  "rival_names": ["the Ninth Lantern", "Grey Choir", "the Ashfall Company", "Seven Dogs", "Iron Tithe", "the Quiet Hands", "Red Meridian", "the Sable Line"]
+  "rival_names": [
+    "the Ninth Lantern",
+    "Grey Choir",
+    "the Ashfall Company",
+    "Seven Dogs",
+    "Iron Tithe",
+    "the Quiet Hands",
+    "Red Meridian",
+    "the Sable Line"
+  ]
 }

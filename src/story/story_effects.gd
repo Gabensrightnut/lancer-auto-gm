@@ -88,6 +88,7 @@ static func apply(e: Dictionary, story: StoryState, campaign: Campaign, ctx: Dic
 		return [{"type": "obligation_added", "obligation": rec}]
 	if e.has("pay_obligation"):
 		var who := str(R.call(e["pay_obligation"]))
+		story.flags.erase("favor_job_posted:" + who)
 		for o: Dictionary in story.downtime.get("obligations", []):
 			if str(o["to"]) == who and not bool(o["done"]):
 				o["done"] = true

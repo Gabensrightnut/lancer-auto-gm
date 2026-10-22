@@ -1,0 +1,320 @@
+{
+  "_note": "Our own writing. In-battle barks for squadmates (Squadmate.barks_for): persona x moment; 'history' lines replace the start bark when the squadmate remembers a fallen friend or old wounds. {ally} = the squadmate whose mech went down, {friend} = a pilot who died earlier. Cosmetic only: barks never change the battle.",
+  "personas": {
+    "steady": {
+      "start": [
+        "Formation. Stay sharp.",
+        "Eyes up. Let's do this clean."
+      ],
+      "hit": [
+        "Target hit.",
+        "Good effect on target."
+      ],
+      "crit": [
+        "Direct hit, critical.",
+        "That one went right through."
+      ],
+      "miss": [
+        "Missed. Adjusting.",
+        "No good. Going again."
+      ],
+      "damaged": [
+        "Taking fire, holding.",
+        "I'm hit. Still in it."
+      ],
+      "structure": [
+        "Structure's gone. Still operational.",
+        "Frame damage. I can take it."
+      ],
+      "overheat": [
+        "Running hot. Venting soon.",
+        "Heat's critical, watch me."
+      ],
+      "ally_down": [
+        "{ally} is down! Cover them!",
+        "Lost {ally}'s mech, regroup!"
+      ],
+      "enemy_down": [
+        "Hostile down.",
+        "One less."
+      ]
+    },
+    "bold": {
+      "start": [
+        "Let's tear them apart!",
+        "Me first, everyone else second!"
+      ],
+      "hit": [
+        "Got you!",
+        "How'd that feel?"
+      ],
+      "crit": [
+        "BULLSEYE!",
+        "Right in the reactor!"
+      ],
+      "miss": [
+        "Hold still!",
+        "Next one's yours."
+      ],
+      "damaged": [
+        "Is that all you've got?",
+        "That tickled!"
+      ],
+      "structure": [
+        "Barely a dent! ...Okay, a big dent.",
+        "Still coming!"
+      ],
+      "overheat": [
+        "Hot? I'm just getting started!",
+        "Running red and loving it!"
+      ],
+      "ally_down": [
+        "{ally}! You'll pay for that!",
+        "They got {ally}. They're mine."
+      ],
+      "enemy_down": [
+        "Next!",
+        "Who wants to be next?"
+      ]
+    },
+    "kind": {
+      "start": [
+        "Everyone come home, okay?",
+        "Watch each other's backs."
+      ],
+      "hit": [
+        "Hit them. Sorry. Not sorry.",
+        "Landed it."
+      ],
+      "crit": [
+        "That'll stop them.",
+        "Got the weak point!"
+      ],
+      "miss": [
+        "Missed, careful out there!",
+        "No luck. Stay safe!"
+      ],
+      "damaged": [
+        "I'm okay! Mostly okay.",
+        "Hit, but fine. Check on the others."
+      ],
+      "structure": [
+        "Frame's hurt. I'm still here.",
+        "Lost structure, I'm alright!"
+      ],
+      "overheat": [
+        "Getting hot in here, backing off.",
+        "Heat's high, give me a moment."
+      ],
+      "ally_down": [
+        "{ally}! Hang on, I'm coming!",
+        "Get {ally} out of there!"
+      ],
+      "enemy_down": [
+        "They're down. Let them be.",
+        "That one's out."
+      ]
+    },
+    "mercenary": {
+      "start": [
+        "Let's earn our pay.",
+        "Time to make this job worth it."
+      ],
+      "hit": [
+        "That's billable.",
+        "Hit confirmed. Invoice incoming."
+      ],
+      "crit": [
+        "Bonus damage. Bonus pay.",
+        "Premium shot."
+      ],
+      "miss": [
+        "Wasted ammo. Expensive.",
+        "Missed. That's coming out of someone's cut."
+      ],
+      "damaged": [
+        "Repairs cost extra!",
+        "There goes the deposit."
+      ],
+      "structure": [
+        "Frame damage. Hazard pay, now.",
+        "That's going on the bill."
+      ],
+      "overheat": [
+        "Overtime heat. Overtime pay.",
+        "Running hot, charging double."
+      ],
+      "ally_down": [
+        "{ally}'s down! Someone cover our investment!",
+        "Lost {ally}. That's not in the contract."
+      ],
+      "enemy_down": [
+        "One less problem.",
+        "Cleared. Next."
+      ]
+    },
+    "curious": {
+      "start": [
+        "Let's see what they've got.",
+        "Logging everything. Let's go."
+      ],
+      "hit": [
+        "Hit. Interesting response.",
+        "Good, the targeting holds up."
+      ],
+      "crit": [
+        "Found the flaw in their armor!",
+        "Ha, right in the weak seam!"
+      ],
+      "miss": [
+        "Huh. They dodged that. How?",
+        "Missed. Recalculating."
+      ],
+      "damaged": [
+        "Hit. Noting the angle.",
+        "Ow. Data, though."
+      ],
+      "structure": [
+        "Structural failure. Fascinating. Terrifying.",
+        "Frame's cracked. Recording everything."
+      ],
+      "overheat": [
+        "Heat's spiking. Let's see how high it goes. No, wait.",
+        "Reactor's hot, backing off the experiment."
+      ],
+      "ally_down": [
+        "{ally}'s down! What hit them?",
+        "Lost {ally}! Watch that angle!"
+      ],
+      "enemy_down": [
+        "Down. I want to see that wreck later.",
+        "Target neutralized."
+      ]
+    },
+    "sly": {
+      "start": [
+        "Quiet now. Let them make the mistakes.",
+        "Remember: they don't know what we know."
+      ],
+      "hit": [
+        "Didn't see that coming, did you?",
+        "Right where I wanted it."
+      ],
+      "crit": [
+        "Found the gap.",
+        "And that's the trick."
+      ],
+      "miss": [
+        "Hm. Patience.",
+        "Let them think they're safe."
+      ],
+      "damaged": [
+        "Fine. Let them feel clever.",
+        "Noted, and remembered."
+      ],
+      "structure": [
+        "They'll regret that.",
+        "Frame's hurt. Not my pride."
+      ],
+      "overheat": [
+        "Running hot. Time for a quieter approach.",
+        "Cooling off. They'll think I'm done."
+      ],
+      "ally_down": [
+        "They got {ally}. I'll remember who.",
+        "{ally}'s out. Change of plans."
+      ],
+      "enemy_down": [
+        "One down, no witnesses.",
+        "Gone."
+      ]
+    },
+    "grim": {
+      "start": [
+        "Another day.",
+        "Let's get this over with."
+      ],
+      "hit": [
+        "Hit.",
+        "Confirmed."
+      ],
+      "crit": [
+        "Clean kill shot.",
+        "Through and through."
+      ],
+      "miss": [
+        "Miss.",
+        "Again."
+      ],
+      "damaged": [
+        "Hit. Moving.",
+        "Still up."
+      ],
+      "structure": [
+        "Structure lost. Continuing.",
+        "Frame's going. So what."
+      ],
+      "overheat": [
+        "Hot.",
+        "Venting. Cover me."
+      ],
+      "ally_down": [
+        "{ally}'s down.",
+        "Lost {ally}. Keep moving."
+      ],
+      "enemy_down": [
+        "Down.",
+        "One less."
+      ]
+    },
+    "joker": {
+      "start": [
+        "Showtime, everybody!",
+        "Who's ready to make some bad decisions?"
+      ],
+      "hit": [
+        "Boop!",
+        "Special delivery!"
+      ],
+      "crit": [
+        "Critical hit! Somebody clip that!",
+        "Oh, that's going in the highlight reel."
+      ],
+      "miss": [
+        "I meant to do that.",
+        "Warning shot. Very warning."
+      ],
+      "damaged": [
+        "Rude!",
+        "Ow, my everything."
+      ],
+      "structure": [
+        "That's... not supposed to bend that way.",
+        "Okay, now I'm annoyed."
+      ],
+      "overheat": [
+        "Is it hot in here or is it just my reactor?",
+        "Spicy! Too spicy!"
+      ],
+      "ally_down": [
+        "{ally}! Nobody touches {ally} but me!",
+        "Not {ally}! Okay, no more jokes."
+      ],
+      "enemy_down": [
+        "And stay down!",
+        "Next contestant!"
+      ]
+    }
+  },
+  "history": {
+    "lost_friend_start": [
+      "This one's for {friend}.",
+      "{friend} should be here. Let's make it count."
+    ],
+    "wounded_start": [
+      "Still hurting from last time. Doesn't matter.",
+      "Not fully healed. Let's be careful."
+    ]
+  },
+  "chance": 0.45
+}

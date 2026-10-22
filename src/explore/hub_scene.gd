@@ -632,6 +632,8 @@ func _handle(events: Array) -> void:
 				hud.toast("%s hits 0 HP: rolled %d on 1d6: %s" % [who, int(e["roll"]), {"close_call": "a close call, back to 1 HP", "down_and_out": "DOWN AND OUT", "dead": "killed"}[e["result"]]], StoryStyle.RED)
 			"pilot_gear_set":
 				hud.toast("%s's kit: %s" % [who, ", ".join(PackedStringArray((e["gear"] as Array).map(func(g: Variant) -> String: return str(db.get_entry("pilot_gear", str(g)).get("name", g)))))], StoryStyle.DIM)
+			"banter":
+				hud.toast("%s: \"%s\"" % [who, e["text"]], StoryStyle.TEXT)
 			"pilot_rested":
 				hud.toast("%s rests: HP %d" % [who, int(e["hp"])], StoryStyle.GREEN)
 			"ai_chose":
