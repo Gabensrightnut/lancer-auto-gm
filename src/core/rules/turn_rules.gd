@@ -36,6 +36,10 @@ static func takes_turns(u: Unit) -> bool:
 	var st := state_of(u)
 	if st != null and FrameSystems.riding(st, u):
 		return false  # Goblin Symbiosis: acts during its host's turn instead
+	if u.counters.get("exploring", false):
+		return false  # elsewhere, not in this fight (yet)
+	if st != null and int(u.counters.get("joins_round", 0)) > st.round_number:
+		return false  # arrived mid-fight: joins the activations from the next round
 	return Combat.is_present(u) and u.kind != Unit.KIND_DEPLOYABLE and not u.counters.get("empty", false) and not u.counters.get("flora", false)
 
 
@@ -59,14 +63,42 @@ static func waiting(state: GameState, side: String) -> Array[Unit]:
 	return out
 
 
-static func start_combat(state: GameState, first_side: String) -> Array[Dictionary]:
+## The units a fight starts with: params.units (ids), or everyone within params.radius of
+## params.center, or everyone. Units left out keep exploring (counters.exploring).
+static func participants(state: GameState, params: Dictionary) -> Array[Unit]:
+	var out: Array[Unit] = []
+	var ids: Variant = params.get("units")
+	var center: Variant = TurnAction.cell_param(params, "center")
+	for u: Unit in state.units.values():
+		if u.kind == Unit.KIND_DEPLOYABLE:
+			out.append(u)  # objects already on the field stay part of it
+			continue
+		if ids is Array:
+			if (ids as Array).has(u.id):
+				out.append(u)
+		elif center != null and params.has("radius"):
+			if state.map.grid.distance(u.cell, center) <= int(params["radius"]):
+				out.append(u)
+		else:
+			out.append(u)
+	return out
+
+
+static func start_combat(state: GameState, first_side: String, params: Dictionary = {}) -> Array[Dictionary]:
+	var inside := participants(state, params)
+	var left_out: Array = []
+	for u: Unit in state.units.values():
+		if not inside.has(u) and u.kind != Unit.KIND_DEPLOYABLE:
+			u.counters["exploring"] = true
+			left_out.append(u.id)
+	state.turn_mode = String(params.get("mode", "combat"))
 	state.phase = GameState.PHASE_COMBAT
 	state.first_side = first_side
 	state.round_number = 0
 	Environments.sync(state)
 	for u: Unit in state.units.values():
 		u.counters.erase("origin_used")  # a new scene: origin perks are fresh
-	var events: Array[Dictionary] = [{"type": "combat_started", "first_side": first_side}]
+	var events: Array[Dictionary] = [{"type": "combat_started", "first_side": first_side, "mode": state.turn_mode, "exploring": left_out}]
 	events.append_array(Combat.refresh_engagement(state))
 	events.append_array(_start_round(state, ""))
 	return events

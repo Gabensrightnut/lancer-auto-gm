@@ -158,6 +158,10 @@ cover, line of sight, attack/area/tech previews with hit chance).
 | `terrain_destroyed` | `cells` [[x, y, new ground]], `from` (old ground), `source`, `rule_ref` (Core p.68). The rules' BattleMap is already lowered; rubble gets no new tags |
 | `terrain_damaged` | `cell`, `amount`, `damage_type`, `ap`, `armor`, `hp_left`, `source` (damage that hits objects automatically) |
 | Attacking terrain | Any attack or ability target may be `"terrain:x,y"` (a destructible column's top section). Events about it name that id as `target`/`unit`. `RulesQueries.terrain_info(state, cell)` gives `hp`, `max_hp`, `evasion`, `armor`, `sections`, `target`; `attack_preview` accepts the id |
+| Exploring and fighting | `start_combat` params `units: [ids]` or `center: [x, y]` + `radius` (only those take part; the rest get `counters.exploring`), `mode: "combat" \| "explore"` (turn-based exploring). `combat_started` lists `exploring` ids and `mode` |
+| `joined_combat` | `unit`, `cell` [x, y, level], `from`, `round` (action `{"type": "join_combat", "actor", "params": {"to", "level"}}`: an exploring unit arrives anywhere free; takes turns from the next round; provokes nothing) |
+| `combat_ended` | `mode` (action `{"type": "end_combat"}` by the host between turns; `RulesQueries.combat_over(state)` is true when only one side is left fighting) |
+| `explore_move` | action `{"type": "explore_move", "actor", "params": {"to", "level", "fly"}}`: real-time movement outside a fight or for a unit not in it, up to Speed per step; emits `moved` |
 | `house_rule_changed` | `id`, `on`, `name`, `source` (action `{"type": "set_house_rule", "params": {"id", "on"}}`, any time between actions; `HouseRuleSwitches.listing(state)` for the page) |
 | `collapse_roll` | `cell`, `roll`, `total`, `collapsed` (house rule: building collapse roll) |
 | `environment_roll` | `environment`, `roll`, `text` (earthquakes at the end of a round) |

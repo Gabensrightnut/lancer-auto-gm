@@ -56,6 +56,19 @@ static func attack_preview(state: GameState, attacker_id: String, weapon_key: St
 	return p
 
 
+## Is the fight over? True when the characters taking part (not exploring elsewhere) are all on
+## one side, or nobody is left. The host then sends {"type": "end_combat"}. In turn-based
+## exploring (mode "explore") it's never over by itself.
+static func combat_over(state: GameState) -> bool:
+	if state.phase != GameState.PHASE_COMBAT or state.turn_mode == "explore":
+		return false
+	var sides := {}
+	for u: Unit in state.units.values():
+		if u.kind != Unit.KIND_DEPLOYABLE and Combat.is_present(u) and not u.counters.get("exploring", false):
+			sides[u.side] = true
+	return sides.size() < 2
+
+
 ## A destructible terrain column's section HP, Evasion and Armor for the HUD (Core p.68), or
 ## {} if it can't be damaged. Attack it with target "terrain:x,y" (TerrainDamage.id_for).
 static func terrain_info(state: GameState, cell: Vector2i) -> Dictionary:
