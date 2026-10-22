@@ -7,6 +7,7 @@ extends Control
 signal story_events(events: Array)
 signal codex_requested
 signal map_requested
+signal market_requested
 
 const PHASE_HELP := {
 	"briefing": "BRIEFING. Pick a job from the board (J). The briefing sets the goal and the stakes.",
@@ -67,6 +68,11 @@ func _init() -> void:
 	map_btn.tooltip_text = "The sector: other worlds, who likes you where, and travel."
 	map_btn.pressed.connect(func() -> void: map_requested.emit())
 	add_child(map_btn)
+	var market_btn := StoryStyle.button("Market (B)", 14)
+	market_btn.name = "MarketButton"
+	market_btn.tooltip_text = "Buying, selling, food and printers (house rules)."
+	market_btn.pressed.connect(func() -> void: market_requested.emit())
+	add_child(market_btn)
 	_prompt = StoryStyle.label("", 20, Color.WHITE)
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_prompt.add_theme_constant_override("outline_size", 6)
@@ -109,6 +115,18 @@ func refresh() -> void:
 	if not story.arc.is_empty():
 		var n := (StoryArc.arc_def(str(story.arc["id"])).get("stages", []) as Array).size()
 		t += "[color=#ffd166]Situation: %s (%d of %d)[/color]\n" % [story.arc["name"], int(story.arc["stage"]) + 1, n]
+	# House rules that are on (the user's own ideas, not book rules): one line, near the top.
+	var hr := PackedStringArray()
+	if StoryHouseRules.on(campaign, Economy.R_WALLET) and not Economy.wallet(story).is_empty():
+		hr.append(Economy.describe(story))
+	if StoryHouseRules.on(campaign, Economy.R_FOOD):
+		hr.append("food %d days" % Economy.rations(story))
+	if StoryHouseRules.on(campaign, Economy.R_PRINTERS):
+		hr.append("printer here" if Economy.has_printer(story) else "no printer here")
+		for wp: String in Economy.wrecked(story, campaign):
+			hr.append("[color=#ff7b6b]%s's mech wrecked[/color]" % campaign.pilots.get(wp, {}).get("callsign", ""))
+	if not hr.is_empty():
+		t += "[color=#e8c37a]House rules:[/color] %s" % "  ·  ".join(hr) + "\n"
 	t += "\n"
 	t += "[color=#ffd166]SQUAD[/color]\n"
 	var seats := story.seats.keys()
@@ -170,6 +188,10 @@ func refresh() -> void:
 	var mb := get_node("MapButton") as Button
 	mb.reset_size()
 	mb.position = Vector2(cb.position.x + cb.size.x + 8, cb.position.y)
+	var kb := get_node("MarketButton") as Button
+	kb.visible = MarketPanel.available(campaign)
+	kb.reset_size()
+	kb.position = Vector2(mb.position.x + mb.size.x + 8, cb.position.y)
 	_prompt.size = Vector2(vp.x, 30)
 	_prompt.position = Vector2(0, vp.y * 0.62)
 	_toasts.size = Vector2(440, 300)

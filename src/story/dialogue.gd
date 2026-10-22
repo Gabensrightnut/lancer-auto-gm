@@ -304,7 +304,7 @@ static func _roll_choice(story: StoryState, campaign: Campaign, chk: Dictionary,
 				var srcs: Array = opts.get("sources", [])
 				srcs.append({"label": "Bond with %s" % campaign.pilots.get(mate, {}).get("callsign", ""), "kind": "accuracy", "type": "accuracy", "value": 1, "rule_ref": Bonds.REF_REWARD})
 				opts["sources"] = srcs
-		var rec := NarrativeCheck.roll(story.dice, campaign.pilots.get(speaker, {}), opts)
+		var rec := NarrativeCheck.roll(story.dice, campaign.pilots.get(speaker, {}), Economy.check_opts(story, campaign, speaker, opts))
 		events.append({"type": "narrative_check", "pilot": speaker, "check": rec, "rule_ref": NarrativeCheck.REF,
 			"helpers": sharing.filter(func(x: String) -> bool: return x != speaker)})
 		story.dialogue["pilot_expression"] = PortraitSpec.check_expression(str(rec["outcome"]))

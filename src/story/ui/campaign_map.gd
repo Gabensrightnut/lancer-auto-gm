@@ -185,6 +185,15 @@ func _refresh() -> void:
 		_detail.add_child(StoryStyle.label("Hub: %s" % wd.get("hub_name", ""), 15, StoryStyle.TEXT))
 	else:
 		_detail.add_child(StoryStyle.label("You haven't been here yet. Nobody knows your squad.", 15, StoryStyle.DIM, 420))
+	# House rules (the user's own ideas): printers and the price of passage.
+	if StoryHouseRules.on(campaign, Economy.R_PRINTERS):
+		_detail.add_child(StoryStyle.label("Printer: %s  (house rule)" % ("yes" if Economy.has_printer(story, wd) else "none on this world"), 14, StoryStyle.TEXT))
+	if not here:
+		var fare := Economy.passage(story, campaign, wd)
+		if not fare.is_empty():
+			_detail.add_child(StoryStyle.label("Passage: %s  (house rule)" % (fare["text"] if StoryHouseRules.on(campaign, Economy.R_WALLET) else "a favor owed"), 14, StoryStyle.TEXT))
+		elif StoryHouseRules.on(campaign, Economy.R_TRAVEL):
+			_detail.add_child(StoryStyle.label("Passage: free, your patron's ship  (house rule)", 14, StoryStyle.TEXT))
 	var fs := Sector.factions_of(story, wd)
 	if not fs.is_empty():
 		_detail.add_child(StoryStyle.label("STANDING", 15, StoryStyle.GOLD))
@@ -206,6 +215,8 @@ func _refresh() -> void:
 	_detail.add_child(_msg)
 	if not here:
 		var why := Sector.travel_refusal(story, selected)
+		if why == "":
+			why = Economy.travel_refusal(story, campaign, wd)
 		var go := StoryStyle.button("Travel here" + ("  (through the blink gate)" if str(wd["system"]) != str(Sector.current(story).get("system", "")) else ""), 16)
 		go.name = "TravelButton"
 		go.disabled = why != ""

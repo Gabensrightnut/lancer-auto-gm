@@ -99,6 +99,8 @@ book in a way that changes the setting; parked.
 | The GM hands out or takes back reserves | Canon | Reserves are the GM's to give (Core p.50-52) |
 | The GM reveals, hides or rewrites a twist | Canon | Goals and situations can change mid-mission (Core p.43) |
 | The GM sets faction standing | Not a book rule (labelled) | Our bookkeeping |
+| Fights in town: defending the hub, a standoff outside a building, talks gone wrong, being jumped before leaving town; the battle uses the hub's own layout | Canon / Consistent | Switching from narrative play to mech combat where the characters are (Core p.45); goals change mid-mission (p.43); our own jobs and text |
+| House rules (off by default, labelled "Your idea, not a book rule"): tracked wallet, printer scarcity, paid travel, fight-for-it deals, food and water | Not canon (house rules) | The user's parked ideas (DESIGN.md "House rules"); the book tracks none of them (manna exists but isn't counted, printers are everywhere, Core p.10, p.31, p.82). Only active when switched on |
 
 ## When canon allows more than one answer
 
