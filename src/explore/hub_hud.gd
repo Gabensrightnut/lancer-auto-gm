@@ -5,6 +5,7 @@ extends Control
 ## the "Talk to" prompt, short toasts for story events, and the job board.
 
 signal story_events(events: Array)
+signal codex_requested
 
 const PHASE_HELP := {
 	"briefing": "BRIEFING. Pick a job from the board (J). The briefing sets the goal and the stakes.",
@@ -56,6 +57,10 @@ func _init() -> void:
 	_next = StoryStyle.button("", 15)
 	_next.pressed.connect(_next_step)
 	add_child(_next)
+	var codex_btn := StoryStyle.button("Codex (K)", 14)
+	codex_btn.name = "CodexButton"
+	codex_btn.pressed.connect(func() -> void: codex_requested.emit())
+	add_child(codex_btn)
 	_prompt = StoryStyle.label("", 20, Color.WHITE)
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_prompt.add_theme_constant_override("outline_size", 6)
@@ -148,6 +153,9 @@ func refresh() -> void:
 	_next.text = NEXT_STEP.get(story.phase, "")
 	_next.reset_size()
 	_next.position = Vector2(vp.x - _next.size.x - 16, 16)
+	var cb := get_node("CodexButton") as Button
+	cb.reset_size()
+	cb.position = Vector2(16, vp.y - cb.size.y - 16)
 	_prompt.size = Vector2(vp.x, 30)
 	_prompt.position = Vector2(0, vp.y * 0.62)
 	_toasts.size = Vector2(440, 300)

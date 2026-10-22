@@ -65,7 +65,7 @@ func show_ending(ending: Dictionary) -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 14)
 		card.add_child(row)
-		var face := Portrait.new()
+		var face := PortraitArt.new()
 		face.custom_minimum_size = Vector2(120, 150)
 		var f: Dictionary = ep.get("face", {})
 		face.set_look(f.get("portrait", {}), str(f.get("expression", "neutral")))

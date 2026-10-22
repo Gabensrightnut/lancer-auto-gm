@@ -51,6 +51,7 @@ var level_panel: LevelUpPanel
 var gear_panel: PilotGearPanel
 var tutorial_panel: TutorialPanel
 var epilogue: EpilogueScreen
+var codex: CodexPanel
 
 
 func setup(e: StoryEngine, s: StoryState, c: Campaign, content: ContentDB, seat: String = "p1") -> void:
@@ -375,7 +376,7 @@ func _physics_process(delta: float) -> void:
 	var me: PilotFigure = avatars.get(local_seat)
 	if me == null:
 		return
-	var busy := dialogue.visible or downtime_screen.visible or hud.board_open() or level_panel.visible or gear_panel.visible
+	var busy := dialogue.visible or downtime_screen.visible or hud.board_open() or level_panel.visible or gear_panel.visible or codex.visible
 	var dir := Vector3.ZERO
 	if not busy:
 		var f := Vector3(-sin(_yaw), 0, -cos(_yaw))
@@ -543,10 +544,17 @@ func _unhandled_input(ev: InputEvent) -> void:
 					downtime_screen.visible = not downtime_screen.visible
 					downtime_screen.refresh()
 					hud.set_busy(downtime_screen.visible)
+			KEY_K:
+				if not dialogue.visible:
+					codex.visible = not codex.visible
+					if codex.visible:
+						codex.open()
+					hud.set_busy(codex.visible)
 			KEY_J:
 				if not dialogue.visible:
 					hud.toggle_board()
 			KEY_ESCAPE:
+				codex.visible = false
 				downtime_screen.visible = false
 				gear_panel.visible = false
 				hud.close_board()
@@ -595,6 +603,8 @@ func _build_ui() -> void:
 	level_panel.story_events.connect(_handle)
 	popup = StoryCheckPopup.new()
 	ui.add_child(popup)
+	codex = CodexPanel.new()
+	ui.add_child(codex)
 	epilogue = EpilogueScreen.new()
 	ui.add_child(epilogue)
 	epilogue.sequel_requested.connect(_sequel)
@@ -602,6 +612,8 @@ func _build_ui() -> void:
 	tutorial_panel = TutorialPanel.new()
 	ui.add_child(tutorial_panel)
 	tutorial_panel.bind(campaign)
+	tutorial_panel.codex_requested.connect(func(q: String) -> void: codex.open(q))
+	hud.codex_requested.connect(func() -> void: codex.open())
 
 
 func _center(c: Control) -> void:
@@ -702,6 +714,8 @@ func screenshot_setup(args: Array) -> Array:
 	if args.has("ending"):
 		_stage_ending()
 		return ["ending"]
+	if args.has("codex"):
+		return ["codex"]
 	return ["walk", "talk", "choices", "check", "downtime", "supplies", "gear", "board", "briefing", "levelup"]
 
 
@@ -737,6 +751,8 @@ func _stage_ending() -> void:
 func screenshot_stage(tag: String) -> void:
 	var me: PilotFigure = avatars.get(local_seat)
 	match tag:
+		"codex":
+			codex.open("engaged")
 		"tutorial_briefing":
 			dialogue.advance()
 		"tutorial_hub":
