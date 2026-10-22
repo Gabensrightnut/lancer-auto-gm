@@ -17,6 +17,9 @@ signal mission_over(outcome: String, reason: String)
 signal log_line(text: String)
 ## An action the host refused (online: arrives after the fact).
 signal refused(reason: String, rule_ref: String)
+## Every batch of events the on-screen seat may see, including its own actions' (which
+## view_updated leaves out because the turn UI plays them). For the tutorial and first-time tips.
+signal events_seen(seat: String, events: Array)
 
 var is_host := true
 var host: NetHost
@@ -38,6 +41,8 @@ var over := false
 var outcome := ""
 var outcome_reason := ""
 var awaiting_handoff := false
+## Damage dealt in this battle (host), for the story's debrief ("who did the most damage").
+var damage_events: Array = []
 
 var _ai_wait := 0.0
 var _local_humans: Array = []
@@ -63,6 +68,7 @@ static func for_host(net_host: NetHost, ai: AiDirector, the_mission: Mission, lo
 	s.hot.handoff_requested.connect(s._on_handoff)
 	s.engine.host = net_host
 	net_host.waiting_changed.connect(s._on_waiting)
+	net_host.action_resolved.connect(s._on_resolved)
 	if ai != null:
 		ai.mission_over.connect(s._on_mission_over)
 		ai.ai_log.connect(s._on_ai_log)
@@ -94,6 +100,7 @@ func start() -> void:
 func poll(delta: float) -> void:
 	if is_host:
 		host.poll()
+		_follow_waiting()
 		if director != null and not busy and not over and not awaiting_handoff:
 			_ai_wait -= delta
 			if _ai_wait <= 0.0 and director.step():
@@ -164,6 +171,36 @@ func local_humans() -> Array:
 	return _local_humans.duplicate()
 
 
+## Seats played at this screen (by people or, after set_ai, by the AI).
+func local_seats() -> Array:
+	return Array(hot.seats) if is_host else [seat]
+
+
+## Hands a seat at this screen to the AI, or takes it back (DESIGN: switch any time).
+func set_ai(the_seat: String, on: bool) -> void:
+	if not is_host or not the_seat in hot.seats:
+		return
+	host.set_seat_ai(the_seat, on)
+	if on:
+		_local_humans.erase(the_seat)
+	elif not _local_humans.has(the_seat):
+		_local_humans.append(the_seat)
+	waiting_changed.emit(waiting())
+
+
+## Hot-seat: the screen goes to whichever person here the game is waiting on, also when the
+## engine asks someone else at this screen about a reaction (Brace, Overwatch).
+func _follow_waiting() -> void:
+	if busy or awaiting_handoff or hot.awaiting_handoff:
+		return
+	var w := host.waiting_on()
+	if not w.get("state", "") in ["turn", "reaction"] or (w.get("seats", []) as Array).is_empty():
+		return
+	var target: String = w["seats"][0]
+	if target != hot.current_seat and target in hot.seats and _local_humans.has(target):
+		hot.pass_to(target)
+
+
 func _on_view(the_seat: String, the_view: Dictionary, events: Array) -> void:
 	seat = the_seat
 	engine.seat = the_seat
@@ -171,6 +208,7 @@ func _on_view(the_seat: String, the_view: Dictionary, events: Array) -> void:
 	_sync_mirror()
 	# Our own action: the turn UI already plays those events.
 	view_updated.emit(the_seat, the_view, [] if engine.submitting else events)
+	_seen(events)
 	_check_end(events)
 
 
@@ -180,7 +218,19 @@ func _on_client_view(the_view: Dictionary, events: Array) -> void:
 	view = the_view
 	_sync_mirror()
 	view_updated.emit(seat, the_view, events)
+	_seen(events)
 	_check_end(events)
+
+
+func _seen(events: Array) -> void:
+	if not events.is_empty():
+		events_seen.emit(seat, events)
+
+
+func _on_resolved(_seat: String, _action: Dictionary, _result: RuleResult, events: Array) -> void:
+	for e: Dictionary in events:
+		if str(e.get("type", "")) == "damage_dealt":
+			damage_events.append(e)
 
 
 func _sync_mirror() -> void:

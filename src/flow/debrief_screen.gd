@@ -42,7 +42,7 @@ func _ready() -> void:
 	squad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var sb := MenuTheme.body(squad)
 	if not (d.get("pilots", []) as Array).is_empty():
-		sb.add_child(MenuTheme.label("After every mission each pilot gains a License Level: one more license rank, skill point, talent rank and mech skill point to spend (and a core bonus every third level).", 16, MenuTheme.MUTED, true))
+		sb.add_child(MenuTheme.label("After every mission, success or failure, each pilot gains a License Level: +2 to a skill trigger (or a new one), a mech skill point, a talent rank and a license rank, and a core bonus at every third level. They may also move one talent's or license's ranks, or swap a core bonus (Core p.18).", 16, MenuTheme.MUTED, true))
 	for p: Dictionary in d.get("pilots", []):
 		var line := PanelContainer.new()
 		var st := MenuTheme.box(MenuTheme.PANEL_2, MenuTheme.LINE, 1, 0)

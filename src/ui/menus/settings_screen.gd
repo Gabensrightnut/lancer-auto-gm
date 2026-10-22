@@ -30,8 +30,10 @@ func _ready() -> void:
 	d.add_child(_roll_sample())
 	left.add_child(display)
 	var gfx := MenuTheme.panel("Graphics", MenuTheme.maker_color("SSC"), "eclipse")
-	MenuTheme.body(gfx).add_child(_choice("Quality preset", GameSettings.GRAPHICS, s.graphics, func(v: String) -> void: s.graphics = v,
-		{"low": "Low (older PCs)", "medium": "Medium", "high": "High", "ultra": "Ultra"}))
+	var gb := MenuTheme.body(gfx)
+	gb.add_child(_choice("Quality preset", GameSettings.GRAPHICS, s.graphics, func(v: String) -> void: s.graphics = v,
+		{"low": "Low (older PCs)", "medium": "Medium (laptops, built-in graphics)", "high": "High (full look)"}))
+	gb.add_child(MenuTheme.label("Medium and Low turn off some lighting effects and thin out grass, trees and particles; Low also renders at 75%% and sharpens it back up. Takes effect on the next battlefield. Suggested for this PC: %s." % GameSettings.default_graphics().capitalize(), 15, MenuTheme.MUTED, true))
 	left.add_child(gfx)
 	var play := MenuTheme.panel("Pacing", MenuTheme.maker_color("HORUS"), "activate")
 	var pb := MenuTheme.body(play)

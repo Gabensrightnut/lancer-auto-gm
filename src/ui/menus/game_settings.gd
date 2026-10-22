@@ -22,13 +22,15 @@ const ACTIONS := {
 	"skip_to_my_turn": ["Skip to my turn", KEY_SPACE],
 }
 const COLORBLIND := ["off", "deuteranopia", "protanopia", "tritanopia"]
-const GRAPHICS := ["low", "medium", "high", "ultra"]
+## Battlefield quality presets (WorldQuality.PRESETS), lowest first.
+const GRAPHICS := ["low", "medium", "high"]
 const ANIMATION := ["cinematic", "normal", "fast"]
 
 var ui_scale := 1.0
 var text_size := 1.0
 var action_bar_scale := 1.0
 var colorblind := "off"
+## WorldQuality preset. A new install gets default_graphics().
 var graphics := "high"
 var animation_speed := "normal"
 ## How long roll and damage pop-ups stay up (1 = normal, 2 = twice as long).
@@ -39,6 +41,7 @@ var keybinds: Dictionary = {}
 
 static func load_settings(path: String = FILE) -> GameSettings:
 	var s := GameSettings.new()
+	s.graphics = default_graphics()
 	for a: String in ACTIONS:
 		s.keybinds[a] = int(ACTIONS[a][1])
 	var cfg := ConfigFile.new()
@@ -48,7 +51,8 @@ static func load_settings(path: String = FILE) -> GameSettings:
 	s.text_size = clampf(float(cfg.get_value("display", "text_size", 1.0)), 0.8, 1.5)
 	s.action_bar_scale = clampf(float(cfg.get_value("display", "action_bar_scale", 1.0)), 0.75, 1.5)
 	s.colorblind = _one_of(cfg.get_value("display", "colorblind", "off"), COLORBLIND, "off")
-	s.graphics = _one_of(cfg.get_value("graphics", "preset", "high"), GRAPHICS, "high")
+	var gfx := str(cfg.get_value("graphics", "preset", s.graphics))
+	s.graphics = _one_of("high" if gfx == "ultra" else gfx, GRAPHICS, s.graphics)  # "ultra" was folded into high
 	s.animation_speed = _one_of(cfg.get_value("gameplay", "animation_speed", "normal"), ANIMATION, "normal")
 	s.popup_duration = clampf(float(cfg.get_value("gameplay", "popup_duration", 1.0)), 0.5, 2.0)
 	for a: String in ACTIONS:
@@ -70,11 +74,29 @@ func save(path: String = FILE) -> Error:
 	return cfg.save(path)
 
 
-## Applies what takes effect right away: UI scale and key bindings.
+## Applies what takes effect right away: UI scale, key bindings and the graphics preset (for
+## the next battlefield built).
 func apply(tree: SceneTree) -> void:
 	if tree != null and tree.root != null:
 		tree.root.content_scale_factor = ui_scale
+		apply_graphics(tree.root)
 	apply_keys()
+
+
+## Sets the battlefield quality (WorldQuality) on `viewport`. Call before a board is built:
+## scenery density is read when the board is made.
+func apply_graphics(viewport: Viewport) -> void:
+	WorldQuality.set_preset(graphics, viewport)
+
+
+## "high", or "medium" on a weak GPU (integrated, software or virtual graphics).
+static func default_graphics() -> String:
+	if DisplayServer.get_name() == "headless":
+		return "high"
+	match RenderingServer.get_video_adapter_type():
+		RenderingDevice.DEVICE_TYPE_INTEGRATED_GPU, RenderingDevice.DEVICE_TYPE_CPU, RenderingDevice.DEVICE_TYPE_VIRTUAL_GPU:
+			return "medium"
+	return "high"
 
 
 func apply_keys() -> void:

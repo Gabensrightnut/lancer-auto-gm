@@ -119,11 +119,13 @@ func _refresh_pilot() -> void:
 	pilot_box.add_child(names)
 	var ll := HBoxContainer.new()
 	ll.add_theme_constant_override("separation", 10)
+	# License Level isn't picked here: it goes up by one after every mission (Core p.18).
 	ll.add_child(MenuTheme.label("LICENSE LEVEL", 15, MenuTheme.MUTED))
-	ll.add_child(_step_button("−", model.ll() > 0, "", func() -> void: model.set_ll(model.ll() - 1)))
 	ll.add_child(MenuTheme.heading(str(model.ll()), 28))
-	ll.add_child(_step_button("+", model.ll() < 12, "LL 12 is the highest.", func() -> void: model.set_ll(model.ll() + 1)))
-	ll.add_child(MenuTheme.label("(GRIT +%d)" % UnitFactory.grit(model.ll()), 15, MenuTheme.MUTED))
+	var ll_note := MenuTheme.label("GRIT +%d  ·  goes up after every mission" % UnitFactory.grit(model.ll()), 15, MenuTheme.MUTED)
+	ll_note.tooltip_text = "Pilots gain a License Level after every mission, success or failure (Core p.18)."
+	ll_note.mouse_filter = Control.MOUSE_FILTER_PASS
+	ll.add_child(ll_note)
 	pilot_box.add_child(ll)
 	var chips := HFlowContainer.new()
 	chips.add_theme_constant_override("h_separation", 6)
@@ -135,6 +137,8 @@ func _refresh_pilot() -> void:
 		var color := MenuTheme.BAD if used > mx else (MenuTheme.GOOD if used == mx else MenuTheme.WARN)
 		chips.add_child(MenuTheme.chip("%s %d/%d" % [k[1], used, mx], color))
 	pilot_box.add_child(chips)
+	if model.can_reallocate():
+		pilot_box.add_child(_realloc_box())
 	var hase := GridContainer.new()
 	hase.columns = 4
 	hase.add_theme_constant_override("h_separation", 10)
@@ -155,6 +159,71 @@ func _refresh_pilot() -> void:
 	tabs.add_child(_core_bonus_list())
 	tabs.current_tab = tab_index
 	tabs.tab_changed.connect(func(i: int) -> void: tab_index = i)
+
+
+## Level-up reallocation (Core p.18): once per new License Level.
+func _realloc_box() -> Control:
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", MenuTheme.box(MenuTheme.WARN.darkened(0.75), MenuTheme.WARN, 1, 3))
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	p.add_child(v)
+	v.add_child(MenuTheme.label("Level-up reallocation (once): move all ranks of one talent or license to another, or swap a core bonus.", 14, MenuTheme.WARN.lightened(0.4), true))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	var kind := OptionButton.new()
+	var from := OptionButton.new()
+	var to := OptionButton.new()
+	from.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	to.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	from.clip_text = true
+	to.clip_text = true
+	for k in [["talent", "Talent"], ["license", "License"], ["core_bonus", "Core bonus"]]:
+		kind.add_item(k[1])
+		kind.set_item_metadata(kind.item_count - 1, k[0])
+	var fill := func() -> void:
+		from.clear()
+		to.clear()
+		var k: String = kind.get_selected_metadata()
+		var have: Array = []
+		var all: Array = []
+		match k:
+			"talent":
+				have = model.pilot["talents"].keys()
+				all = model.db.all("talents")
+			"license":
+				have = model.pilot["licenses"].keys()
+				all = model.db.all("frames").filter(func(e: Dictionary) -> bool: return e.get("source", "") != "GMS")
+			"core_bonus":
+				have = model.pilot["core_bonuses"].duplicate()
+				all = model.db.all("core_bonuses")
+		for id: String in have:
+			var e: Dictionary = model.db.get_entry({"talent": "talents", "license": "frames", "core_bonus": "core_bonuses"}[k], id)
+			from.add_item(str(e.get("name", id)))
+			from.set_item_metadata(from.item_count - 1, id)
+		for e: Dictionary in all:
+			if not have.has(e.get("id", "")):
+				to.add_item(str(e.get("name", e.get("id", ""))))
+				to.set_item_metadata(to.item_count - 1, e.get("id", ""))
+	kind.item_selected.connect(func(_i: int) -> void: fill.call())
+	fill.call()
+	row.add_child(kind)
+	row.add_child(from)
+	row.add_child(MenuTheme.label("→", 18))
+	row.add_child(to)
+	v.add_child(row)
+	var result := MenuTheme.label("", 14, MenuTheme.BAD.lightened(0.3), true)
+	var apply := Button.new()
+	apply.text = "Reallocate"
+	apply.pressed.connect(func() -> void:
+		if from.item_count == 0 or to.item_count == 0:
+			result.text = "Nothing to move."
+			return
+		var why := model.reallocate(kind.get_selected_metadata(), from.get_selected_metadata(), to.get_selected_metadata())
+		result.text = why)
+	v.add_child(apply)
+	v.add_child(result)
+	return p
 
 
 func _rank_list(title: String, options: Array, set_rank: Callable, rank_text: String, mult: int) -> Control:

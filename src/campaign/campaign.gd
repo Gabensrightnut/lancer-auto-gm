@@ -87,11 +87,19 @@ func validate_pilot(p: Dictionary, db: ContentDB) -> Array:
 	return problems
 
 
-## License Level up after a mission (the player then picks the new license rank / talent).
+## License Level up after a mission, success or failure (Core p.18 "Leveling Up"). What the
+## pilot had spent so far is recorded as spent (`locked`), and one reallocation is offered.
 func level_up(pilot_id: String) -> bool:
 	var p: Dictionary = pilots.get(pilot_id, {})
 	if p.is_empty() or int(p["ll"]) >= 12:
 		return false
+	var hase := {}
+	for k in ["hull", "agility", "systems", "engineering"]:
+		hase[k] = int(p.get(k, 0))
+	p["locked"] = {"skills": (p.get("skills", {}) as Dictionary).duplicate(), "talents": (p.get("talents", {}) as Dictionary).duplicate(),
+		"licenses": (p.get("licenses", {}) as Dictionary).duplicate(), "core_bonuses": (p.get("core_bonuses", []) as Array).duplicate(),
+		"hase": hase}
+	p["realloc_pending"] = true
 	p["ll"] = int(p["ll"]) + 1
 	return true
 

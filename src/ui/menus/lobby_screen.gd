@@ -144,20 +144,18 @@ func _seat_row(r: Dictionary) -> Control:
 	var status := HBoxContainer.new()
 	status.add_theme_constant_override("separation", 6)
 	status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	match r["mode"]:
-		"you":
-			status.add_child(MenuTheme.chip("You", MenuTheme.TEXT))
-		"ai":
-			status.add_child(MenuTheme.chip("AI pilot", MenuTheme.maker_color("HORUS").lightened(0.2)))
-		_:
-			if r["connected"] and not r["ai"]:
-				status.add_child(MenuTheme.chip(r["player"], MenuTheme.maker_color("IPS-N").lightened(0.2)))
-			elif r["ai"]:
-				status.add_child(MenuTheme.chip("AI until a friend joins", MenuTheme.maker_color("HORUS").lightened(0.2)))
-			else:
-				status.add_child(MenuTheme.chip("Reserved" if r["mode"] == "reserved" else "Open", MenuTheme.MUTED))
+	if r.get("me", false):
+		status.add_child(MenuTheme.chip("You", MenuTheme.TEXT))
+	elif r.get("host_seat", false):
+		status.add_child(MenuTheme.chip("Host", MenuTheme.maker_color("IPS-N").lightened(0.2)))
+	else:
+		_status_chip(status, r)
 	if r["ready"] and not r["ai"]:
 		status.add_child(MenuTheme.chip("Ready", MenuTheme.GOOD))
+	if int(r.get("unspent", 0)) > 0 and lobby.is_host:
+		var c := MenuTheme.chip("%d point%s to spend" % [r["unspent"], "" if r["unspent"] == 1 else "s"], MenuTheme.WARN)
+		c.tooltip_text = "This pilot leveled up. Open Edit build to choose new skills, talents, licenses or mech skills."
+		status.add_child(c)
 	h.add_child(status)
 	if lobby.is_host:
 		var mode := OptionButton.new()
@@ -190,6 +188,21 @@ func _seat_row(r: Dictionary) -> Control:
 	if not r["problems"].is_empty():
 		v.add_child(_note("%s's build isn't legal: %s" % [r["callsign"], r["problems"][0]], MenuTheme.BAD))
 	return p
+
+
+func _status_chip(status: HBoxContainer, r: Dictionary) -> void:
+	match r["mode"]:
+		"you":
+			status.add_child(MenuTheme.chip("You", MenuTheme.TEXT))
+		"ai":
+			status.add_child(MenuTheme.chip("AI pilot", MenuTheme.maker_color("HORUS").lightened(0.2)))
+		_:
+			if r["connected"] and not r["ai"]:
+				status.add_child(MenuTheme.chip(r["player"], MenuTheme.maker_color("IPS-N").lightened(0.2)))
+			elif r["ai"]:
+				status.add_child(MenuTheme.chip("AI until a friend joins", MenuTheme.maker_color("HORUS").lightened(0.2)))
+			else:
+				status.add_child(MenuTheme.chip("Reserved" if r["mode"] == "reserved" else "Open", MenuTheme.MUTED))
 
 
 func _mission_panel() -> Control:

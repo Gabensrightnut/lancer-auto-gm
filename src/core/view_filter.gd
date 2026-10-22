@@ -67,7 +67,8 @@ func view_for(state: GameState, seat: String) -> Dictionary:
 	return full
 
 
-## The events `seat` may see: hostile Hidden units' movement is dropped, and unscanned
+## The events `seat` may see: hostile Hidden units' movement is dropped, events with a
+## `seen_by` list of sides go only to those sides (and the GM), and unscanned
 ## enemies' HP and heat totals are removed (the amounts of damage and heat stay visible).
 func events_for(state: GameState, seat: String, events: Array) -> Array:
 	var seat_side := _side(state, seat)
@@ -80,6 +81,9 @@ func events_for(state: GameState, seat: String, events: Array) -> Array:
 		var hostile := u != null and u.side != seat_side
 		if hostile and e.get("type", "") == "moved" and u.has_status("Hidden"):
 			continue
+		var seen_by: Variant = e.get("seen_by")
+		if seen_by is Array and not (seen_by as Array).has(seat_side):
+			continue  # Meant for other sides only (e.g. the GM's twist for the squad).
 		var copy := e.duplicate(true)
 		if hostile and not knows_stats(seat_side, uid, state):
 			for key in ["hp", "overshield", "total"]:

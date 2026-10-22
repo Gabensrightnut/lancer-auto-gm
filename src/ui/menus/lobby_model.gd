@@ -36,6 +36,9 @@ var assignment: Dictionary = {}
 var ready: Dictionary = {}
 ## Messages for the player: [{"kind": "error"/"warn"/"info", "text"}]
 var messages: Array = []
+## Builds the battlefield instead of MissionGenerator (story campaigns: CampaignLoop builds it
+## from the job the squad took). func(options: Dictionary) -> {state, mission}.
+var mission_builder: Callable
 ## What the host last sent (joining players).
 var remote: Dictionary = {}
 ## The host started the mission (joining players move to the battle).
@@ -54,6 +57,20 @@ static func for_host(the_campaign: Campaign, content: ContentDB, mission_seed: i
 		var seat: String = squad[i]["seat"]
 		m.assignment[seat] = squad[i]["pilot"]["id"]
 		m.modes[seat] = "you" if i == 0 else "ai"
+	m._rebuild()
+	return m
+
+
+## A host lobby whose seats and battlefield come from elsewhere (a story campaign's job):
+## `seat_modes` seat -> mode, `pilots` seat -> pilot id, `builder` as mission_builder.
+static func for_mission(the_campaign: Campaign, content: ContentDB, seat_modes: Dictionary, pilots: Dictionary, builder: Callable) -> LobbyModel:
+	var m := LobbyModel.new()
+	m.campaign = the_campaign
+	m.db = content
+	m.options["preset"] = str(the_campaign.gm_settings.get("preset", "Standard"))
+	m.modes = seat_modes.duplicate()
+	m.assignment = pilots.duplicate()
+	m.mission_builder = builder
 	m._rebuild()
 	return m
 
@@ -147,7 +164,14 @@ func set_local_ready(is_ready: bool) -> void:
 ## connected, ready, ai, problems: [String]}
 func rows() -> Array:
 	if not is_host:
-		return remote.get("rows", [])
+		# The host's rows say "You" from the host's side: turn them around for this player.
+		var out: Array = []
+		for r: Dictionary in remote.get("rows", []):
+			var mine := r.duplicate()
+			mine["me"] = client != null and r["seat"] == client.seat
+			mine["host_seat"] = r["mode"] == "you"
+			out.append(mine)
+		return out
 	var out: Array = []
 	var table := host.seat_table()
 	for seat: String in seats():
@@ -168,14 +192,41 @@ func rows() -> Array:
 			"player": str(t.get("player", "")) if t.get("where", "") == "remote" else ("You" if modes[seat] == "you" else ""),
 			"connected": connected, "ready": ai or bool(ready.get(seat, false)), "ai": ai,
 			"problems": campaign.validate_pilot(p, db) if not p.is_empty() else ["No pilot assigned."],
+			"unspent": _unspent(p),
 		})
 	return out
+
+
+## Points a pilot hasn't spent yet (after a level up): skill, talent, mech skill, license
+## and core bonus points together.
+func _unspent(p: Dictionary) -> int:
+	if p.is_empty():
+		return 0
+	var n := 0
+	var b := BuilderModel.new(db, p).budgets()
+	for k: String in b:
+		n += maxi(0, int(b[k]["max"]) - int(b[k]["used"]))
+	return n
 
 
 ## Why the mission can't start yet, in plain words (empty = ready to launch).
 func start_problems() -> Array:
 	if not is_host:
-		return remote.get("problems", [])
+		var out: Array = []
+		var me: Dictionary = {}
+		for r: Dictionary in rows():
+			if r["me"]:
+				me = r
+		if not me.is_empty() and not me["ready"]:
+			out.append("Press Ready when you're set.")
+		for p: String in remote.get("problems", []):
+			if p == "Press Ready when you're set.":
+				out.append("Waiting for the host to press Ready.")
+			elif not me.is_empty() and p.begins_with("%s (" % me["callsign"]) and p.ends_with("isn't ready yet."):
+				continue  # That's us: covered above.
+			else:
+				out.append(p)
+		return out
 	var out: Array = []
 	var lib_missing: Array = PackLibrary.missing(campaign.packs, db.packs)
 	if not lib_missing.is_empty():
@@ -238,7 +289,7 @@ func _rebuild() -> void:
 			if m["id"] == p.get("active_mech", "") or mech.is_empty():
 				mech = m
 		squad.append({"seat": seat, "pilot": p, "mech": mech})
-	var gen := MissionGenerator.generate(int(options["seed"]), {
+	var gen: Dictionary = mission_builder.call(options) if mission_builder.is_valid() else MissionGenerator.generate(int(options["seed"]), {
 		"squad": squad, "shape": options["shape"], "sitrep": options["sitrep"], "db": db,
 		"settings": GmSettings.from_preset(options["preset"]), "players": squad.size()})
 	var state: GameState = gen["state"]

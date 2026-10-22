@@ -134,6 +134,8 @@ func test_solo_campaign_loop_end_to_end() -> void:
 	expect_eq(lobby2.modes, lobby.modes)
 	expect(lobby2.options["seed"] != lobby.options["seed"] or true)
 	expect_eq(BuilderModel.new(db, loaded.pilots[pid]).budgets()["licenses"]["max"], 1)
+	lobby2.options["seed"] = 2718  # A fixed battlefield, so the test is the same every run.
+	lobby2.set_shape(str(lobby2.options["shape"]))
 	lobby2.set_local_ready(true)
 	var s2 := GameFlow.start_mission(lobby2, store)
 	s2.start()
@@ -164,19 +166,21 @@ func test_solo_campaign_loop_end_to_end() -> void:
 
 
 func test_hot_seat_battle() -> void:
+	# Several battlefields, so reactions asked of the other player at the screen come up too.
 	_store()
-	var c := _campaign(2)
-	var lobby := LobbyModel.for_host(c, MissionTest.db(), 271)
-	lobby.set_mode("p2", "you")
-	lobby.set_local_ready(true)
-	var s := GameFlow.start_mission(lobby, store)
-	expect_eq(GameFlow.local_seats, ["p1", "p2"])
-	var table := ScriptedPlayer.new(s)  # listening before start: the first handoff comes at once
-	s.start()
-	play_out([s], [table])
-	expect(s.over)
-	expect(table.handoffs >= 2, "the screen was passed between players (%d)" % table.handoffs)
-	expect(table.turns >= 2)
+	for mission_seed in [271, 272, 273]:
+		var c := _campaign(2)
+		var lobby := LobbyModel.for_host(c, MissionTest.db(), mission_seed)
+		lobby.set_mode("p2", "you")
+		lobby.set_local_ready(true)
+		var s := GameFlow.start_mission(lobby, store)
+		expect_eq(GameFlow.local_seats, ["p1", "p2"])
+		var table := ScriptedPlayer.new(s)  # listening before start: the first handoff comes at once
+		s.start()
+		play_out([s], [table])
+		expect(s.over, "seed %d: the mission ended (waiting on %s)" % [mission_seed, s.waiting()])
+		expect(table.handoffs >= 2, "the screen was passed between players (%d)" % table.handoffs)
+		expect(table.turns >= 2)
 	_cleanup()
 
 

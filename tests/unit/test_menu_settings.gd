@@ -37,3 +37,24 @@ func test_rebinding_swaps_instead_of_leaving_a_hole() -> void:
 	s.apply_keys()
 	expect(InputMap.has_action("end_turn"))
 	expect_eq((InputMap.action_get_events("end_turn")[0] as InputEventKey).physical_keycode, KEY_F5)
+
+
+func test_graphics_preset_drives_world_quality() -> void:
+	var path := "user://test_gfx_%d.cfg" % Time.get_ticks_usec()
+	var s := GameSettings.load_settings(path)
+	expect_eq(s.graphics, GameSettings.default_graphics(), "a new install gets the suggested preset")
+	expect(s.graphics in WorldQuality.PRESETS)
+	expect_eq(GameSettings.GRAPHICS.size(), WorldQuality.PRESETS.size(), "every menu choice is a WorldQuality preset")
+	s.graphics = "low"
+	expect_eq(s.save(path), OK)
+	var back := GameSettings.load_settings(path)
+	expect_eq(back.graphics, "low", "the choice is saved")
+	back.apply_graphics(null)
+	expect_eq(WorldQuality.preset, "low")
+	var cfg := ConfigFile.new()
+	cfg.load(path)
+	cfg.set_value("graphics", "preset", "ultra")
+	cfg.save(path)
+	expect_eq(GameSettings.load_settings(path).graphics, "high", "the old Ultra setting becomes High")
+	WorldQuality.set_preset("high")
+	DirAccess.remove_absolute(path)

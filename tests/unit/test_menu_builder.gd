@@ -108,3 +108,86 @@ func test_lowering_ll_shows_overspent_points() -> void:
 	expect_eq(b.set_ll(0), "", "you can always change the level")
 	expect(not b.is_legal())
 	expect(" ".join(b.problems()).contains("License"), str(b.problems()))
+
+
+# --- Leveling up (Core p.18) and core bonuses (p.35) ---------------------------------------
+
+static func _maker_bonuses(src: String) -> Array:
+	var out: Array = []
+	for cb: Dictionary in MissionTest.db().all("core_bonuses"):
+		if cb.get("source", "") == src:
+			out.append(cb["id"])
+	return out
+
+
+## A campaign pilot at `ll` who spent points, then leveled up once.
+func _leveled(ll: int, setup: Callable) -> Array:
+	var c := Campaign.create("Lv", {"start_ll": ll})
+	var p := c.new_pilot("Ama", "Bluebird")
+	var b := BuilderModel.new(MissionTest.db(), p)
+	setup.call(b)
+	c.pilots[p["id"]] = b.pilot
+	c.level_up(p["id"])
+	return [c, BuilderModel.new(MissionTest.db(), c.pilots[p["id"]])]
+
+
+func test_spent_points_stay_spent_after_leveling() -> void:
+	var r := _leveled(0, func(b: BuilderModel) -> void:
+		b.set_talent("t_ace", 2)
+		b.set_skill("sk_charm", 2))
+	var b: BuilderModel = r[1]
+	expect_eq(b.ll(), 1)
+	expect(b.can_reallocate(), "one reallocation at the level up")
+	var why := b.set_talent("t_ace", 1)
+	expect(why.contains("stay spent"), why)
+	expect(b.set_skill("sk_charm", 1).contains("stay spent"), "skill points too")
+	expect_eq(b.set_talent("t_ace", 3), "", "new points can be spent")
+
+
+func test_reallocate_a_talent_once() -> void:
+	var r := _leveled(0, func(b: BuilderModel) -> void: b.set_talent("t_ace", 2))
+	var b: BuilderModel = r[1]
+	expect(b.reallocate("talent", "t_ace", "t_ace").contains("doesn't have"), "must move to a new talent")
+	expect_eq(b.reallocate("talent", "t_ace", "t_brawler"), "")
+	expect(not b.pilot["talents"].has("t_ace"))
+	expect_eq(b.pilot["talents"]["t_brawler"], 2, "all the ranks moved")
+	expect(b.is_legal(), str(b.problems()))
+	expect(not b.can_reallocate())
+	expect(b.reallocate("talent", "t_brawler", "t_ace").contains("once"), "only once per level")
+
+
+func test_license_move_that_breaks_a_core_bonus_forces_a_replacement() -> void:
+	var ipsn := _maker_bonuses("IPS-N")
+	var r := _leveled(3, func(b: BuilderModel) -> void:
+		expect_eq(b.set_license("mf_blackbeard", 3), "")
+		expect_eq(b.toggle_core_bonus(ipsn[0]), "", "3 IPS-N ranks: first IPS-N bonus"))
+	var b: BuilderModel = r[1]
+	expect_eq(b.reallocate("license", "mf_blackbeard", "mf_everest_does_not_exist").begins_with("Unknown"), true)
+	expect_eq(b.reallocate("license", "mf_blackbeard", "mf_genghis"), "", "moving the ranks is allowed")
+	var problems := " ".join(b.problems())
+	expect(problems.contains("core bonus"), "the IPS-N bonus no longer qualifies: " + problems)
+	expect_eq(b.toggle_core_bonus(ipsn[0]), "", "so it can be dropped")
+	var gms := _maker_bonuses("GMS")
+	expect_eq(b.toggle_core_bonus(gms[0]), "", "and replaced")
+	expect(b.is_legal(), str(b.problems()))
+
+
+func test_swap_a_core_bonus() -> void:
+	var gms := _maker_bonuses("GMS")
+	var r := _leveled(3, func(b: BuilderModel) -> void: b.toggle_core_bonus(gms[0]))
+	var b: BuilderModel = r[1]
+	expect(b.toggle_core_bonus(gms[0]).contains("swap"), "can't just drop an earlier core bonus")
+	expect_eq(b.reallocate("core_bonus", gms[0], gms[1]), "")
+	expect_eq(b.pilot["core_bonuses"], [gms[1]])
+	expect(b.is_legal(), str(b.problems()))
+
+
+func test_manufacturer_core_bonuses_need_three_more_ranks_each() -> void:
+	var ipsn := _maker_bonuses("IPS-N")
+	var b := _builder(6)
+	expect_eq(b.set_license("mf_blackbeard", 3), "")
+	expect_eq(b.toggle_core_bonus(ipsn[0]), "", "3 ranks: 1st IPS-N bonus")
+	var why := b.toggle_core_bonus(ipsn[1])
+	expect(why.contains("6 IPS-N license ranks"), why)
+	expect_eq(b.set_license("mf_drake", 3), "", "ranks can be spread over any IPS-N licenses")
+	expect_eq(b.toggle_core_bonus(ipsn[1]), "", "6 ranks: 2nd IPS-N bonus")
