@@ -22,6 +22,23 @@ extends RefCounted
 ## Meters per facade "level" (one floor).
 const FLOOR := 3.0
 const ROOF_OVERHANG := 0.6
+## Meta on lights that only burn after dark (lamps, lanterns, fires): set_hub_time turns them.
+const NIGHT_LIGHT := "hub_night_light"
+## The clock's times of day over a culture's own look (its kit is its daytime): sun angle and
+## color, sky, ambient light, fog, and how many windows are lit. The neon city's own kit is
+## its night; by day it is a grey smoggy overcast with the signs still burning.
+const TIMES := {
+	"dawn": {"sun_pitch": -9.0, "sun_yaw": -100.0, "sun_color": "#ffb48a", "sun_scale": 0.55, "ambient_scale": 0.65,
+		"top": "#4a5a8a", "horizon": "#ffb898", "haze_color": "#ffb090", "fog_color": "#b8a0a0", "exposure": 0.95, "lit": 0.3},
+	"day": {},
+	"evening": {"sun_pitch": -8.0, "sun_yaw": 80.0, "sun_color": "#ff9858", "sun_scale": 0.6, "ambient_scale": 0.6,
+		"top": "#34446e", "horizon": "#ff9a64", "haze_color": "#ff8a50", "fog_color": "#a07868", "exposure": 1.0, "lit": 0.5},
+	"night": {"sun_pitch": -42.0, "sun_yaw": 30.0, "sun_color": "#8aa4ff", "sun_scale": 0.12, "ambient_scale": 0.35,
+		"top": "#04060e", "horizon": "#141c30", "haze_color": "#1a2440", "fog_color": "#0e1420", "exposure": 1.3, "lit": 0.75, "stars": 1.3},
+}
+const NEON_DAY := {"sun_pitch": -40.0, "sun_color": "#d8d4e0", "sun_energy": 1.3, "ambient": 0.6, "ambient_color": "#8a8498",
+	"top": "#6a6a7c", "horizon": "#a8a0ac", "haze_color": "#9a90a0", "fog_color": "#7a7484", "exposure": 1.0, "stars": 0.0}
+
 const PROP_RADIUS := {"lamp": 0.25, "crate": 0.6, "barrel": 0.4, "bench": 0.8, "planter": 0.6, "cart": 1.0}
 ## Story's hub culture ids -> map culture ids.
 const ALIASES := {"medieval_tech": "medieval", "retrofuturistic": "retro", "union_core": "union", "frontier_colony": ""}
@@ -329,6 +346,7 @@ static func _add_lantern(root: Node3D, at: Vector3, color: Color, flame: bool) -
 	light.light_color = color
 	light.light_energy = 0.7
 	light.omni_range = 4.0
+	light.set_meta(NIGHT_LIGHT, true)
 	node.add_child(light)
 
 
@@ -460,6 +478,7 @@ static func _light(root: Node3D, at: Vector3, color: Color, flicker: bool) -> vo
 	l.light_energy = 0.9
 	l.omni_range = 6.0
 	l.position = at
+	l.set_meta(NIGHT_LIGHT, true)
 	root.add_child(l)
 
 
@@ -565,14 +584,71 @@ static func hub_ground(culture: String) -> Dictionary:
 	return {"ground": ground, "pave": pave}
 
 
-## Sky, sun and fog to match the culture (fog thinned for a small town seen up close).
-static func apply_hub_environment(culture: String, env: Environment, sun: DirectionalLight3D) -> void:
+## Sky, sun and fog to match the culture (fog thinned for a small town seen up close), at the
+## story clock's time of day (TownLife.period: dawn, day, evening, night).
+static func apply_hub_environment(culture: String, env: Environment, sun: DirectionalLight3D, period: String = "day") -> void:
 	var c := culture_id(culture)
 	var kit := str(HUB_LANDSCAPE.get(c, "desert_mesas"))
 	if c != "":
 		kit += "/" + c
 	var shadow := sun.directional_shadow_max_distance
-	WorldAtmosphere.apply(WorldStyle.resolve(kit), env, sun)
+	var style := WorldStyle.resolve(kit)
+	time_of_day(style, period)
+	WorldAtmosphere.apply(style, env, sun)
 	env.fog_density *= 0.35
 	env.volumetric_fog_density *= 0.35
 	sun.directional_shadow_max_distance = maxf(shadow, sun.directional_shadow_max_distance)
+
+
+
+## Lays the clock's time of day over a resolved style (in place). Day is the kit as it is.
+static func time_of_day(style: Dictionary, period: String) -> void:
+	var neon := str(style.get("culture", "")) == "cyberpunk"
+	var t: Dictionary = TIMES.get(period, {})
+	var light: Dictionary = style.get("light", {})
+	var sky: Dictionary = style.get("sky", {})
+	style["light"] = light
+	style["sky"] = sky
+	if neon:
+		# The neon city's kit is its night: only the daylight hours change it.
+		if period == "night":
+			return
+		t = NEON_DAY.duplicate()
+		if period != "day":
+			t["sun_color"] = TIMES[period]["sun_color"]
+			t["sun_pitch"] = TIMES[period]["sun_pitch"]
+			t["horizon"] = TIMES[period]["horizon"]
+	if t.is_empty():
+		return
+	for k: String in ["sun_pitch", "sun_yaw", "sun_color", "sun_energy", "ambient", "ambient_color", "fog_color", "exposure"]:
+		if t.has(k):
+			light[k] = t[k]
+	if t.has("sun_scale"):
+		light["sun_energy"] = float(light.get("sun_energy", 2.2)) * float(t["sun_scale"])
+	if t.has("ambient_scale"):
+		light["ambient"] = float(light.get("ambient", 0.5)) * float(t["ambient_scale"])
+	for k: String in ["top", "horizon", "haze_color", "stars"]:
+		if t.has(k):
+			sky[k] = t[k]
+	if t.has("top"):
+		sky["clouds"] = float(sky.get("clouds", 0.3)) * (0.5 if period == "night" else 1.0)
+
+
+## Switches a built hub to the clock's time: lamps, lanterns and fires burn after dark (and at
+## dawn), and more windows are lit the later it gets. `root` is the hub's world node.
+static func set_hub_time(root: Node, period: String) -> void:
+	var dark := period in ["dawn", "evening", "night"]
+	var lit := float((TIMES.get(period, {}) as Dictionary).get("lit", 0.0))
+	_set_time(root, dark, lit)
+
+
+static func _set_time(n: Node, dark: bool, lit: float) -> void:
+	if n is Light3D and n.has_meta(NIGHT_LIGHT):
+		(n as Light3D).visible = dark
+	if n is MeshInstance3D and n.name == "Walls" and (n as MeshInstance3D).material_override is ShaderMaterial:
+		var m := (n as MeshInstance3D).material_override as ShaderMaterial
+		if not m.has_meta("base_lit"):
+			m.set_meta("base_lit", float(m.get_shader_parameter("lit") if m.get_shader_parameter("lit") != null else 0.05))
+		m.set_shader_parameter("lit", maxf(float(m.get_meta("base_lit")), lit))
+	for ch in n.get_children():
+		_set_time(ch, dark, lit)
