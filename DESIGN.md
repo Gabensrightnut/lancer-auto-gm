@@ -248,7 +248,7 @@ them, and they disappear when the turn moves on.
 
 ### Living, themed battlefields
 - **Bigger maps:** sized for real Lancer fights with room to maneuver and flank (roughly
-  20x20 to 40x40 spaces depending on mission type and squad size), not small test boards.
+  30x30 to 60x60 spaces (wider and longer, per the user), depending on mission type and squad size; starting distance is set by the fight length dial, so the extra space is flanking room), not small test boards.
 - **Biomes drive both look and terrain:** grassy hills, desert, snow/tundra, urban ruins,
   industrial yard, forest, swamp, volcanic, space station, moon base... Each biome has its own
   height shapes (rolling hills vs. mesas vs. city blocks) and its own materials.
@@ -263,6 +263,15 @@ them, and they disappear when the turn moves on.
   Purely decorative details stay small and flat so they never look like cover they aren't.
   Destructible terrain visibly breaks when destroyed.
 - The grid stays readable on top of everything (toggle-able grid lines, clear tile edges).
+
+### Town fights and building toughness
+- A fight that breaks out in a town happens in that town: the battle map is built from the
+  hub's own layout and culture kit at mech scale, so the saloon you walked into is the cover
+  you fight behind.
+- Buildings follow the book's object rules (Core p.68): 5 Evasion and 10 HP per Size-1 section,
+  each section destroyed separately. Flimsy wood/prefab has no Armor and breaks easily; tough
+  stone or brick has 1-2 Armor; fortified bunkers, bulkheads and hulls have 3-4 Armor, so most
+  shots just chip them and it takes AP damage or breaching charges to bring them down.
 
 ### World art direction: beautiful but dangerous
 The feel to aim for (examples are inspiration only; nothing taken from them): the vast alien
@@ -675,20 +684,30 @@ pixel art).
 4. **Campaign:** the full narrative loop, progression, saves, procedural missions.
 5. **Polish:** effects coverage, animations, audio, accessibility, customization, human GM.
 
-## Parked: your own story additions (not built until you say)
+## House rules (toggles, all off by default)
 
-Ideas that are fun but not canon LANCER. Kept here so they're not lost; the game stays canon
-until you decide to turn any of these on as your own campaign rules.
+A **House Rules** page in settings lists optional rules as on/off switches that can be flipped
+at any time, even mid-campaign. The game stays canon until someone turns one on.
 
-- Tracked wallet: manna and local currency with prices for food, drinks, lodging, travel,
-  information, pilot supplies and repair kits; mission pay; selling salvage.
-- Printer scarcity: frontier worlds without printers, paying for printer access, a destroyed
-  mech staying destroyed until you reach a printer.
-- Paid travel: company/patron members ride free, independents buy passage.
-- "Can't afford it? Fight for it": an unaffordable deal turns into a generated combat job;
-  lose and the deal is off, but you can come back and pay with scrap, a spare mech, manna or
-  local money.
-- Buying food and water as a survival need.
+- **Who decides:** a human GM's settings win. If the GM is the AI, the host's settings are used.
+  Other players see which house rules are on (and the change is announced when one is flipped).
+- **Clearly labeled:** every house rule shows where it comes from ("Your idea", "Community",
+  "Lancer Tactics") and that it isn't a book rule. The codex marks them the same way.
+- **Your ideas** (from this design, previously parked):
+  - Tracked wallet: manna and local currency with prices for food, drinks, lodging, travel,
+    information, pilot supplies and repair kits; mission pay; selling salvage.
+  - Printer scarcity: frontier worlds without printers, paying for printer access, a destroyed
+    mech staying destroyed until you reach a printer.
+  - Paid travel: company/patron members ride free, independents buy passage.
+  - "Can't afford it? Fight for it": an unaffordable deal becomes a generated combat job; lose
+    and the deal is off, but you can come back and pay with scrap, a spare mech, manna or money.
+  - Food and water as a survival need.
+  - Building collapse saving roll after big hits (instead of only HP/Armor/AP, Core p.68).
+  - Stunned after a fall, and a "brace for the fall" reaction.
+- **Lancer Tactics options** (see the table below): split barrage and the big-hit Brace prompt
+  are ON by your pick; repeating quick tech stays OFF.
+- **Community house rules:** popular ones researched from the Lancer community (forums, Reddit,
+  Discord write-ups, GM blogs), each with its source.
 
 ## Rule differences: Lancer Tactics vs. the book
 

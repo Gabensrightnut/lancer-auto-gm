@@ -15,13 +15,47 @@ extends RefCounted
 ## secret the GM picks on the host; the layout doesn't mark it.
 
 const DEPTH := 4
+## Sitreps with zones: rows beyond the approach and the two deployment zones, and the least
+## width, of the area they're laid out in on a big map (the size today's 30x34 maps give).
+const ZONE_ROOM := 12
+const ZONE_WIDTH := 30
 
 
 ## `approach` (GM dial, GmSettings.approach): for Basic Combat, the most rows between the two
 ## deployment zones (0 = deploy at the map edges). Closer zones mean first contact by about the
 ## second turn for Speed 4 mechs instead of two turns of walking. Sitreps with zones keep their
-## edges (their zones are laid out from them).
+## edges (their zones are laid out from them), but on a map bigger than they need they're laid
+## out in a centered area ZONE_ROOM rows taller than the approach (and at least ZONE_WIDTH
+## wide): the starting distance follows the dial, not the map size, and the rest is flanking room.
 static func layout(sitrep_id: String, w: int, h: int, shape: GridLayout.Shape, rng: RandomNumberGenerator, approach: int = 0) -> Dictionary:
+	if sitrep_id != "sitrep_standardcombat" and approach > 0:
+		var hh := mini(h, approach + 2 * DEPTH + ZONE_ROOM)
+		var ww := mini(w, maxi(hh, ZONE_WIDTH))
+		if hh < h or ww < w:
+			# Even row offset: hex rows keep their stagger, so mirrored zones stay mirrored.
+			return _shifted(_layout(sitrep_id, ww, hh, shape, rng, 0), (w - ww) / 2, ((h - hh) / 2) & ~1, shape)
+	return _layout(sitrep_id, w, h, shape, rng, approach)
+
+
+## Moves every cell of a layout by (dc columns, dr rows).
+static func _shifted(lay: Dictionary, dc: int, dr: int, shape: GridLayout.Shape) -> Dictionary:
+	var move := func(cells: Array) -> Array:
+		var out: Array = []
+		for c: Array in cells:
+			var row := int(c[1])
+			var col := int(c[0]) + (row >> 1) if shape == GridLayout.Shape.HEX else int(c[0])
+			var cell := cell_of(col + dc, row + dr, shape)
+			out.append([cell.x, cell.y])
+		return out
+	for side: String in lay["deployment"]:
+		lay["deployment"][side] = move.call(lay["deployment"][side])
+	for z: String in lay["zones"]:
+		lay["zones"][z] = move.call(lay["zones"][z])
+	lay["clear"] = move.call(lay["clear"])
+	return lay
+
+
+static func _layout(sitrep_id: String, w: int, h: int, shape: GridLayout.Shape, rng: RandomNumberGenerator, approach: int) -> Dictionary:
 	var inset := 0
 	if sitrep_id == "sitrep_standardcombat" and approach > 0:
 		inset = maxi(0, (h - 2 * DEPTH - approach) / 2)

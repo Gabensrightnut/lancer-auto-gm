@@ -21,6 +21,10 @@ var environments := 0.5
 ## Basic Combat: the most rows between the two deployment zones (SitrepLayout), so first contact
 ## comes by about the second turn; 0 = deploy at the map edges.
 var approach := 14.0
+## Fight length (presets.json "fight_lengths": short / standard / long): scales encounter
+## size, deployment distance and when enemy commanders consider yielding. Not a preset dial:
+## it's kept when the GM style changes.
+var fight_length := "standard"
 ## Write a log line for every AI decision (always on for "Teaching").
 var explain := true
 
@@ -50,7 +54,7 @@ static func presets() -> Dictionary:
 
 func to_dict() -> Dictionary:
 	return {"preset": preset, "aggression": aggression, "caution": caution, "focus_fire": focus_fire,
-		"reinforcements": reinforcements, "difficulty": difficulty, "randomness": randomness, "environments": environments, "approach": approach, "explain": explain}
+		"reinforcements": reinforcements, "difficulty": difficulty, "randomness": randomness, "environments": environments, "approach": approach, "fight_length": fight_length, "explain": explain}
 
 
 static func from_dict(d: Dictionary) -> GmSettings:
@@ -59,7 +63,17 @@ static func from_dict(d: Dictionary) -> GmSettings:
 		if d.has(key):
 			s.set(key, float(d[key]))
 	s.explain = bool(d.get("explain", s.explain))
+	s.fight_length = str(d.get("fight_length", "standard")) if fight_lengths().has(str(d.get("fight_length", ""))) else "standard"
 	return s
+
+
+static func fight_lengths() -> Dictionary:
+	return load_json(PRESETS_FILE).get("fight_lengths", {})
+
+
+## A value of the current fight length ("encounter", "approach", "yield_at", ...).
+func fight(key: String, fallback: Variant = null) -> Variant:
+	return fight_lengths().get(fight_length, {}).get(key, fallback)
 
 
 static func load_json(path: String) -> Dictionary:

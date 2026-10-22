@@ -89,19 +89,61 @@ Merge, tag `v0.1.1`, push. Players' launchers find the new version on start, dow
 keep the previous one: if the new build is broken, the launcher's **Go back to <version>** button returns
 to it.
 
-## Building on your own PC (later)
+## Building on your own PC
 
-Exporting locally needs Godot's export templates for 4.7.2 (about 1.3 GB). They aren't
-installed yet; don't download them without the user's OK. Once they are (Godot editor:
-**Editor → Manage Export Templates → Download and Install**):
+Needs Godot's 4.7.2 export templates in `%APPDATA%\Godot\export_templates\4.7.2.stable`
+(installed and checked). Use absolute output paths (a relative one is taken from the project
+folder, so the launcher's would land in `launcher/`):
 
 ```bash
-bash addons/fetch_webrtc_native.sh
-$G --headless --path . --export-release "Windows Desktop" build/game/LancerTTRPG.exe
-$G --headless --path launcher --export-release "Windows Desktop" ../build/launcher/LancerLauncher.exe
+bash addons/fetch_webrtc_native.sh          # once; skip if addons/webrtc_native/lib exists
+$G --headless --path . --import
+$G --headless --path . --export-release "Windows Desktop" "$PWD/build/game/LancerTTRPG.exe"
+$G --headless --path launcher --import
+$G --headless --path launcher --export-release "Windows Desktop" "$PWD/build/launcher/LancerLauncher.exe"
 ```
 
-`build/` is ignored by git.
+`build/` is ignored by git. The game is one exe with its data inside (about 117 MB) plus the
+WebRTC DLL; the launcher is one exe (about 109 MB). A local export says `Version dev+p1` in
+the main menu (CI stamps the real version from the tag).
+
+### Check the exported game
+
+```bash
+./build/game/LancerTTRPG.exe --resolution 1920x1080 -- qa:smoke qa_out:C:/Temp/smoke
+```
+
+The playtest driver clicks main menu → new campaign (missions only) → lobby → builder →
+Ready → a battle turn, saves screenshots and `smoke_log.txt` ("0 issues") in that folder, and
+quits. Look at a battle screenshot: the action bar and menus must show their icons (they
+are read from the raw SVGs in `assets/icons/lancer/`, imported as "Keep File" so the export
+carries them; see the bug below).
+
+### Test the launcher against a local fake release (no GitHub release needed)
+
+1. Zip `build/game/*` as `LancerTTRPG-windows-0.1.0-test.zip`, write its SHA-256 into a
+   sums file, and write a GitHub-style `latest.json` ({"tag_name": "v0.1.0-test", "assets":
+   [{name, browser_download_url} for the zip, `SHA256SUMS.txt` and `LancerLauncher.exe`]}).
+2. Serve the folder: `python -m http.server 8765 --bind 127.0.0.1 --directory <folder>`.
+3. Run the launcher pointed at it, installing into a scratch folder instead of the real
+   launcher data:
+
+```bash
+LANCER_RELEASE_URL=http://127.0.0.1:8765/latest.json LANCER_LAUNCHER_ROOT=C:/Temp/launcher_root ./build/launcher/LancerLauncher.exe
+```
+
+Checked on this build: first install (downloads, verifies, installs `versions/0.1.0-test`,
+starts the game after 3 s); an update to `0.1.1-test` (installs it, keeps `0.1.0-test` as the
+rollback, `installs.json` current/previous); a tampered checksum (refused, nothing installed,
+the current version unchanged, the launcher waits for the player); the same version again
+(no download, starts the game).
+
+### Bug found by the first local export (fixed)
+
+Every icon (menus, action bar, resource HUD) was missing in the exported game: the icon code
+reads the raw SVGs at run time, and Godot exported only its imported textures. The icons'
+`.import` files now use the "keep" importer, so the raw SVGs are packed as they are (the
+icons themselves are unchanged).
 
 ## If something goes wrong
 

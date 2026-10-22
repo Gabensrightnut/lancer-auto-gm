@@ -149,6 +149,17 @@ func _show_new() -> void:
 	for p in LobbyModel.PRESETS:
 		preset.add_item(p)
 	body.add_child(_field("GM style", preset))
+	var length := OptionButton.new()
+	var fl: Dictionary = GmSettings.fight_lengths()
+	var length_ids := ["short", "standard", "long"]
+	for i in range(length_ids.size()):
+		length.add_item("%s (about %s min solo)" % [fl.get(length_ids[i], {}).get("label", length_ids[i]), fl.get(length_ids[i], {}).get("minutes", "?")], i)
+	length.select(1)
+	body.add_child(_field("Fight length", length))
+	var length_note := MenuTheme.label(str(fl.get("standard", {}).get("description", "")), 15, MenuTheme.MUTED, true)
+	length.item_selected.connect(func(i: int) -> void: length_note.text = str(fl.get(length_ids[i], {}).get("description", "")) + " Rules like HP and damage never change.")
+	length_note.text += " Rules like HP and damage never change."
+	body.add_child(length_note)
 	# Story campaign (hub, jobs, downtime between missions) or missions only (lobby to battle).
 	var story_mode := {"on": true}
 	var style := HBoxContainer.new()
@@ -191,10 +202,11 @@ func _show_new() -> void:
 		if story_mode["on"]:
 			MenuSession.campaign = null
 			MenuSession.campaign = GameFlow.start_story_campaign(MenuSession.store, MenuSession.content(), name_edit.text.strip_edges(), pilots.get_selected_id(),
-				ll.get_selected_id(), LobbyModel.PRESETS[preset.selected], arcs.get_selected_id())
+				ll.get_selected_id(), LobbyModel.PRESETS[preset.selected], arcs.get_selected_id(), "", length_ids[length.selected])
 			MenuSession.go(self, "hub")
 			return
 		var c := MenuSession.new_campaign(name_edit.text.strip_edges(), pilots.get_selected_id(), ll.get_selected_id(), LobbyModel.PRESETS[preset.selected])
+		c.gm_settings["fight_length"] = length_ids[length.selected]
 		MenuSession.store.save_campaign(c)
 		MenuSession.campaign = c
 		MenuSession.go(self, "lobby"))
