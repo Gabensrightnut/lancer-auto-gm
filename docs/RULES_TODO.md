@@ -29,6 +29,7 @@ keeps the choices. An AI GM answers with the suggested reading and logs it. Code
 | `teleport_move_cost` | Movement a teleporting move uses | the whole move / 1 space | p.63 |
 | `prone_ignore_difficult` | Does "ignore difficult terrain" cancel Prone's extra cost? | cancels / still double | p.77 |
 | `eject_distance` | Where an ejecting pilot lands | exactly 6 in a line / anywhere within 6 | p.71 |
+| `manticore_inferno_self` | Is the Manticore caught in its own charge-die inferno? | yes (a Burst that isn't an attack includes the user) / no | p.64, Manticore core |
 | `basilisk_failed_save` | Gorgon Basilisk: does a failed save stop the attack? | no attack / attack goes ahead | p.77, Gorgon core |
 
 ## Engine geometry (consistent with the book, which only describes a flat tabletop)
@@ -64,6 +65,7 @@ keeps the choices. An AI GM answers with the suggested reading and logs it. Code
 | Pegasus average damage | The player asks for it per attack (`"average_damage": true`); dice are averaged up, (sides + 1) / 2 each, which matches the trait's table | `attacks.gd` |
 | Raleigh M35 Mjolnir | Its own rule (fire as a free action 1/round when you reload) isn't automated; with the core active and no rounds chambered it deals 0 | `attacks.gd`, `effects.gd` |
 | Trait reactions | Mag Parry is rolled after a hit (the attack "would deal" kinetic damage) and not when the target is Invisible; Warp Shield counts as the Saladin's reaction; Tactical Simulation protects allies, not the Swallowtail itself, and its teleport is optional (answer with `to`); Reactive Code resolves before the Invade's own heat and conditions; Defensive Pulse's reroll on a miss is left to the table | `trait_reactions.gd` |
+| Core system readings | Balor Hive Frenzy's soft cover counts for the Balor and adjacent allies against ranged attacks; Lancaster Supercharger lasts the scene as the book says (lancer-data says until the start of your next turn); Minotaur Maze's first save is at the end of the target's next turn, +1 Accuracy per earlier failed try; Iskander's extra mines each use a charge of the same system; the Apocalypse Die notices a move (even involuntary), Stunned or Jammed at the start of the Barbarossa's turn, which gives the same result as resetting at once; Napoleon's Aegis allows only the listed actions plus free actions and protocols | `frame_systems.gd` |
 | Frame trait readings | Tortuga Sentinel counts Overwatch as a reaction attack; Blast Plating resists all damage types from area attacks; Vlad's core resistance applies to attackers within range 3; Shrike Armor damage comes before the attack roll; Kai Bioplating jumps up to Speed across, half Speed up; Iskander's range is measured at each move | `data/game/frame_effects.json`, `gear_effects.json` |
 
 ## Movement audit (Core p.62-63, 77-78 and lancer-data text)

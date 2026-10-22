@@ -99,6 +99,8 @@ class Bolster:
 			return RuleResult.deny("Jammed: you can't take tech actions.", "statuses: Jammed")
 		if target == null or not Combat.is_present(target):
 			return RuleResult.deny("Choose a character.", "actions: Bolster")
+		if Effects.has(target, "aegis"):
+			return RuleResult.deny("Inside the Trueblack Aegis it's immune to all tech actions, even helpful ones.", "frames: Napoleon core system")
 		if target.has_status("Jammed"):
 			return RuleResult.deny("Jammed characters can't benefit from tech actions.", "statuses: Jammed")
 		if target.has_status("Shut Down"):

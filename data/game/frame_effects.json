@@ -23,7 +23,12 @@
   },
   "mf_blackbeard": {
     "traits": {
-      "Grapple Cable": "manual",
+      "Grapple Cable": [
+        {
+          "kind": "grapple_reach",
+          "value": 5
+        }
+      ],
       "Lock/Kill Subsystem": [
         {
           "kind": "grapple_free"
@@ -44,7 +49,29 @@
         }
       ]
     },
-    "core": "manual"
+    "core": [],
+    "core_ops": [
+      {
+        "op": "save_damage",
+        "save": "hull",
+        "damage": "2d6",
+        "type": "Kinetic",
+        "half": true,
+        "range": 5,
+        "los": true,
+        "on_fail": [
+          {
+            "status": "Prone"
+          },
+          {
+            "status": "Immobilized",
+            "duration": "end_next_turn",
+            "after_pull": true
+          }
+        ],
+        "pull": true
+      }
+    ]
   },
   "mf_drake": {
     "traits": {
@@ -82,7 +109,42 @@
         }
       ]
     },
-    "core": "manual"
+    "core": {
+      "effects": [
+        {
+          "kind": "status",
+          "status": "Immobilized",
+          "when": "always"
+        },
+        {
+          "kind": "always_hard_cover"
+        },
+        {
+          "kind": "immune",
+          "status": "Prone"
+        },
+        {
+          "kind": "immovable"
+        },
+        {
+          "kind": "fortress_brace"
+        }
+      ],
+      "manual": "Characters that get hard cover from the Drake or its cover sections also gain Immunity to Knockback, Prone and involuntary movement, and Blast Plating: the table applies that."
+    },
+    "core_sections": true,
+    "core_actions": [
+      {
+        "name": "Deactivate Fortress",
+        "activation": "Protocol",
+        "detail": "Fortress Protocol can be deactivated as a protocol.",
+        "ops": [
+          {
+            "op": "core_off"
+          }
+        ]
+      }
+    ]
   },
   "mf_lancaster": {
     "traits": {
@@ -92,10 +154,62 @@
           "damage": "Burn"
         }
       ],
-      "Combat Repair": "manual",
-      "Redundant Systems": "manual"
+      "Combat Repair": [],
+      "Redundant Systems": [
+        {
+          "kind": "redundant_systems"
+        }
+      ]
     },
-    "core": "manual"
+    "core": [
+      {
+        "kind": "start_turn_heat",
+        "value": 1
+      }
+    ],
+    "core_target": {
+      "who": "ally",
+      "mech": true,
+      "range": 8,
+      "effects": [
+        {
+          "kind": "accuracy",
+          "on": "attack",
+          "value": 1
+        },
+        {
+          "kind": "accuracy",
+          "on": "check",
+          "value": 1
+        },
+        {
+          "kind": "accuracy",
+          "on": "save",
+          "value": 1
+        },
+        {
+          "kind": "immune",
+          "status": "Impaired"
+        },
+        {
+          "kind": "immune",
+          "status": "Jammed"
+        },
+        {
+          "kind": "immune",
+          "status": "Slowed"
+        },
+        {
+          "kind": "immune",
+          "status": "Shredded"
+        },
+        {
+          "kind": "immune",
+          "status": "Immobilized"
+        }
+      ],
+      "ends_on_stun": true
+    }
   },
   "mf_nelson": {
     "traits": {
@@ -401,7 +515,28 @@
       ],
       "Self-Perpetuating": "manual"
     },
-    "core": "manual"
+    "core": [
+      {
+        "kind": "start_turn_damage",
+        "value": 4,
+        "type": "Kinetic"
+      },
+      {
+        "kind": "regenerate",
+        "fraction": 0.5
+      },
+      {
+        "kind": "soft_cover_aura"
+      },
+      {
+        "kind": "frenzy_structure"
+      },
+      {
+        "kind": "status",
+        "status": "Shredded",
+        "when": "always"
+      }
+    ]
   },
   "mf_goblin": {
     "traits": {
@@ -494,7 +629,27 @@
       ],
       "Castigate the Enemies of the Godhead": "manual"
     },
-    "core": "manual"
+    "core": [
+      {
+        "kind": "resist",
+        "damage": [
+          "Heat"
+        ]
+      },
+      {
+        "kind": "charge_die",
+        "burst": 2,
+        "damage": "6d6",
+        "save": "engineering"
+      }
+    ],
+    "core_passive": [
+      {
+        "kind": "heat_lash",
+        "damage": 2,
+        "range": 3
+      }
+    ]
   },
   "mf_minotaur": {
     "traits": {
@@ -509,14 +664,23 @@
           "per": "round"
         }
       ],
-      "Internal Metafold": "manual",
+      "Internal Metafold": [],
       "Localized Maze": [
         {
           "kind": "maze"
         }
       ]
     },
-    "core": "manual"
+    "core": [],
+    "core_target": {
+      "who": "other",
+      "range": "sensors",
+      "ops": [
+        {
+          "op": "maze"
+        }
+      ]
+    }
   },
   "mf_pegasus": {
     "traits": {
@@ -570,7 +734,14 @@
         }
       ]
     },
-    "core": "manual"
+    "core": {
+      "effects": [
+        {
+          "kind": "apocalypse"
+        }
+      ],
+      "manual": "The blast clouds (soft cover, burning ground), objects in the blast taking 20/40/100 AP, and regaining 1 CP if the rail wasn't fired by the end of the scene are left to the table."
+    }
   },
   "mf_genghis": {
     "traits": {
@@ -590,8 +761,20 @@
   },
   "mf_iskander": {
     "traits": {
-      "Assault Launcher": "manual",
-      "Mine Deployers": "manual",
+      "Assault Launcher": {
+        "effects": [
+          {
+            "kind": "assault_launcher",
+            "range": 15
+          }
+        ],
+        "manual": "Throwing a grenade as though it had range 15 is left to the table."
+      },
+      "Mine Deployers": [
+        {
+          "kind": "mine_deployers"
+        }
+      ],
       "Skeleton Key": [
         {
           "kind": "mine_immune"
@@ -619,7 +802,11 @@
         }
       ]
     },
-    "core": "manual"
+    "core": [
+      {
+        "kind": "aegis"
+      }
+    ]
   },
   "mf_saladin": {
     "traits": {
@@ -644,7 +831,12 @@
       {
         "kind": "defensive_pulse"
       }
-    ]
+    ],
+    "core_target": {
+      "who": "ally",
+      "range": "sensors",
+      "counter": "tachyon_target"
+    }
   },
   "mf_sherman": {
     "traits": {
@@ -662,10 +854,25 @@
           "value": 1
         }
       ],
-      "Mathur Stop": "manual",
-      "Vent Heat": "manual"
+      "Mathur Stop": [
+        {
+          "kind": "mathur_stop"
+        }
+      ],
+      "Vent Heat": [
+        {
+          "kind": "vent_heat"
+        }
+      ]
     },
-    "core": "manual"
+    "core": {
+      "effects": [
+        {
+          "kind": "coreburn"
+        }
+      ],
+      "manual": "Terrain hit by the ZF4 takes 10 AP energy per charge: the table applies that (objects and deployables are automated)."
+    }
   },
   "mf_tokugawa": {
     "traits": {

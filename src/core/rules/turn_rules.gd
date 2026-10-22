@@ -98,6 +98,8 @@ static func begin_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 	if u.counters.get("brace_next_turn", false):
 		u.counters.erase("brace_next_turn")
 		u.turn["braced"] = true
+		if Effects.has(u, "fortress_brace"):
+			u.turn["braced_full"] = true  # Drake Fortress: a full action instead of a quick one
 	# Reactions refresh at the start of the unit's turn (tags: X/Round counts from turn start).
 	u.counters.erase("reactions")
 	var events: Array[Dictionary] = []
@@ -161,7 +163,7 @@ static func can_spend(u: Unit, cost: String, action: String) -> RuleResult:
 	var braced: bool = t.get("braced", false)
 	match cost:
 		QUICK:
-			if braced and int(t.get("quick", 0)) >= 1:
+			if braced and (int(t.get("quick", 0)) >= 1 or t.get("full", false)):
 				return RuleResult.deny("After Bracing you can only take one quick action this turn.", REF_BRACE)
 			var repeat: bool = (t.get("taken", []) as Array).has(action) and action != "quick_tech"
 			if (int(t.get("quick", 0)) < 2 and not repeat) or int(t.get("free_quick", 0)) > 0:
@@ -170,7 +172,7 @@ static func can_spend(u: Unit, cost: String, action: String) -> RuleResult:
 				return RuleResult.deny("You've already taken that action this turn (Overcharge lets you repeat it).", REF_ACTIONS)
 			return RuleResult.deny("You've used both quick actions this turn.", REF_ACTIONS)
 		FULL:
-			if braced:
+			if braced and not t.get("braced_full", false):
 				return RuleResult.deny("After Bracing you can't take full actions this turn.", REF_BRACE)
 			if int(t.get("quick", 0)) > 0:
 				return RuleResult.deny("A full action takes your whole turn: you've already taken a quick action.", REF_ACTIONS)

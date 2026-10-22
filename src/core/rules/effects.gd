@@ -140,7 +140,7 @@ static func immune_to_status(u: Unit, status: String) -> bool:
 
 static func immune_to_damage(u: Unit, dtype: String) -> bool:
 	for e: Dictionary in of(u, "immune"):
-		if e.get("damage", "") == dtype:
+		if e.get("damage", "") == dtype or e.get("damage", "") == "All":
 			return true
 	return false
 
@@ -282,16 +282,24 @@ static func turn_started(state: GameState, u: Unit) -> Array[Dictionary]:
 	for o: Unit in state.units.values():
 		if o == u or o.side == u.side or not Combat.is_present(o):
 			continue
-		for e: Dictionary in of(o, "start_turn_damage"):
-			var grappled := String(u.counters.get("grapple", {}).get("with", "")) == o.id
-			if grappled or Sight.unit_distance(state, o, u) <= 1:
-				events.append({"type": "effect_triggered", "unit": o.id, "effect": e.get("label", ""), "target": u.id})
-				events.append_array(Combat.deal_damage(state, u, [{"type": e.get("type", "Kinetic"), "amount": int(e.get("value", 2))}], {"source": o.id}))
+		var swarm := of(o, "start_turn_damage")
+		if swarm.is_empty():
+			continue
+		var grappled := String(u.counters.get("grapple", {}).get("with", "")) == o.id
+		if grappled or Sight.unit_distance(state, o, u) <= 1:
+			# The strongest version counts (Hive Frenzy: 4 instead of 2).
+			var e: Dictionary = swarm[0]
+			for x: Dictionary in swarm:
+				if int(x.get("value", 2)) > int(e.get("value", 2)):
+					e = x
+			events.append({"type": "effect_triggered", "unit": o.id, "effect": e.get("label", ""), "target": u.id})
+			events.append_array(Combat.deal_damage(state, u, [{"type": e.get("type", "Kinetic"), "amount": int(e.get("value", 2))}], {"source": o.id}))
 	for e: Dictionary in of(u, "status_if_still"):
 		events.append_array(_drop_still_status(u, e))
 	for e: Dictionary in of(u, "status"):
 		if e.get("when", "") == "own_turn":
 			events.append_array(Combat.add_status(state, u, String(e["status"]), String(e.get("label", "trait"))))
+	events.append_array(FrameSystems.turn_started(state, u))
 	return events
 
 
@@ -325,7 +333,10 @@ static func turn_ending(state: GameState, u: Unit) -> Array[Dictionary]:
 			if Weapons.has_tag(w, "tg_loading"):
 				Weapons.state_of(u, w)["loaded"] = true
 		events.append({"type": "reloaded", "unit": u.id, "source": of(u, "reload_if_idle")[0].get("label", "")})
-	for e: Dictionary in of(u, "regenerate"):
+	events.append_array(FrameSystems.turn_ending(state, u))
+	var regen := of(u, "regenerate")
+	regen.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a.get("fraction", 0.25)) > float(b.get("fraction", 0.25)))
+	for e: Dictionary in regen:  # the strongest (Hive Frenzy: 1/2 instead of 1/4)
 		if u.has_status("Regeneration Suppressed") or u.destroyed:
 			break
 		var heal := mini(ceili(u.max_hp * float(e.get("fraction", 0.25))), u.max_hp - u.hp)  # always round up (Core p.12)

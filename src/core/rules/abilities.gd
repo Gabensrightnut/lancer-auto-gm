@@ -244,6 +244,8 @@ static func check_spot(state: GameState, owner: Unit, d: Dictionary, cell: Vecto
 			return RuleResult.deny("That space isn't free.", REF)
 	var me := Sight.body_of(state, owner)
 	var reach := Weapons.range_value(d, "Range")
+	if type == "Mine":
+		reach = maxi(reach, FrameSystems.mine_reach(state, owner))  # Iskander Assault Launcher
 	var dist := Sight.distance(state, me, body)
 	if type == "Drone" and reach == 0:
 		if dist > owner.sensors or not Sight.line_of_sight(state, me, body):
@@ -294,6 +296,8 @@ static func deploy(state: GameState, owner: Unit, a: Dictionary, cell: Vector2i)
 	if u.counters["deploy_type"] == "Mine":
 		u.statuses["Hidden"] = {"source": owner.id}  # undetected mines are Hidden (tags: Mine)
 		u.counters["armed"] = false
+		if Sight.unit_distance(state, owner, u) > maxi(1, Weapons.range_value(d, "Range")) and FrameSystems.mine_reach(state, owner) > 0:
+			owner.counters["launcher_round"] = state.round_number
 	events.append({"type": "deployed", "unit": owner.id, "object": {"id": u.id, "kind": String(u.counters["deploy_type"]).to_lower(),
 		"name": u.name, "cells": [[cell.x, cell.y, u.level]], "height": GridLayout.spaces_per_side(u.size), "hp": u.hp}, "rule_ref": REF})
 	return events

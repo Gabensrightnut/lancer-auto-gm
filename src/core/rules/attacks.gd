@@ -84,7 +84,7 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 		out["seeking_payload"] = true
 	var ignores_los := Weapons.has_tag(w, "tg_arcing") or seeking
 	# Area attacks take cover and line of sight from the area's origin (glossary: Blast, Burst).
-	var cover := Sight.cover(state, area_origin if area_origin != null else a_body, t_body, Effects.guardians(state, target))
+	var cover := FrameSystems.extra_cover(state, target, Sight.cover(state, area_origin if area_origin != null else a_body, t_body, Effects.guardians(state, target)))
 	out["los"] = cover["los"]
 	if not cover["los"] and not ignores_los:
 		return fail.call("No line of sight to the target.", Sight.REF_LOS)
@@ -324,6 +324,10 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 	var shared: Dictionary = opts.get("shared_damage", {})
 	var damage: Array = w.get("damage", [])
 	var ap := Weapons.has_tag(w, "tg_ap")
+	var obj := FrameSystems.object_damage(attacker, w, target)
+	if not obj.is_empty():
+		damage = obj  # Sherman COREBURN against objects and deployables
+		ap = true
 	var chambers := int(opts.get("chambers", -1))
 	if chambers >= 0:
 		# Raleigh Thunder God: 4 kinetic per loaded round; four or more gain AP and Shred.
@@ -534,6 +538,8 @@ static func roll_damage(state: GameState, expr: String, crit: bool, overkill: bo
 
 ## Knockback / pushes: involuntary straight-line movement (glossary: Involuntary Movement).
 static func knock_back(state: GameState, target: Unit, origin: Vector2i, spaces: int, by: Unit = null) -> Array[Dictionary]:
+	if Effects.has(target, "immovable"):
+		return [{"type": "knockback_blocked", "unit": target.id, "reason": "Immune to involuntary movement.", "rule_ref": Effects.REF}] as Array[Dictionary]
 	if by != null and by.size < target.size and Effects.has(target, "heavy_frame"):
 		return [{"type": "knockback_blocked", "unit": target.id, "reason": "Heavy Frame: smaller characters can't knock it back.", "rule_ref": Effects.REF}] as Array[Dictionary]
 	var path := Movement.push_path(state, target, origin, spaces)
@@ -546,6 +552,24 @@ static func knock_back(state: GameState, target: Unit, origin: Vector2i, spaces:
 	events.append_array(Abilities.check_mines(state, target, path))
 	if Movement.placement(state, target.size, target.cell, target.level)["airborne"] and not target.flying:
 		events.append_array(Combat.begin_falling(target, "Knocked off a ledge."))
+	events.append_array(Combat.after_movement(state))
+	return events
+
+
+## Pulled toward `by` until adjacent, or as close as possible (Blackbeard Omni-harpoon):
+## involuntary movement, one space at a time to the free space nearest `by`.
+static func pull(state: GameState, target: Unit, by: Unit) -> Array[Dictionary]:
+	if Effects.has(target, "immovable") or (Effects.has(target, "heavy_frame") and by.size < target.size):
+		return [{"type": "knockback_blocked", "unit": target.id, "reason": "Immune to involuntary movement.", "rule_ref": Effects.REF}] as Array[Dictionary]
+	var path := Movement.pull_path(state, target, by)
+	if path.size() < 2:
+		return [] as Array[Dictionary]
+	var last: Array = path.back()
+	target.cell = Vector2i(last[0], last[1])
+	target.level = int(last[2])
+	var events: Array[Dictionary] = [{"type": "moved", "unit": target.id, "path": path, "mode": "involuntary", "cost": 0, "rule_ref": "glossary: Involuntary Movement"}]
+	events.append_array(Effects.punish_movement(state, target))
+	events.append_array(Abilities.check_mines(state, target, path))
 	events.append_array(Combat.after_movement(state))
 	return events
 
@@ -592,6 +616,8 @@ static func tech_target_check(state: GameState, user: Unit, target: Unit, action
 		return RuleResult.deny("Jammed: you can't take tech actions.", "statuses: Jammed")
 	if target == null or target.destroyed:
 		return RuleResult.deny("No valid target.", "actions: Quick Tech")
+	if Effects.has(target, "aegis"):
+		return RuleResult.deny("Inside the Trueblack Aegis it's immune to all tech actions.", "frames: Napoleon core system")
 	if target.has_status("Hidden") and target.side != user.side:
 		return RuleResult.deny("Hidden characters can't be targeted.", "statuses: Hidden")
 	if target.has_status("Shut Down"):

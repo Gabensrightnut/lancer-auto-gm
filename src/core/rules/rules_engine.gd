@@ -57,6 +57,9 @@ func validate(state: GameState, action: Dictionary) -> RuleResult:
 		var actor: Unit = state.unit(action.get("actor", ""))
 		if actor == null:
 			return RuleResult.deny("No such unit.", "")
+		var limit := FrameSystems.action_allowed(state, actor, String(action.get("type", "")))
+		if not limit.ok:
+			return limit
 	if not action.get("params", {}) is Dictionary:
 		return RuleResult.deny("Action params must be a dictionary.", "")
 	return handler.validate(state, action)

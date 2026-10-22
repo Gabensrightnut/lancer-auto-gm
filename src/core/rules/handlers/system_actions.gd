@@ -54,7 +54,14 @@ class Stabilize:
 		var main: String = params.get("main", "")
 		if main != "cool" and main != "repair":
 			return RuleResult.deny("Choose: cool (clear heat and Exposed) or repair (mark 1 Repair to restore all HP).", "actions: Stabilize")
-		if main == "repair" and u.repairs <= 0:
+		if main == "repair" and params.has("repair_from"):
+			# Lancaster Redundant Systems: adjacent characters may spend its Repairs.
+			var lan := state.unit(String(params["repair_from"]))
+			if lan == null or not Effects.has(lan, "redundant_systems") or lan.side != u.side or Sight.unit_distance(state, u, lan) > 1:
+				return RuleResult.deny("Only an adjacent Lancaster's Repairs can be shared.", "frames: Lancaster, Redundant Systems")
+			if lan.repairs <= 0:
+				return RuleResult.deny("No Repairs left.", "glossary: Repair Capacity")
+		elif main == "repair" and u.repairs <= 0:
 			return RuleResult.deny("No Repairs left.", "glossary: Repair Capacity")
 		var extra: String = params.get("extra", "")
 		var cond: String = params.get("condition", "")
@@ -87,7 +94,8 @@ class Stabilize:
 			events.append_array(Combat.clear_heat(u, "Stabilize"))
 			events.append_array(Combat.remove_status(u, "Exposed", "Stabilize"))
 		else:
-			u.repairs -= 1
+			var payer := state.unit(String(params.get("repair_from", ""))) if params.has("repair_from") else u
+			payer.repairs -= 1
 			u.hp = u.max_hp
 			events.append({"type": "hp_changed", "unit": u.id, "hp": u.hp, "overshield": u.overshield, "source": "Stabilize"})
 		var extra: String = "reload" if u.kind == Unit.KIND_NPC else params.get("extra", "")
@@ -104,6 +112,7 @@ class Stabilize:
 				events.append_array(Combat.remove_status(u, params["condition"], "Stabilize"))
 			"clear_ally_condition":
 				events.append_array(Combat.remove_status(state.unit(params["ally"]), params["condition"], "Stabilize"))
+		events.append_array(FrameSystems.on_stabilize(state, u, params))
 		return events
 
 
@@ -261,10 +270,15 @@ class CorePower:
 				var t := state.unit(String(id))
 				if t == null or not Combat.is_present(t) or Sight.unit_distance(state, u, t) > int(op.get("range", 50)):
 					return RuleResult.deny("Each target must be within range %d." % int(op.get("range", 50)), "frames: core_system")
-		if _core_kind(u, "defensive_pulse"):
-			var r2 := AbilityActions.ally_in_sensors(state, u, state.unit(String(action.get("params", {}).get("target", ""))))
-			if not r2.ok:
-				return RuleResult.deny("Choose an allied character within Sensors to shield (params.target).", r2.rule_ref)
+				if op.get("los", false) and not Sight.unit_line_of_sight(state, u, t):
+					return RuleResult.deny("Each target must be in line of sight.", Sight.REF_LOS)
+		var tr := FrameSystems.check_target(state, u, action.get("params", {}))
+		if not tr.ok:
+			return tr
+		if u.loadout["core"].get("sections", false):
+			var sr := FrameSystems.check_sections(state, u, action.get("params", {}))
+			if not sr.ok:
+				return sr
 		var act := _activation(u)
 		if act == "Reaction" or act == "None":
 			return RuleResult.deny("This core system is a %s; it isn't automated yet, so the table applies it." % ("reaction" if act == "Reaction" else "passive effect"), "frames: core_system")
@@ -295,8 +309,7 @@ class CorePower:
 			"power": core.get("power", ""), "text": core.get("text", ""), "automated": core.get("automated", false),
 			"rule_ref": "frames: core_system"}]
 		events.append_array(Effects.activate(state, u, core.get("effects", []), String(core.get("name", ""))))
-		if _core_kind(u, "defensive_pulse"):
-			u.counters["tachyon_target"] = String(action.get("params", {}).get("target", ""))
+		events.append_array(FrameSystems.on_core(state, u, action.get("params", {})))
 		var ops: Array = core.get("ops", [])
 		if not ops.is_empty():
 			var labelled: Array = []

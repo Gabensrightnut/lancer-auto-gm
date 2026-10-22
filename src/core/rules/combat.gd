@@ -54,6 +54,8 @@ static func add_status(state: GameState, u: Unit, status: String, source: String
 		events.append({"type": "status_added", "unit": u.id, "status": "Shredded", "source": source})
 	if u.flying and (status == "Immobilized" or status == "Stunned"):
 		events.append_array(begin_falling(u, "Flying characters begin falling if Immobilized or Stunned."))
+	if not had:
+		events.append_array(FrameSystems.on_status(state, u, status))
 	return events
 
 
@@ -139,6 +141,8 @@ static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dict
 	# "Can't be reduced in any way" (Monarch Seeking Payload, Pegasus Omnigun): no Armor,
 	# Resistance or other reduction; "bypasses Immunity" (Omnigun) skips Immunity too.
 	var unreducible: bool = opts.get("unreducible", false)
+	if Effects.has(target, "aegis") and not unreducible:
+		opts["damage_to_one"] = true  # Napoleon Trueblack Aegis: all damage is reduced to 1
 	var armor_left := 0 if shredded or unreducible or opts.get("ap", false) else target.armor
 	for part: Dictionary in parts:
 		var dtype: String = part.get("type", "Kinetic")
@@ -184,6 +188,8 @@ static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dict
 			target.burn += int(part.get("amount", 0))
 			events.append({"type": "burn_marked", "unit": target.id, "amount": int(part.get("amount", 0)), "total": target.burn, "rule_ref": REF_BURN})
 		events.append_array(lose_hp(state, target, amount, source))
+		if dtype == "Energy" and amount > 0:
+			events.append_array(FrameSystems.took_heat_or_energy(state, target, "energy"))
 		ev["hp"] = maxi(target.hp, 0)
 		ev["overshield"] = target.overshield
 		if target.destroyed:
@@ -217,6 +223,10 @@ static func lose_hp(state: GameState, u: Unit, amount: int, source: String) -> A
 	# damage, which can cost more structure (Core p.80).
 	while u.hp <= 0 and not u.destroyed:
 		var excess := -u.hp
+		var frenzy := FrameSystems.frenzy_saves(state, u)
+		events.append_array(frenzy)
+		if not frenzy.is_empty() and frenzy[0].get("saved", false):
+			break
 		u.structure -= 1
 		events.append({"type": "structure_lost", "unit": u.id, "structure": u.structure, "rule_ref": "Core p.80 Structure"})
 		events.append_array(_on_structure_or_stress(state, u, true))
@@ -359,12 +369,14 @@ static func apply_heat(state: GameState, u: Unit, amount: int, source: String, r
 	var events: Array[Dictionary] = []
 	if amount <= 0 or u.destroyed:
 		return events
-	if not u.has_status("Shredded") and (resist_all or _resists(u, "Heat")):
+	if not u.has_status("Shredded") and (resist_all or _resists(u, "Heat") or Effects.resists(u, "Heat", false, -1)):
 		amount -= amount / 2
 	if u.heat_cap <= 0:
 		return deal_damage(state, u, [{"type": "Energy", "amount": amount}], {"source": source})
 	u.heat += amount
 	events.append({"type": "heat_changed", "unit": u.id, "amount": amount, "total": u.heat, "source": source})
+	if u.heat > u.heat_cap:
+		events.append_array(FrameSystems.vent_heat(state, u))  # Sherman Vent Heat
 	# Over HEAT CAP: 1 stress, an overheating check, clear all heat, then take the heat beyond
 	# what it took to exceed the cap, which can overheat again (Core p.81).
 	# How much carries over is the table's "heat_overflow" ruling.
@@ -390,6 +402,7 @@ static func apply_heat(state: GameState, u: Unit, amount: int, source: String, r
 		if excess > 0:
 			events.append({"type": "heat_changed", "unit": u.id, "amount": excess, "total": u.heat, "source": "overheat excess"})
 	events.append_array(_danger_zone(u))
+	events.append_array(FrameSystems.took_heat_or_energy(state, u, "heat"))
 	return events
 
 

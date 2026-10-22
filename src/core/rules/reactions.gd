@@ -96,6 +96,8 @@ static func can_react(u: Unit, reaction: String, state: GameState = null) -> Rul
 		return RuleResult.deny("Grappling characters can't take reactions.", "actions: Grapple")
 	if u.counters.has("prepared"):
 		return RuleResult.deny("Holding a prepared action: no other reactions until it triggers.", "actions: Prepare")
+	if Effects.has(u, "aegis"):
+		return RuleResult.deny("Inside the Trueblack Aegis you can't take reactions.", "frames: Napoleon core system")
 	if u.counters.has("focus"):
 		return RuleResult.deny("While focusing on a Mark for Death target you can't take reactions.", "frames: Death's Head core system")
 	if reaction == "brace" and u.kind == Unit.KIND_NPC:

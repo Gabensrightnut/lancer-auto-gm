@@ -124,7 +124,7 @@ cover, line of sight, attack/area/tech previews with hit chance).
 | `pilot_left_mech` / `pilot_mounted` | `unit` (pilot), `mech`, `cell` |
 | `self_destruct_started` | `unit`, `turns` |
 | `reactor_explosion` | `unit`, `reason`, `roll`, `targets` |
-| `core_power` | `unit`, `core`, `power`, `text`, `automated` |
+| `core_power` | `unit`, `core`, `power`, `text`, `automated`. Params by frame: `targets` (Monarch, Blackbeard), `target` (Saladin, Lancaster, Minotaur), `sections` (Drake: two lines of two spaces) |
 | `effect_triggered` | `unit`, `effect` (trait name), `target` |
 | `status_blocked` / `no_effect` / `knockback_blocked` | `unit`/`target`, `reason` (immunity, Heavy Frame, Archaic...) |
 | `tech_action` / `action_skipped` | `unit`, `target`, `action` (`lock_on`, `bolster`, `invade` on an ally) / `reason` |

@@ -185,6 +185,7 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, params: Dict
 		return events
 	events.append({"type": "area_attack", "attacker": attacker.id, "weapon": w.get("key", ""), "weapon_name": w.get("name", ""),
 		"pattern": p["pattern"], "size": p["size"], "cells": p["cells"], "origin": p["origin"], "targets": p["targets"], "rule_ref": REF})
+	FrameSystems.before_area(attacker, w)
 	events.append_array(Attacks._spend_weapon(state, attacker, w))
 	var shared := {}
 	var origin: Array = p["origin"]
@@ -200,4 +201,5 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, params: Dict
 		opts["area"] = true
 		opts["area_targets"] = (p["targets"] as Array).size()
 		events.append_array(Attacks.attack(state, attacker, w, target, opts))
+	events.append_array(FrameSystems.after_area(state, attacker, w, events))
 	return events
