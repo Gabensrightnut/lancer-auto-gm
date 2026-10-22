@@ -133,8 +133,10 @@ func test_catalog_lists_systems_with_table_badges() -> void:
 	var names := list.map(func(a: Dictionary) -> String: return String(a.get("name", "")))
 	expect(names.any(func(n: String) -> bool: return n.contains("Smoke Grenade")), "system abilities are listed")
 	expect(names.any(func(n: String) -> bool: return n.contains("Javelin")), "Javelin Rockets are listed")
-	var comp: Array = list.filter(func(a: Dictionary) -> bool: return String(a.get("name", "")).contains("COMP/CON"))
-	expect(not comp.is_empty() and comp[0].has("table") and String(comp[0].get("table_note", "")) != "", "manual entries carry a table badge and note")
+	# Whatever the rules engine still leaves to the table must say so (the list shrinks as rules get automated).
+	var manual: Array = list.filter(func(a: Dictionary) -> bool: return String(a.get("automation", "")) in ["manual", "partial"])
+	for a: Dictionary in manual:
+		expect(a.has("table") and String(a.get("table_note", "")) != "", "manual entry %s carries a table badge and note" % a.get("name", ""))
 	var more: Array = list.filter(func(a: Dictionary) -> bool: return a.get("type", "") == "self_destruct")
 	expect(not more.is_empty() and more[0]["group"] == "more", "situational actions go to the More tab")
 
