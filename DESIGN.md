@@ -357,6 +357,11 @@ differently without an AI. Each game has a **seed**: share it to replay the same
   choices are blocked with the reason (mount size, SP, license level).
 - **COMP/CON import/export:** bring in pilots built in COMP/CON, and export back.
 - The 3D mech preview updates as you change the loadout.
+- **License Level accuracy:** a pilot can only field what their License Level and licenses
+  allow (frame and gear unlocked by license rank, LL-based stats like Grit, core bonuses and
+  talent ranks by level), checked by the rules engine. The mech on the battlefield always
+  shows exactly that frame and the weapons and systems actually equipped, never cosmetic
+  stand-ins. Enemies and AI squadmates follow the same rules for their tier/level.
 
 ### Effects system (talents, traits, core powers, systems)
 - Hundreds of unique effects. Built as a data-driven effects system where possible (bonuses,
@@ -433,7 +438,28 @@ differently without an AI. Each game has a **seed**: share it to replay the same
   (CC0 / public domain), credited in-game, or ship without sound until good ones are chosen.
 
 ### Customization
-- Callsigns, pilot portraits, mech paint schemes (colors, decals), shown to everyone.
+Modeled on Lancer Tactics' character creator (reference only; all parts made in house, no
+pixel art).
+
+- **Pilot creator:** a big portrait preview, a grid of options for the selected part, and a
+  list of parts down the side: body, face, face detail, body detail, eyes, nose, mouth,
+  ears, hair, beard, mustache, eyebrows, inner outfit, outer outfit, glasses, scarves, hats,
+  jewelry, other.
+  - Each part has **primary and secondary colors** picked from a palette grid, plus saved
+    palette presets.
+  - **Expressions:** each pilot gets a set of facial expressions (smiling, angry, worried,
+    shouting...) used automatically in dialogue scenes.
+  - **Randomize all**, with a **lock pin** on any part to keep it when randomizing.
+  - **Token tab:** the pilot's on-foot model on the battlefield, customized to match.
+  - Save and load looks; Confirm / Cancel / Reset to default.
+- **Mech customizer:** paint the actual equipped mech in a 3D preview with **primary,
+  secondary and glow** colors (glow = lights, visors, energy parts), palette presets,
+  decals and markings, randomize, reset to default. Purely cosmetic: weapons and systems
+  shown are always the real loadout.
+- Portraits and mechs are built from parts in our own art style (3D-rendered busts or
+  illustrated parts, decided when the art work starts). Many parts are needed for "wild"
+  variety, so this grows over time.
+- Callsigns and names shown to everyone; looks sync in multiplayer.
 
 ### Human GM seat
 - Optional: a person can run the game instead of the procedural GM: sees everything, spawns
