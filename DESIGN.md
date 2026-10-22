@@ -599,6 +599,12 @@ differently without an AI. Each game has a **seed**: share it to replay the same
   get you into the station's printer bay" or "...and my brother's garage will fix your rig
   for free". Doing the job earns the favor (a Reserve, a discount, access, information,
   manna or standing), tracked in the campaign and offered by the procedural GM as side jobs.
+- **Can't afford it? Fight for it:** when you can't pay for something (a repair, printer
+  access, passage, gear, information), the seller can offer a job instead: a procedurally
+  generated combat mission, different every time (its own map, enemies, objective and
+  twist), not a scripted encounter. Win and the deal is yours. Lose and that deal is off;
+  the offer is gone, but you can come back later and pay another way: salvage and scrap
+  parts, a spare mech, manna, or the local currency. Each seller accepts different things.
 - **Favors and access** still come from **Reserves** and downtime actions as in the book
   (Get Resources, Get Connected, Get Creative, Power at a Cost...).
 - **Supplies by the book:** food, water, repair materials and the like work exactly as
