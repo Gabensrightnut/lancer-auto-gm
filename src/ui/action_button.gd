@@ -138,6 +138,13 @@ func _draw() -> void:
 	var nfs := int(s.y * 0.15)
 	draw_rect(Rect2(Vector2(0, s.y - nfs - 6), Vector2(s.x, nfs + 6)), Color(0, 0, 0, 0.55))
 	draw_string(font, Vector2(4, s.y - 5), name, HORIZONTAL_ALIGNMENT_CENTER, s.x - 8, nfs, Color(0.92, 0.94, 0.97) if not is_locked else Color(0.6, 0.6, 0.65))
+	# "Table" badge: the game doesn't (fully) apply this one; the table does.
+	if action.has("table"):
+		var tfs := int(s.y * 0.13)
+		var tw := font.get_string_size("TABLE", HORIZONTAL_ALIGNMENT_LEFT, -1, tfs).x + 6
+		var tr := Rect2(Vector2(3, s.y - nfs - 8 - tfs - 4), Vector2(tw, tfs + 3))
+		draw_rect(tr, Color(0.75, 0.55, 0.15, 0.92) if String(action["table"]) == "manual" else Color(0.45, 0.42, 0.3, 0.92))
+		draw_string(font, tr.position + Vector2(3, tfs), "TABLE", HORIZONTAL_ALIGNMENT_LEFT, -1, tfs, Color(0.06, 0.05, 0.03))
 	# Hotkey.
 	if hotkey != "":
 		draw_string(font, Vector2(s.x - fs * 0.9, s.y - nfs - 9), hotkey, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.6))

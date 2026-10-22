@@ -40,6 +40,8 @@ var pre_attack_pause := 0.7
 var skip_to_my_turn := false
 ## Called with (text) for big banners ("Goblin's turn", "Round 2").
 var on_banner: Callable
+## (source, rule text, guidance) for effects the table resolves (a pop-up).
+var on_table_note: Callable
 ## Called with (unit_id) when a unit's turn starts.
 var on_turn_started: Callable
 var _saved_speed := 1.0
@@ -98,6 +100,18 @@ func play_event(e: Dictionary) -> void:
 			await Fx.wait(self, 0.8)
 		"next_side", "combat_started":
 			pass
+		"zone_created":
+			var z: Dictionary = e.get("zone", {})
+			battle.zones.add_zone(z)
+			_log("%s: %s." % [_name(z.get("owner", "")), z.get("label", z.get("kind", "zone"))])
+		"zone_removed":
+			battle.zones.remove_zone(String(e.get("id", "")))
+		"manual_effect":
+			# Something the game doesn't apply: say what, and what the table should do.
+			var guide := String(e.get("guidance", e.get("note", "The table applies this.")))
+			_log("[color=#e0b050]Table:[/color] %s: %s [color=#c8a060]%s[/color]" % [e.get("source", ""), String(e.get("text", "")).left(240), guide])
+			if on_table_note.is_valid():
+				on_table_note.call(String(e.get("source", "")), String(e.get("text", "")), guide)
 		"bonus_damage":
 			# Extra damage riding on a hit (a talent, system or core bonus); also part of the
 			# damage_dealt that follows.
