@@ -213,6 +213,8 @@ static func build_hook(story: StoryState, campaign: Campaign, cid: String) -> Di
 	for k: String in ["sitrep", "landscape"]:
 		if hs.has(k):
 			hook[k] = str(hs[k])
+	if hs.has("boarding"):
+		hook["boarding"] = (hs["boarding"] as Dictionary).duplicate()
 	if bool(hs.get("in_town", false)):
 		hook["in_town"] = true
 		hook["town_spot"] = "plaza"

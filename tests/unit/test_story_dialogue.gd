@@ -8,6 +8,7 @@ extends TestCase
 static func setup(seed_value: int = 7) -> Dictionary:
 	var c := Campaign.create("Story test")
 	c.id = "c_test_%d" % seed_value
+	c.options["travel_events"] = false  # no random pirate boardings in tests (test_story_boarding forces one)
 	var a := c.new_pilot("Ama Okafor", "Bluebird")
 	var b := c.new_pilot("Rin Sato", "Kettle")
 	a["skills"] = {"sk_charm": 1, "sk_patch": 1, "sk_word_on_the_street": 2, "sk_investigate": 1}

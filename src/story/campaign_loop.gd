@@ -60,6 +60,9 @@ static func build_mission(campaign: Campaign, story: StoryState, db: ContentDB, 
 		gen_opts["landscape"] = hook["landscape"]
 	if hook.has("map_culture"):
 		gen_opts["culture"] = hook["map_culture"]
+	# Boarding: world-maps builds the ships (opts.boarding: {kind, map}).
+	if hook.has("boarding"):
+		gen_opts["boarding"] = (hook["boarding"] as Dictionary).duplicate()
 	# A fight in the hub itself: world-maps builds the battle from the town's own layout.
 	var town := MissionHooks.town_for(story, hook)
 	if not town.is_empty():
@@ -97,6 +100,7 @@ static func build_mission(campaign: Campaign, story: StoryState, db: ContentDB, 
 	if hook.has("operation"):
 		mission.flavor["operation"] = hook["operation"]
 	mission.flavor["town"] = town
+	mission.flavor["boarding"] = (hook.get("boarding", {}) as Dictionary).duplicate()
 	var manual: Array = []
 	for entry: Dictionary in gen_opts["squad"]:
 		var seat := str(entry["seat"])

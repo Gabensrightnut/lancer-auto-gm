@@ -206,4 +206,10 @@ static func travel(story: StoryState, campaign: Campaign, id: String) -> Array:
 	for h: Dictionary in MissionHooks.fill_board(story, campaign):
 		events.append({"type": "hook_added", "hook": h})
 	TownLife.seed_items(story)
+	# Pirates now and then board the squad's transport on the way (Core p.40-42: pirates and
+	# boarding actions). Not in the authored main campaign, whose fights are its own.
+	var chance := int(campaign.options.get("pirate_chance", 14 if not same else 7))
+	if bool(campaign.options.get("travel_events", true)) and not CampaignScript.active(campaign) and story.dice.die(100) <= chance:
+		events.append({"type": "boarded", "text": "Halfway there, the hull rings: grapples. Pirates are boarding your transport.", "rule_ref": "Core p.42: board a hostile ship"})
+		events.append({"type": "combat_requested", "spec": {"hook": "repel_boarders", "in_town": false, "reason": "Pirates boarded the squad's transport."}, "rule_ref": "Core p.45: switching to mech combat"})
 	return events

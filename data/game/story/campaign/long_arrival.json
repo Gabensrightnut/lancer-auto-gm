@@ -982,7 +982,11 @@
     ],
     "sitrep": "sitrep_standardcombat",
     "landscape": "starship",
-    "commander": "warden"
+    "commander": "warden",
+    "boarding": {
+     "kind": "rescue",
+     "map": "enemy_ship"
+    }
    },
    "aftermath": {
     "npc": "wakeful",
@@ -1786,7 +1790,11 @@
     "foes_var": "{final_foes}",
     "sitrep": "sitrep_control",
     "landscape": "starship",
-    "commander": "{final_commander}"
+    "commander": "{final_commander}",
+    "boarding": {
+     "kind": "seize",
+     "map": "docked"
+    }
    },
    "branch": "b16",
    "outcomes": [

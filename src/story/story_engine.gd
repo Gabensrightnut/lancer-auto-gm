@@ -469,6 +469,8 @@ func _combat_from_scene(story: StoryState, campaign: Campaign, spec: Dictionary)
 		hook["sitrep"] = str(spec["sitrep"])
 	hook["on_foot"] = bool(spec.get("on_foot", false))
 	hook["from_scene"] = true
+	if hook.has("boarding") and not bool(spec.get("in_town", true)):
+		spec["in_town"] = false
 	# A fight that breaks out in a conversation happens right there, outside their door.
 	if bool(spec.get("in_town", true)) and not story.hub.is_empty():
 		hook["in_town"] = true

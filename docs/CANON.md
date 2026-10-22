@@ -110,6 +110,7 @@ book in a way that changes the setting; parked.
 | Wallet house rule: each world's own money, manna's buying power by world, free basics in the Union Core | Not canon (house rule), canon note | Manna is the currency outside the Core and the Core is communal and post-capital (Core p.10); the rest is our house-rule economy |
 | Main campaign "The Long Arrival": a nearlight colony ship arriving at a settled frontier world, its sleepers, its NHP, a corpro, a militia, a Union DoJ/HR envoy | Consistent (our own story) | Nearlight travel and time dilation (Core p.20), NHPs and cascade (p.107), Union and DoJ/HR, manna, blink gates (p.10); no Massif module content |
 | The final battle on the ship is fought in its interior (no zero-g) | Consistent | Zero-g rules (Core p.63) aren't in the rules engine yet |
+| Boarding actions: seize a ship, rescue a crew, take a smuggler; pirates boarding the squad's transport on the way | Canon | Mission goal "board a hostile ship or station and take it over" (Core p.42); pirates (p.40, p.42); boarding actions in microgravity (p.26); IPS-N boarding parties (p.139) |
 
 ## When canon allows more than one answer
 

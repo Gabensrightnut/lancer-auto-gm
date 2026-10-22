@@ -51,6 +51,11 @@ static func make(story: StoryState, campaign: Campaign, template_id: String, opt
 	}
 	# Fights in town (DESIGN: battles where the squad is): the job happens at one of the hub's
 	# own buildings, and world-maps builds the battle from the town's layout (town_for).
+	# Boarding jobs (Core p.42: board a hostile ship and take it over): which map world-maps
+	# builds (two docked ships, an enemy ship's interior, the squad's own transport).
+	if t.has("boarding"):
+		hook["boarding"] = (t["boarding"] as Dictionary).duplicate()
+		hook["landscape"] = str(t.get("landscape", "starship"))
 	var spot := town_spot(story, str(t.get("town_spot", "")), rng)
 	if bool(t.get("in_town", false)) and not spot.is_empty():
 		hook["in_town"] = true
