@@ -7,7 +7,20 @@ Story campaigns (`campaign.options.story`; the **Tutorial** on the main menu sta
 `GameFlow.start_tutorial` → `CampaignLoop.start_tutorial`): main menu → hub (briefing, job
 board) → boots on the ground → battle (`GameFlow.start_story_mission`, the battlefield from
 `CampaignLoop.build_mission`) → back to the hub for the story's debrief, level up and downtime
-(`CampaignLoop.finish_mission`). Continue on a story campaign opens the hub.
+(`CampaignLoop.finish_mission`, with every battle event). Continue on a story campaign opens
+the hub. After leveling up, talent, license and core bonus picks are made in the pilot builder
+(hub Menu); closing it updates `story.pending_picks` (`GameFlow.builder_done`).
+
+Online story campaigns: the hub Menu's "Invite friends online" makes `GameFlow.story_host`, a
+NetHost carrying the story's seats at the hub, with `StorySession.attach_net_host`. The host's
+hub UI talks to a `StoryHostEngine` (actions through the session, so friends get every
+change). A friend who joins lands in the lobby, which sees the story payload and opens the
+hub with `GameFlow.join_story` (`StoryClient.attach_net_client`; the hub UI's engine is the
+StoryClient, and each new view is copied into the objects the hub already holds). Friends
+take AI squadmates' seats (the AI takes a seat back if its friend leaves). Their builds go to
+the host as `{"pilot_update": pilot}` and are kept only if legal and their own. Boots on the
+ground: the battle runs on the same NetHost, so friends follow the host in ("started") and
+come back to the hub for the debrief. Not yet: walking positions aren't shared at the hub.
 
 | File | What it does |
 |---|---|
@@ -18,6 +31,7 @@ board) → boots on the ground → battle (`GameFlow.start_story_mission`, the b
 | `battle_screen.gd` (`scenes/flow/battle.tscn`) | The visuals work's BattleView, EventPlayer, TurnOrderBar, ActionBar, PlayerTurn, RollPopups, CombatLog on a BattleSession; plus the hot-seat "Pass to" screen, reaction prompt, in-battle menu. |
 | `debrief_screen.gd` (`scenes/flow/debrief.tscn`) | Outcome, level ups with "Spend points" (builder), next mission / main menu. |
 | `hub_screen.gd` (`scenes/flow/hub.tscn`) | A story campaign between missions: the story's HubScene, saved after every story step, a Menu (pilot builder, teaching hints, settings, save and quit). Turns the hub's "boots on the ground" into a battle. |
+| `story_host_engine.gd` | `StoryHostEngine`: the host's hub UI engine; every story action goes through the StorySession (friends online see it). |
 | `narration_popup.gd` | `NarrationPopup`: the GM speaking mid-battle in the story's dialogue look: a mission twist (`twist_revealed`) or narration (`gm_narration`, e.g. the squad arrived late). The AI waits while it's open. |
 
 Tutorial and tips in battle: the battle screen feeds every batch of events the on-screen seat

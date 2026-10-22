@@ -22,6 +22,8 @@ static var lobby: LobbyModel
 ## Pilot being edited in the builder, and where to go back to.
 static var builder_pilot := ""
 static var back_to := "main"
+## Open the pilot look creator as soon as the builder opens (a new pilot).
+static var open_creator := false
 static var _settings: GameSettings
 static var _db: ContentDB
 static var _db_key := "-"

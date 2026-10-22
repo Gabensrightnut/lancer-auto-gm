@@ -33,6 +33,13 @@ func _ready() -> void:
 	seats_box = VBoxContainer.new()
 	seats_box.add_theme_constant_override("separation", 10)
 	sb.add_child(seats_box)
+	if lobby.is_host:
+		var add := Button.new()
+		add.text = "+ New pilot"
+		add.icon = MenuTheme.icon_texture("pilot", 22, MenuTheme.TEXT)
+		add.tooltip_text = "Make a new pilot for this campaign: their look first, then their build. Put them in a seat with the pilot list."
+		add.pressed.connect(_new_pilot)
+		sb.add_child(add)
 	var fill := CheckButton.new()
 	fill.text = "Fill empty seats with AI pilots (a friend who joins later takes over)"
 	fill.button_pressed = bool(lobby.options.get("fill_empty_with_ai", false))
@@ -87,7 +94,7 @@ func _ready() -> void:
 
 
 func _refresh() -> void:
-	if not lobby.is_host and (lobby.started or str(lobby.client.view.get("phase", "")) == GameState.PHASE_COMBAT):
+	if not lobby.is_host and (lobby.started or not lobby.story_payload.is_empty() or str(lobby.client.view.get("phase", "")) == GameState.PHASE_COMBAT):
 		_follow_host.call_deferred()
 		return
 	_refreshing = true
@@ -282,6 +289,19 @@ func _toggle_pack(on: bool, pack: ContentPack) -> void:
 	lobby.set_packs(list, MenuSession.content())
 
 
+## A new pilot: the look creator, then the builder, then back here.
+func _new_pilot() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var names := NameGen.new(rng)
+	var p := lobby.campaign.new_pilot(names.pilot_name(), names.callsign())
+	MenuSession.store.save_campaign(lobby.campaign)
+	MenuSession.builder_pilot = str(p["id"])
+	MenuSession.back_to = "lobby"
+	MenuSession.open_creator = true
+	MenuSession.go(self, "builder")
+
+
 func _host_online() -> void:
 	var net := MenuSession.net(self)
 	if net == null or not net.online_available():
@@ -311,6 +331,11 @@ func _start() -> void:
 ## Joining players follow the host into the battle (also when rejoining one in progress).
 func _follow_host() -> void:
 	if lobby.is_host or lobby.client == null:
+		return
+	if not lobby.story_payload.is_empty():
+		# The host is at a story campaign's hub: play it there with them.
+		GameFlow.join_story(lobby.client, MenuSession.content(), lobby.story_payload)
+		MenuSession.go(self, "hub")
 		return
 	if lobby.started or str(lobby.client.view.get("phase", "")) == GameState.PHASE_COMBAT:
 		GameFlow.session = BattleSession.for_client(lobby.client)

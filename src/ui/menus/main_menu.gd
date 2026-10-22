@@ -162,6 +162,28 @@ func _show_tutorial() -> void:
 	var callsign := LineEdit.new()
 	callsign.text = names.callsign()
 	body.add_child(_field("Callsign", callsign))
+	var look := {"portrait": PortraitSpec.randomize(rng)}
+	var look_row := HBoxContainer.new()
+	look_row.add_theme_constant_override("separation", 14)
+	var face := PortraitArt.new()
+	face.custom_minimum_size = Vector2(84, 100)
+	face.set_look(look["portrait"])
+	look_row.add_child(face)
+	var look_button := Button.new()
+	look_button.text = "Design your pilot's look"
+	look_button.icon = MenuTheme.icon_texture("pilot", 22, MenuTheme.TEXT)
+	look_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	look_button.pressed.connect(func() -> void:
+		var pc := PilotCreator.new()
+		add_child(pc)
+		pc.open(look["portrait"])
+		pc.confirmed.connect(func(p: Dictionary) -> void:
+			look["portrait"] = p
+			face.set_look(p)
+			pc.queue_free())
+		pc.cancelled.connect(pc.queue_free))
+	look_row.add_child(look_button)
+	body.add_child(look_row)
 	var hints := CheckButton.new()
 	hints.text = "Teaching hints: explain each rule the first time it comes up"
 	hints.button_pressed = true
@@ -174,7 +196,7 @@ func _show_tutorial() -> void:
 	go.pressed.connect(func() -> void:
 		MenuSession.campaign = null
 		MenuSession.lobby = null
-		var c := GameFlow.start_tutorial(MenuSession.store, MenuSession.content(), name_edit.text.strip_edges(), callsign.text.strip_edges(), hints.button_pressed)
+		var c := GameFlow.start_tutorial(MenuSession.store, MenuSession.content(), name_edit.text.strip_edges(), callsign.text.strip_edges(), hints.button_pressed, look["portrait"])
 		MenuSession.campaign = c
 		MenuSession.go(self, "hub"))
 	body.add_child(go)
