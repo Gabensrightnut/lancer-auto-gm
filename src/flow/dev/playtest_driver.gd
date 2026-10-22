@@ -42,6 +42,8 @@ func _run() -> void:
 			await _story_loop()
 		"gm":
 			await _gm_loop()
+		"main":
+			await _main_loop()
 		"host":
 			await _host_online()
 		"join":
@@ -63,6 +65,7 @@ func _story_loop() -> void:
 		return
 	await wait(0.6)
 	await shot("new_campaign_form")
+	await click_text("Generated story")
 	if not await click_text("Create campaign"):
 		return
 	if not await wait_scene("HubScreen", 20.0):
@@ -176,6 +179,8 @@ func _gm_loop() -> void:
 	if not await click_text("New campaign"):
 		return
 	await wait(0.6)
+	await click_text("Generated story")
+	await wait(0.3)
 	var gm_pick: OptionButton = null
 	for n: Node in current().find_children("*", "OptionButton", true, false):
 		var ob := n as OptionButton
@@ -247,6 +252,86 @@ func _gm_loop() -> void:
 	await shot("gm_battle_twist")
 	if not bs.narration.visible:
 		issue("gm", "The GM's twist wasn't narrated in the battle", "gm_battle_twist")
+	bs.narration.visible = false
+	# The GM edits the map live: raise a free patch, then back to the battle.
+	if not await click_text("Edit map"):
+		issue("gm", "No Edit map button for the GM", await shot("gm_no_edit_map"))
+		return
+	await wait(1.5)
+	await shot("gm_edit_map_open")
+	var ed: Node = bs._map_editor
+	if ed == null:
+		issue("gm", "Edit map didn't open the editor", "gm_edit_map_open")
+		return
+	var taken := {}
+	for u: Unit in bs.session.host.state.units.values():
+		taken[u.cell] = true
+	var cells: Array = []
+	for c in bs.session.host.state.map.cells():
+		if not taken.has(c) and cells.size() < 6 and c.y > 6:
+			cells.append(c)
+	var before: int = bs.session.host.state.map.ground_height(cells[0])
+	if (ed.model.paint(cells, "raise") as Array).is_empty():
+		issue("gm", "A live edit was refused: %s" % ed.model.last_error, "gm_edit_map_open")
+	await wait(1.0)
+	await shot("gm_edit_map_painted")
+	if not await click_text("Done editing"):
+		issue("gm", "No way back from the map editor", "gm_edit_map_painted")
+		return
+	await wait(1.5)
+	await shot("gm_edit_map_back")
+	if bs.session.host.state.map.ground_height(cells[0]) != before + 1:
+		issue("gm", "The edit didn't reach the battle", "gm_edit_map_back")
+	if not bs.ui.visible:
+		issue("gm", "The battle HUD didn't come back after editing", "gm_edit_map_back")
+
+
+## The main campaign's first chapter as a new player: the form, session zero, the premise and
+## the town, the job's briefing, the battle, and the debrief back in town.
+func _main_loop() -> void:
+	if not await click_text("New campaign"):
+		return
+	await wait(0.6)
+	await shot("main_form")
+	if not await click_text("Create campaign"):
+		return
+	if not await wait_scene("HubScreen", 20.0):
+		return
+	await wait(2.5)
+	await click_text("Roll")
+	await wait(0.3)
+	if not await click_text("Start the campaign"):
+		return
+	await wait(2.5)
+	var hub: HubScene = current().hub
+	await shot("main_premise")
+	if not CampaignScript.active(hub.campaign):
+		issue("main", "The main campaign didn't start after session zero", "main_premise")
+		return
+	await _dialogue_through(hub, "main_intro")
+	await shot("main_town")
+	await key(KEY_J)
+	await wait(0.8)
+	await shot("main_job_board")
+	if not await click_text("Take this job"):
+		issue("main", "No chapter job to take on the board", "main_job_board")
+		return
+	await _dialogue_through(hub, "main_briefing")
+	await shot("main_reserves")
+	if not await click_text("Deploy"):
+		return
+	if not await wait_scene("BattleScreen", 30.0):
+		return
+	await wait(3.0)
+	await shot("main_battle")
+	await _play_battle(-1)
+	if not await wait_scene("HubScreen", 40.0):
+		return
+	await wait(2.5)
+	hub = current().hub
+	await shot("main_after_battle")
+	await _dialogue_through(hub, "main_debrief")
+	await shot("main_debrief_done")
 
 
 ## Clicks through a conversation: the first reply when there's a choice, Space otherwise.
