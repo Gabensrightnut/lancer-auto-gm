@@ -120,6 +120,8 @@ func play_turn(u: Unit) -> void:
 ## and the remaining steps resume once it's answered (the paused action completes then).
 func _play_steps(u: Unit, steps: Array) -> void:
 	_resume.erase(u.id)
+	if u.turn.get("braced", false):
+		steps = _braced_steps(steps)
 	for i in range(steps.size()):
 		var action: Dictionary = steps[i]
 		if u.destroyed or host.state.active_unit != u.id:
@@ -136,6 +138,16 @@ func _play_steps(u: Unit, steps: Array) -> void:
 			host.submit(r.controller, {"type": "react", "actor": r.id, "params": Reactions.suggested_answer(host.state)})
 	if host.state.active_unit == u.id and host.state.pending.is_empty():
 		host.submit(u.controller, {"type": "end_turn", "actor": u.id})
+
+
+## After Bracing, a unit's next turn is one quick action only: no normal move, no full or
+## free actions (Core p.73). Keeps the first quick action of the plan.
+static func _braced_steps(steps: Array) -> Array:
+	for a: Dictionary in steps:
+		var h: Variant = RulesEngine.registry.get(String(a.get("type", "")))
+		if h is TurnAction and (h as TurnAction).cost_for(a.get("params", {})) == TurnRules.QUICK and not a.has("free_via"):
+			return [a]
+	return []
 
 
 ## Which AI unit acts next: the one with the most to do right now (enemies in reach, damage
