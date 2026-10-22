@@ -116,6 +116,16 @@ Every effect gets an animation, a combat-log line, and floating text (damage, MI
     hides the battlefield. Start around 9% of screen height on 1080p, with a bar-size slider
     in settings so we can tune it together; it scales with resolution.
   - Players can rearrange buttons; the layout is saved per pilot.
+  - **Cooldowns shown WoW-style:** an unusable button greys out with a dark radial sweep and
+    the reason on it. Lancer doesn't have many plain cooldowns, so the overlay shows what
+    actually applies:
+    - a **number of turns/rounds** when the wait is fixed (e.g. an effect lasting "until the
+      end of your next turn", 1/round abilities until the next round);
+    - **Recharge X+** (NPC abilities that come back on a d6 roll) shows the die and target
+      number, and lights back up when the roll succeeds;
+    - **Loading** weapons show "Reload" until reloaded;
+    - **1/scene, 1/mission, Limited X** show the uses left, or "used this scene";
+    - **status lockouts** (Jammed, Shut Down...) show the status icon and how long it lasts.
 - **Cost preview:** hovering a button shows what it will spend on the resource bars (e.g. the
   heat bar previews +2), and warns if it would push you into the Danger Zone or overheat.
 - Enemies show only what the view rules allow (section 6): unscanned enemies show "??".
