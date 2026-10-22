@@ -70,6 +70,18 @@ game waits for people.
   own pilot's turn while others watch (and can ping and chat); dialogue choices go to the
   speaking pilot's player or a vote.
 
+### Exploring vs. fighting (a Final Fantasy / BG3 mix)
+- **Outside combat there are no turns:** everyone moves in real time (pilots on foot, mechs
+  walking). Combat starts seamlessly where you are, on the same ground, with no loading into a
+  separate battle screen.
+- **Optional turn-based exploring:** off by default; worth turning on for careful heists and
+  stealth (a guard's patrol, a timed lockpick), the way BG3 offers it.
+- **Free, independent exploring in multiplayer:** players go wherever they want on their own until
+  a major story event pulls everyone to it.
+- **Fights start with whoever is there.** Teammates elsewhere can travel to the fight and join it;
+  they enter where they arrive, so arriving behind the enemy means starting behind the enemy.
+  Late arrivals join the turn order from the next round (Lancer's alternating activations).
+
 ## 1. Animations and visual feedback
 
 Every effect gets an animation, a combat-log line, and floating text (damage, MISS,
@@ -754,6 +766,23 @@ Outcomes come from what players actually do in the world:
   ship) isn't in the book (it doesn't track money or ships), so it only works with house rules:
   the wallet rule plus a new **"Your own ship"** house rule (a squad ship with upgrade slots).
   Without them, raids pay out in Reserves, as the book does.
+
+### Consequences, split decisions, death and clones
+- **Small actions change the world:** blow up a dam and later the town's water runs short; the
+  squad can make it right (fix the dam, dig a well) as a side job. Places remember.
+- **Personal agendas:** hardship (e.g. a lost mech meaning short rations, with the survival rule
+  on) can make a pilot the one pushing for mutiny.
+- **Split decisions:** on a story-changing choice, the player who starts it doesn't have to
+  convince the others in game. Each player accepts or declines, and if the squad splits, the two
+  sides fight it out (player-vs-player battle, views filtered per side).
+- **Death and cloning (Core p.83-84):** facsimile clones are natural-life, slow and expensive;
+  flash clones are fast but mostly unlawful; revival always brings complications (the clone quirk
+  table) and a memory gap back to the start of the session you died in; clones keep their LL
+  (the book). Ships and cities can hold genetic templates; growing a usable clone takes in-game
+  years; templates can be corrupted, tampered with or destroyed; the squad has to go back and wake
+  the clone; same personality and quirks, slightly different backstory. Each player may keep one
+  extra pilot (a friend, family member, partner or clone) and choose which is active.
+  House rule (off by default): clones lose License Levels.
 
 ## House rules (toggles, all off by default)
 
