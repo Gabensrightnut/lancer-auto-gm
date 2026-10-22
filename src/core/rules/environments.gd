@@ -64,11 +64,26 @@ static func sync(state: GameState) -> void:
 ## Zero gravity: mechs without a propulsion or flight system are Slowed.
 static func _zero_g_slowed(state: GameState, u: Unit) -> void:
 	var slowed_by_it := u.has_status("Slowed") and String(u.statuses["Slowed"].get("source", "")) == "Zero gravity"
-	var should := active(state, ZERO_G) and is_mech(u) and Combat.is_present(u) and not has_propulsion(u)
+	var should := in_zero_g(state, u) and is_mech(u) and Combat.is_present(u) and not has_propulsion(u)
 	if should and not u.has_status("Slowed"):
 		u.statuses["Slowed"] = {"source": "Zero gravity"}
 	elif slowed_by_it and not should:
 		u.statuses.erase("Slowed")
+
+
+## In zero gravity: the whole battle (env_zero_g), or standing in map cells tagged "zero_g"
+## or "vacuum" (a ship's hull, a breached deck). The glossary treats underwater, zero-g and space
+## alike; underwater has its own environment (env_oceanworld).
+static func in_zero_g(state: GameState, u: Unit) -> bool:
+	if active(state, ZERO_G):
+		return true
+	if state.map == null or not is_character(u):
+		return false
+	for c in state.map.grid.footprint(u.cell, u.size):
+		var col := state.map.column(c)
+		if col != null and (col.has_tag("zero_g") or col.has_tag("vacuum")):
+			return true
+	return false
 
 
 ## A flight or propulsion system: a flight trait or system, count-as-flying gear, or an EVA
@@ -87,7 +102,7 @@ static func has_propulsion(u: Unit) -> bool:
 
 static func effects_for(state: GameState, u: Unit) -> Array:
 	var out: Array = []
-	if state.environments.is_empty() or not is_character(u):
+	if not is_character(u) or (state.environments.is_empty() and not in_zero_g(state, u)):
 		return out
 	var mech := is_mech(u)
 	if mech and active(state, "env_extremecold"):
@@ -106,7 +121,7 @@ static func effects_for(state: GameState, u: Unit) -> Array:
 		out.append(_e({"kind": "boost_flight"}, "Low gravity"))
 	if mech and active(state, "env_highgravity"):
 		out.append(_e({"kind": "no_boost"}, "High gravity"))
-	if active(state, ZERO_G):
+	if in_zero_g(state, u):
 		# Can fly when moving whatever the mech has, and can't fall.
 		var zg := _e({"kind": "optional_flight"}, "Zero gravity")
 		zg["rule_ref"] = ZERO_G_REF

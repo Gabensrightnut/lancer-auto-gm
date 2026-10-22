@@ -30,7 +30,7 @@ func _init() -> void:
 		PilotActions.DropPrepared.new(), SystemActions.CorePower.new(), MoveActions.BonusMove.new(),
 		Rulings.SetRuling.new(), HouseRuleSwitches.SetHouseRule.new(), CloseCombat.GrappleContest.new(), AbilityActions.Activate.new(),
 		RestActions.Rest.new(), GearActions.AIControl.new(), GearActions.ClimbOn.new(), GearActions.Board.new(), GearActions.Disembark.new(), GearActions.CutCable.new(), GearActions.PullStake.new(), GearActions.UseObject.new(), GearActions.ShakeOff.new(),
-		EnvironmentActions.BreakIce.new(), EnvironmentActions.DigOut.new(), AttackActions.Backswing.new(), AttackActions.HunterThrow.new(), CloseCombat.Feint.new(), CloseCombat.Trip.new(), CloseCombat.DuelistStrike.new(), GearActions.FixHack.new(), GearActions.Drag.new(), GearActions.LetGoDrag.new(), GearActions.IssueOrder.new(), GearActions.AceBurst.new(),
+		EnvironmentActions.BreakIce.new(), EnvironmentActions.DigOut.new(), AttackActions.Backswing.new(), AttackActions.HunterThrow.new(), CloseCombat.Feint.new(), CloseCombat.Trip.new(), CloseCombat.DuelistStrike.new(), GearActions.FixHack.new(), GearActions.Drag.new(), GearActions.LetGoDrag.new(), GearActions.IssueOrder.new(), GearActions.AceBurst.new(), GearActions.DetectMines.new(), GearActions.DisarmMine.new(),
 	]:
 		register(h)
 
@@ -145,6 +145,9 @@ func _run(state: GameState, action: Dictionary, decisions: Dictionary, result: R
 	state.reaction_run = {}
 	if asked.is_empty():
 		events.append_array(TerrainDamage.settle(state, made, String(action.get("actor", ""))))
+		var prepared := Reactions.prepared_after_action(state, action, events)
+		if not prepared.is_empty():
+			events.append_array(prepared)
 		return {"result": result, "events": events}
 	TerrainDamage.remove(state, made)
 	_restore(state, snap)

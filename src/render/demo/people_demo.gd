@@ -88,6 +88,26 @@ func screenshot_stage(tag: String) -> void:
 					if idx >= 0:
 						f._face_mesh.set_blend_shape_value(idx, float(f._face_now.get(k, 0.0)))
 			_look(Vector3(0, 1.66, 0), Vector3(0, 1.68, 2.6))
+		"face_close", "face_close_f":
+			# The face-to-face dialogue camera: about 1.25 m from the face.
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 77 if tag == "face_close" else 78
+			var lk := PortraitSpec.randomize(rng)
+			for part: String in ["hats", "glasses", "scarves"]:
+				lk["parts"][part]["option"] = "none"
+			lk["parts"]["outer_outfit"]["option"] = "hardsuit_collar"
+			lk["parts"]["hair"]["option"] = "short" if tag == "face_close" else "long"
+			var f := HumanFigure.new().build(lk, {"female": tag == "face_close_f", "gear": {"pack": true}})
+			add_child(f)
+			_crowd.append(f)
+			f.speak("Hold the ridge until the convoy is through.", "determined", 10.0)
+			for i in range(18):
+				await get_tree().process_frame
+			var sk := f.find_child("Skeleton3D", true, false) as Skeleton3D
+			var head := f.global_position + Vector3.UP * 1.62
+			if sk and sk.find_bone("head") >= 0:
+				head = sk.global_transform * sk.get_bone_global_pose(sk.find_bone("head")).origin + Vector3.UP * 0.08
+			_look(head, head + Vector3(0.25, 0.05, -1.22))
 		"dialogue":
 			# Two people talking: the speaker turns to the listener, mouth moving.
 			var a := _person(41, Vector3(-0.8, 0, 0), "idle")

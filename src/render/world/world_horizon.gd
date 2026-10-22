@@ -24,7 +24,8 @@ static func build(t: TerrainRenderer, root: Node3D) -> void:
 			if k > 0.0:
 				h = lerpf(h, float(r["y"]) - 0.35, k)
 		return h
-	_land(t, root, b, height_fn, TerrainRenderer.KIND_BED if land == "sea" else TerrainRenderer.KIND_GROUND)
+	if land != "none":  # "none": nothing around the board but what the far scenery builds
+		_land(t, root, b, height_fn, TerrainRenderer.KIND_BED if land == "sea" else TerrainRenderer.KIND_GROUND)
 	_river_water(t, root, rivers)
 	Landmarks.build(t, root, b, height_fn)
 	_forest(t, root, b, height_fn, float(hz.get("forest", 0.0)))
@@ -46,7 +47,7 @@ static func build(t: TerrainRenderer, root: Node3D) -> void:
 			_megastructures(root, b)
 		"islands":
 			_ring(root, b, t.style, "islands", 120.0, 6, 26.0)
-		"station", "ship":
+		"station", "ship", "boarding":
 			SpaceScenery.build(t, root, b, far_kind)
 		"asteroids":
 			_ring(root, b, t.style, "mountains", 170.0, 6, 18.0, 25.0)

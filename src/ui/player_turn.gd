@@ -89,6 +89,7 @@ func setup(ui_layer: CanvasLayer) -> void:
 
 func begin(uid: String) -> void:
 	unit_id = uid
+	view.tactical.focus_target = func() -> Variant: return (view.units[unit_id] as MechView).global_position if view.units.has(unit_id) else null
 	var bu := state.unit(uid)
 	fly = bu != null and bu.flying
 	sky_level = bu.level if bu else -1
@@ -137,32 +138,207 @@ func _set_hint() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not active or busy:
 		return
-	if event is InputEventKey and event.pressed and not event.echo:
-		match (event as InputEventKey).keycode:
-			KEY_ENTER, KEY_KP_ENTER:
-				if not pending.is_empty():
-					confirm()
-				elif mode == "pick":
-					_pick_finish_step()
-			KEY_SPACE:
-				if mode == "pick":
-					_pick_finish_step()
-			KEY_ESCAPE:
-				cancel()
-			KEY_T:
-				toggle_fly()
-			KEY_R:
-				change_sky(1)
-			KEY_F:
-				change_sky(-1)
+	if event is InputEventKey and (event as InputEventKey).echo:
+		return
+	if event.is_action_pressed("confirm"):
+		if not pending.is_empty():
+			confirm()
+		elif mode == "pick":
+			_pick_finish_step()
+	elif event.is_action_pressed("cancel"):
+		cancel()
+	elif event.is_action_pressed("tactical_view"):
+		if mode == "pick":
+			_pick_finish_step()  # Space also finishes an "up to" pick
+		else:
+			set_tactical_view(true)
+	elif event.is_action_released("tactical_view"):
+		set_tactical_view(false)
+	elif event.is_action_pressed("first_person"):
+		toggle_first_person()
+	elif event.is_action_pressed("next_target"):
+		next_target()
+	elif event.is_action_pressed("reload"):
+		reload()
+	elif event.is_action_pressed("fly_toggle"):
+		toggle_fly()
+	elif event.is_action_pressed("sky_up"):
+		change_sky(1)
+	elif event.is_action_pressed("sky_down"):
+		change_sky(-1)
 	elif event is InputEventMouseMotion:
 		hover_screen((event as InputEventMouseMotion).position)
-	elif event is InputEventMouseButton and event.pressed:
+	elif event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT:
-			click_screen(mb.position)
-		elif mb.button_index == MOUSE_BUTTON_RIGHT and mode != "idle":
-			cancel()
+			if mode == "idle" or mode == "boost":
+				# Drag to move: press, drag to see the path, release to plan the move there.
+				if not mb.pressed:
+					click_screen(mb.position)
+			elif mb.pressed:
+				click_screen(mb.position)
+		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+			if mode != "idle" or not pending.is_empty():
+				cancel()
+			else:
+				context_menu(mb.position)
+
+
+# --- keyboard and menus ------------------------------------------------------------------
+
+var _menu: PopupMenu
+var _menu_calls: Array = []
+var _tactical := false
+
+
+## Hold Space: the camera stays on your mech, every enemy's threat and your weapons' reach
+## are drawn, and a quick summary of the field shows. Release to go back.
+func set_tactical_view(on: bool) -> void:
+	if on == _tactical:
+		return
+	_tactical = on
+	var mv: MechView = view.units.get(unit_id)
+	view.tactical.tether = mv if on else null
+	if not on:
+		view.overlays.clear()
+		_set_hint()
+		return
+	var u := state.unit(unit_id)
+	var threat: Array = []
+	var mine: Array = []
+	var lines: Array = []
+	var my_reach := 0
+	for w: Dictionary in u.loadout.get("weapons", []):
+		for r: Dictionary in w.get("range", []):
+			var v: Variant = r.get("val", 0)
+			if v is int or v is float:
+				my_reach = maxi(my_reach, int(v))
+	for c: Vector2i in state.map.grid.cells_within(u.cell, my_reach):
+		if state.map.has_cell(c):
+			mine.append([c.x, c.y])
+	for o: Unit in state.units.values():
+		if o.side == u.side or o.destroyed or not view.units.has(o.id):
+			continue
+		var reach := 1
+		for w: Dictionary in o.loadout.get("weapons", []):
+			if Weapons.is_melee(w):
+				reach = maxi(reach, Weapons.threat_for(o, w))
+		for c: Vector2i in state.map.grid.cells_within(o.cell, reach):
+			if state.map.has_cell(c):
+				threat.append([c.x, c.y])
+		var d := state.map.grid.distance(u.cell, o.cell)
+		var los := RulesQueries.line_of_sight(state, unit_id, o.id)
+		var cov := String(RulesQueries.cover(state, unit_id, o.id).get("cover", "none")) if los else "-"
+		var hp := "HP %d/%d" % [o.hp, o.max_hp] if (view.units[o.id] as MechView).unit.has("hp") else "HP ??"
+		var line := "%s  ·  %s  ·  %d away" % [o.name, hp, d]
+		if not los:
+			line += "  ·  no line of sight"
+		elif cov != "none":
+			line += "  ·  %s cover" % cov
+		lines.append(line)
+	view.overlays.show_plan({"threat": threat, "my_range": mine})
+	_hint.text = "TACTICAL VIEW  (release Space)\n" + "\n".join(lines) + "\nRed: enemy melee threat   ·   Blue: your weapons' reach"
+	_hint.size = Vector2.ZERO
+	_hint.reset_size()
+
+
+func toggle_first_person() -> void:
+	if view.camera_mode == "tactical":
+		view.set_camera_mode("cockpit", unit_id, _hover_unit)
+	else:
+		view.set_camera_mode("tactical")
+
+
+## Tab: the next enemy, nearest first (while picking a target it becomes the target).
+func next_target() -> void:
+	var u := state.unit(unit_id)
+	var ids: Array = []
+	for o: Unit in state.units.values():
+		if o.side != u.side and not o.destroyed and view.units.has(o.id):
+			ids.append(o.id)
+	if ids.is_empty():
+		return
+	ids.sort_custom(func(a: String, b: String) -> bool: return state.map.grid.distance(u.cell, state.unit(a).cell) < state.map.grid.distance(u.cell, state.unit(b).cell))
+	var i := (ids.find(_hover_unit) + 1) % ids.size()
+	_hover_unit = ids[i]
+	view.tactical.focus = (view.units[ids[i]] as MechView).global_position
+	if mode == "target":
+		hover_target(ids[i])
+	else:
+		view.labels.hover_unit = ids[i]
+
+
+## R: a reload system if there is one, else Stabilize (which reloads all Loading weapons).
+func reload() -> void:
+	var pick: Dictionary = {}
+	for a: Dictionary in bar.actions:
+		if a.get("enabled", true) and "reload" in String(a.get("name", "")).to_lower():
+			pick = a
+	if pick.is_empty():
+		for a: Dictionary in bar.actions:
+			if String(a.get("type", "")) == "stabilize":
+				pick = a
+	if not pick.is_empty():
+		_on_action(pick)
+
+
+## Right click on a unit or a space: what you can do with it.
+func context_menu(screen: Vector2) -> void:
+	if _menu == null:
+		_menu = PopupMenu.new()
+		_menu.id_pressed.connect(func(i: int) -> void: (_menu_calls[i] as Callable).call())
+		_hint.get_parent().add_child(_menu)
+	_menu.clear()
+	_menu_calls.clear()
+	var id := unit_at_screen(screen)
+	var u := state.unit(unit_id)
+	if id != "" and id != unit_id and state.unit(id) and state.unit(id).side != u.side:
+		_menu.add_separator(state.unit(id).name)
+		for a: Dictionary in bar.actions:
+			if String(a.get("kind", "")) in ["attack", "tech"]:
+				_menu_item(String(a.get("name", "")), _attack_from_menu.bind(a, id), bool(a.get("enabled", true)))
+		_menu_item("Focus camera", _focus_unit.bind(id))
+	elif id != "":
+		_menu.add_separator(String((view.units[id] as MechView).unit.get("name", id)))
+		_menu_item("Focus camera", _focus_unit.bind(id))
+		if id == unit_id:
+			_menu_item("First person", toggle_first_person)
+	else:
+		var c: Variant = cell_at_screen(screen)
+		if c == null:
+			return
+		_menu.add_separator("Space %d, %d" % [(c as Vector2i).x, (c as Vector2i).y])
+		_menu_item("Move here", plan_move.bind(c))
+		_menu_item("Boost here", _boost_to.bind(c))
+		_menu_item("Focus camera here", _focus_cell.bind(c))
+	_menu.position = Vector2i(screen)
+	_menu.popup()
+
+
+func _menu_item(text: String, c: Callable, enabled: bool = true) -> void:
+	_menu.add_item(text, _menu_calls.size())
+	_menu.set_item_disabled(_menu.item_count - 1, not enabled)
+	_menu_calls.append(c)
+
+
+func _attack_from_menu(a: Dictionary, id: String) -> void:
+	_on_action(a)
+	if mode == "target":
+		choose_target(id)
+
+
+func _focus_unit(id: String) -> void:
+	if view.units.has(id):
+		view.tactical.focus = (view.units[id] as MechView).global_position
+
+
+func _focus_cell(c: Vector2i) -> void:
+	view.tactical.focus = view.cell_pos(c, state.map.ground_height(c))
+
+
+func _boost_to(c: Vector2i) -> void:
+	mode = "boost"
+	plan_move(c)
 
 
 func _ray(screen: Vector2) -> Array:

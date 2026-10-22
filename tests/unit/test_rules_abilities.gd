@@ -121,6 +121,28 @@ func test_mines_arm_and_trigger() -> void:
 	expect(m.destroyed)
 
 
+func test_detect_and_disarm_mines() -> void:
+	_everest(["ms_pattern_b_hex_charges"])
+	var out := F.act(e, s, "activate", "a", {"ability": _ability(a, "Deploy Explosive Mine")["key"], "to": [1, 0]})
+	var m := s.unit(F.events_of(out, "deployed")[0]["object"]["id"])
+	F.act(e, s, "end_turn", "a")
+	s.acted = PackedStringArray()
+	s.turn_side = "enemies"
+	F.act(e, s, "start_turn", "t")
+	t.cell = Vector2i(2, 1)
+	expect(not F.ok(F.act(e, s, "disarm_mine", "t", {"mine": m.id})), "detect it first")
+	F.load_dice(s, [15])
+	out = F.act(e, s, "detect_mines", "t")
+	expect_eq(F.events_of(out, "mine_detected").size(), 1)
+	expect(not m.has_status("Hidden"))
+	F.load_dice(s, [15])
+	out = F.act(e, s, "disarm_mine", "t", {"mine": m.id})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(F.events_of(out, "mine_disarmed").size(), 1)
+	expect(m.destroyed)
+	expect_eq(t.hp, t.max_hp, "disarmed, not set off")
+
+
 func test_protocol_talent_steady_aim() -> void:
 	_everest([], {"ll": 2, "talents": {"t_crack_shot": 1}})
 	var key: String = _ability(a, "Steady Aim")["key"]

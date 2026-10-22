@@ -46,7 +46,7 @@ func validate(state: GameState, action: Dictionary) -> RuleResult:
 		var who := "Pilots on foot" if u.kind == Unit.KIND_PILOT else ("Mechs" if u.kind == Unit.KIND_MECH else "This unit")
 		return RuleResult.deny("%s can't take this action (%s)." % [who, type()], "actions.json")
 	var params: Dictionary = action.get("params", {})
-	if params.has("free_via") and Effects.grant(u, String(params["free_via"]), type(), cost() == TurnRules.QUICK).is_empty():
+	if params.has("free_via") and Effects.grant(grant_holder(state, u, params), String(params["free_via"]), type(), cost() == TurnRules.QUICK).is_empty():
 		return RuleResult.deny("That free action isn't available (used up, or doesn't cover %s)." % type(), Effects.REF)
 	var c := _cost(params)
 	if c != "move":
@@ -56,6 +56,11 @@ func validate(state: GameState, action: Dictionary) -> RuleResult:
 	return check(state, u, params)
 
 
+## Whose free-action grant (params.free_via) pays for this action: usually the actor.
+func grant_holder(_state: GameState, u: Unit, _params: Dictionary) -> Unit:
+	return u
+
+
 func resolve(state: GameState, action: Dictionary) -> Array[Dictionary]:
 	var u := state.unit(action["actor"])
 	var params: Dictionary = action.get("params", {})
@@ -63,7 +68,8 @@ func resolve(state: GameState, action: Dictionary) -> Array[Dictionary]:
 		u.turn.erase("bonus_move")  # an after-attack move has to be taken immediately
 	var events := apply(state, u, params)
 	if params.has("free_via"):
-		Effects.use_grant(u, Effects.grant(u, String(params["free_via"]), type(), cost() == TurnRules.QUICK))
+		var holder := grant_holder(state, u, params)
+		Effects.use_grant(holder, Effects.grant(holder, String(params["free_via"]), type(), cost() == TurnRules.QUICK))
 	var c := _cost(params)
 	if c != "move":
 		TurnRules.spend(u, c, economy_name())

@@ -1,7 +1,10 @@
 class_name HumanFigure
 extends Node3D
-## A person: the rigged human from tools/blender/human.py (assets/people/human.glb) dressed
-## and colored from a v2 portrait (PortraitSpec), so the 3D figure matches the portrait:
+## A person: a rigged human dressed and colored from a v2 portrait (PortraitSpec), so the 3D
+## figure matches the portrait. Realistic tier: MakeHuman/MPFB2 bodies (CC0, see CREDITS.md)
+## built by tools/blender/people_mh.py into assets/people/human_male.glb / human_female.glb,
+## with textured skin, eyes, brows, lashes and hair cards; fallback: the stylized
+## tools/blender/human.py figure (assets/people/human.glb). Either way:
 ## build and face shape, hair, beard, inner/outer outfit (flight suit, jacket, coat, poncho,
 ## hardsuit), hats, glasses, scarves, dog tags, plus optional field gear (pack, slung rifle,
 ## rebreather). Stylized shading with ink outlines (the mech paint shader).
@@ -14,6 +17,7 @@ extends Node3D
 ## Same calls work for NPCs (their look from PortraitSpec, or PortraitArt.look_for_npc).
 
 const SCENE := "res://assets/people/human.glb"
+const SCENE_GENDER := "res://assets/people/human_%s.glb"
 const LOOPS := ["idle", "walk", "run", "talk", "sneak"]
 const HEIGHT := 1.82
 
@@ -22,11 +26,13 @@ static var _paint_cache: Dictionary = {}
 const EXPRESSIONS := {
 	"neutral": {}, "smiling": {"smile": 0.9}, "angry": {"brow_angry": 1.0, "frown": 0.4},
 	"worried": {"brow_worried": 1.0, "frown": 0.3}, "shouting": {"mouth_open": 0.8, "brow_angry": 0.7},
-	"sad": {"brow_worried": 0.8, "frown": 0.8}, "surprised": {"brow_up": 1.0, "mouth_open": 0.45},
+	"sad": {"brow_worried": 0.8, "frown": 0.8}, "surprised": {"brow_up": 1.0, "mouth_open": 0.45, "eyes_wide": 0.8},
 	"determined": {"brow_angry": 0.5, "frown": 0.15}, "smug": {"smile": 0.5, "brow_up": 0.25},
 	"hurt": {"brow_worried": 0.8, "mouth_open": 0.25, "blink": 0.4},
 }
-const FACE_KEYS := ["blink", "brow_angry", "brow_worried", "brow_up", "mouth_open", "smile", "frown"]
+const FACE_KEYS := ["blink", "brow_angry", "brow_worried", "brow_up", "mouth_open", "smile", "frown", "eyes_wide", "v_ee", "v_oo", "v_mm"]
+## Skin texture reference color (the MakeHuman light skin); portrait skin tints relative to it.
+const SKIN_REF := Color(0.87, 0.68, 0.58)
 
 var look: Dictionary = {}
 var anim: AnimationPlayer
@@ -53,6 +59,8 @@ var _blink_in := 2.5
 var _blink_t := -1.0
 var _look: HeadLook
 var _face_mesh: MeshInstance3D
+var _face_meshes: Array[MeshInstance3D] = []
+var _realistic := false
 
 
 func build(portrait: Dictionary, opts_or_title: Variant = {}, subtitle: String = "", pilot_suit: bool = false) -> HumanFigure:
@@ -61,7 +69,12 @@ func build(portrait: Dictionary, opts_or_title: Variant = {}, subtitle: String =
 	look = PortraitSpec.normalize(portrait) if not portrait.is_empty() else PortraitArt.look_for_pilot({"id": str(get_instance_id())})
 	if _root:
 		_root.queue_free()
-	_root = (load(SCENE) as PackedScene).instantiate() as Node3D
+	var female: bool = opts.get("female", _guess_female())
+	var path := SCENE_GENDER % ("female" if female else "male")
+	_realistic = ResourceLoader.exists(path)
+	_root = (load(path if _realistic else SCENE) as PackedScene).instantiate() as Node3D
+	if _realistic:
+		_root.rotation_degrees.y = 180.0  # MakeHuman faces +Z after import; ours face -Z
 	add_child(_root)
 	_meshes.clear()
 	for n in _root.find_children("*", "MeshInstance3D", true, false):
@@ -75,9 +88,12 @@ func build(portrait: Dictionary, opts_or_title: Variant = {}, subtitle: String =
 	_paint()
 	_shape(opts)
 	play("idle")
+	_face_meshes.clear()
 	for m in _meshes:
 		if m.name == "Body":
 			_face_mesh = m
+		if m.find_blend_shape_by_name("blink") >= 0:
+			_face_meshes.append(m)
 	var sk := _root.find_child("Skeleton3D", true, false) as Skeleton3D
 	if sk:
 		_look = HeadLook.new()
@@ -114,7 +130,8 @@ func _dress(opts: Dictionary) -> void:
 	var hat := _o("hats")
 	var gear: Dictionary = opts.get("gear", {})
 	var show := {
-		"Body": true, "Suit": true, "Boots": true,
+		"Body": true, "Face": true, "Suit": true, "Boots": true,
+		"Gloves": _o("inner_outfit") in ["flight_suit", "undersuit"] or _o("outer_outfit") == "hardsuit_collar",
 		"Jacket": outer in ["jacket", "uniform"], "Coat": outer == "coat", "Poncho": outer == "poncho",
 		"Hardsuit": outer == "hardsuit_collar",
 		"Collar": _o("inner_outfit") in ["turtleneck", "flight_suit"] or _o("scarves") == "collar_wrap",
@@ -156,12 +173,30 @@ func _paint() -> void:
 	}
 	if _o("hats") == "hood":
 		roles["out_p"] = _c("hats", "primary", "#4a5a6a") if not outer_on else roles["out_p"]
+	var skin: Color = roles["skin"]
 	for m in _meshes:
 		for i in range(m.mesh.get_surface_count()):
 			var src := m.mesh.surface_get_material(i)
 			var role := src.resource_name if src else "in_p"
-			var col: Color = roles.get(role, Color(0.6, 0.6, 0.6))
-			m.set_surface_override_material(i, _paint_mat(col, role))
+			if roles.has(role):
+				m.set_surface_override_material(i, _paint_mat(roles[role], role))
+			elif src is BaseMaterial3D:
+				# MakeHuman's textured skin, eyes, brows, lashes, teeth and hair: keep the
+				# texture, tint skin and hair to the portrait's colors.
+				var mm := (src as BaseMaterial3D).duplicate() as BaseMaterial3D
+				var n := String(m.name)
+				if n == "Body":
+					mm.albedo_color = Color(skin.r / SKIN_REF.r, skin.g / SKIN_REF.g, skin.b / SKIN_REF.b).clamp(Color(0, 0, 0), Color(1.4, 1.4, 1.4))
+				elif n.begins_with("Hair_") or n == "Face_brows":
+					var hc: Color = roles["hair"]
+					mm.albedo_color = Color(hc.r * 1.7, hc.g * 1.7, hc.b * 1.7)
+					mm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+					mm.alpha_scissor_threshold = 0.2
+					mm.cull_mode = BaseMaterial3D.CULL_DISABLED
+				elif n == "Face_lashes":
+					mm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+					mm.cull_mode = BaseMaterial3D.CULL_DISABLED
+				m.set_surface_override_material(i, mm)
 
 
 static func _paint_mat(col: Color, role: String) -> Material:
@@ -180,7 +215,8 @@ func _shape(opts: Dictionary) -> void:
 	var w := {
 		"female": 1.0 if female else 0.0,
 		"slim": {"slim": 1.0}.get(_o("body", "average"), 0.0),
-		"heavy": {"heavy": 1.0, "broad": 0.55}.get(_o("body", "average"), 0.0),
+		"heavy": {"heavy": 1.0}.get(_o("body", "average"), 0.0),
+		"muscular": {"broad": 0.8}.get(_o("body", "average"), 0.0),
 		"face_round": 1.0 if _o("face", "oval") == "round" else 0.0,
 		"face_square": 1.0 if _o("face", "oval") == "square" else 0.0,
 		"face_long": 1.0 if _o("face", "oval") == "long" else 0.0,
@@ -222,6 +258,14 @@ func speak(text: String, expr: String = "", duration: float = -1.0) -> float:
 	return _talk_left
 
 
+## For callers that drive talking themselves (hub/dialogue code): on until turned off.
+func set_talking(on: bool) -> void:
+	if on:
+		speak("", "", 3600.0)
+	else:
+		stop_speaking()
+
+
 func stop_speaking() -> void:
 	_talk_left = 0.0
 	if state == "talk":
@@ -258,10 +302,13 @@ func _process(delta: float) -> void:
 			_blink_t = -1.0
 	# Mouth: syllable-like flaps while speaking.
 	var talk := 0.0
+	var viseme := ""
 	if _talk_left > 0.0:
 		_talk_t += delta
 		_talk_left -= delta
-		talk = 0.25 + 0.55 * absf(sin(_talk_t * 11.0)) * (0.6 + 0.4 * sin(_talk_t * 3.7))
+		talk = 0.2 + 0.5 * absf(sin(_talk_t * 11.0)) * (0.6 + 0.4 * sin(_talk_t * 3.7))
+		# Mouth shapes between syllables: ee, oo, mm in a loose rotation.
+		viseme = ["v_ee", "v_oo", "v_mm", "v_ee"][int(_talk_t * 7.0) % 4]
 		if _talk_left <= 0.0:
 			stop_speaking()
 	var k := clampf(delta * 12.0, 0.0, 1.0)
@@ -271,11 +318,14 @@ func _process(delta: float) -> void:
 			goal = maxf(goal, blink)
 		elif key == "mouth_open":
 			goal = maxf(goal, talk)
+		elif key == viseme:
+			goal = maxf(goal, 0.6)
 		var now := lerpf(float(_face_now.get(key, 0.0)), goal, 1.0 if key == "blink" else k)
 		_face_now[key] = now
-		var idx := _face_mesh.find_blend_shape_by_name(key)
-		if idx >= 0:
-			_face_mesh.set_blend_shape_value(idx, now)
+		for fm in _face_meshes:
+			var idx := fm.find_blend_shape_by_name(key)
+			if idx >= 0:
+				fm.set_blend_shape_value(idx, now)
 
 
 func play(name: String, blend: float = 0.2) -> void:

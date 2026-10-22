@@ -30,6 +30,7 @@ const TRAITS := {
 var _picking := ""  # "unit" or "cell" while the board answers
 var _pick_ids: Array = []
 var _hovered := ""
+var _brace_offered := false
 
 var _text: RichTextLabel
 var _buttons: HFlowContainer
@@ -75,6 +76,7 @@ func ask(state: GameState, pending: Dictionary) -> Dictionary:
 		suggested = Reactions.suggested_answer(state)
 	var px := 20
 	_text.clear()
+	_brace_offered = String(pending.get("reaction", "")) == "brace"
 	match String(pending.get("reaction", "")):
 		"brace":
 			var att := state.unit(String(ctx.get("attacker", "")))
@@ -175,6 +177,10 @@ func _trait_text(pending: Dictionary, who: Unit, other: Unit) -> void:
 
 ## Clicks on the board answer target and space choices while the prompt is up.
 func _input(e: InputEvent) -> void:
+	if visible and _brace_offered and e.is_action_pressed("brace"):
+		get_viewport().set_input_as_handled()
+		answered.emit({"take": true})
+		return
 	if not visible or _picking == "" or picker == null:
 		return
 	if e is InputEventMouseMotion and _picking == "unit":

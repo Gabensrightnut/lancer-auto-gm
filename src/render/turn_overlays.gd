@@ -58,6 +58,10 @@ func show_plan(new_plan: Dictionary) -> void:
 	if plan.has("cover_from"):
 		_draw_cover_from(plan["cover_from"])
 	# Step-by-step picking: the area an aim would hit, spaces already picked, the hovered one.
+	if plan.has("my_range"):
+		_draw_cells(plan["my_range"], -1, Color(0.3, 0.6, 1.0), 0.08, true, 0.02)
+	if plan.has("threat"):
+		_draw_cells(plan["threat"], -1, Color(1.0, 0.25, 0.2), 0.28, true, 0.03)
 	if plan.has("area"):
 		_draw_cells(plan["area"], -1, COLORS["area"], 0.32)
 	if plan.has("picked"):
