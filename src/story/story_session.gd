@@ -19,6 +19,11 @@ var campaign: Campaign
 var local_seats: Array = []
 ## func(payload: Dictionary) that sends to every client. Set by attach_net_host().
 var broadcast: Callable
+## func(payload: Dictionary) that sends to every client but a human GM's seat, and func(seat,
+## payload) -> bool that sends to one seat. Set by attach_net_host(): a human GM online gets
+## the GM's view (secrets and twists, StoryView "gm"), everyone else the players' view.
+var broadcast_players: Callable
+var send_to: Callable
 
 
 func _init(e: StoryEngine, s: StoryState, c: Campaign) -> void:
@@ -27,7 +32,8 @@ func _init(e: StoryEngine, s: StoryState, c: Campaign) -> void:
 	campaign = c
 
 
-## Runs one action for `seat`. Remote seats may never act as "gm".
+## Runs one action for `seat`. A remote seat acts only as itself: "gm" only for the friend
+## sitting in the GM seat, which the host opens only for a human GM (NetHost.human_gm).
 func submit(seat: String, action: Dictionary, remote: bool = false) -> Dictionary:
 	var a := action.duplicate(true)
 	# Remote players act only as their own seat; seats on the host machine may act as the GM.
@@ -49,7 +55,13 @@ func _send(events: Array, extra: Dictionary = {}) -> void:
 	if broadcast.is_valid():
 		var payload := {"story": {"view": view, "events": evs}}
 		payload["story"].merge(extra, true)
-		broadcast.call(payload)
+		if broadcast_players.is_valid() and send_to.is_valid():
+			broadcast_players.call(payload)
+			var gm := {"story": {"view": view_for("gm"), "events": StoryView.events_for(events, "gm")}}
+			gm["story"].merge(extra, true)
+			send_to.call("gm", gm)
+		else:
+			broadcast.call(payload)
 
 
 ## Sends the current view to everyone (e.g. after a player joins).
@@ -70,4 +82,6 @@ func handle_message(seat: String, msg: Dictionary) -> void:
 func attach_net_host(host: NetHost) -> void:
 	host.lobby_message.connect(func(seat: String, msg: Dictionary) -> void: handle_message(seat, msg))
 	broadcast = func(payload: Dictionary) -> void: host.send_lobby(payload)
+	broadcast_players = func(payload: Dictionary) -> void: host.send_lobby(payload, [NetHost.GM_SEAT])
+	send_to = func(seat: String, payload: Dictionary) -> bool: return host.send_lobby_to(seat, payload)
 	host.seats_changed.connect(func(_t: Dictionary) -> void: resync())

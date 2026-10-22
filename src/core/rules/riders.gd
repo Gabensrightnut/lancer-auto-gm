@@ -14,6 +14,7 @@ extends RefCounted
 const REF_MULE := "systems: MULE Harness"
 const REF_COMPARTMENT := "systems: Expanded Compartment"
 const REF_WINCH := "systems: Cable Winch"
+const REF_DRAG := "glossary: Lifting and Dragging"
 
 
 static func host_of(state: GameState, u: Unit) -> Unit:
@@ -180,9 +181,70 @@ static func cut(state: GameState, u: Unit) -> Array[Dictionary]:
 	return [{"type": "cable_cut", "unit": u.id, "other": other.id if other else "", "rule_ref": REF_WINCH}] as Array[Dictionary]
 
 
-## A planned move must end within 5 spaces of the other end of the cable.
+## A planned move must end within 5 spaces of the other end of the cable (unless it tows it).
 static func tether_ok(state: GameState, u: Unit, dest: Vector2i, level: int) -> bool:
 	var other := state.unit(String(u.counters.get("cable", "")))
-	if other == null or not Combat.is_present(other):
+	if other == null or not Combat.is_present(other) or String(u.counters.get("dragging", "")) == other.id:
 		return true
 	return Sight.distance(state, Sight.make_body(state, dest, level, u.size), Sight.body_of(state, other)) <= 5
+
+
+# --- Lifting and dragging ---------------------------------------------------------------
+
+## Mechs drag characters or objects up to twice their Size, Slowed while doing so; while
+## dragging they can't take reactions (glossary: Lifting and Dragging). Pilots drag Size 1/2
+## at most. With a Cable Winch the cabled character can be towed from up to 5 spaces.
+## PROVISIONAL: starting or stopping a drag is a free action (the book gives no cost).
+static func check_drag(state: GameState, u: Unit, t: Unit) -> RuleResult:
+	if t == null or t == u or (t.destroyed and t.kind != Unit.KIND_MECH):
+		return RuleResult.deny("Choose a character, wreck or object next to you (params.target).", REF_DRAG)
+	var cabled := String(u.counters.get("cable", "")) == t.id
+	if Sight.unit_distance(state, u, t) > (5 if cabled else 1):
+		return RuleResult.deny("It must be next to you (or on your cable, within 5).", REF_DRAG)
+	var limit := 0.5 if u.kind == Unit.KIND_PILOT else u.size * 2.0
+	if t.size > limit:
+		return RuleResult.deny("You can drag up to Size %s." % str(limit), REF_DRAG)
+	if u.counters.has("dragging"):
+		return RuleResult.deny("You're already dragging something.", REF_DRAG)
+	return RuleResult.allow()
+
+
+static func start_drag(state: GameState, u: Unit, t: Unit) -> Array[Dictionary]:
+	u.counters["dragging"] = t.id
+	var events: Array[Dictionary] = [{"type": "drag_started", "unit": u.id, "target": t.id, "rule_ref": REF_DRAG}]
+	events.append_array(Combat.add_status(state, u, "Slowed", "Dragging"))
+	return events
+
+
+static func stop_drag(u: Unit, why: String) -> Array[Dictionary]:
+	if not u.counters.has("dragging"):
+		return [] as Array[Dictionary]
+	var id := String(u.counters["dragging"])
+	u.counters.erase("dragging")
+	var events: Array[Dictionary] = [{"type": "drag_ended", "unit": u.id, "target": id, "reason": why, "rule_ref": REF_DRAG}]
+	if u.has_status("Slowed") and String(u.statuses["Slowed"].get("source", "")) == "Dragging":
+		events.append_array(Combat.remove_status(u, "Slowed", why))
+	return events
+
+
+## After the dragger moves: what it drags follows (to stay adjacent, or within 5 on a cable).
+static func drag_along(state: GameState, u: Unit) -> Array[Dictionary]:
+	var t := state.unit(String(u.counters.get("dragging", "")))
+	if t == null:
+		return [] as Array[Dictionary]
+	if t.destroyed and t.kind != Unit.KIND_MECH or (not t.destroyed and not Combat.is_present(t)):
+		return stop_drag(u, "gone")
+	var reach := 5 if String(u.counters.get("cable", "")) == t.id else 1
+	if Sight.unit_distance(state, u, t) <= reach:
+		return [] as Array[Dictionary]
+	var path := Movement.pull_path_to(state, t, Sight.body_of(state, u), reach)
+	if path.size() < 2:
+		return stop_drag(u, "stuck")
+	var last: Array = path.back()
+	t.cell = Vector2i(last[0], last[1])
+	t.level = int(last[2])
+	var events: Array[Dictionary] = [{"type": "moved", "unit": t.id, "path": path, "mode": "dragged", "cost": 0, "rule_ref": REF_DRAG}]
+	if Sight.unit_distance(state, u, t) > reach:
+		events.append_array(stop_drag(u, "couldn't keep up"))
+	return events
+

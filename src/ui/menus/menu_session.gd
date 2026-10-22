@@ -42,6 +42,7 @@ static func go(from: Node, screen: String) -> void:
 static func settings() -> GameSettings:
 	if _settings == null:
 		_settings = GameSettings.load_settings()
+		HouseRulesFlow.mine = _settings.house_rules  # this player's house rules (same dictionary)
 	return _settings
 
 

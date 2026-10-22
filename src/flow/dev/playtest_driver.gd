@@ -40,6 +40,8 @@ func _run() -> void:
 			await _campaign_loop()
 		"story":
 			await _story_loop()
+		"gm":
+			await _gm_loop()
 		"host":
 			await _host_online()
 		"join":
@@ -165,6 +167,86 @@ func _story_loop() -> void:
 	if await wait_scene("HubScreen", 20.0):
 		await wait(2.5)
 		await shot("continued_hub")
+
+
+## A story campaign with a human GM at this computer: the new campaign form's "Who is the GM",
+## the GM tools (G) in the hub and over the battle, a scene written on the spot shown in the
+## battle, and a twist the GM reveals (narrated to the squad).
+func _gm_loop() -> void:
+	if not await click_text("New campaign"):
+		return
+	await wait(0.6)
+	var gm_pick: OptionButton = null
+	for n: Node in current().find_children("*", "OptionButton", true, false):
+		var ob := n as OptionButton
+		if ob.item_count > 1 and ob.get_item_text(1) == "A person here":
+			gm_pick = ob
+	if gm_pick == null:
+		issue("gm", "No \"Who is the GM\" choice on the new campaign form", await shot("gm_form"))
+		return
+	gm_pick.select(1)
+	gm_pick.item_selected.emit(1)
+	await wait(0.3)
+	await shot("gm_form")
+	if not await click_text("Create campaign"):
+		return
+	if not await wait_scene("HubScreen", 20.0):
+		return
+	await wait(2.5)
+	await click_text("Roll")
+	await wait(0.3)
+	if not await click_text("Start the campaign"):
+		return
+	await wait(2.0)
+	var hub: HubScene = current().hub
+	await key(KEY_G)
+	await wait(0.8)
+	await shot("gm_hub_tools")
+	if not hub.gm_panel.visible:
+		issue("gm", "G didn't open the GM tools in the hub", "gm_hub_tools")
+	await key(KEY_G)
+	await wait(0.4)
+	await key(KEY_J)
+	await wait(0.8)
+	if not await click_text("Take this job"):
+		return
+	await _dialogue_through(hub, "gm_briefing")
+	if not await click_text("Deploy"):
+		return
+	if not await wait_scene("BattleScreen", 30.0):
+		return
+	var bs: Node = current()
+	await wait(3.0)
+	await shot("gm_battle_view")
+	if not bs.session.gm_here or bs.session.seat == NetHost.GM_SEAT:
+		issue("gm", "The GM should be at this screen, with the pilot's view on it (%s)" % bs.session.seat, "gm_battle_view")
+	await key(KEY_G)
+	await wait(0.8)
+	await shot("gm_battle_tools")
+	var panel: GmPanel = bs.gm_panel
+	if panel == null or not panel.visible:
+		issue("gm", "G didn't open the GM tools over the battle", "gm_battle_tools")
+		return
+	panel._scene_lines.text = "narrator: Static on every channel, then a voice.
+(angry) Lancers. You're on our ground. Turn back."
+	(panel._scene_choices[0]["text"] as LineEdit).text = "We're not here for you. -> Then prove it. Hold your fire."
+	(panel._scene_choices[1]["text"] as LineEdit).text = "Make us."
+	panel._send("gm_scene", panel._scene_params(true))
+	panel.visible = false
+	await wait(1.2)
+	await shot("gm_battle_scene")
+	if bs.dialogue == null or not bs.dialogue.visible:
+		issue("gm", "The GM's scene didn't show over the battle", "gm_battle_scene")
+	if Dialogue.is_open(bs.dlg_story):
+		Dialogue.close(bs.dlg_story)
+		bs.dialogue.refresh()
+	panel._send("gm_twist", {"hook": "", "do": "set", "reveal": "The distress call was bait. A second force is closing in.", "question": "Who set the trap?"})
+	panel._send("gm_twist", {"hook": "", "do": "reveal"})
+	panel.visible = false
+	await wait(1.5)
+	await shot("gm_battle_twist")
+	if not bs.narration.visible:
+		issue("gm", "The GM's twist wasn't narrated in the battle", "gm_battle_twist")
 
 
 ## Clicks through a conversation: the first reply when there's a choice, Space otherwise.

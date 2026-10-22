@@ -31,6 +31,8 @@ static func _check_attack(state: GameState, u: Unit, a: Variant, ref: String) ->
 	var w := WeaponRules.variant(Weapons.find(u, String(a.get("weapon", ""))), a)
 	if w.is_empty():
 		return RuleResult.deny("No such weapon on this mech.", ref)
+	if u.counters.get("overheated", false) and HouseRuleSwitches.on(state, "hr_overheated") and (Weapons.has_tag(w, "tg_heat_self") or Weapons.has_tag(w, "tg_overkill")):
+		return RuleResult.deny("Overheated (house rule): no Heat (Self) or Overkill weapons until you Stabilize to cool down.", "House rule: Overheated")
 	if a.has("ammo"):
 		var ar := TalentRules.check_ammo(u, w, String(a["ammo"]))
 		if not ar.ok:

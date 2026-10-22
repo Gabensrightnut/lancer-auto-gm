@@ -26,6 +26,7 @@ static func sync(mirror: GameState, view: Dictionary) -> void:
 	mirror.intel = (view.get("intel", {}) as Dictionary).duplicate(true)
 	mirror.seats = (view.get("seats", {}) as Dictionary).duplicate(true)
 	mirror.rulings = (view.get("rulings", {}) as Dictionary).duplicate(true)
+	mirror.house_rules = (view.get("house_rules", {}) as Dictionary).duplicate()
 	mirror.packs = (view.get("packs", []) as Array).duplicate(true)
 	mirror.zones = (view.get("zones", []) as Array).duplicate(true)
 	mirror.environments = (view.get("environments", []) as Array).duplicate()

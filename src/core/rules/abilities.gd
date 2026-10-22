@@ -102,6 +102,8 @@ static func _count_use(u: Unit, key: String, per: String) -> void:
 
 ## Can `u` activate ability `a` right now, ignoring targets? Returns RuleResult.
 static func can_activate(state: GameState, u: Unit, a: Dictionary) -> RuleResult:
+	if u.counters.get("overheated", false) and HouseRuleSwitches.on(state, "hr_overheated") and Abilities.heat_self(state, u, a) > 0:
+		return RuleResult.deny("Overheated (house rule): no Heat (Self) systems until you Stabilize to cool down.", "House rule: Overheated")
 	if a.is_empty():
 		return RuleResult.deny("No such ability.", REF)
 	var act := String(a.get("activation", ""))
@@ -177,6 +179,10 @@ static func spend(state: GameState, u: Unit, a: Dictionary) -> void:
 		src["uses"] = int(src["uses"]) - 1
 	if src.has("recharge"):
 		src["charged"] = false
+		if u.kind == Unit.KIND_NPC and u.heat_cap > 0 and HouseRuleSwitches.on(state, "hr_npc_recharge_heat"):
+			# House rule (community): Recharge costs heat, 1 for 4+/5+ and 2 for 6+ (applied by
+			# the activation right after).
+			u.turn["recharge_heat"] = 2 if int(src.get("recharge", 0)) >= 6 else 1
 	var f := frequency_of(a)
 	if not f.is_empty():
 		_count_use(u, String(a["key"]), f["per"])

@@ -25,6 +25,11 @@ Transports: LoopbackTransport (tests, in-process)   WebRtcTransport (online, pee
 Sending actions:
 - On the host: `host.submit(seat, action)` returns `{"result": RuleResult, "events": Array}`.
   The procedural GM uses seat `"gm"`. A seat may only command units whose `controller` is that seat.
+- Human GM (`host.human_gm`, campaign option "Who is the GM"): a person sits in the `"gm"` seat,
+  at the host (`add_local_seat("gm")`) or online (`NetClient.join(code, name, "gm")`; refused
+  unless `human_gm`). They get the GM's full view (ViewFilter) and the story's GM view
+  (`StoryView.view_for(..., "gm")`, sent only to them by `StorySession`); `is_ai_seat("gm")`
+  stays true, so the AI still flies the enemies. `send_lobby(data, skip)`, `send_lobby_to(seat, data)`.
 - Hot-seat: `hot.submit(action)` (as the seat at the screen).
 - Client: `client.submit(action)` returns a request id; the answer comes as
   `action_answered(id, result)` with `result` = `RuleResult.to_dict()`, and the events arrive in

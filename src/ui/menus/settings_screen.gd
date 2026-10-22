@@ -1,7 +1,8 @@
 extends Control
 ## Settings: display (UI scale, text size, action bar size, colorblind mode), graphics preset,
 ## story text (StorySettings: size, skip lines already read),
-## gameplay pacing (animation speed, pop-up time) and key bindings. Saved to user://settings.cfg.
+## gameplay pacing (animation speed, pop-up time), key bindings and house rules (saved and
+## applied the moment they flip). Saved to user://settings.cfg.
 
 var s: GameSettings
 var waiting_for_key := ""
@@ -80,6 +81,12 @@ func _ready() -> void:
 		_refresh_keys())
 	kb.add_child(reset)
 	_refresh_keys()
+	# House rules (HouseRulesPanel): applied the moment a switch flips, not on Save.
+	var third := VBoxContainer.new()
+	third.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(third)
+	var lobby := MenuSession.lobby
+	third.add_child(HouseRulesPanel.build(s, MenuSession.campaign, lobby.client if lobby != null and not lobby.is_host else null))
 
 	var bottom := HBoxContainer.new()
 	bottom.alignment = BoxContainer.ALIGNMENT_END

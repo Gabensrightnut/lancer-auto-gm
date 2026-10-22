@@ -4,21 +4,23 @@ extends RefCounted
 ## the squad can see, minus NPC secrets nobody has uncovered, the hidden twist of every job,
 ## the story dice and the GM's line bookkeeping. Pilots come along (names, triggers, LL, gear)
 ## so a client can draw the UI. A client rebuilds a StoryState from it (StoryClient).
+## A human GM's seat ("gm") keeps the secrets and twists: the GM tools work on them.
 
 
-static func view_for(story: StoryState, campaign: Campaign, _seat: String = "") -> Dictionary:
+static func view_for(story: StoryState, campaign: Campaign, seat: String = "") -> Dictionary:
 	var d := story.to_dict()
 	d.erase("dice_state")
 	d.erase("line_memory")
 	d["story_seed"] = 0
-	var npcs: Dictionary = d.get("npcs", {})
-	for id: String in npcs:
-		var npc: Dictionary = npcs[id]
-		if not bool(story.flags.get("secret_known:" + id, false)):
-			npc.erase("secret")
-	for h: Dictionary in d.get("hooks", []):
-		h.erase("twist")
-	(d.get("current_hook", {}) as Dictionary).erase("twist")
+	if seat != "gm":
+		var npcs: Dictionary = d.get("npcs", {})
+		for id: String in npcs:
+			var npc: Dictionary = npcs[id]
+			if not bool(story.flags.get("secret_known:" + id, false)):
+				npc.erase("secret")
+		for h: Dictionary in d.get("hooks", []):
+			h.erase("twist")
+		(d.get("current_hook", {}) as Dictionary).erase("twist")
 	var flags := {}
 	for k: String in story.flags:
 		if k != StoryState.KEY:
@@ -38,11 +40,11 @@ static func view_for(story: StoryState, campaign: Campaign, _seat: String = "") 
 
 ## Events as a client may see them: hooks without their hidden twist (until it's revealed at
 ## the debrief), NPC records without secrets.
-static func events_for(events: Array, _seat: String = "") -> Array:
+static func events_for(events: Array, seat: String = "") -> Array:
 	var out: Array = []
 	for e: Dictionary in events:
 		var c := e.duplicate(true)
-		if c.get("hook") is Dictionary:
+		if c.get("hook") is Dictionary and seat != "gm":
 			(c["hook"] as Dictionary).erase("twist")
 		out.append(c)
 	return out

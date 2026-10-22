@@ -199,7 +199,8 @@ static func _blocked_by_unit(body: Sight.Body, others: Array[Dictionary], ending
 ## Movement budget left for a standard move or Boost this turn.
 static func budget(u: Unit, mode: String) -> int:
 	if mode == MODE_BOOST:
-		return u.speed + Effects.value(u, "boost_bonus")  # e.g. Integrated Nerveweave: +2
+		# e.g. Integrated Nerveweave: +2; Ace 2's 1d6 extra spaces while flying
+		return u.speed + Effects.value(u, "boost_bonus") + int(u.turn.get("ace_extra", 0))
 	if mode == MODE_BONUS:
 		return int(u.turn.get("bonus_move", 0))
 	return maxi(0, u.speed - int(u.turn.get("move_spent", 0)))
@@ -211,6 +212,8 @@ static func budget(u: Unit, mode: String) -> int:
 static func can_fly(u: Unit, mode: String) -> bool:
 	if u.flight != "" or Effects.has(u, "optional_flight"):
 		return true
+	if mode == MODE_MOVE and u.turn.get("swing_now", false):
+		return true  # Grapple Swing: this standard move flies in a straight line
 	return mode == MODE_BOOST and Effects.has(u, "boost_flight")
 
 
@@ -219,7 +222,8 @@ static func can_fly(u: Unit, mode: String) -> bool:
 ## system). Never changes the state.
 ## Returns {ok, reason, rule_ref, path: [[x, y, level]...], cost, budget, remaining,
 ##   needs_boost, stopped_by (unit id or ""), warnings: [{type, text, rule_ref, at}],
-##   grey_area (ruling id or "")}.
+##   grey_area (ruling id or ""), unreachable_roof (true when it's a climb up that this move
+##   can't afford: the arrow shows "can't reach this roof")}.
 static func plan(state: GameState, u: Unit, dest: Vector2i, level: int = -1, mode: String = MODE_MOVE, fly: bool = false) -> Dictionary:
 	var out := {"ok": false, "reason": "", "rule_ref": REF_MOVE, "path": [], "cost": 0,
 		"budget": budget(u, mode), "remaining": 0, "needs_boost": false, "stopped_by": "",
@@ -268,6 +272,10 @@ static func plan(state: GameState, u: Unit, dest: Vector2i, level: int = -1, mod
 	if int(out["cost"]) > int(out["budget"]):
 		out["needs_boost"] = mode == MODE_MOVE
 		out["reason"] = "Too far: this costs %d movement and you have %d left." % [out["cost"], out["budget"]]
+		if not fly and not (out["path"] as Array).is_empty() and int((out["path"] as Array).back()[2]) > u.level:
+			# Climbing onto something higher (a roof): say so for the movement arrow.
+			out["unreachable_roof"] = true
+			out["reason"] = "Can't reach this roof with this move: climbing up costs %d (climbing is half speed) and you have %d left. A flight system could take you up." % [out["cost"], out["budget"]]
 		if out["needs_boost"]:
 			out["reason"] += " Boost to move further."
 		out["rule_ref"] = REF_MOVE
@@ -578,6 +586,11 @@ static func _straight_flight(state: GameState, u: Unit, dest: Vector2i, level: i
 		var lv := u.level + roundi(float(i) * dl / n)
 		var place := placement(state, u.size, c, lv)
 		if not place["ok"]:
+			# The diagonal clips something (a roof edge): go straight up first and then across, or
+			# across and then down (still flight in straight lines, just longer).
+			var stepped := _stepped_flight(state, u, line, lv_end, cap, others, engaged_at_start)
+			if stepped["found"]:
+				return stepped
 			return {"found": false, "reason": "Flight path blocked: " + String(place["reason"]), "rule_ref": REF_FLIGHT}
 		var body := Sight.make_body(state, c, lv, u.size)
 		if i == n and _blocked_by_unit(body, others, true):
@@ -585,6 +598,38 @@ static func _straight_flight(state: GameState, u: Unit, dest: Vector2i, level: i
 		if i == n and u.turn.get("acted", false) and altitude(state, u.size, c, lv) > 10:
 			return {"found": false, "reason": "After acting you can't fly more than 10 spaces above the ground.", "rule_ref": "Core p.63 Flight"}
 		path.append([c.x, c.y, lv])
+		var stopper := _stopper(state, u, body, others, engaged_at_start)
+		if stopper:
+			stopped_by = stopper.id
+			break
+	return {"found": true, "path": path, "cost": path.size() - 1, "stopped_by": stopped_by}
+
+
+## Flight as a vertical leg plus a level leg: up first when climbing, down last when descending.
+static func _stepped_flight(state: GameState, u: Unit, line: Array, lv_end: int, cap: int, others: Array[Dictionary], engaged_at_start: Array[Unit]) -> Dictionary:
+	var steps: Array = []
+	var cruise := maxi(u.level, lv_end)
+	for lv in range(u.level + 1, cruise + 1):
+		steps.append([u.cell.x, u.cell.y, lv])
+	for i in range(1, line.size()):
+		var c: Vector2i = line[i]
+		steps.append([c.x, c.y, cruise])
+	var last: Vector2i = line.back()
+	for lv in range(cruise - 1, lv_end - 1, -1):
+		steps.append([last.x, last.y, lv])
+	if steps.size() > cap:
+		return {"found": false}
+	var path: Array = [[u.cell.x, u.cell.y, u.level]]
+	var stopped_by := ""
+	for k in range(steps.size()):
+		var st: Array = steps[k]
+		var c := Vector2i(st[0], st[1])
+		if not placement(state, u.size, c, int(st[2]))["ok"]:
+			return {"found": false}
+		var body := Sight.make_body(state, c, int(st[2]), u.size)
+		if k == steps.size() - 1 and _blocked_by_unit(body, others, true):
+			return {"found": false}
+		path.append(st)
 		var stopper := _stopper(state, u, body, others, engaged_at_start)
 		if stopper:
 			stopped_by = stopper.id

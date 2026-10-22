@@ -243,6 +243,32 @@ func _mission_panel() -> Control:
 		presets.add_child(btn)
 	b.add_child(presets)
 	b.add_child(MenuTheme.label(str(GmSettings.presets().get(lobby.options.get("preset", ""), {}).get("description", "")), 15, MenuTheme.MUTED, true))
+	b.add_child(_caption("Who is the GM"))
+	var gm_row := HBoxContainer.new()
+	gm_row.add_theme_constant_override("separation", 6)
+	var gm_now := "ai" if not lobby.options.get("human_gm", false) else str(lobby.options.get("gm_where", "local"))
+	for opt: Array in LobbyModel.GM_CHOICES:
+		var btn := Button.new()
+		btn.text = opt[1]
+		btn.toggle_mode = true
+		btn.button_pressed = gm_now == opt[0]
+		btn.disabled = not lobby.is_host
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.tooltip_text = opt[2]
+		var id: String = opt[0]
+		btn.pressed.connect(func() -> void: lobby.set_human_gm(id != "ai", id if id != "ai" else "local"))
+		gm_row.add_child(btn)
+	b.add_child(gm_row)
+	var gm_text := ""
+	for opt: Array in LobbyModel.GM_CHOICES:
+		if opt[0] == gm_now:
+			gm_text = opt[2]
+	match lobby.gm_status() if lobby.is_host else "":
+		"joined":
+			gm_text += " The GM is here."
+		"waiting":
+			gm_text += " Waiting for them to join."
+	b.add_child(MenuTheme.label(gm_text, 15, MenuTheme.MUTED, true))
 	b.add_child(_caption("Fight length"))
 	var lengths := HBoxContainer.new()
 	lengths.add_theme_constant_override("separation", 6)
