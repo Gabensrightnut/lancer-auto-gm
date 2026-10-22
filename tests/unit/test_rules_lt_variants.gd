@@ -65,3 +65,14 @@ func test_brace_prompt() -> void:
 	expect(Attacks._brace_worthwhile(t, [{"type": "Kinetic", "amount": 4}], true), "would take it to 0 HP")
 	t.heat = 5
 	expect(Attacks._brace_worthwhile(t, [{"type": "Heat", "amount": 2}], false), "would overheat it")
+
+
+func test_flight_fixed_and_aux_mount() -> void:
+	_setup(["lt_flight_fixed", "lt_aux_mount"])
+	a.flight = "flight"
+	var out := F.act(e, s, "move", "a", {"to": [1, 2], "fly": true})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(a.level, 3, "flying: 3 spaces above the surface")
+	var w := Weapons.find(a, "1:0")
+	w["mount"] = 0
+	expect(AttackActions.lt_aux_only(s, a, w), "an Aux on a mount with a Main: no bonus damage")

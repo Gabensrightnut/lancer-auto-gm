@@ -980,6 +980,80 @@ static func fade_roll(state: GameState, u: Unit) -> Array[Dictionary]:
 	return events
 
 
+## H0R_OS II False Idol: a decoy (Evasion 10, E-Defense 10, 1 HP, the target's Size) of you or
+## an ally within Sensors (params.target, default you). Before a hostile action against that
+## character, a character that can see the idol makes a Systems save; on a failure it keeps
+## its action but can't target the character until the end of its next turn.
+static func idol_made(state: GameState, u: Unit, idol: Unit, params: Dictionary) -> Array[Dictionary]:
+	var t := state.unit(String(params.get("target", u.id)))
+	if t == null:
+		t = u
+	for o: Unit in state.units.values():
+		if o != idol and String(o.counters.get("idol_of", "")) != "" and String(o.counters.get("owner", "")) == u.id and not o.destroyed:
+			o.destroyed = true  # a second idol: the previous one disappears
+	idol.counters["idol_of"] = t.id
+	idol.size = t.size
+	idol.max_hp = 1
+	idol.hp = 1
+	idol.evasion = 10
+	idol.edef = 10
+	return [{"type": "effect_triggered", "unit": u.id, "effect": "False Idol", "target": t.id, "rule_ref": "systems: H0R_OS System Upgrade II"}] as Array[Dictionary]
+
+
+## Before a hostile attack or tech action against `target`: the False Idol's save. Returns
+## {"events", "fooled": bool}.
+static func false_idol(state: GameState, actor: Unit, target: Unit) -> Dictionary:
+	var out := {"events": [] as Array[Dictionary], "fooled": false}
+	if actor == null or target == null or actor.side == target.side:
+		return out
+	for o: Unit in state.units.values():
+		if o.destroyed or String(o.counters.get("idol_of", "")) != target.id or not Sight.unit_line_of_sight(state, actor, o):
+			continue
+		var owner := state.unit(String(o.counters.get("owner", "")))
+		var save := Combat.skill_check(state, actor, "systems", "Save vs False Idol", owner.save_target if owner != null else 10, 0, 0, [], true)
+		out["events"].append({"type": "skill_check", "unit": actor.id, "check": save, "rule_ref": "systems: H0R_OS System Upgrade II"})
+		if not save["success"]:
+			out["fooled"] = true
+			out["events"].append_array(Effects.activate(state, actor, [{"kind": "fooled", "target": target.id, "label": "False Idol"}], "False Idol", "end_next_turn"))
+			out["events"].append({"type": "effect_triggered", "unit": o.id, "effect": "False Idol: fooled", "target": actor.id,
+				"text": "Fooled: it can't target the real one until the end of its next turn, but keeps its action.", "rule_ref": "systems: H0R_OS System Upgrade II"})
+		return out
+	return out
+
+
+## Fooled by a False Idol: can't target that character.
+static func fooled_by(u: Unit, target: Unit) -> bool:
+	for e: Dictionary in Effects.of(u, "fooled"):
+		if String(e.get("target", "")) == target.id:
+			return true
+	return false
+
+
+## Mimic Gun: 3d20 at the start of combat (X, Y, Z); its base Range cycles through them at the
+## start of each of your turns after the first; kinetic damage 1 + half its Range (rounded up,
+## Core p.12). "Provoke" (full action) rolls a new set.
+static func mimic_roll(state: GameState, u: Unit) -> void:
+	for w: Dictionary in u.loadout.get("weapons", []):
+		if String(w.get("id", "")) == "mw_mimic_gun":
+			var st := Weapons.state_of(u, w)
+			st["mimic"] = [state.dice.die(20), state.dice.die(20), state.dice.die(20)]
+			st["mimic_i"] = 0
+
+
+static func mimic_cycle(u: Unit) -> void:
+	for w: Dictionary in u.loadout.get("weapons", []):
+		if String(w.get("id", "")) == "mw_mimic_gun" and Weapons.state_of(u, w).has("mimic"):
+			var st := Weapons.state_of(u, w)
+			st["mimic_i"] = (int(st["mimic_i"]) + 1) % 3
+
+
+static func mimic_range(u: Unit, w: Dictionary) -> int:
+	var st := Weapons.state_of(u, w)
+	if not st.has("mimic"):
+		return 0
+	return int(st["mimic"][int(st.get("mimic_i", 0))])
+
+
 ## Perimeter Command Plate: a flat 2x2 plate within Range 5 (params.aim), set to "repulse" or
 ## "attract" (params.setting). A new one replaces the old. It has 20 HP and Evasion 5
 ## (target "zone:<id>"). It goes off for a character the first time it enters in a round, or

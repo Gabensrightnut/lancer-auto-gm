@@ -1114,5 +1114,17 @@
         }
       ]
     }
+  ],
+  "actions:mw_mimic_gun": [
+    {
+      "name": "Provoke the Mimic Gun",
+      "activation": "Full",
+      "detail": "Roll a new set of 3d20 for its Range.",
+      "ops": [
+        {
+          "op": "provoke_mimic"
+        }
+      ]
+    }
   ]
 }

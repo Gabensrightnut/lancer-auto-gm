@@ -295,7 +295,7 @@ static func check_spot(state: GameState, owner: Unit, d: Dictionary, cell: Vecto
 	if type == "Mine":
 		reach = maxi(reach, FrameSystems.mine_reach(state, owner))  # Iskander Assault Launcher
 	var dist := Sight.distance(state, me, body)
-	if type == "Drone" and reach == 0:
+	if (type == "Drone" or type == "Decoy") and reach == 0:  # drones and decoys: within Sensors
 		if dist > owner.sensors or not Sight.line_of_sight(state, me, body):
 			return RuleResult.deny("Drones deploy within Sensors and line of sight.", "tags: Drone")
 	elif reach > 0:

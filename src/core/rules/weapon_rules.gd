@@ -110,6 +110,8 @@ static func on_hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 
 ## Damage to use instead of the weapon's own against this target, or [] (Bristlecrown, Cutter).
 static func damage_override(attacker: Unit, w: Dictionary, target: Unit) -> Array:
+	if String(w.get("id", "")) == "mw_mimic_gun":
+		return [{"type": "Kinetic", "val": str(1 + ceili(GearSystems.mimic_range(attacker, w) / 2.0))}]  # 1 + half its Range
 	var r := rules(w)
 	if r.has("object_damage") and target.kind == Unit.KIND_DEPLOYABLE:
 		return [{"type": "Energy", "val": str(r["object_damage"]), "ap": true}]
