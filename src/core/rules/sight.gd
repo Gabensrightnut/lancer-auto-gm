@@ -150,7 +150,7 @@ static func cover_at(state: GameState, u: Unit, anchor: Vector2i, level: int) ->
 	var me := make_body(state, anchor, level, u.size)
 	var out := {}
 	for other: Unit in state.units.values():
-		if other.side == u.side or other.destroyed or other.kind == Unit.KIND_DEPLOYABLE:
+		if other.side == u.side or not Combat.is_present(other) or other.kind == Unit.KIND_DEPLOYABLE:
 			continue
 		out[other.id] = cover(state, body_of(state, other), me)
 	return out

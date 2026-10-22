@@ -26,7 +26,7 @@ const REACTION := "reaction"
 
 ## Units that take turns: not destroyed, not deployables.
 static func takes_turns(u: Unit) -> bool:
-	return not u.destroyed and u.kind != Unit.KIND_DEPLOYABLE
+	return Combat.is_present(u) and u.kind != Unit.KIND_DEPLOYABLE and not u.counters.get("empty", false)
 
 
 static func sides(state: GameState) -> Array[String]:

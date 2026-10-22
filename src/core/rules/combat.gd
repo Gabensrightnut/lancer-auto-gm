@@ -79,10 +79,12 @@ static func skill_check(state: GameState, u: Unit, skill: String, label: String,
 	var diff := difficulty
 	if u.has_status("Impaired"):
 		diff += 1
-		all_sources.append({"label": "Impaired", "kind": "difficulty", "value": 1, "rule_ref": "statuses: Impaired"})
+		all_sources.append({"label": "Impaired", "kind": "difficulty", "type": "difficulty", "value": 1, "rule_ref": "statuses: Impaired"})
 	var bonus := int(u.get(skill)) if SKILLS.has(skill) else 0
 	var record := state.dice.check(bonus, accuracy, diff, target, all_sources)
 	record["bonus_sources"] = [{"label": skill.capitalize(), "value": bonus}]
+	record["bonuses"] = record["bonus_sources"]
+	record["target_label"] = "Save Target" if target != CHECK_TARGET else "Check (10+)"
 	record["skill"] = skill
 	record["label"] = label
 	if u.has_status("Stunned") and (skill == "hull" or skill == "agility"):
@@ -126,13 +128,16 @@ static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dict
 		if not shredded and amount > 0 and (opts.get("resist_all", false) or _resists(target, dtype)):
 			resisted = amount / 2
 			amount -= resisted
-		events.append({"type": "damage_dealt", "target": target.id, "source": source, "amount": amount,
+		var ev := {"type": "damage_dealt", "target": target.id, "source": source, "amount": amount,
 			"damage_type": dtype, "roll": rolled, "exposed": exposed, "armor_reduced": armor_used,
-			"resisted": resisted, "rule_ref": REF_HARM})
+			"resisted": resisted, "rule_ref": REF_HARM}
+		events.append(ev)
 		if dtype == "Burn" and not opts.get("no_mark_burn", false) and part.get("mark", true):
 			target.burn += int(part.get("amount", 0))
 			events.append({"type": "burn_marked", "unit": target.id, "amount": int(part.get("amount", 0)), "total": target.burn, "rule_ref": REF_BURN})
 		events.append_array(lose_hp(state, target, amount, source))
+		ev["hp"] = maxi(target.hp, 0)
+		ev["overshield"] = target.overshield
 		if target.destroyed:
 			break
 	return events
@@ -502,7 +507,12 @@ static func dangerous_roll(state: GameState, u: Unit, dtype: String) -> Array[Di
 # --- Engagement and Hidden ------------------------------------------------------------
 
 static func _is_character(u: Unit) -> bool:
-	return not u.destroyed and u.kind != Unit.KIND_DEPLOYABLE
+	return is_present(u) and u.kind != Unit.KIND_DEPLOYABLE
+
+
+## On the battlefield: not destroyed, and not a pilot riding inside a mech.
+static func is_present(u: Unit) -> bool:
+	return u != null and not u.destroyed and String(u.counters.get("mounted_in", "")) == ""
 
 
 ## Recomputes ENGAGED for everyone: adjacent to a hostile character, neither Hidden

@@ -54,6 +54,37 @@ static func attack_preview(state: GameState, attacker_id: String, weapon_key: St
 	return p
 
 
+## Area attack template preview: the cells it covers, its origin, and every character it
+## would hit with their own hit-chance breakdown (cover from the area's origin).
+## {ok, reason, pattern, size, cells: [[x, y]], origin: [x, y, level],
+##  targets: [{"id", "preview": attack_preview-style dict}]}
+static func area_preview(state: GameState, attacker_id: String, weapon_key: String, aim: Vector2i, aim_level: int = -1) -> Dictionary:
+	var a := state.unit(attacker_id)
+	var w := Weapons.find(a, weapon_key)
+	var p := Areas.plan(state, a, w, aim, aim_level)
+	var origin: Variant = p.get("origin_body")
+	p.erase("origin_body")
+	var targets: Array = []
+	if p["ok"]:
+		for id: String in p["targets"]:
+			var t := Attacks.preview(state, a, w, state.unit(id), {"area_origin": origin, "skip_spend": true})
+			if t["ok"]:
+				t["hit_chance"] = hit_chance(t["bonus"], t["accuracy"] - t["difficulty"], t["target_number"])
+			targets.append({"id": id, "preview": t})
+	p["targets"] = targets
+	return p
+
+
+## Just the cells of a template, for drawing: pattern "Blast"/"Burst"/"Cone"/"Line".
+static func area_cells(state: GameState, pattern: String, size: int, user_id: String, aim: Vector2i) -> Array:
+	var u := state.unit(user_id)
+	var out: Array = []
+	for c in Areas.template(state.map.grid, pattern, size, state.map.grid.footprint(u.cell, u.size), aim):
+		if state.map.has_cell(c):
+			out.append([c.x, c.y])
+	return out
+
+
 ## Same for a tech attack (Invade).
 static func tech_preview(state: GameState, attacker_id: String, target_id: String) -> Dictionary:
 	var p := Attacks.tech_preview(state, state.unit(attacker_id), state.unit(target_id))
