@@ -169,7 +169,12 @@ func play_event(e: Dictionary) -> void:
 			_log("%s is marked with %d burn." % [_name(e.get("unit", "")), int(e.get("amount", 0))])
 		"movement_stopped":
 			_log("%s stops: %s" % [_name(e.get("unit", "")), e.get("reason", "")])
-		"overcharged", "stabilized", "reloaded", "scanned", "tech_action", "disengaged", "searched", "equipment_destroyed", "system_trauma", "falling":
+		"falling":
+			_log("%s starts to fall: %s" % [_name(e.get("unit", "")), e.get("reason", "")])
+			var fmv := _view(e.get("unit", ""))
+			if fmv and Fx.speed > 0.0:
+				Fx.float_text(battle.fx_root, fmv.body_center() + Vector3.UP * 0.4, "FALLING", Color(1.0, 0.45, 0.3), 46)
+		"overcharged", "stabilized", "reloaded", "scanned", "tech_action", "disengaged", "searched", "equipment_destroyed", "system_trauma":
 			_log("%s: %s" % [_name(e.get("unit", e.get("attacker", ""))), String(e["type"]).replace("_", " ")])
 		"moved":
 			await _moved(e)
@@ -294,7 +299,11 @@ func _moved(e: Dictionary) -> void:
 	if mv == null or path.is_empty():
 		return
 	var mode := String(e.get("mode", "walk"))
-	_log("%s %s %d spaces." % [_name(e["unit"]), {"walk": "moves", "boost": "boosts", "fly": "flies", "jump": "jumps", "involuntary": "is pushed"}.get(mode, "moves"), path.size() - 1])
+	if mode == "fall":
+		var drop := int(path[0][2]) - int(path[path.size() - 1][2]) if (path[0] as Array).size() > 2 else 0
+		_log("%s falls %d level%s." % [_name(e["unit"]), drop, "" if drop == 1 else "s"])
+	else:
+		_log("%s %s %d spaces." % [_name(e["unit"]), {"walk": "moves", "boost": "boosts", "fly": "flies", "jump": "jumps", "involuntary": "is pushed", "teleport": "teleports"}.get(mode, "moves"), path.size() - 1])
 	var last: Array = path[path.size() - 1]
 	if Fx.speed <= 0.0:
 		mv.place(_cell_of(last), int(last[2]) if last.size() > 2 else 0)
@@ -310,7 +319,28 @@ func _moved(e: Dictionary) -> void:
 	var thruster: Node3D = null
 	if mode == "fly" or mode == "jump" or mode == "boost":
 		thruster = MeshKit.part(mv, MeshKit.sphere(0.08, 10), MeshKit.fx_material(Color(0.5, 0.8, 1.0), 4.0), Vector3(0, 0.05, 0.1))
-	if mode == "jump":
+	if mode == "fall":
+		# Straight down, speeding up, a slight tumble, then a heavy landing.
+		var a0 := mv.position
+		var b0 := mv.footprint_center(_cell_of(last), int(last[2]) if last.size() > 2 else 0)
+		var t_fall := Fx.t(clampf(sqrt(maxf(0.1, a0.y - b0.y)) * 0.32, 0.25, 1.1))
+		var tw0 := mv.create_tween()
+		tw0.tween_property(mv, "position", b0, t_fall).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+		tw0.parallel().tween_property(model, "rotation_degrees:z", 9.0, t_fall)
+		await tw0.finished
+		Fx.dust(battle.fx_root, b0, 14, Color(0.5, 0.47, 0.43, 0.7), 0.6, 0.8, 1.4)
+		Fx.debris(battle.fx_root, b0, 6)
+		var settle := mv.create_tween()
+		settle.tween_property(model, "rotation_degrees:z", 0.0, Fx.t(0.25))
+	elif mode == "teleport":
+		var b1 := mv.footprint_center(_cell_of(last), int(last[2]) if last.size() > 2 else 0)
+		Fx.light_flash(battle.fx_root, mv.body_center(), Color(0.6, 0.85, 1.0), 4.0, 3.0, 0.3)
+		model.visible = false
+		await Fx.wait(self, 0.15)
+		mv.position = b1
+		Fx.light_flash(battle.fx_root, b1 + Vector3.UP * mv.model.height * 0.5, Color(0.6, 0.85, 1.0), 4.0, 3.0, 0.3)
+		model.visible = true
+	elif mode == "jump":
 		var a := mv.position
 		var b := mv.footprint_center(_cell_of(last), int(last[2]) if last.size() > 2 else 0)
 		await _turn_to(mv, b)

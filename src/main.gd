@@ -576,6 +576,46 @@ func _battle_stage(tag: String) -> void:
 			t.hover_target("goblin")
 			view.tactical.frame_pair(view.units["everest"].global_position, view.units["goblin"].global_position, 7.0)
 			view.tactical.snap()
+		"fly_up", "fly_across", "fly_fall":
+			var line := view.map.grid.line(me.cell, battle.state.unit("goblin").cell)
+			var cam := view.get_viewport().get_camera_3d()
+			var ground := view.map.ground_height(me.cell)
+			view.tactical.look_at_point(view.units["everest"].global_position + Vector3(0, 1.0, -1.0), 10.0)
+			view.tactical.pitch = -32.0
+			view.tactical.yaw = 35.0
+			view.tactical.snap()
+			await get_tree().process_frame
+			if tag == "fly_up":
+				t.toggle_fly()
+				t.change_sky(1)
+				var c: Vector2i = line[mini(2, line.size() - 1)]
+				t.plan_move(c)
+			elif tag == "fly_across":
+				var c1: Vector2i = line[1]
+				await battle.submit({"type": "move", "actor": "everest", "params": {"to": [c1.x, c1.y], "fly": true, "level": view.map.ground_height(c1) + 2}})
+				t.fly = true
+				t.sky_level = battle.state.unit("everest").level
+				t.refresh()
+				var c2: Vector2i = line[mini(3, line.size() - 1)]
+				view.tactical.look_at_point(view.units["everest"].global_position + Vector3(0, 0.0, -1.0), 10.0)
+				view.tactical.snap()
+				await get_tree().process_frame
+				t.plan_move(c2)
+			else:
+				# Jump jets: a Boost that ends in the air falls at once (Core p.63).
+				var c3: Vector2i = line[2]
+				var seen := [false]
+				player.event_started.connect(func(ev: Dictionary) -> void:
+					if ev.get("type") == "moved" and ev.get("mode") == "fall":
+						seen[0] = true)
+				battle.submit({"type": "boost", "actor": "everest", "params": {"to": [c3.x, c3.y], "fly": true, "level": view.map.ground_height(c3) + 3}})
+				var guard := 0
+				while not seen[0] and guard < 600:
+					guard += 1
+					await get_tree().process_frame
+				await get_tree().create_timer(0.18).timeout
+				return
+			await get_tree().create_timer(0.4).timeout
 		"barks":
 			var rng := RandomNumberGenerator.new()
 			rng.seed = 8
@@ -700,6 +740,11 @@ func screenshot_stage(tag: String) -> void:
 	world_spec = ""
 	battle_systems = {}
 	if tag == "barks":
+		await _battle_stage(tag)
+		return
+	if tag.begins_with("fly"):
+		# Flying with the rules engine's real movement: a flight system, or jump jets for the fall.
+		battle_systems = {"everest": ["ms_rapid_burst_jump_jet_system"] if tag == "fly_fall" else ["ms_type_i_flight_system"]}
 		await _battle_stage(tag)
 		return
 	if tag.begins_with("gear"):

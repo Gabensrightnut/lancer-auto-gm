@@ -154,7 +154,9 @@ func _update_flight() -> void:
 	disc.material_override = MeshKit.overlay_material(Color(0, 0, 0, 0.45))
 	disc.position = Vector3(0, -up * GridLayout.LEVEL_HEIGHT / 2.0 + 0.02, 0)
 	_drop.add_child(disc)
-	_alt = _make_label(36, Vector3(0.3, -0.15, 0))
+	_alt = _make_label(18, Vector3(0.3, -0.15, 0))
+	_alt.add_to_group(LabelDeclutter.GROUP_SCREEN_SIZED)
+	_alt.outline_size = 8
 	_alt.text = "▲ %d" % up
 	_alt.modulate = side_color()
 
