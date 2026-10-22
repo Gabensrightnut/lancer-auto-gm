@@ -164,7 +164,7 @@ static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dict
 			events.append({"type": "damage_dealt", "target": target.id, "source": source, "amount": 0, "damage_type": dtype,
 				"roll": amount, "immune": true, "hp": target.hp, "rule_ref": "glossary: Immunity"})
 			continue
-		var resist_here: bool = opts.get("resist_all", false) or Effects.resists(target, dtype, opts.get("area", false), int(opts.get("distance", -1))) or Effects.shepherded(state, target)
+		var resist_here: bool = opts.get("resist_all", false) or (opts.get("resist_types", []) as Array).has(dtype) or Effects.resists(target, dtype, opts.get("area", false), int(opts.get("distance", -1))) or Effects.shepherded(state, target)
 		if dtype == "Heat":
 			events.append_array(apply_heat(state, target, amount, source, resist_here))
 			continue

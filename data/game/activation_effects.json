@@ -823,5 +823,43 @@
         }
       ]
     }
+  ],
+  "ms_flash_charges:Flash Grenade": {
+    "activation": "Quick",
+    "ops": [
+      {
+        "op": "flash_grenade",
+        "range": 5,
+        "grenade": true
+      }
+    ]
+  },
+  "deploy:ms_flash_charges:Flash Mine": {
+    "fail_status": {
+      "status": "Blinded",
+      "save": "agility",
+      "burst": 1
+    }
+  },
+  "ms_hardlight_defense_system:Hardlight Defense System": [
+    {
+      "op": "hardlight"
+    }
+  ],
+  "ms_hardlight_defense_system:Deactivate Hardlight Defense System": [
+    {
+      "op": "remove_zone",
+      "kind": "hardlight"
+    }
+  ],
+  "ms_blinkshield:Blinkshield": [
+    {
+      "op": "blinkshield"
+    }
+  ],
+  "ms_oasis_wall:OASIS Wall": [
+    {
+      "op": "oasis"
+    }
   ]
 }

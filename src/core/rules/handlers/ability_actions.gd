@@ -212,6 +212,30 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				events.append_array(Zones.add(state, {"kind": "interdiction", "owner": u.id, "anchor": u.id, "radius": 3, "cells": [], "center": [u.cell.x, u.cell.y],
 					"label": "Interdiction Field", "rule_ref": "systems: Interdiction Field"}))
 				events.append_array(Combat.add_status(state, u, "Slowed", "Interdiction Field"))
+			"flash_grenade":
+				var fa: Vector2i = TurnAction.cell_param(params, "aim")
+				GearSystems._mark_launcher(state, u, op, fa)
+				events.append_array(Zones.add(state, {"kind": "flash", "owner": u.id, "label": "Flash", "center": [fa.x, fa.y],
+					"cells": Zones.cells_around(state, [fa] as Array[Vector2i], 3), "expires": {"unit": u.id, "when": "end", "count": 2 if state.active_unit == u.id else 1},
+					"rule_ref": "systems: Flash Charges"}))
+			"hardlight":
+				var foot: Array[Vector2i] = []
+				foot.assign(state.map.grid.footprint(u.cell, u.size))
+				for z: Dictionary in Zones.of_kind(state, "hardlight"):
+					if z.get("owner", "") == u.id:
+						events.append_array(Zones.remove(state, String(z["id"]), "replaced"))
+				events.append_array(Zones.add(state, {"kind": "hardlight", "owner": u.id, "label": "Hardlight shield", "center": [u.cell.x, u.cell.y],
+					"cells": Zones.cells_around(state, foot, 3), "rule_ref": "systems: Hardlight Defense System"}))
+				events.append_array(Combat.add_status(state, u, "Immobilized", "Hardlight Defense System"))
+			"blinkshield":
+				events.append_array(Zones.blinkshield(state, u))
+			"oasis":
+				for z: Dictionary in Zones.of_kind(state, "oasis"):
+					if z.get("owner", "") == u.id:
+						events.append_array(Zones.remove(state, String(z["id"]), "used again"))
+				events.append_array(Zones.add(state, {"kind": "oasis", "owner": u.id, "label": "Oasis Wall", "center": [u.cell.x, u.cell.y],
+					"cells": [], "rule_ref": "systems: Oasis Wall"}))
+				events.append_array(Effects.activate(state, u, [{"kind": "oasis_wall"}], "Oasis Wall", "start_next_turn"))
 			"hand_over":
 				events.append_array(AISystems.hand_over(state, u, String(a["name"])))
 			"sekhmet":
@@ -463,7 +487,7 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 			var pv := Attacks.preview(state, u, fw, state.unit(String(params.get("target", ""))), {"fired_by_rule": true})
 			if not pv["ok"]:
 				return RuleResult.deny(pv["reason"], pv["rule_ref"])
-		if op.get("op", "") == "napalm":
+		if op.get("op", "") in ["napalm", "flash_grenade"]:
 			var nr := GearSystems.check_aimed(state, u, op, params)
 			if not nr.ok:
 				return nr

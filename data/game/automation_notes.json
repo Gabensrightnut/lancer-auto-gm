@@ -27,5 +27,7 @@
   "ms_sekhmet_class_nhp": "While SEKHMET drives, it moves toward the closest visible character and attacks it in melee; whoever controls the mech keeps to that.",
   "ms_comp_con_class_assistant_unit": "The COMP/CON follows simple orders you give at the start of your turn; whoever controls the mech keeps to them.",
   "ms_scylla_class_nhp": "The second trigger (a hostile attacking or using an object you chose) is the table's.",
-  "ms_osiris_class_nhp": "The First Gate (you control the target's next standard move) is played out at the table."
+  "ms_osiris_class_nhp": "The First Gate (you control the target's next standard move) is played out at the table.",
+  "ms_oasis_wall": "While it's on you can only move in straight lines, and nobody may end a turn inside the barrier; keep to that at the table.",
+  "ms_blinkshield": "Time flows differently inside, so characters inside and outside can't affect each other at all; the game blocks attacks, sight and movement across the edge."
 }

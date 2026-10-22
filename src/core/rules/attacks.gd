@@ -104,6 +104,11 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 	var ignores_los := Weapons.has_tag(w, "tg_arcing") or seeking or phase
 	# Area attacks take cover and line of sight from the area's origin (glossary: Blast, Burst).
 	var cover := FrameSystems.extra_cover(state, target, Sight.cover(state, area_origin if area_origin != null else a_body, t_body, Effects.guardians(state, target)), attacker)
+	if not Zones.barrier_between(state, attacker, target).is_empty():
+		return fail.call("No attack can cross that barrier.", "systems: Hardlight Defense System / Blinkshield")
+	if area_origin == null and Zones.blocks_sight(state, attacker, target):
+		cover = cover.duplicate()
+		cover["los"] = false
 	out["los"] = cover["los"]
 	if not cover["los"] and not ignores_los:
 		return fail.call("No line of sight to the target.", Sight.REF_LOS)
@@ -685,6 +690,7 @@ static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array,
 	var gen := GearSystems.aegis_reduce(state, target, parts)
 	events.append_array(gen["events"])
 	parts = gen["parts"]
+	var energy_resist := Zones.oasis_cover(state, target)  # Oasis Wall: Resistance to energy
 	var guard := GearSystems.argonaut_for(state, target)
 	if guard != null and guard != attacker:
 		# Argonaut Shield: Resistance for the target; the shield-bearer takes half the damage
@@ -699,7 +705,8 @@ static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array,
 	if area and Zones.bunker_protects(state, target, attacker):
 		resist_all = true  # Portable Bunker: Resistance to area attacks from outside
 	events.append_array(Combat.deal_damage(state, target, parts, {"source": attacker.id, "ap": ap, "resist_all": (brace and not aegis) or resist_all,
-		"damage_to_one": aegis, "area": area, "distance": Sight.unit_distance(state, attacker, target), "unreducible": unreducible}))
+		"damage_to_one": aegis, "area": area, "distance": Sight.unit_distance(state, attacker, target), "unreducible": unreducible,
+		"resist_types": ["Energy"] if energy_resist else []}))
 	events.append_array(TraitReactions.teleport(state, target, sim["teleport"]))
 	return events
 

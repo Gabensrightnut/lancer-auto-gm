@@ -83,6 +83,7 @@ static func _do_move(state: GameState, u: Unit, plan: Dictionary, mode: String, 
 		events.append_array(Combat.fall_unit(state, u))
 	events.append_array(Effects.moved(state, u, mode))
 	events.append_array(Zones.leave_hologram(state, u, from, from_level))
+	Zones.oasis_trail(state, u, path)
 	events.append_array(GearSystems.horus_moved(state, u, maxi(0, path.size() - 1)))
 	events.append_array(Abilities.check_mines(state, u, path))
 	events.append_array(Zones.check_path(state, u, path))
