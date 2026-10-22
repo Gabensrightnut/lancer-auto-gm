@@ -13,7 +13,7 @@ extends RefCounted
 
 ## Landscapes the generator can build, with their weight when picked at random.
 const LANDSCAPES := {"grassy_hills": 4, "desert_mesas": 2, "tundra": 2, "volcanic": 1, "alien_wilds": 1, "crystal_fields": 1,
-	"toxic_marsh": 1, "city": 3, "station": 1, "starship": 1, "moon": 1, "asteroid": 1, "ocean": 1, "jungle": 2}
+	"toxic_marsh": 1, "molten_world": 1, "toxic_swamp": 1, "city": 3, "station": 1, "starship": 1, "moon": 1, "asteroid": 1, "ocean": 1, "jungle": 2}
 ## Cultures that fit each landscape ("" = wilderness, no settlement).
 const CULTURES := {
 	"grassy_hills": ["", "", "medieval", "old_west", "east_asian", "union", "retro"],
@@ -23,6 +23,8 @@ const CULTURES := {
 	"alien_wilds": ["", ""],
 	"crystal_fields": ["", ""],
 	"toxic_marsh": ["", ""],
+	"molten_world": [""],
+	"toxic_swamp": ["", "", "medieval"],
 	"station": [""],
 	"starship": [""],
 	"moon": ["", "", "union", "retro"],
@@ -51,6 +53,20 @@ static func pick(rng: RandomNumberGenerator, landscape: String = "", culture: St
 	return [landscape, culture]
 
 
+## Look tags for a raised block of cover added by fairness repairs, per landscape.
+static func cover_tags(landscape: String) -> Array:
+	match landscape:
+		"city":
+			return ["wall"]
+		"station", "starship":
+			return ["container"]
+		"alien_wilds", "crystal_fields":
+			return ["crystal"]
+		"toxic_swamp", "jungle":
+			return ["rock", Sight.TAG_SOFT_COVER, "woods"]
+	return ["rock"]
+
+
 ## Plain-language name for briefings, from the shared biome data: "desert mesas, frontier
 ## boomtown", "neon megacity".
 static func describe(landscape: String, culture: String) -> String:
@@ -70,7 +86,8 @@ static func describe(landscape: String, culture: String) -> String:
 const WEATHER := {
 	"grassy_hills": ["", "", "", "rain", "storm", "mist"], "desert_mesas": ["", "", "", "sandstorm"],
 	"tundra": ["", "snow", "snow", "blizzard"], "volcanic": ["ashfall", "ashfall", ""], "alien_wilds": ["", "spores", "storm"],
-	"crystal_fields": ["", "", "sandstorm"], "toxic_marsh": ["spores", "mist", "storm"], "city": ["", "", "rain", "storm", "mist"],
+	"crystal_fields": ["", "", "sandstorm"], "toxic_marsh": ["spores", "mist", "storm"],
+	"molten_world": ["ashfall", "ashfall", "storm"], "toxic_swamp": ["mist", "mist", "spores", "rain"], "city": ["", "", "rain", "storm", "mist"],
 	"station": [""], "starship": [""], "moon": [""], "asteroid": [""], "ocean": ["", "", "rain", "storm"],
 	"jungle": ["", "rain", "rain", "mist", "storm"],
 }
@@ -125,6 +142,10 @@ static func generate(rng: RandomNumberGenerator, w: int, h: int, shape: GridLayo
 			g._ocean()
 		"jungle":
 			g._jungle()
+		"molten_world":
+			g._molten()
+		"toxic_swamp":
+			g._swamp()
 		_:
 			g._hills()
 	if landscape != "city" and culture != "":
@@ -316,7 +337,7 @@ func _volcanic() -> void:
 					continue
 				var col := map.column(cell)
 				col.ground = 0
-				_tag(col, [BattleMap.TAG_DANGEROUS, "lava"])
+				_tag(col, [BattleMap.TAG_DANGEROUS, "dangerous_energy", "lava"])
 	_patches(area / 50, Vector2i(1, 3), ["rock"], 2)
 	_patches(area / 80, Vector2i(3, 8), [BattleMap.TAG_DIFFICULT])
 	# Cracked ground that glows: dangerous, small.
@@ -652,6 +673,52 @@ func _jungle() -> void:
 			_tag(map.column(cell), [Sight.TAG_SOFT_COVER, BattleMap.TAG_DIFFICULT, "woods"])
 	_patches(area / 90, Vector2i(1, 3), ["rock"], 2)
 	_patches(area / 160, Vector2i(2, 5), [BattleMap.TAG_DIFFICULT])
+
+
+## Molten world (env_moltenworld): black crust terraces and islands in lakes and rivers of
+## lava. Lava is dangerous terrain (energy damage, "depending on the hazard", Core p.62); the
+## environment's own lava rule keys off the "lava" tag. Basalt columns give cover.
+func _molten() -> void:
+	var noise := _noise(rng.randf_range(0.05, 0.08))
+	var lava_noise := _noise(rng.randf_range(0.06, 0.09))
+	_fill(func(c: int, r: int) -> int: return clampi(int(floor((noise.get_noise_2d(c, r) + 0.3) * 2.6)), 0, 3))
+	for cell in cells:
+		if blocked.has(cell):
+			continue
+		var p := map.grid.to_world(cell)
+		if lava_noise.get_noise_2d(p.x, p.z) > 0.18:
+			var col := map.column(cell)
+			col.ground = 0
+			col.tags = PackedStringArray([BattleMap.TAG_DANGEROUS, "dangerous_energy", "lava"])
+	var area := w * h
+	_patches(area / 55, Vector2i(1, 3), ["rock"], 2)
+	_patches(area / 120, Vector2i(2, 5), [BattleMap.TAG_DIFFICULT], 0, true)
+
+
+## Toxic swamp (env_primordealworld: "boiling mud creates numerous areas of both difficult
+## and dangerous terrain"): bog water and mud (difficult), boiling mud pools (difficult and
+## dangerous), dead and drowned woods (soft cover), low hummocks and rocks.
+func _swamp() -> void:
+	var noise := _noise(rng.randf_range(0.05, 0.08))
+	var wet := _noise(rng.randf_range(0.07, 0.1))
+	_fill(func(c: int, r: int) -> int: return clampi(int(floor((noise.get_noise_2d(c, r) + 0.2) * 1.8)), 0, 2))
+	for cell in cells:
+		if blocked.has(cell):
+			continue
+		var p := map.grid.to_world(cell)
+		var v := wet.get_noise_2d(p.x, p.z)
+		var col := map.column(cell)
+		if v > 0.05 and col.ground == 0:
+			col.tags = PackedStringArray([BattleMap.TAG_DIFFICULT, "water"])
+		elif v > -0.1 and col.ground == 0:
+			col.tags = PackedStringArray([BattleMap.TAG_DIFFICULT])
+	var area := w * h
+	for i in range(maxi(2, area / 130)):
+		for cell in _blob(_random_cell(), rng.randi_range(2, 5)):
+			if map.has_cell(cell) and not blocked.has(cell) and map.ground_height(cell) == 0:
+				map.column(cell).tags = PackedStringArray([BattleMap.TAG_DIFFICULT, BattleMap.TAG_DANGEROUS, "toxic"])
+	_patches(area / 80, Vector2i(3, 7), [Sight.TAG_SOFT_COVER, BattleMap.TAG_DIFFICULT, "woods"])
+	_patches(area / 90, Vector2i(1, 2), ["rock"], 2)
 
 
 # --- Settlements -------------------------------------------------------------------------
