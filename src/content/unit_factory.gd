@@ -1,0 +1,321 @@
+class_name UnitFactory
+extends RefCounted
+## Builds Units from lancer-data (frames, weapons, systems, mods) and checks loadouts.
+##
+## A loadout lists what goes in each of the frame's mounts, in the frame's mount order:
+##   {"mounts": [{"weapons": ["mw_assault_rifle"], "mod": ""}, ...],
+##    "systems": ["ms_pattern_a_smoke_charges", ...]}
+## A pilot gives License Level, license ranks, talents and mech skills:
+##   {"ll": 2, "licenses": {"mf_raleigh": 2}, "talents": {"t_...": 1},
+##    "hull": 0, "agility": 0, "systems": 0, "engineering": 0}
+## License keys are lancer-data license ids (the frame id, e.g. "mf_raleigh"); the license
+## name ("Raleigh") also works.
+##
+## The built Unit carries copies of its weapon profiles in loadout["weapons"] (see Weapons),
+## so the rules engine never needs ContentDB.
+
+const REF_MOUNTS := "rules.json: mount_fittings"
+const REF_SP := "glossary: System Points"
+const REF_LICENSE := "lancer-data: license / license_level"
+## PROVISIONAL (docs/RULES_TODO.md "License ranks"): one license rank per License Level,
+## ranks 1-3 per license.
+const REF_LICENSE_RANKS := "PROVISIONAL Core: License ranks (docs/RULES_TODO.md)"
+const MAX_LICENSE_RANK := 3
+## PROVISIONAL (docs/RULES_TODO.md "Mount capacities"): how many weapons each mount holds.
+## Fittings (which sizes fit) come from rules.json; "Flex" holds one Main or two Auxiliary.
+const MOUNT_SLOTS := {
+	"Main": ["Main"],
+	"Heavy": ["Heavy"],
+	"Flex": ["Flex"],
+	"Main/Aux": ["Main", "Auxiliary"],
+	"Aux/Aux": ["Auxiliary", "Auxiliary"],
+}
+const NPC_TEMPLATES := "res://data/game/npc_templates.json"
+
+
+static func grit(ll: int) -> int:
+	return ceili(ll / 2.0)  # glossary: GRIT (half LL, rounded up)
+
+
+## Total SP: frame SP + GRIT + 1 per 2 SYSTEMS (glossary: System Points).
+static func total_sp(frame: Dictionary, pilot: Dictionary) -> int:
+	return int(frame.get("stats", {}).get("sp", 0)) + grit(int(pilot.get("ll", 0))) + int(pilot.get("systems", 0)) / 2
+
+
+## Is this loadout legal on this frame? Collects every problem in `details`.
+static func check_loadout(db: ContentDB, frame_id: String, loadout: Dictionary, pilot: Dictionary = {}) -> RuleResult:
+	var problems: Array = []
+	var frame := db.frame(frame_id)
+	if frame.is_empty():
+		return RuleResult.deny("Unknown frame '%s'." % frame_id, "")
+	problems.append_array(check_pilot(db, pilot))
+	_license(problems, frame, pilot)
+	var fittings: Dictionary = db.rules.get("mount_fittings", {})
+	var frame_mounts: Array = frame.get("mounts", [])
+	var mounts: Array = loadout.get("mounts", [])
+	if float(frame["stats"].get("size", 1)) > float(db.rules.get("max_frame_size", 3)):
+		problems.append({"reason": "Frame is larger than the largest allowed size.", "rule_ref": "rules.json: max_frame_size"})
+	if mounts.size() > frame_mounts.size():
+		problems.append({"reason": "%s has only %d mounts." % [frame["name"], frame_mounts.size()], "rule_ref": REF_MOUNTS})
+	var sp_used := 0
+	var superheavy_mounts: Array[int] = []
+	var empty_mounts: Array[int] = []
+	for i in range(frame_mounts.size()):
+		var mount_type: String = frame_mounts[i]
+		var m: Dictionary = mounts[i] if i < mounts.size() else {}
+		var ids: Array = m.get("weapons", [])
+		if ids.is_empty():
+			empty_mounts.append(i)
+		var sizes: Array[String] = []
+		for wid: String in ids:
+			var w := db.weapon(wid)
+			if w.is_empty():
+				problems.append({"reason": "Unknown weapon '%s'." % wid, "rule_ref": ""})
+				continue
+			sizes.append(String(w.get("mount", "")))
+			sp_used += int(w.get("sp", 0))
+			_license(problems, w, pilot)
+			if w.get("mount", "") == "Superheavy":
+				superheavy_mounts.append(i)
+		var why := _mount_problem(mount_type, sizes, fittings)
+		if why != "":
+			problems.append({"reason": "Mount %d (%s): %s" % [i + 1, mount_type, why], "rule_ref": REF_MOUNTS})
+		var mod_id: String = m.get("mod", "")
+		if mod_id != "":
+			var mod := db.get_entry("mods", mod_id)
+			if mod.is_empty():
+				problems.append({"reason": "Unknown mod '%s'." % mod_id, "rule_ref": ""})
+			else:
+				sp_used += int(mod.get("sp", 0))
+				_license(problems, mod, pilot)
+				var w0 := db.weapon(String(ids[0])) if not ids.is_empty() else {}
+				if w0.is_empty():
+					problems.append({"reason": "Mount %d has a mod but no weapon to put it on." % (i + 1), "rule_ref": "tags: Mod"})
+				elif not (mod.get("allowed_types", []) as Array).is_empty() and not (mod["allowed_types"] as Array).has(w0.get("type", "")):
+					problems.append({"reason": "%s can't go on a %s." % [mod["name"], w0.get("type", "")], "rule_ref": "tags: Mod"})
+				elif (mod.get("restricted_sizes", []) as Array).has(w0.get("mount", "")):
+					problems.append({"reason": "%s can't go on a %s weapon." % [mod["name"], w0.get("mount", "")], "rule_ref": "tags: Mod"})
+	# PROVISIONAL (RULES_TODO "Superheavy mounting"): a Superheavy weapon also takes up one
+	# other mount, which must be left empty.
+	if superheavy_mounts.size() > empty_mounts.size():
+		problems.append({"reason": "A Superheavy weapon needs a Heavy mount plus one other empty mount.", "rule_ref": "PROVISIONAL Core: Superheavy (docs/RULES_TODO.md)"})
+	var seen_unique := {}
+	var ai_count := 0
+	for sid: String in loadout.get("systems", []):
+		var s := db.system(sid)
+		if s.is_empty():
+			problems.append({"reason": "Unknown system '%s'." % sid, "rule_ref": ""})
+			continue
+		sp_used += int(s.get("sp", 0))
+		_license(problems, s, pilot)
+		if _has_tag(s, "tg_unique"):
+			if seen_unique.has(sid):
+				problems.append({"reason": "%s is Unique: only one copy." % s["name"], "rule_ref": "tags: Unique"})
+			seen_unique[sid] = true
+		if _has_tag(s, "tg_ai"):
+			ai_count += 1
+	if ai_count > 1:
+		problems.append({"reason": "Only one AI system can be installed.", "rule_ref": "tags: AI"})
+	var sp := total_sp(frame, pilot)
+	if sp_used > sp:
+		problems.append({"reason": "Uses %d SP but this mech has %d." % [sp_used, sp], "rule_ref": REF_SP})
+	if problems.is_empty():
+		return RuleResult.allow()
+	var r := RuleResult.deny(problems[0]["reason"], problems[0]["rule_ref"])
+	r.details = problems
+	return r
+
+
+## Problems with the pilot itself: License Level in range, license ranks add up.
+static func check_pilot(db: ContentDB, pilot: Dictionary) -> Array:
+	var problems: Array = []
+	var ll := int(pilot.get("ll", 0))
+	var max_ll := int(db.rules.get("max_pilot_level", 12))
+	if ll < 0 or ll > max_ll:
+		problems.append({"reason": "License Level must be 0 to %d." % max_ll, "rule_ref": "rules.json: max_pilot_level"})
+	var total := 0
+	var licenses: Dictionary = pilot.get("licenses", {})
+	for key: String in licenses:
+		var rank := int(licenses[key])
+		total += rank
+		if rank < 1 or rank > MAX_LICENSE_RANK:
+			problems.append({"reason": "%s license rank must be 1 to %d." % [key, MAX_LICENSE_RANK], "rule_ref": REF_LICENSE_RANKS})
+	if total > ll:
+		problems.append({"reason": "License ranks add up to %d, but a License Level %d pilot has only %d." % [total, ll, ll], "rule_ref": REF_LICENSE_RANKS})
+	return problems
+
+
+## Is a frame/weapon/system/mod unlocked for this pilot? GMS gear at license level 0 is
+## always available; manufacturer gear needs that frame's license at its license_level;
+## talent gear needs the talent rank.
+static func license_problem(item: Dictionary, pilot: Dictionary) -> String:
+	if item.get("talent_item", false):
+		var talent := String(item.get("talent_id", ""))
+		var need := int(item.get("talent_rank", 1))
+		if int(pilot.get("talents", {}).get(talent, 0)) < need:
+			return "%s needs talent %s rank %d." % [item.get("name", ""), talent, need]
+		return ""
+	var level := int(item.get("license_level", 0))
+	var lic_id := String(item.get("license_id", ""))
+	var gms: bool = item.get("source", "") == "GMS" or item.get("license", "") == "GMS"
+	if gms and level == 0:
+		return ""
+	if lic_id == "":
+		return "%s isn't installable gear (integrated or special equipment)." % item.get("name", "")
+	# Frames are their own license (license_id = frame id) and have no "license" name field.
+	var lic_name := String(item.get("license", item.get("name", lic_id)))
+	var licenses: Dictionary = pilot.get("licenses", {})
+	var rank := int(licenses.get(lic_id, licenses.get(lic_name, 0)))
+	if rank < level:
+		return "Needs %s license rank %d." % [lic_name, level]
+	return ""
+
+
+static func _license(problems: Array, item: Dictionary, pilot: Dictionary) -> void:
+	var why := license_problem(item, pilot)
+	if why != "":
+		problems.append({"reason": why, "rule_ref": REF_LICENSE, "item": item.get("id", "")})
+
+
+## "" if the weapon sizes fit the mount, else why not.
+static func _mount_problem(mount_type: String, sizes: Array[String], fittings: Dictionary) -> String:
+	if sizes.is_empty():
+		return ""
+	var slots: Array = MOUNT_SLOTS.get(mount_type, [])
+	if slots.is_empty():
+		return "unknown mount type"
+	if mount_type == "Flex" and sizes.size() == 2:
+		if sizes[0] == "Auxiliary" and sizes[1] == "Auxiliary":
+			return ""
+		return "a Flex mount holds one Main weapon or two Auxiliary weapons"
+	if sizes.size() > slots.size():
+		return "holds at most %d weapon(s)" % slots.size()
+	var remaining := sizes.duplicate()
+	for slot: String in slots:
+		var fits: Array = fittings.get(slot, [])
+		for j in range(remaining.size()):
+			if fits.has(remaining[j]):
+				remaining.remove_at(j)
+				break
+	if not remaining.is_empty():
+		return "%s doesn't fit" % ", ".join(remaining)
+	return ""
+
+
+static func _has_tag(entry: Dictionary, tag_id: String) -> bool:
+	for t: Dictionary in entry.get("tags", []):
+		if t.get("id", "") == tag_id:
+			return true
+	return false
+
+
+## A player mech from a frame and loadout. Doesn't check legality (call check_loadout).
+## PROVISIONAL (docs/RULES_TODO.md "Pilot stat bonuses"): HASE and GRIT bonuses from the
+## core book's mech stats: HP + GRIT + 2/Hull, Repair Cap + 1 per 2 Hull, Evasion +1/Agility,
+## Speed +1 per 2 Agility, E-Defense and Tech Attack +1/Systems, Heat Cap +1/Engineering,
+## Save Target + GRIT. SP is from the glossary.
+static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dictionary, pilot: Dictionary = {}) -> Unit:
+	var frame := db.frame(frame_id)
+	var st: Dictionary = frame.get("stats", {})
+	var u := Unit.new()
+	u.id = id
+	u.name = String(frame.get("name", frame_id))
+	u.kind = Unit.KIND_MECH
+	u.content_id = frame_id
+	var g := grit(int(pilot.get("ll", 0)))
+	u.hull = int(pilot.get("hull", 0))
+	u.agility = int(pilot.get("agility", 0))
+	u.systems = int(pilot.get("systems", 0))
+	u.engineering = int(pilot.get("engineering", 0))
+	u.grit = g
+	u.size = float(st.get("size", 1))
+	u.max_hp = int(st.get("hp", 0)) + g + 2 * u.hull
+	u.hp = u.max_hp
+	u.armor = int(st.get("armor", 0))
+	u.evasion = int(st.get("evasion", 8)) + u.agility
+	u.edef = int(st.get("edef", 8)) + u.systems
+	u.heat_cap = int(st.get("heatcap", 0)) + u.engineering
+	u.speed = int(st.get("speed", 4)) + u.agility / 2
+	u.sensors = int(st.get("sensor_range", 10))
+	u.save_target = int(st.get("save", 10)) + g
+	u.tech_attack = int(st.get("tech_attack", 0)) + u.systems
+	u.repairs = int(st.get("repcap", 0)) + u.hull / 2
+	u.max_structure = int(st.get("structure", db.rules.get("base_structure", 4)))
+	u.structure = u.max_structure
+	u.max_stress = int(st.get("stress", db.rules.get("base_stress", 4)))
+	u.stress = u.max_stress
+	var weapons: Array = []
+	var mounts: Array = []
+	var frame_mounts: Array = frame.get("mounts", [])
+	var given: Array = loadout.get("mounts", [])
+	for i in range(frame_mounts.size()):
+		var m: Dictionary = given[i] if i < given.size() else {}
+		mounts.append({"mount": frame_mounts[i], "weapons": (m.get("weapons", []) as Array).duplicate(), "mod": m.get("mod", "")})
+		var slot := 0
+		for wid: String in m.get("weapons", []):
+			var w := db.weapon(wid)
+			if not w.is_empty():
+				weapons.append(weapon_profile(w, "%d:%d" % [i, slot], i))
+			slot += 1
+	var systems: Array = []
+	var n := 0
+	for sid: String in loadout.get("systems", []):
+		var s := db.system(sid)
+		if not s.is_empty():
+			systems.append({"key": "s%d" % n, "id": sid, "name": s.get("name", sid), "tags": (s.get("tags", []) as Array).duplicate(true)})
+			n += 1
+	u.loadout = {"frame": frame_id, "mounts": mounts, "weapons": weapons, "systems": systems}
+	return u
+
+
+## The fields of a lancer-data weapon the rules use. Weapons with several profiles use the
+## first one (choosing a profile isn't supported yet).
+static func weapon_profile(w: Dictionary, key: String, mount: int) -> Dictionary:
+	var src := w
+	if w.has("profiles") and not (w["profiles"] as Array).is_empty():
+		src = w.duplicate(true)
+		src.merge(w["profiles"][0], true)
+	return {"key": key, "id": w.get("id", ""), "name": w.get("name", ""), "mount": mount,
+		"size": w.get("mount", ""), "type": w.get("type", ""),
+		"damage": (src.get("damage", []) as Array).duplicate(true),
+		"range": (src.get("range", []) as Array).duplicate(true),
+		"tags": (src.get("tags", []) as Array).duplicate(true)}
+
+
+## Hand-written NPC templates (data/game/npc_templates.json). Not official NPC data.
+static func npc_templates(path: String = NPC_TEMPLATES) -> Dictionary:
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+	return data if data is Dictionary else {}
+
+
+## An NPC from a template: plain stats plus weapons with their own attack bonus.
+static func build_npc(id: String, template: Dictionary) -> Unit:
+	var u := Unit.new()
+	u.id = id
+	u.kind = Unit.KIND_NPC
+	u.side = "enemies"
+	u.name = String(template.get("name", id))
+	u.content_id = String(template.get("id", ""))
+	for key in ["size", "armor", "evasion", "edef", "speed", "sensors", "save_target",
+			"tech_attack", "hull", "agility", "systems", "engineering", "flight"]:
+		if template.has(key):
+			u.set(key, Unit._coerce(u.get(key), template[key]))
+	u.max_hp = int(template.get("hp", 10))
+	u.hp = u.max_hp
+	u.heat_cap = int(template.get("heat_cap", 0))
+	u.max_structure = int(template.get("structure", 1))
+	u.structure = u.max_structure
+	u.max_stress = int(template.get("stress", 1))
+	u.stress = u.max_stress
+	u.resistances = (template.get("resistances", []) as Array).duplicate()
+	var weapons: Array = []
+	var i := 0
+	for w: Dictionary in template.get("weapons", []):
+		var p := w.duplicate(true)
+		p["key"] = "w%d" % i
+		p["mount"] = -1
+		p["attack_bonus"] = int(w.get("attack_bonus", 0))
+		weapons.append(p)
+		i += 1
+	u.loadout = {"weapons": weapons, "systems": []}
+	return u

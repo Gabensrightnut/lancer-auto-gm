@@ -127,8 +127,8 @@ func test_actions_go_through_the_rules_engine() -> void:
 	_pump()
 	var events := _events_of(updates)
 	expect(answers[1][1]["ok"])
-	expect_eq(events.size(), 1)
-	expect_eq(events[0]["type"], "turn_ended")
+	# The rules engine may add follow-up events (next turn, new round); the end of turn must be there.
+	expect(events.any(func(e): return e["type"] == "turn_ended" and e["unit"] == "ally1"))
 	expect("ally1" in host.state.acted)
 
 

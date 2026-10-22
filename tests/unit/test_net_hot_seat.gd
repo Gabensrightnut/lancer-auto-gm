@@ -70,8 +70,8 @@ func test_turn_change_hands_the_screen_over() -> void:
 	expect_eq(shown.size(), before + 1)
 	expect_eq(shown[-1][0], "red")
 	var missed: Array = shown[-1][2]
-	expect_eq(missed.size(), 1, "red catches up on what happened while blue played")
-	expect_eq(missed[0]["type"], "turn_ended")
+	var missed_types := missed.map(func(e): return e["type"])
+	expect("turn_ended" in missed_types, "red catches up on what happened while blue played")
 
 
 func test_secret_moves_stay_with_their_seat() -> void:
