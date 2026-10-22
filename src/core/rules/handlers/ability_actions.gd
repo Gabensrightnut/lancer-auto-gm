@@ -272,6 +272,8 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				events.append_array(Attacks.attack(state, u, Weapons.find(u, "cbi:0"), target, {"fired_by_rule": true}))
 			"jackhammer":
 				events.append_array(TalentRules.jackhammer(state, u, target))
+			"covering_fire":
+				events.append_array(TalentRules.covering_fire(state, u, target))
 			"fire_weapon":
 				var fw := Weapons.find(u, String(a["source_key"]).trim_prefix("w:"))
 				events.append_array(Attacks.attack(state, u, fw, target, {"fired_by_rule": true}))
@@ -497,6 +499,10 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 			var ww := String(a["source_key"]).trim_prefix("mod:")
 			if not (u.turn.get("hits", {}).get(ww, []) as Array).has(String(params.get("target", ""))):
 				return RuleResult.deny("Only right after hitting that character with the wreathed weapon this turn.", "mods: Shock Wreath")
+		if op.get("op", "") == "covering_fire":
+			var cr := TalentRules.check_covering_fire(state, u, state.unit(String(params.get("target", ""))))
+			if not cr.ok:
+				return cr
 		if op.get("op", "") == "jackhammer":
 			var jr := TalentRules.check_jackhammer(state, u, state.unit(String(params.get("target", ""))))
 			if not jr.ok:
@@ -580,7 +586,7 @@ const BASIC := [
 	["end_grapple", "Let Go", "other"], ["break_free", "Break Free", "other"], ["grapple_contest", "Grapple Contest", "other"],
 	["climb_on", "Climb On", "move"], ["board", "Board", "other"], ["disembark", "Climb Out", "other"], ["cut_cable", "Cut Cable", "attack"],
 	["pull_stake", "Pull Out Stake", "other"], ["use_object", "Use Object", "other"], ["ai_control", "Hand Over to AI", "other"],
-	["break_ice", "Break Free of the Ice", "other"], ["dig_out", "Dig Out of the Mud", "other"],
+	["break_ice", "Break Free of the Ice", "other"], ["dig_out", "Dig Out of the Mud", "other"], ["backswing", "Backswing Cut", "attack"],
 ]
 ## Actions whose own check needs no target, so the bar can show exactly whether they work.
 const NO_TARGET := ["stand_up", "bonus_move", "disengage", "hide", "overcharge", "shut_down", "boot_up",

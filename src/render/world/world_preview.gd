@@ -11,6 +11,8 @@ var shape := GridLayout.Shape.HEX
 
 
 func _ready() -> void:
+	if OS.get_environment("LANCER_QUALITY") != "":
+		WorldQuality.set_preset(OS.get_environment("LANCER_QUALITY"), get_viewport())
 	content = ContentDB.new()
 	content.load_all()
 	view = BattleView.new()
@@ -134,12 +136,39 @@ func _aim_camera(map: BattleMap, cam: String) -> void:
 					n += 1
 			view.map = newer
 			view.terrain.sync_map(newer)
-			t.look_at_point(mid + Vector3(-4.0, 0.5, 2.0), 8.0)
-			t.pitch = -30
+			# Aim at the first thing that broke (the showcase wall, or a city building).
+			var focus := mid + Vector3(-4.0, 0.5, 2.0)
+			for c in newer.cells():
+				if map.column(c).has_tag(BattleMap.TAG_DESTRUCTIBLE) and map.column(c).ground >= 2:
+					focus = map.grid.to_world(c) + Vector3.UP * 1.0
+					break
+			t.look_at_point(focus, 9.0)
+			t.pitch = -24
 			t.yaw = -10
 			t.snap()
-			for i in range(18):
+			var wait := int(OS.get_environment("LANCER_BREAK_FRAMES")) if OS.get_environment("LANCER_BREAK_FRAMES") != "" else 18
+			for i in range(wait):
 				await get_tree().process_frame
+			return
+		"eye":
+			# Cockpit view: a camera at mech-eye height (about 1.1 units) looking across.
+			var eye := Camera3D.new()
+			eye.fov = 75.0
+			eye.near = 0.02
+			eye.far = 400.0
+			add_child(eye)
+			var c0: Vector2i = map.cells()[0]
+			var best := c0
+			for cc in map.cells():
+				var pw := map.grid.to_world(cc)
+				if pw.distance_to(mid + Vector3(-span * 0.15, 0, span * 0.2)) < map.grid.to_world(best).distance_to(mid + Vector3(-span * 0.15, 0, span * 0.2)) and map.column(cc).tags.is_empty():
+					best = cc
+			var p := map.grid.to_world(best) + Vector3.UP * (map.ground_height(best) + 1.1)
+			eye.position = p
+			eye.look_at(p + Vector3(0.6, -0.12, -1.0), Vector3.UP)
+			eye.current = true
+			view.terrain.set_grid_visible(false)
+			await get_tree().process_frame
 			return
 		"top":
 			t.look_at_point(mid, span * 1.25)

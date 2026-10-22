@@ -54,6 +54,10 @@ var broken_cells: Dictionary = {}
 ## Sitrep objectives shown on the board ([zones, deployment, show_deployment]), redrawn on
 ## every rebuild. Set with show_objectives().
 var objectives: Array = []
+## The facade material of this board's buildings (CityBuilder), for collapse pieces.
+var building_material: Material
+## Building look per structure cell from the last build: cell -> {color, type, top}.
+var building_looks: Dictionary = {}
 var _props: Node3D
 var _shape: Dictionary
 var _bottom := -BASE_DEPTH
@@ -121,10 +125,14 @@ func _draw_objectives() -> void:
 	var old := get_node_or_null("Objectives")
 	if old:
 		remove_child(old)
-		old.queue_free() if is_inside_tree() else old.free()
+		if is_inside_tree():
+			old.queue_free()
+		else:
+			old.free()
 	if objectives.is_empty() or map == null:
 		return
 	var m := ObjectiveMarkers.new()
+	m.name = "Objectives"
 	add_child(m)
 	m.setup(self, objectives[0], objectives[1], objectives[2])
 

@@ -390,6 +390,7 @@ func _city(culture: String) -> void:
 			var lots := _split_block(c0, r0, block)
 			for lot: Rect2i in lots:
 				var height := rng.randi_range(1, tall)
+				var lot_breakable := rng.randf() < (0.8 if ruined else 0.6)
 				if ruined and rng.randf() < 0.25:
 					height = 0  # collapsed: rubble lot
 				for r in range(lot.position.y, lot.end.y):
@@ -405,8 +406,15 @@ func _city(culture: String) -> void:
 						else:
 							col.ground = height
 							_tag(col, ["building"])
+							# Low buildings can be knocked down (Core: terrain and objects can be
+							# destroyed); towers stand. Ruined cities are more fragile.
+							if height <= (4 if ruined else 3) and lot_breakable:
+								_tag(col, [BattleMap.TAG_DESTRUCTIBLE])
 			bx += 1
 	var area := w * h
+	if not ruined:
+		# Even a living city has roadworks, wreckage and debris in the streets.
+		_patches(maxi(2, area / 300), Vector2i(1, 3), [BattleMap.TAG_DIFFICULT, "rubble"], 0, true)
 	if ruined:
 		# Rubble spills into the streets, craters and burning wrecks.
 		_patches(area / 140, Vector2i(2, 4), [BattleMap.TAG_DIFFICULT, "rubble"], 0, true)

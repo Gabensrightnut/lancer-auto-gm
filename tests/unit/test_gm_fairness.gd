@@ -1,18 +1,21 @@
 extends TestCase
 ## Generated battlefields are fair (MapFairness): balanced cover between the two halves, part
 ## of each deployment zone out of the other's sight, and every objective reachable on foot
-## by Size 1, 2 and 3. 50 seeds for every landscape, cycling through every sitrep layout,
-## hex and square grids and map sizes 20-40.
+## by Size 1, 2 and 3. Seeds for every landscape, cycling through every sitrep layout, hex
+## and square grids and map sizes 20-40: 5 per landscape by default (fast), the full 50 with
+## LANCER_SLOW_TESTS=1.
 
-const SEEDS := 50
+const SEEDS_FAST := 5
+const SEEDS_SLOW := 50
 const SITREPS := ["sitrep_standardcombat", "sitrep_control", "sitrep_holdout", "sitrep_gauntlet",
 	"sitrep_escort", "sitrep_extraction", "sitrep_recon"]
 
 
-func test_every_landscape_is_fair_for_50_seeds() -> void:
+func test_every_landscape_is_fair() -> void:
+	var seeds := SEEDS_SLOW if OS.get_environment("LANCER_SLOW_TESTS") == "1" else SEEDS_FAST
 	for land: String in TerrainGen.LANDSCAPES:
 		var fails: Array = []
-		for s in range(SEEDS):
+		for s in range(seeds):
 			var rng := RandomNumberGenerator.new()
 			rng.seed = hash([land, s, "layout"])
 			var wr := RandomNumberGenerator.new()
@@ -26,7 +29,7 @@ func test_every_landscape_is_fair_for_50_seeds() -> void:
 			var r := MapFairness.check(bf["map"], bf["layout"], h)
 			if not r["ok"]:
 				fails.append("seed %d %s %dx%d: cover %s hidden %s %s" % [s, sitrep, w, h, r["cover"], r["hidden"], r["unreachable"]])
-		expect(fails.is_empty(), "%s: %d/%d unfair maps, e.g. %s" % [land, fails.size(), SEEDS, fails.slice(0, 2)])
+		expect(fails.is_empty(), "%s: %d/%d unfair maps, e.g. %s" % [land, fails.size(), seeds, fails.slice(0, 2)])
 
 
 func test_control_zones_are_mirrored() -> void:
@@ -81,3 +84,17 @@ func test_lava_and_boiling_mud_are_dangerous() -> void:
 				expect(col.has_tag(BattleMap.TAG_DANGEROUS), "%s %s liquid is dangerous" % [land, c])
 				hazards += 1
 		expect(hazards > 10, "%s has hazards (%d)" % [land, hazards])
+
+
+func test_city_maps_have_balanced_destructible_cover() -> void:
+	for culture: String in ["ruins", "cyberpunk", "medieval"]:
+		for s in range(3):
+			var rng := RandomNumberGenerator.new()
+			rng.seed = s
+			var wr := RandomNumberGenerator.new()
+			wr.seed = s + 11
+			var bf := MissionGenerator.battlefield(rng, wr, "sitrep_standardcombat", 30, 26, GridLayout.Shape.SQUARE, "city", culture)
+			var f: Dictionary = bf["fairness"]
+			var total: int = f["destructible"][0] + f["destructible"][1]
+			expect(total >= 12, "%s seed %d: destructible cover %d" % [culture, s, total])
+			expect(f["ok"], "%s seed %d fair: %s" % [culture, s, f])

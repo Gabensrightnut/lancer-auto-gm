@@ -9,6 +9,7 @@ const MEASURE := 4.0
 
 var _view: BattleView
 var _frames: PackedFloat32Array = []
+var _eye: Camera3D
 
 
 func _init() -> void:
@@ -42,7 +43,7 @@ func _init() -> void:
 				break
 			_view.add_unit(v["units"][id])
 			n += 1
-		for cam: String in ["wide", "close"]:
+		for cam: String in ["wide", "close", "eye"]:
 			_aim(state.map, cam)
 			var r := await _measure()
 			print("%-24s %-5s %d units  avg %5.1f fps  1%% low %5.1f fps  (%d frames)" % [kit, cam, n, r[0], r[1], r[2]])
@@ -58,6 +59,22 @@ func _aim(map: BattleMap, cam: String) -> void:
 		hi = Vector3(maxf(hi.x, p.x), 0, maxf(hi.z, p.z))
 	var mid := (lo + hi) * 0.5
 	var t := _view.tactical
+	if _eye:
+		_eye.queue_free()
+		_eye = null
+		t.camera.current = true
+	if cam == "eye":
+		# Cockpit height: a mech's eye about 1.1 units above the ground, looking across.
+		var c := map.grid.from_world(mid)
+		_eye = Camera3D.new()
+		_eye.fov = 75.0
+		_eye.near = 0.02
+		_eye.far = 400.0
+		_view.add_child(_eye)
+		_eye.position = map.grid.to_world(c) + Vector3.UP * (map.ground_height(c) + 1.1)
+		_eye.look_at(_eye.position + Vector3(0.5, -0.1, -1.0), Vector3.UP)
+		_eye.current = true
+		return
 	if cam == "close":
 		t.look_at_point(mid + Vector3(0, 1, 0), 12.0)
 		t.pitch = -32
@@ -83,9 +100,12 @@ func _measure() -> Array:
 		last = now
 		_frames.append(dt)
 		t += dt
-		# Slowly orbit so the view keeps changing.
-		_view.tactical.yaw += 20.0 * dt
-		_view.tactical.snap()
+		# Slowly turn so the view keeps changing.
+		if _eye:
+			_eye.rotate_y(deg_to_rad(20.0) * dt)
+		else:
+			_view.tactical.yaw += 20.0 * dt
+			_view.tactical.snap()
 	var sorted := _frames.duplicate()
 	sorted.sort()
 	var total := 0.0

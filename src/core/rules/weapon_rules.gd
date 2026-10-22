@@ -38,6 +38,14 @@ static func variant(w: Dictionary, params: Dictionary) -> Dictionary:
 		if Weapons.AREA_TYPES.has(pat) and Weapons.range_value(w, pat) > 0:
 			out = out.duplicate(true)
 			out["range"] = (out["range"] as Array).filter(func(r: Dictionary) -> bool: return not Weapons.AREA_TYPES.has(r.get("type", "")) or r["type"] == pat)
+	if TalentRules.AMMO.has(String(params.get("ammo", ""))):
+		# Walking Armory special ammunition (talents: Walking Armory 1).
+		var ammo: Dictionary = TalentRules.AMMO[String(params["ammo"])]
+		out = out.duplicate(true)
+		for d: Dictionary in out.get("damage", []):
+			d["type"] = ammo["type"]
+		if ammo.has("tag"):
+			out["tags"] = (out.get("tags", []) as Array).filter(func(t: Dictionary) -> bool: return t.get("id", "") != ammo["tag"]["id"]) + [ammo["tag"]]
 	return out
 
 

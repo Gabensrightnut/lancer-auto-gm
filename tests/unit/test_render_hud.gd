@@ -207,3 +207,16 @@ func test_weapon_mod_shows_on_the_card() -> void:
 	expect(not weapon.is_empty() and weapon[0].get("mod") is Dictionary, "the modded weapon carries its mod")
 	expect_eq(String(weapon[0]["mod"]["name"]), "Thermal Charge")
 	expect(String(weapon[0]["mod"]["text"]) != "", "with what it does")
+
+
+func test_mission_objectives_follow_the_phase() -> void:
+	var view := BattleView.new()
+	view.set_map(BattleMap.flat(GridLayout.Shape.HEX, 10, 10), "grassy_hills")
+	view.show_mission({"zones": {"zone_1": [[2, 2], [2, 3]], "true_zone": [[5, 5]], "_secret": [[6, 6]]},
+		"deployment": {"players": [[1, 8]], "enemies": [[1, 1]]}}, GameState.PHASE_SETUP)
+	var shown: Array = view.terrain.objectives
+	expect_eq((shown[0] as Dictionary).keys(), ["zone_1"], "secret zones are never drawn")
+	expect(bool(shown[2]), "deployment areas show during setup")
+	view.set_phase(GameState.PHASE_COMBAT)
+	expect(not bool(view.terrain.objectives[2]), "and go away once combat starts")
+	view.free()

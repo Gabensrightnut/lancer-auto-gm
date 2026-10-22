@@ -386,6 +386,16 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 			check["defense"] = p["defense_name"]
 			check["target_label"] = p["defense_name"]
 			result = ("crit" if check["crit"] else "hit") if check["success"] else "miss"
+		if result == "miss" and not invisible_miss and TalentRules.valiant_aid(state, attacker, target) != null:
+			# Exemplar Valiant Aid: the ally rerolls and must keep the second result.
+			events.append({"type": "attack_rerolled", "attacker": attacker.id, "target": target.id, "first": check,
+				"source": "Valiant Aid", "rule_ref": "talents: Exemplar"})
+			check = state.dice.check(p["bonus"], p["accuracy"], p["difficulty"], p["target_number"], p["sources"])
+			check["bonus_sources"] = p["bonus_sources"]
+			check["bonuses"] = p["bonus_sources"]
+			check["defense"] = p["defense_name"]
+			check["target_label"] = p["defense_name"]
+			result = ("crit" if check["crit"] else "hit") if check["success"] else "miss"
 		if Effects.has(target, "attack_paralysis") and int(check["d20"]) <= 2:
 			# Gorgon Metastatic Paralysis: a 1-2 misses and Stuns the attacker.
 			result = "miss"
@@ -404,6 +414,7 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 	if not invisible_miss:
 		GearSystems.attack_rolled(attacker, kind, result != "miss")
 		TalentRules.after_roll(state, attacker, w, target, kind, result, p["lock_on"])
+	events.append_array(TalentRules.exemplar_mark(state, attacker, target, opts))
 	if result == "hit" and GearSystems.markerlight_crit(state, attacker, target):
 		result = "crit"  # Markerlight: a weak spot
 		events[events.size() - 1]["result"] = "crit"
@@ -679,7 +690,8 @@ static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array,
 	resist_all = resist_all or sim["resist_all"]
 	var brace := false
 	# Objects (deployables, terrain) don't Brace.
-	if not unreducible and target.kind != Unit.KIND_DEPLOYABLE and Reactions.can_react(target, "brace", state).ok and not parts.is_empty():
+	if not unreducible and target.kind != Unit.KIND_DEPLOYABLE and Reactions.can_react(target, "brace", state).ok and not parts.is_empty() \
+			and (not Rulings.lancer_tactics(state, "lt_brace_prompt") or _brace_worthwhile(target, parts, ap)):
 		var d := Reactions.offer(state, target, "brace", {"attacker": attacker.id, "damage": parts, "ap": ap},
 			{"take": _wants_brace(target, parts, ap)})
 		brace = d.get("take", false)
@@ -808,6 +820,21 @@ static func roll_damage(state: GameState, expr: String, crit: bool, overkill: bo
 
 
 ## Knockback / pushes: involuntary straight-line movement (glossary: Involuntary Movement).
+## Lancer Tactics' Brace prompt: only when the hit would take the target to 0 HP (structure
+## damage), overheat it (stress), or deal more than half its HP.
+static func _brace_worthwhile(target: Unit, parts: Array, ap: bool) -> bool:
+	var dmg := 0
+	var heat := 0
+	for p: Dictionary in parts:
+		if String(p.get("type", "")) == "Heat":
+			heat += int(p.get("amount", 0))
+		elif String(p.get("type", "")) != "Burn":
+			dmg += int(p.get("amount", 0))
+	if not ap:
+		dmg = maxi(0, dmg - target.armor)
+	return dmg >= target.hp + target.overshield or dmg * 2 > target.max_hp or (target.heat_cap > 0 and target.heat + heat > target.heat_cap)
+
+
 static func knock_back(state: GameState, target: Unit, origin: Vector2i, spaces: int, by: Unit = null) -> Array[Dictionary]:
 	var anchor := GearSystems.flash_anchor(state, target, "knockback")
 	if anchor["prevented"]:

@@ -13,7 +13,7 @@ class QuickTech:
 
 	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
 		var used: Array = u.turn.get("quick_tech", [])
-		if used.has(type()) and int(u.turn.get("free_quick", 0)) <= 0:
+		if used.has(type()) and int(u.turn.get("free_quick", 0)) <= 0 and not Rulings.lancer_tactics(state, "lt_repeat_quick_tech"):
 			return RuleResult.deny("Pick a different Quick Tech option: each can be used once per turn.", "actions: Quick Tech")
 		return check_tech(state, u, state.unit(String(params.get("target", ""))))
 

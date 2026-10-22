@@ -200,3 +200,43 @@ func test_weather_is_look_only() -> void:
 		expect_eq(a.surface(c), b.surface(c))
 	_free(a)
 	_free(b)
+
+
+func test_destroyed_buildings_come_down_to_the_new_data() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 2
+	var wr := RandomNumberGenerator.new()
+	wr.seed = 3
+	var bf := MissionGenerator.battlefield(rng, wr, "sitrep_standardcombat", 24, 22, GridLayout.Shape.HEX, "city", "ruins")
+	var map: BattleMap = bf["map"]
+	var t := _build(map, "city/ruins")
+	var newer := BattleMap.from_dict(map.to_dict())
+	var knocked: Array[Vector2i] = []
+	for c in newer.cells():
+		if t.structure_cells.has(c) and newer.column(c).has_tag(BattleMap.TAG_DESTRUCTIBLE) and knocked.size() < 6:
+			newer.column(c).ground = 0
+			newer.column(c).tags = PackedStringArray([BattleMap.TAG_DIFFICULT])
+			knocked.append(c)
+	expect(knocked.size() > 0, "the city has breakable buildings")
+	var broke := t.sync_map(newer)
+	expect_eq(broke.size(), knocked.size(), "each knocked-down building cell breaks")
+	for c in knocked:
+		expect(not t.structure_cells.has(c), "%s is no longer drawn as a building" % c)
+		expect_eq(t.surface(c), TerrainRenderer.KIND_ROUGH, "%s is rubble (difficult)" % c)
+	_free(t)
+
+
+func test_objective_markers_replace_and_clear() -> void:
+	var map := BattleMap.flat(GridLayout.Shape.HEX, 12, 10)
+	var t := _build(map, "grassy_hills")
+	var zones := {"zone_1": [[2, 2], [3, 2]], "zone_2": [[6, 6]]}
+	t.show_objectives(zones, {})
+	t.show_objectives(zones, {})
+	var count := 0
+	for c in t.get_children():
+		if String(c.name).begins_with("Objectives"):
+			count += 1
+	expect_eq(count, 1, "showing objectives again replaces the old markers")
+	t.show_objectives({})
+	expect(t.get_node_or_null("Objectives") == null, "empty zones clear the markers")
+	_free(t)
