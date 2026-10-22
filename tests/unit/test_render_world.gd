@@ -224,3 +224,19 @@ func test_destroyed_buildings_come_down_to_the_new_data() -> void:
 		expect(not t.structure_cells.has(c), "%s is no longer drawn as a building" % c)
 		expect_eq(t.surface(c), TerrainRenderer.KIND_ROUGH, "%s is rubble (difficult)" % c)
 	_free(t)
+
+
+func test_objective_markers_replace_and_clear() -> void:
+	var map := BattleMap.flat(GridLayout.Shape.HEX, 12, 10)
+	var t := _build(map, "grassy_hills")
+	var zones := {"zone_1": [[2, 2], [3, 2]], "zone_2": [[6, 6]]}
+	t.show_objectives(zones, {})
+	t.show_objectives(zones, {})
+	var count := 0
+	for c in t.get_children():
+		if String(c.name).begins_with("Objectives"):
+			count += 1
+	expect_eq(count, 1, "showing objectives again replaces the old markers")
+	t.show_objectives({})
+	expect(t.get_node_or_null("Objectives") == null, "empty zones clear the markers")
+	_free(t)

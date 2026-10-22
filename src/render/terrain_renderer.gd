@@ -125,10 +125,14 @@ func _draw_objectives() -> void:
 	var old := get_node_or_null("Objectives")
 	if old:
 		remove_child(old)
-		old.queue_free() if is_inside_tree() else old.free()
+		if is_inside_tree():
+			old.queue_free()
+		else:
+			old.free()
 	if objectives.is_empty() or map == null:
 		return
 	var m := ObjectiveMarkers.new()
+	m.name = "Objectives"
 	add_child(m)
 	m.setup(self, objectives[0], objectives[1], objectives[2])
 
