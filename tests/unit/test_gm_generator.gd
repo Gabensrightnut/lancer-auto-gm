@@ -313,13 +313,17 @@ func test_maps_are_built_on_purpose() -> void:
 	var city := TerrainGen.generate(rng2, 40, 40, GridLayout.Shape.SQUARE, {}, "city", "cyberpunk")
 	var lanes := 0
 	var crossings := 0
+	var vehicles := 0
 	for c in city.cells():
 		var col := city.column(c)
 		if col.has_tag("road") and col.gap_top == 0:
-			expect(not col.has_tag(BattleMap.TAG_DIFFICULT) and not col.has_tag(Sight.TAG_SOFT_COVER), "roads are open ground")
+			# The road itself is open ground; a parked vehicle on it is an object (soft cover).
+			expect(not col.has_tag(BattleMap.TAG_DIFFICULT) and (col.has_tag("vehicle") or not col.has_tag(Sight.TAG_SOFT_COVER)), "roads are open ground")
+			vehicles += 1 if col.has_tag("vehicle") else 0
 			lanes += 1 if not col.has_tag("crossing") else 0
 			crossings += 1 if col.has_tag("crossing") else 0
 	expect(lanes > 40 and crossings > 0 and crossings < lanes, "streets %d, crossings %d" % [lanes, crossings])
+	expect(vehicles > 3, "parked vehicles along the curbs: %d" % vehicles)
 
 
 func test_boarding_maps_dock_two_ships() -> void:
@@ -409,11 +413,34 @@ func test_exploring_areas_join_up() -> void:
 			var e: Array = a["entries"][edge]
 			var col := m.column(Vector2i(e[0], e[1]))
 			expect(col.has_tag("road") and m.ground_height(Vector2i(e[0], e[1])) == 0, "%s: a road out at ground level" % edge)
-		var rough := 0
+		var blocked_seam := 0
 		for c in m.cells():
 			if c.x < TerrainGen.AREA_EDGE or c.y < TerrainGen.AREA_EDGE or c.x >= 50 - TerrainGen.AREA_EDGE or c.y >= 50 - TerrainGen.AREA_EDGE:
-				rough += 1 if m.ground_height(c) != 0 or m.column(c).has_tag(BattleMap.TAG_IMPASSABLE) else 0
-		expect_eq(rough, 0, "the seam along the edges is level and open")
+				blocked_seam += 1 if m.ground_height(c) > 1 or m.column(c).has_tag(BattleMap.TAG_IMPASSABLE) else 0
+		expect_eq(blocked_seam, 0, "the seam along the edges is low, open ground")
+
+
+func test_neighbouring_areas_share_their_edge() -> void:
+	# "A mile down the road": the area east of this one continues the same ground across the
+	# edge they share, and each area holds what its place on the region map holds.
+	var region := {"seed": 77, "landscape": "grassy_hills", "culture": "old_west", "weather": ""}
+	var here := MissionGenerator.area(1, {"region": region, "at": [0, 0], "place": "outskirts", "shape": "square", "size": 40})
+	var east := MissionGenerator.area(2, {"region": region, "at": [1, 0], "place": "wilds", "shape": "square", "size": 40})
+	var a: BattleMap = here["map"]
+	var b: BattleMap = east["map"]
+	var differ := 0
+	for r in range(TerrainGen.AREA_EDGE, 40 - TerrainGen.AREA_EDGE):
+		var ca := a.column(Vector2i(39, r))
+		var cb := b.column(Vector2i(0, r))
+		if ca.ground != cb.ground or ca.has_tag("woods") != cb.has_tag("woods") or ca.has_tag("road") != cb.has_tag("road"):
+			differ += 1
+	expect_eq(differ, 0, "the shared edge matches row for row")
+	var houses := func(m: BattleMap) -> int:
+		var n := 0
+		for c in m.cells():
+			n += 1 if m.column(c).has_tag("house") or m.column(c).has_tag("building") else 0
+		return n
+	expect(houses.call(a) > 0 and houses.call(b) == 0, "a village at the outskirts, open country in the wilds")
 
 
 func test_no_rock_against_buildings() -> void:
@@ -489,3 +516,21 @@ func test_roads_have_a_hierarchy_and_no_bare_city_ground() -> void:
 				railed += 1
 				break
 	expect(railed >= 3, "railways past some frontier towns: %d of 8" % railed)
+
+
+func test_no_two_towns_alike() -> void:
+	# Twenty hub towns: each its own order of buildings round the square, spacing, distances
+	# and sizes, and each its own look (sun, palette) from its seed.
+	var layouts := {}
+	var looks := {}
+	for s in range(1, 21):
+		var rng := RandomNumberGenerator.new()
+		rng.seed = s
+		var sig: Array = []
+		for sp: Dictionary in HubLayout.spots("town", rng):
+			sig.append("%s@%d,%d:%d" % [sp["kind"], int(float(sp["pos"][0])), int(float(sp["pos"][1])), int(float(sp["size"][0]) * 10.0)])
+		layouts[" ".join(sig)] = true
+		var style := WorldStyle.resolve("desert_mesas/old_west#%d" % s)
+		looks["%d|%s" % [int(float(style["light"]["sun_yaw"])), str(style["architecture"]["walls"])]] = true
+	expect_eq(layouts.size(), 20, "twenty different town layouts")
+	expect_eq(looks.size(), 20, "twenty different town looks")

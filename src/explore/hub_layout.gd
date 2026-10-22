@@ -32,16 +32,36 @@ static func spots(kind: String, rng: RandomNumberGenerator, names: Dictionary = 
 	var pool := func(k: String) -> Array: return (names.get(k, []) as Array) + (names.get(k, []) as Array) + (SPOT_NAMES[k] as Array) if names.has(k) else SPOT_NAMES[k]
 	var plaza_name := _pick(rng, pool.call("plaza"))
 	out.append(_spot("plaza", plaza_name, Vector2.ZERO, 0.0, door_gap))
+	# No two towns alike: the buildings come in their own order around the square, unevenly
+	# spaced (a wide gap where the road comes in), at their own distances and sizes.
 	var order := RING.duplicate()
+	for i in range(order.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var t: Variant = order[i]
+		order[i] = order[j]
+		order[j] = t
 	if kind == "station":
 		order.erase("landing")
 		order.append("landing")
 	var start := rng.randf_range(0.0, TAU)
+	var gap := rng.randf_range(0.0, 0.9)  # extra room after one building: the way in
+	var gap_at := rng.randi_range(0, order.size() - 1)
+	var step := (TAU - gap) / order.size()
+	var a := start
 	for i in range(order.size()):
-		var a := start + TAU * i / order.size() + rng.randf_range(-0.15, 0.15)
-		var r := rng.randf_range(15.0, 19.0)
+		var r := rng.randf_range(14.0, 21.0)
 		var pos := Vector2(cos(a), sin(a)) * r
-		out.append(_spot(order[i], _pick(rng, pool.call(order[i])), pos, a, door_gap))
+		var spot := _spot(order[i], _pick(rng, pool.call(order[i])), pos, a, door_gap)
+		if order[i] != "landing":
+			var sz: Array = spot["size"]
+			var k := rng.randf_range(0.82, 1.22)
+			spot["size"] = [snappedf(float(sz[0]) * k, 0.1), snappedf(float(sz[1]) * rng.randf_range(0.85, 1.15), 0.1), snappedf(float(sz[2]) * rng.randf_range(0.85, 1.3), 0.1)]
+			# The door stays just outside the (resized) front.
+			var inward := -Vector2(cos(a), sin(a))
+			var door := pos + inward * (float(spot["size"][1]) / 2.0 + door_gap)
+			spot["door"] = [door.x, door.y]
+		out.append(spot)
+		a += step + rng.randf_range(-0.12, 0.12) + (gap if i == gap_at else 0.0)
 	return out
 
 
