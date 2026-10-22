@@ -7,18 +7,19 @@
     "reinforcements": "Chance per round, after round 2, that reinforcements arrive (missions that allow them).",
     "difficulty": "Multiplies the enemy encounter budget.",
     "randomness": "How unpredictable choices are (noise added to every score).",
+    "approach": "Basic Combat: the most rows between the two deployment zones (0 = the map edges). 14 means first contact by about turn 2 for Speed 4 mechs.",
     "environments": "Chance that weather or a world that suggests a rules environment (sandstorm, blizzard, low gravity...) brings that environment's rules into the mission."
   },
   "presets": {
-    "Standard": {"aggression": 0.7, "caution": 0.55, "focus_fire": 0.8, "reinforcements": 0.25, "difficulty": 1.4, "randomness": 0.15, "environments": 0.5,
+    "Standard": {"aggression": 0.7, "caution": 0.55, "focus_fire": 0.8, "reinforcements": 0.25, "difficulty": 1.4, "randomness": 0.15, "environments": 0.5, "approach": 14,
       "description": "A real fight: about one and a half enemies per pilot that use cover, gang up on whoever is hurt, and call in reinforcements. Expect to lose mechs."},
-    "Ruthless": {"aggression": 0.9, "caution": 0.45, "focus_fire": 1.0, "reinforcements": 0.4, "difficulty": 1.75, "randomness": 0.05, "environments": 0.75,
+    "Ruthless": {"aggression": 0.9, "caution": 0.45, "focus_fire": 1.0, "reinforcements": 0.4, "difficulty": 1.75, "randomness": 0.05, "environments": 0.75, "approach": 12,
       "description": "Enemies gang up on the weakest pilot and press every advantage."},
-    "Cautious": {"aggression": 0.3, "caution": 0.9, "focus_fire": 0.6, "reinforcements": 0.15, "difficulty": 1.25, "randomness": 0.2, "environments": 0.5,
+    "Cautious": {"aggression": 0.3, "caution": 0.9, "focus_fire": 0.6, "reinforcements": 0.15, "difficulty": 1.25, "randomness": 0.2, "environments": 0.5, "approach": 18,
       "description": "Enemies hug cover, keep their distance and pull back when hurt."},
-    "Chaotic": {"aggression": 0.65, "caution": 0.3, "focus_fire": 0.1, "reinforcements": 0.4, "difficulty": 1.25, "randomness": 1.0, "environments": 0.75,
+    "Chaotic": {"aggression": 0.65, "caution": 0.3, "focus_fire": 0.1, "reinforcements": 0.4, "difficulty": 1.25, "randomness": 1.0, "environments": 0.75, "approach": 12,
       "description": "Unpredictable: wild moves, scattered attacks, surprise reinforcements."},
-    "Teaching": {"aggression": 0.4, "caution": 0.4, "focus_fire": 0.0, "reinforcements": 0.0, "difficulty": 0.75, "randomness": 0.3, "environments": 0.0,
+    "Teaching": {"aggression": 0.4, "caution": 0.4, "focus_fire": 0.0, "reinforcements": 0.0, "difficulty": 0.75, "randomness": 0.3, "environments": 0.0, "approach": 12,
       "description": "Gentle: smaller fights, spread-out attacks, and every enemy move explained.", "explain": true}
   }
 }
