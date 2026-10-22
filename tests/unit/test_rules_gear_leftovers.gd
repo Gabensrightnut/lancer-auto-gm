@@ -250,3 +250,164 @@ func test_grapple_swing() -> void:
 	expect(F.ok(out), F.reason(out))
 	expect(not a.flying, "landed on a surface")
 	expect(not F.ok(F.act(e, s, "move", "a", {"to": [3, 2], "swing": true})), "once per turn")
+
+
+func test_lifting_and_flying_carry_limit() -> void:
+	_setup([], Vector2i(1, 0))
+	t.side = "players"
+	var out := F.act(e, s, "drag", "a", {"target": "t", "lift": true})
+	expect(F.ok(out), F.reason(out))
+	expect(a.has_status("Immobilized"), "Immobilized while lifting")
+	F.act(e, s, "release_drag", "a")
+	expect(not a.has_status("Immobilized"))
+	var big := F.mech(s, "big", "players", Vector2i(0, 1), 2.0)
+	expect(not F.ok(F.act(e, s, "drag", "a", {"target": "big", "lift": true})), "lift only your Size or smaller")
+	a.flight = "flight"
+	F.act(e, s, "drag", "a", {"target": "t"})
+	expect(not F.ok(F.act(e, s, "move", "a", {"to": [0, 3], "fly": true})), "flying carries at most Size 1/2")
+
+
+func test_ghast_nexus_drone() -> void:
+	_setup([], Vector2i(11, 0))
+	s.units.erase("a")
+	a = UnitFactory.build_mech(db(), "a", "mf_standard_pattern_i_everest", {"mounts": [{"weapons": []}, {"weapons": []}, {"weapons": ["mw_ghast_nexus"]}], "systems": []}, {"ll": 12})
+	a.side = "players"
+	s.add_unit(a)
+	s.active_unit = "a"
+	a.turn = {"quick": 0, "full": false, "taken": [], "quick_tech": [], "move_spent": 0, "moved": false, "acted": false, "overcharged": false, "free_quick": 0}
+	var key: String = Weapons.find(a, "2:0")["key"]
+	expect(not F.ok(F.act(e, s, "skirmish", "a", {"weapon": key, "target": "t"})), "11 away: out of Range 10")
+	var out := F.act(e, s, "activate", "a", {"ability": _key("Deploy Ghast Drone"), "to": [6, 0]})
+	expect(F.ok(out), F.reason(out))
+	expect(F.ok(F.act(e, s, "skirmish", "a", {"weapon": key, "target": "t"})), "Range traced from the drone")
+
+
+func test_dimensional_emblems_and_shackles() -> void:
+	_setup(["ms_h0r_os_system_upgrade_iii"], Vector2i(4, 4))
+	F.load_dice(s, [19])
+	var out := F.act(e, s, "activate", "a", {"ability": _key("Dimensional Emblems"), "target": "t"})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(Zones.of_kind(s, "emblem").size(), 3, "three constructs around the target")
+	F.act(e, s, "end_turn", "a")
+	s.acted = PackedStringArray()
+	s.turn_side = "players"
+	F.act(e, s, "start_turn", "a")
+	F.load_dice(s, [19])
+	out = F.act(e, s, "activate", "a", {"ability": _key("Celestial Shackles"), "target": "t"})
+	expect(F.ok(out), F.reason(out))
+	t.cell = Vector2i(8, 8)
+	out = F.act(e, s, "shackle_return", "a", {"target": "t"})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(t.cell, Vector2i(4, 4), "pulled back to its marked space")
+
+
+func test_puppet_system_and_law_of_blades() -> void:
+	_setup(["ms_h0r_os_system_upgrade_i", "ms_law_of_blades"], Vector2i(4, 0))
+	var other := F.mech(s, "o", "enemies", Vector2i(6, 0))
+	F.load_dice(s, [19])
+	var out := F.act(e, s, "activate", "a", {"ability": _key("Puppet System"), "target": "t", "toward": [4, 5]})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(t.cell, Vector2i(4, 4), "moves its full Speed where you choose")
+	F.act(e, s, "end_turn", "a")
+	s.acted = PackedStringArray()
+	s.turn_side = "players"
+	F.act(e, s, "start_turn", "a")
+	t.cell = Vector2i(5, 0)
+	F.load_dice(s, [19, 15, 3])
+	out = F.act(e, s, "activate", "a", {"ability": _key("Predator/Prey Concepts"), "target": "t", "forced_target": "o"})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(F.events_of(out, "attack_rolled").filter(func(x: Dictionary) -> bool: return x["attacker"] == "t" and x["target"] == "o").size(), 1, "it shoots its friend")
+
+
+func test_metahook_shares_heat_and_systems() -> void:
+	_setup(["ms_metahook"], Vector2i(9, 9))
+	var ally := F.mech(s, "ally", "players", Vector2i(0, 2))
+	a.systems = 4
+	var out := F.act(e, s, "activate", "a", {"ability": _key("Metahook"), "target": "ally"})
+	expect(F.ok(out), F.reason(out))
+	var check := Combat.skill_check(s, ally, "systems", "test", 10)
+	expect_eq(check["bonus"], 4, "the ally uses the Goblin's Systems")
+	Combat.apply_heat(s, ally, 2, "test")
+	expect_eq(a.heat, 2, "heat is shared")
+	Combat.add_status(s, a, "Jammed", "test")
+	expect(ally.has_status("Jammed"), "conditions are shared")
+
+
+func test_sisyphus() -> void:
+	_setup(["ms_sisyphus_class_nhp"], Vector2i(4, 0))
+	F.load_dice(s, [19, 2])
+	var out := F.act(e, s, "activate", "a", {"ability": _key("Bend Probability")})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(a.counters["bent"], [19, 2])
+	F.act(e, s, "end_turn", "a")
+	F.act(e, s, "start_turn", "t")
+	F.load_dice(s, [18, 3])  # t would hit a (18 vs Evasion 8)...
+	out = F.act(e, s, "skirmish", "t", {"weapon": "0:0", "target": "a"})
+	var roll: Dictionary = F.events_of(out, "attack_rolled")[0]
+	expect_eq(roll["result"], "miss", "...but the Goblin's 2 replaces the d20")
+	expect_eq(int(a.counters["bent_uses"]), 1)
+	var check := Combat.skill_check(s, t, "hull", "test", 10)
+	expect(check.get("reroll_source", "") == "", "a reaction per turn: no second use this turn")
+
+
+func test_mesmer_beacon_and_mimic_mesh() -> void:
+	_setup(["ms_mesmer_charges", "ms_mimic_mesh"], Vector2i(4, 0))
+	var ally := F.mech(s, "ally", "players", Vector2i(0, 4))
+	F.load_dice(s, [3])
+	var out := F.act(e, s, "activate", "a", {"ability": _key("Mesmer Beacon"), "target": "t"})
+	expect(F.ok(out), F.reason(out))
+	out = F.act(e, s, "activate", "a", {"ability": _key("Activate Mimic Mesh"), "target": "ally"})
+	expect(F.ok(out), F.reason(out))
+	F.act(e, s, "end_turn", "a")
+	F.act(e, s, "start_turn", "t")
+	expect(not F.ok(F.act(e, s, "move", "t", {"to": [6, 0]})), "mesmerized: only toward the Minotaur")
+	expect(F.ok(F.act(e, s, "move", "t", {"to": [3, 1]})), "toward is fine")
+	F.load_dice(s, [2])
+	out = F.act(e, s, "skirmish", "t", {"weapon": "0:0", "target": "ally"})
+	expect(Sight.unit_distance(s, a, ally) < 4, "Battlefield Awareness: moved toward the ally first")
+
+
+func test_guide_the_flock_and_annihilation_secondary() -> void:
+	_setup(["ms_puppetmaster"], Vector2i(9, 9))
+	var drone := F.mech(s, "d", "enemies", Vector2i(3, 3), 0.5)
+	drone.kind = Unit.KIND_DEPLOYABLE
+	drone.counters["deploy_type"] = "Drone"
+	var out := F.act(e, s, "activate", "a", {"ability": _key("Guide the Flock"), "moves": [{"drone": "d", "to": [6, 3]}]})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(drone.cell, Vector2i(6, 3), "anyone's drone, up to 4 spaces")
+	s.units.erase("a")
+	a = UnitFactory.build_mech(db(), "a", "mf_standard_pattern_i_everest", {"mounts": [{"weapons": []}, {"weapons": []}, {"weapons": ["mw_annihilation_nexus"]}], "systems": []}, {"ll": 12})
+	a.side = "players"
+	s.add_unit(a)
+	s.active_unit = "a"
+	a.turn = {"quick": 0, "full": false, "taken": [], "quick_tech": [], "move_spent": 0, "moved": false, "acted": false, "overcharged": false, "free_quick": 0}
+	var key := _key("Annihilation Nexus Secondary Attack")
+	expect(key != "", "the weapon's protocol")
+	expect(not F.ok(F.act(e, s, "activate", "a", {"ability": key})), "only after attacking with it last turn")
+	a.counters["annihilation_round"] = s.round_number - 1
+	t.cell = Vector2i(1, 1)
+	F.load_dice(s, [15, 3])
+	out = F.act(e, s, "activate", "a", {"ability": key})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(F.events_of(out, "area_attack").size(), 1, "the second Burst")
+
+
+func test_perimeter_command_plate_and_assassin_drone() -> void:
+	_setup(["ms_perimeter_command_plate", "ms_assassin_drone"], Vector2i(6, 0))
+	var out := F.act(e, s, "activate", "a", {"ability": _key("Print Perimeter Command Plate"), "aim": [3, 0], "setting": "attract"})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(Zones.of_kind(s, "pcp").size(), 1)
+	out = F.act(e, s, "activate", "a", {"ability": _key("Deploy Assassin Drone"), "to": [0, 1], "aim": [5, 4]})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(Zones.of_kind(s, "assassin").size(), 1, "the drone's Blast 2 area")
+	F.act(e, s, "end_turn", "a")
+	F.act(e, s, "start_turn", "t")
+	F.load_dice(s, [3])
+	F.act(e, s, "move", "t", {"to": [4, 0]})
+	expect(t.has_status("Immobilized"), "Attract: failed Hull save")
+	t.statuses.erase("Immobilized")
+	t.cell = Vector2i(9, 4)
+	t.turn["move_spent"] = 0
+	F.load_dice(s, [15])
+	out = F.act(e, s, "move", "t", {"to": [7, 4]})
+	expect_eq(t.hp, 37, "Area Denial: 3 kinetic as it entered the area")

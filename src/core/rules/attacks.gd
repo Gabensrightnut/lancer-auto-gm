@@ -286,6 +286,7 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 	var afterimage: bool = target.counters.get("afterimage", false)
 	if afterimage:
 		target.counters.erase("afterimage")  # Flicker Field: Invisible the next time it's attacked
+	events.append_array(GearSystems.battlefield_awareness(state, attacker, target))  # Mimic Mesh
 	var barrier := Zones.wall_field_between(state, attacker, target)
 	if barrier.get("flavor", "") == "stasis" and kind != KIND_TECH and not target.has_status("Invisible"):
 		# Stasis Barrier: on 4+ on 1d6 the attack is consumed with no effect at all.
@@ -381,6 +382,7 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 			var again := state.dice.check(p["bonus"], p["accuracy"], p["difficulty"], p["target_number"], p["sources"])
 			if int(again["total"]) > int(check["total"]):
 				check = again
+		check = GearSystems.sisyphus(state, attacker, check)  # SISYPHUS: Probabilistic Cannibalism
 		TalentRules.used_sources(state, attacker, p["sources"])
 		TalentRules.used_leadership(attacker, opts)
 		check["bonus_sources"] = p["bonus_sources"]
@@ -988,6 +990,11 @@ static func tech_target_check(state: GameState, user: Unit, target: Unit, action
 	var in_sensors := Sight.within(state, Sight.body_of(state, user), Sight.body_of(state, target), user.sensors)
 	if in_sensors["grey_area"] != "":
 		return Rulings.needed(in_sensors["grey_area"])
+	var mate := GearSystems.metahook_partner(state, user)
+	if mate != null and (not in_sensors["ok"] or not Sight.unit_line_of_sight(state, user, target)):
+		# Metahook: use the linked ally's Sensors and line of sight for tech actions.
+		if Sight.unit_distance(state, mate, target) <= mate.sensors and Sight.unit_line_of_sight(state, mate, target):
+			return RuleResult.allow()
 	if not in_sensors["ok"]:
 		return RuleResult.deny("Out of Sensors range (%d)." % user.sensors, "glossary: Sensors")
 	if not Sight.unit_line_of_sight(state, user, target):
@@ -1021,6 +1028,7 @@ static func tech_attack(state: GameState, attacker: Unit, target: Unit, label: S
 		p["difficulty"] = int(p["difficulty"]) + int(src["value"])
 	if not invisible_miss:
 		check = state.dice.check(p["bonus"], p["accuracy"], p["difficulty"], p["target_number"], p["sources"])
+		check = GearSystems.sisyphus(state, attacker, check)
 		check["bonus_sources"] = p["bonus_sources"]
 		check["defense"] = "E-Defense"
 		hit = check["success"]

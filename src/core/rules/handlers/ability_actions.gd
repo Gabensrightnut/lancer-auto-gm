@@ -75,6 +75,9 @@ class Activate:
 			"deploy":
 				for c: Vector2i in AbilityActions.spots(params):
 					events.append_array(Abilities.deploy(state, u, a, c))
+				if String(a.get("deployable", {}).get("name", "")) == "Assassin Drone":
+					for dep: Dictionary in AbilityActions._deployed(events):
+						events.append_array(GearSystems.assassin_area(state, u, state.unit(String(dep["id"])), params))
 				var extra := AbilityActions.extra_mines(params)
 				if not extra.is_empty():
 					# Iskander Mine Deployers: up to two more mines next to it, as a free action.
@@ -105,6 +108,14 @@ class Activate:
 				if hit:
 					events.append_array(AbilityActions.apply_ops(state, u, a, target, params))
 		return events
+
+
+static func _deployed(events: Array[Dictionary]) -> Array:
+	var out: Array = []
+	for ev: Dictionary in events:
+		if ev.get("type", "") == "deployed":
+			out.append(ev["object"])
+	return out
 
 
 static func spots(params: Dictionary) -> Array[Vector2i]:
@@ -275,6 +286,30 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				events.append_array(Attacks.attack(state, u, Weapons.find(u, "cbi:0"), target, {"fired_by_rule": true}))
 			"jackhammer":
 				events.append_array(TalentRules.jackhammer(state, u, target))
+			"mesmer":
+				events.append_array(GearSystems.mesmer(state, u, target))
+			"mimic_mesh":
+				events.append_array(GearSystems.mimic_mesh(state, u, target))
+			"pcp":
+				events.append_array(GearSystems.print_pcp(state, u, params))
+			"guide_flock":
+				events.append_array(GearSystems.guide_flock(state, u, params))
+			"annihilation_second":
+				events.append_array(GearSystems.annihilation_second(state, u, params))
+			"bend_probability":
+				events.append_array(GearSystems.bend_probability(state, u))
+			"puppet":
+				events.append_array(GearSystems.puppet(state, u, target, params))
+			"metahook":
+				events.append_array(GearSystems.metahook(state, u, target))
+			"predator_prey":
+				events.append_array(GearSystems.predator_prey(state, u, target, params))
+			"slave_systems":
+				events.append_array(GearSystems.slave_systems(state, u, target, params))
+			"emblems":
+				events.append_array(GearSystems.emblems(state, u, target, params))
+			"shackle":
+				events.append_array(GearSystems.shackle(u, target))
 			"fade":
 				events.append_array(GearSystems.fade(state, u, bool(op.get("on", true))))
 			"monitor":
@@ -528,6 +563,35 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 			var mt := state.unit(String(params.get("target", "")))
 			if mt == null or mt == u or mt.side != u.side or not Combat.is_present(mt) or Sight.unit_distance(state, u, mt) > 1:
 				return RuleResult.deny("Choose an adjacent allied character (params.target).", "systems: Monitor Module")
+		if op.get("op", "") == "pcp":
+			var pa: Variant = TurnAction.cell_param(params, "aim")
+			if pa == null or not state.map.has_cell(pa) or state.map.grid.distance(u.cell, pa) > 5 or not String(params.get("setting", "")) in ["repulse", "attract"]:
+				return RuleResult.deny("Choose a 2x2 space within Range 5 (params.aim) and a setting (params.setting: repulse or attract).", "systems: Perimeter Command Plate")
+		if op.get("op", "") == "guide_flock":
+			var gr := GearSystems.check_guide(state, u, params)
+			if not gr.ok:
+				return gr
+		if op.get("op", "") == "annihilation_second":
+			if int(u.counters.get("annihilation_round", -9)) != state.round_number - 1:
+				return RuleResult.deny("Only if you attacked with the Annihilation Nexus on your last turn.", "weapons: Annihilation Nexus")
+			var c := state.unit(String(params.get("center", u.id)))
+			if c == null or (c != u and (String(c.counters.get("owner", "")) != u.id or String(c.counters.get("deploy_type", "")) != "Drone" or Sight.unit_distance(state, u, c) > u.sensors)):
+				return RuleResult.deny("Center it on yourself or one of your drones within Sensors (params.center).", "weapons: Annihilation Nexus")
+		if op.get("op", "") in ["mesmer", "mimic_mesh"]:
+			var mt := state.unit(String(params.get("target", "")))
+			var reach := 5 if op["op"] == "mesmer" else u.sensors
+			if mt == null or mt == u or not Combat.is_present(mt) or Sight.unit_distance(state, u, mt) > reach or (op["op"] == "mimic_mesh" and mt.side != u.side):
+				return RuleResult.deny("Choose %s within %d." % ["a character" if op["op"] == "mesmer" else "an allied character", reach], "systems: " + String(a.get("source_name", "")))
+		if op.get("op", "") == "puppet" and TurnAction.cell_param(params, "toward") == null:
+			return RuleResult.deny("Choose the direction it moves (params.toward: a space).", "systems: H0R_OS System Upgrade I")
+		if op.get("op", "") == "metahook":
+			var mt := state.unit(String(params.get("target", "")))
+			if mt == null or mt == u or mt.side != u.side or Sight.unit_distance(state, u, mt) > u.sensors or not Sight.unit_line_of_sight(state, u, mt):
+				return RuleResult.deny("Choose an allied character within Sensors and line of sight.", "systems: Metahook")
+		if op.get("op", "") == "slave_systems" and not String(params.get("forced_action", "")) in ["boost", "stabilize", "improvised_attack", "grapple", "ram"]:
+			return RuleResult.deny("Choose its action: boost, stabilize, improvised_attack, grapple or ram (params.forced_action).", "systems: Law of Blades")
+		if op.get("op", "") == "predator_prey" and state.unit(String(params.get("forced_target", ""))) == null:
+			return RuleResult.deny("Choose who it attacks (params.forced_target).", "systems: Law of Blades")
 		if op.get("op", "") == "roller_grenade":
 			var ra: Variant = TurnAction.cell_param(params, "aim")
 			if ra == null or ra == u.cell or not state.map.has_cell(ra):
@@ -624,7 +688,7 @@ const BASIC := [
 	["end_grapple", "Let Go", "other"], ["break_free", "Break Free", "other"], ["grapple_contest", "Grapple Contest", "other"],
 	["climb_on", "Climb On", "move"], ["board", "Board", "other"], ["disembark", "Climb Out", "other"], ["cut_cable", "Cut Cable", "attack"],
 	["pull_stake", "Pull Out Stake", "other"], ["use_object", "Use Object", "other"], ["ai_control", "Hand Over to AI", "other"],
-	["break_ice", "Break Free of the Ice", "other"], ["dig_out", "Dig Out of the Mud", "other"], ["backswing", "Backswing Cut", "attack"], ["hunter_throw", "Throw Knife (Hunter)", "attack"], ["drag", "Drag", "other"], ["issue_order", "Issue Order", "other"], ["detect_mines", "Detect Mines", "tech"], ["disarm_mine", "Disarm Mine", "other"], ["ace_burst", "Afterburners (Ace)", "move"], ["release_drag", "Let Go (drag)", "other"], ["feint", "Blademaster: Feint", "other"], ["trip", "Blademaster: Trip", "attack"], ["duelist_strike", "Blademaster: Grapple or Ram", "attack"],
+	["break_ice", "Break Free of the Ice", "other"], ["dig_out", "Dig Out of the Mud", "other"], ["backswing", "Backswing Cut", "attack"], ["hunter_throw", "Throw Knife (Hunter)", "attack"], ["drag", "Drag", "other"], ["issue_order", "Issue Order", "other"], ["detect_mines", "Detect Mines", "tech"], ["shackle_return", "Pull Back (Shackles)", "other"], ["break_shackles", "Break the Shackles", "other"], ["dispel_construct", "Dispel Construct", "other"], ["disarm_mine", "Disarm Mine", "other"], ["ace_burst", "Afterburners (Ace)", "move"], ["release_drag", "Let Go (drag)", "other"], ["feint", "Blademaster: Feint", "other"], ["trip", "Blademaster: Trip", "attack"], ["duelist_strike", "Blademaster: Grapple or Ram", "attack"],
 ]
 ## Actions whose own check needs no target, so the bar can show exactly whether they work.
 const NO_TARGET := ["stand_up", "bonus_move", "disengage", "hide", "overcharge", "shut_down", "boot_up",

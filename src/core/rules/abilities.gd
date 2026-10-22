@@ -71,7 +71,8 @@ static func max_uses(u: Unit, source_key: String) -> int:
 ## "1/round" -> {"count": 1, "per": "round"}; "" -> {}.
 static func frequency_of(a: Dictionary) -> Dictionary:
 	var f := String(a.get("frequency", ""))
-	var m := RegEx.create_from_string("(\\d+)\\s*/\\s*(turn|round|scene|mission)").search(f.to_lower())
+	# "2/round", or "2.0/round" when the count came from a JSON number.
+	var m := RegEx.create_from_string("(\\d+)(?:\\.\\d+)?\\s*/\\s*(turn|round|scene|mission)").search(f.to_lower())
 	if m == null:
 		return {}
 	return {"count": int(m.get_string(1)), "per": m.get_string(2)}

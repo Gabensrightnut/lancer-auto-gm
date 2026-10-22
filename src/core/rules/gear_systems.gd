@@ -980,6 +980,391 @@ static func fade_roll(state: GameState, u: Unit) -> Array[Dictionary]:
 	return events
 
 
+## Perimeter Command Plate: a flat 2x2 plate within Range 5 (params.aim), set to "repulse" or
+## "attract" (params.setting). A new one replaces the old. It has 20 HP and Evasion 5
+## (target "zone:<id>"). It goes off for a character the first time it enters in a round, or
+## when it ends its turn there.
+static func print_pcp(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for z: Dictionary in Zones.of_kind(state, "pcp").duplicate():
+		if z.get("owner", "") == u.id:
+			events.append_array(Zones.remove(state, String(z["id"]), "replaced"))
+	var aim: Vector2i = TurnAction.cell_param(params, "aim")
+	var cells: Array = []
+	for c in state.map.grid.footprint(aim, 2.0):
+		cells.append([c.x, c.y])
+	events.append_array(Zones.add(state, {"kind": "pcp", "owner": u.id, "label": "Perimeter Command Plate", "center": [aim.x, aim.y], "cells": cells,
+		"setting": String(params.get("setting", "attract")), "hp": 20, "hit": {}, "rule_ref": "systems: Perimeter Command Plate"}))
+	return events
+
+
+static func pcp_trigger(state: GameState, z: Dictionary, t: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var owner := state.unit(String(z.get("owner", "")))
+	var hit: Dictionary = z.get("hit", {})
+	if owner == null or int(hit.get(t.id, -1)) == state.round_number or t.kind == Unit.KIND_DEPLOYABLE:
+		return events
+	if String(z.get("setting", "")) == "repulse" and t.side == owner.side:
+		return events  # allies may fly 3 spaces as a free action (the table's)
+	hit[t.id] = state.round_number
+	z["hit"] = hit
+	var save := Combat.skill_check(state, t, "hull", "Save vs Perimeter Command Plate", owner.save_target, 0, 0, [], true)
+	events.append({"type": "skill_check", "unit": t.id, "check": save, "rule_ref": "systems: Perimeter Command Plate"})
+	if save["success"]:
+		return events
+	if String(z.get("setting", "")) == "repulse":
+		# Pushed 3 spaces (PROVISIONAL: away from the plate's center); Prone if it hits an obstruction.
+		var from := t.cell
+		var kb := Attacks.knock_back(state, t, Vector2i(int(z["center"][0]), int(z["center"][1])), 3, owner)
+		events.append_array(kb)
+		if state.map.grid.distance(from, t.cell) < 3:
+			events.append_array(Combat.add_status(state, t, "Prone", owner.id))
+	else:
+		events.append_array(Combat.add_status(state, t, "Immobilized", "pcp:" + String(z["id"])))
+	return events
+
+
+## Assassin Drone: on deployment it targets a Blast 2 area (params.aim) within line of sight and
+## Sensors. Area Denial (reaction, any number per round): a hostile starts moving in it or
+## enters it: a ranged attack from the drone with your Grit, 3 kinetic on a hit.
+static func assassin_area(state: GameState, u: Unit, drone: Unit, params: Dictionary) -> Array[Dictionary]:
+	var aim: Variant = TurnAction.cell_param(params, "aim")
+	if aim == null:
+		return [] as Array[Dictionary]
+	for z: Dictionary in Zones.of_kind(state, "assassin").duplicate():
+		if z.get("owner", "") == u.id:
+			Zones.remove(state, String(z["id"]), "retargeted")
+	var cells := Zones.cells_around(state, [aim] as Array[Vector2i], 2)
+	return Zones.add(state, {"kind": "assassin", "owner": u.id, "drone": drone.id, "label": "Assassin Drone", "center": [aim.x, aim.y], "cells": cells,
+		"rule_ref": "systems: Assassin Drone"})
+
+
+static func area_denial(state: GameState, z: Dictionary, t: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var owner := state.unit(String(z.get("owner", "")))
+	var drone := state.unit(String(z.get("drone", "")))
+	if owner == null or drone == null or not Combat.is_present(drone) or t.side == owner.side or t.kind == Unit.KIND_DEPLOYABLE:
+		return events
+	if owner.has_status("Stunned") or not Combat.is_present(owner):
+		return events
+	var d := Reactions.offer(state, owner, "area_denial", {"target": t.id, "suggested": {"take": true}}, {"take": true})
+	if not d.get("take", false):
+		return events
+	var check := state.dice.check(owner.grit, 0, 0, t.evasion)
+	events.append({"type": "attack_rolled", "attacker": drone.id, "target": t.id, "weapon": "", "weapon_name": "Assassin Drone", "kind": Attacks.KIND_RANGED,
+		"check": check, "result": ("crit" if check["crit"] else "hit") if check["success"] else "miss", "rule_ref": "systems: Assassin Drone"})
+	if check["success"]:
+		events.append_array(Combat.deal_damage(state, t, [{"type": "Kinetic", "amount": 3}], {"source": owner.id}))
+	return events
+
+
+## Area Denial when a hostile starts moving inside the area.
+static func area_denial_start(state: GameState, mover: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for z: Dictionary in Zones.of_kind(state, "assassin"):
+		if Zones.contains(state, z, mover):
+			events.append_array(area_denial(state, z, mover))
+	return events
+
+
+## Mesmer Beacon: Systems save, or until the end of its next turn its only voluntary movements
+## are toward you.
+static func mesmer(state: GameState, u: Unit, t: Unit) -> Array[Dictionary]:
+	var save := Combat.skill_check(state, t, "systems", "Save vs Mesmer Beacon", u.save_target, 0, 0, [], true)
+	var events: Array[Dictionary] = [{"type": "skill_check", "unit": t.id, "check": save, "rule_ref": "systems: Mesmer Charges"}]
+	if not save["success"]:
+		events.append_array(Effects.activate(state, t, [{"kind": "mesmerized", "by": u.id, "label": "Mesmer Beacon"}], "Mesmer Beacon", "end_next_turn"))
+	return events
+
+
+## Mimic Mesh: until the end of your next turn, Battlefield Awareness for an ally in Sensors.
+static func mimic_mesh(state: GameState, u: Unit, ally: Unit) -> Array[Dictionary]:
+	return Effects.activate(state, u, [{"kind": "mimic_target", "ally": ally.id, "label": "Mimic Mesh"}], "Mimic Mesh", "end_next_turn")
+
+
+## Battlefield Awareness (reaction): a hostile action against your Mimic Mesh target: move 3
+## spaces toward it first, ignoring engagement, without provoking. PROVISIONAL: hostile actions
+## are attacks and tech actions; "as many times per round as it's triggered" means it doesn't
+## use up your one reaction per turn.
+static func battlefield_awareness(state: GameState, actor: Unit, target: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if actor == null or target == null or actor.side == target.side:
+		return events
+	var ids: Array = state.units.keys()
+	ids.sort()
+	for id: String in ids:
+		var o := state.unit(id)
+		if o == target or not Combat.is_present(o) or o.has_status("Stunned"):
+			continue
+		var on := false
+		for e: Dictionary in Effects.of(o, "mimic_target"):
+			on = on or String(e.get("ally", "")) == target.id
+		if not on or Sight.unit_distance(state, o, target) <= 1:
+			continue
+		var d := Reactions.offer(state, o, "battlefield_awareness", {"target": target.id, "suggested": {"take": true}}, {"take": true})
+		if not d.get("take", false):
+			continue
+		var path := Movement.pull_path_to(state, o, Sight.body_of(state, target), 1, 3)
+		if path.size() < 2:
+			continue
+		var last: Array = path.back()
+		o.cell = Vector2i(last[0], last[1])
+		o.level = int(last[2])
+		events.append({"type": "moved", "unit": o.id, "path": path, "mode": "walk", "cost": 0, "rule_ref": "systems: Mimic Mesh"})
+		events.append_array(Combat.refresh_engagement(state))
+	return events
+
+
+## Guide the Flock (Puppetmaster): drones within Sensors, anyone's, each move up to 4 spaces.
+## params.moves: [{"drone": id, "to": [x, y]}].
+static func check_guide(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+	var ref := "systems: Puppetmaster"
+	var moves: Variant = params.get("moves", [])
+	if not moves is Array or (moves as Array).is_empty():
+		return RuleResult.deny("Say which drones go where (params.moves: [{drone, to}]).", ref)
+	for m: Variant in moves:
+		var d := state.unit(String((m as Dictionary).get("drone", "")))
+		var to: Variant = TurnAction.cell_param(m, "to")
+		if d == null or d.destroyed or String(d.counters.get("deploy_type", "")) != "Drone":
+			return RuleResult.deny("Only drones.", ref)
+		if Sight.unit_distance(state, u, d) > u.sensors:
+			return RuleResult.deny("That drone is out of your Sensors.", ref)
+		if to == null or not state.map.has_cell(to) or state.map.grid.distance(d.cell, to) > 4:
+			return RuleResult.deny("Up to 4 spaces.", ref)
+	return RuleResult.allow()
+
+
+static func guide_flock(state: GameState, _u: Unit, params: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for m: Dictionary in params.get("moves", []):
+		var d := state.unit(String(m["drone"]))
+		var to: Vector2i = TurnAction.cell_param(m, "to")
+		var from := [d.cell.x, d.cell.y, d.level]
+		var lv := maxi(d.level, state.map.ground_height(to))
+		var clear := true
+		for o: Unit in state.units.values():
+			if o != d and Combat.is_present(o) and Movement._overlaps(Sight.make_body(state, to, lv, d.size), Sight.body_of(state, o)):
+				clear = false
+		if not clear:
+			continue
+		d.cell = to
+		d.level = lv
+		events.append({"type": "moved", "unit": d.id, "path": [from, [to.x, to.y, lv]], "mode": "fly", "cost": 0, "rule_ref": "systems: Puppetmaster"})
+	return events
+
+
+## Annihilation Nexus secondary attack (Protocol): if you attacked with it on your last turn,
+## attack again centered on yourself or one of your drones within Sensors (params.center); no
+## bonus damage, no further secondary attack.
+static func annihilation_second(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+	var w: Dictionary = {}
+	for x: Dictionary in u.loadout.get("weapons", []):
+		if String(x.get("id", "")) == "mw_annihilation_nexus":
+			w = x
+	if w.is_empty():
+		return [] as Array[Dictionary]
+	var center := state.unit(String(params.get("center", u.id)))
+	var at := [u.cell, u.level]
+	if center != null and center != u:
+		u.cell = center.cell  # the Burst is centered on the drone
+		u.level = center.level
+	var events := Areas.attack(state, u, w, {"skip_spend": true, "no_bonus_damage": true, "secondary": true, "aim": [u.cell.x, u.cell.y]})
+	u.cell = at[0]
+	u.level = at[1]
+	u.counters.erase("annihilation_round")
+	return events
+
+
+## SISYPHUS Bend Probability: roll 2d20 and keep them (X, Y) until the end of your next turn,
+## with the Probabilistic Cannibalism reaction.
+static func bend_probability(state: GameState, u: Unit) -> Array[Dictionary]:
+	var x := state.dice.die(20)
+	var y := state.dice.die(20)
+	u.counters["bent"] = [x, y]
+	u.counters["bent_uses"] = 0
+	var events: Array[Dictionary] = [{"type": "effect_triggered", "unit": u.id, "effect": "Bend Probability", "target": u.id, "rolls": [x, y], "rule_ref": "systems: SISYPHUS-Class NHP"}]
+	events.append_array(Effects.activate(state, u, [{"kind": "prob_cannibal", "label": "Probabilistic Cannibalism"}], "Bend Probability", "end_next_turn"))
+	return events
+
+
+## Probabilistic Cannibalism (reaction, at most twice before the start of your next turn): when
+## you or a character within Sensors would roll a d20, X or Y becomes the result. Offered only
+## when a kept number would change the outcome your way (success for you and allies, failure
+## for hostiles), with that number suggested.
+static func sisyphus(state: GameState, roller: Unit, check: Dictionary) -> Dictionary:
+	if state == null or check.is_empty() or not check.has("d20"):
+		return check
+	var ids: Array = state.units.keys()
+	ids.sort()
+	for id: String in ids:
+		var o := state.unit(id)
+		if not o.counters.has("bent") or not Effects.has(o, "prob_cannibal") or int(o.counters.get("bent_uses", 0)) >= 2 or not Combat.is_present(o):
+			continue
+		if o != roller and Sight.unit_distance(state, o, roller) > o.sensors:
+			continue
+		if not Reactions.can_react(o, "probabilistic_cannibalism", state).ok:
+			continue
+		var want_success := o.side == roller.side
+		var pick := -1
+		for v: int in o.counters["bent"]:
+			var total := int(check["total"]) - int(check["d20"]) + v
+			var success := total >= int(check.get("target", 10))
+			if success != bool(check["success"]) and success == want_success:
+				pick = v
+				break
+		if pick < 0:
+			continue
+		var d := Reactions.offer(state, o, "probabilistic_cannibalism", {"roller": roller.id, "rolled": check["d20"], "numbers": o.counters["bent"],
+			"suggested": {"take": true, "value": pick}}, {"take": true, "value": pick})
+		if not d.get("take", false):
+			continue
+		var v2 := int(d.get("value", pick))
+		if not (o.counters["bent"] as Array).has(v2):
+			v2 = pick
+		o.counters["bent_uses"] = int(o.counters.get("bent_uses", 0)) + 1
+		Reactions._mark_used(o, "probabilistic_cannibalism", state)
+		var out := check.duplicate()
+		out["rerolled_from"] = check["d20"]
+		out["reroll_source"] = "SISYPHUS: Probabilistic Cannibalism"
+		out["d20"] = v2
+		out["total"] = int(check["total"]) - int(check["d20"]) + v2
+		out["success"] = int(out["total"]) >= int(check.get("target", 10))
+		out["crit"] = int(out["total"]) >= 20
+		return out
+	return check
+
+
+## Conditions (statuses: Impaired, Immobilized, Jammed, Lock On, Shredded, Slowed, Stunned).
+const CONDITIONS := ["Impaired", "Immobilized", "Jammed", "Lock On", "Shredded", "Slowed", "Stunned"]
+
+
+## Metahook: the character linked with `u`, while it's within the Goblin's Sensors and line
+## of sight; null otherwise.
+static func metahook_partner(state: GameState, u: Unit) -> Unit:
+	if state == null or u == null or not u.counters.has("metahook"):
+		return null
+	var o := state.unit(String(u.counters["metahook"]))
+	if o == null or not Combat.is_present(o) or not Combat.is_present(u):
+		return null
+	var goblin: Unit = u if u.counters.get("metahook_owner", false) else o
+	var other: Unit = o if goblin == u else u
+	if Sight.unit_distance(state, goblin, other) > goblin.sensors or not Sight.unit_line_of_sight(state, goblin, other):
+		return null
+	return o
+
+
+static func metahook(state: GameState, u: Unit, ally: Unit) -> Array[Dictionary]:
+	for x: Unit in state.units.values():
+		if String(x.counters.get("metahook", "")) == u.id or x == u:
+			x.counters.erase("metahook")
+			x.counters.erase("metahook_owner")
+	u.counters["metahook"] = ally.id
+	u.counters["metahook_owner"] = true
+	ally.counters["metahook"] = u.id
+	return [{"type": "effect_triggered", "unit": u.id, "effect": "Metahook", "target": ally.id, "rule_ref": "systems: Metahook"}] as Array[Dictionary]
+
+
+## Puppet System (H0R_OS I): the target moves its maximum Speed toward params.toward. It's
+## involuntary but provokes reactions and Engagement as normal (not a knockback, push or pull).
+## PROVISIONAL: in a straight line, stopping at obstructions.
+static func puppet(state: GameState, u: Unit, t: Unit, params: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = Reactions.overwatch(state, t)
+	if not Combat.is_present(t):
+		return events
+	var toward: Vector2i = TurnAction.cell_param(params, "toward")
+	var path := Movement.push_path(state, t, t.cell * 2 - toward, t.speed)
+	if path.size() < 2:
+		return events
+	var last: Array = path.back()
+	t.cell = Vector2i(last[0], last[1])
+	events.append({"type": "moved", "unit": t.id, "path": path, "mode": "involuntary", "cost": 0, "rule_ref": "systems: H0R_OS System Upgrade I"})
+	events.append_array(Abilities.check_mines(state, t, path))
+	events.append_array(Zones.check_path(state, t, path))
+	events.append_array(Combat.after_movement(state))
+	return events
+
+
+## Law of Blades, Predator/Prey Concepts: the target attacks a character or object you choose
+## (params.forced_target, not you... any different character) with a weapon you choose
+## (params.forced_weapon, else its first that can reach), as a reaction.
+static func predator_prey(state: GameState, u: Unit, t: Unit, params: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var victim := state.unit(String(params.get("forced_target", "")))
+	if victim == null or victim == t or not Combat.is_present(victim):
+		return events
+	var w := Weapons.find(t, String(params.get("forced_weapon", "")))
+	if w.is_empty():
+		for x: Dictionary in t.loadout.get("weapons", []):
+			if Attacks.preview(state, t, x, victim, {"reaction": true})["ok"]:
+				w = x
+				break
+	if w.is_empty() or not Attacks.preview(state, t, w, victim, {"reaction": true})["ok"]:
+		events.append({"type": "action_skipped", "unit": t.id, "action": "predator_prey", "reason": "No weapon can reach that target.", "rule_ref": "systems: Law of Blades"})
+		return events
+	Reactions._mark_used(t, "law_of_blades", state)
+	events.append_array(Attacks.attack(state, t, w, victim, {"reaction": true}))
+	return events
+
+
+## Law of Blades, Slave Systems: the target takes an action you choose as a reaction: boost,
+## stabilize, improvised_attack, grapple or ram (params.forced_action, forced_params).
+static func slave_systems(state: GameState, u: Unit, t: Unit, params: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var what := String(params.get("forced_action", ""))
+	if not what in ["boost", "stabilize", "improvised_attack", "grapple", "ram"]:
+		return events
+	var h: TurnAction = RulesEngine.registry[what]
+	var p: Dictionary = (params.get("forced_params", {}) as Dictionary).duplicate()
+	var saved := t.turn
+	t.turn = {"quick": 0, "full": false, "taken": [], "quick_tech": [], "move_spent": 0, "moved": false, "acted": false, "overcharged": false, "free_quick": 0}
+	var r := h.check(state, t, p)
+	if r.ok:
+		Reactions._mark_used(t, "law_of_blades", state)
+		events.append_array(h.apply(state, t, p))
+	else:
+		events.append({"type": "action_skipped", "unit": t.id, "action": what, "reason": r.reason, "rule_ref": "systems: Law of Blades"})
+	t.turn = saved
+	return events
+
+
+## H0R_OS III Dimensional Emblems: three Size 1 constructs in free spaces next to the target,
+## not next to each other (params.cells to choose, else the first that fit). Replaces your
+## earlier ones.
+static func emblems(state: GameState, u: Unit, t: Unit, params: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for z: Dictionary in Zones.of_kind(state, "emblem").duplicate():
+		if z.get("owner", "") == u.id:
+			events.append_array(Zones.remove(state, String(z["id"]), "replaced"))
+	var wanted: Array = params.get("cells", [])
+	var options: Array[Vector2i] = []
+	for c: Variant in wanted:
+		options.append(Vector2i(int(c[0]), int(c[1])))
+	if options.is_empty():
+		for c in Zones.cells_around(state, state.map.grid.footprint(t.cell, t.size), 1):
+			options.append(Vector2i(int(c[0]), int(c[1])))
+	var chosen: Array[Vector2i] = []
+	for c in options:
+		if chosen.size() >= 3 or state.map.grid.footprint(t.cell, t.size).has(c) or not Movement.placement(state, 1.0, c, state.map.ground_height(c))["ok"]:
+			continue
+		var taken := false
+		for o: Unit in state.units.values():
+			taken = taken or (Combat.is_present(o) and state.map.grid.footprint(o.cell, o.size).has(c))
+		if taken or chosen.any(func(x: Vector2i) -> bool: return state.map.grid.distance(x, c) <= 1):
+			continue
+		chosen.append(c)
+	for c in chosen:
+		events.append_array(Zones.add(state, {"kind": "emblem", "owner": u.id, "label": "Dimensional Emblem", "cells": [[c.x, c.y]], "center": [c.x, c.y],
+			"rule_ref": "systems: H0R_OS System Upgrade III"}))
+	return events
+
+
+## Celestial Shackles: the target's space is marked; once during your turn, if it has left,
+## a free action (shackle_return) teleports it back. A Systems save (quick action) ends it.
+static func shackle(u: Unit, t: Unit) -> Array[Dictionary]:
+	t.counters["shackled"] = {"by": u.id, "cell": [t.cell.x, t.cell.y], "level": t.level}
+	return [{"type": "effect_triggered", "unit": u.id, "effect": "Celestial Shackles", "target": t.id, "rule_ref": "systems: H0R_OS System Upgrade III"}] as Array[Dictionary]
+
+
 ## Weapon and system reactions to an attack: Autopod (an ally's attack consumed Lock On on a
 ## target within 15: hit it automatically for 3 kinetic), Vorpal Gun (a hostile in Range and
 ## line of sight damaged an ally: attack it), Monitor Module (the monitored ally was attacked

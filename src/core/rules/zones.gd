@@ -194,6 +194,27 @@ static func check_path(state: GameState, mover: Unit, path: Array) -> Array[Dict
 					events.append_array(_enter(state, z, mover))
 			"hardlight":
 				events.append_array(hardlight_crossing(state, mover, path))
+			"pcp":
+				for i in range(1, path.size()):
+					var c := Vector2i(int(path[i][0]), int(path[i][1]))
+					if state.map.grid.footprint(c, mover.size).any(func(f: Vector2i) -> bool: return _has_cell(z, f)):
+						events.append_array(GearSystems.pcp_trigger(state, z, mover))
+						break
+			"assassin":
+				for i in range(1, path.size()):
+					var c := Vector2i(int(path[i][0]), int(path[i][1]))
+					if state.map.grid.footprint(c, mover.size).any(func(f: Vector2i) -> bool: return _has_cell(z, f)):
+						events.append_array(GearSystems.area_denial(state, z, mover))
+						break
+			"emblem":
+				# H0R_OS Dimensional Emblems: passing through one: 2 heat, and it's gone.
+				for i in range(1, path.size()):
+					var c := Vector2i(int(path[i][0]), int(path[i][1]))
+					if state.map.grid.footprint(c, mover.size).any(func(f: Vector2i) -> bool: return _has_cell(z, f)):
+						events.append_array(remove(state, String(z["id"]), "passed through"))
+						events.append({"type": "zone_triggered", "zone": z["id"], "unit": mover.id, "rule_ref": "systems: H0R_OS System Upgrade III"})
+						events.append_array(Combat.apply_heat(state, mover, 2, String(z.get("owner", ""))))
+						break
 			"javelin":
 				for i in range(1, path.size()):
 					if int(path[i][0]) == int(z["center"][0]) and int(path[i][1]) == int(z["center"][1]):
@@ -333,6 +354,9 @@ static func turn_started(state: GameState, u: Unit) -> Array[Dictionary]:
 
 static func turn_ended(state: GameState, u: Unit) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
+	for z: Dictionary in of_kind(state, "pcp"):
+		if Combat.is_present(u) and contains(state, z, u):
+			events.append_array(GearSystems.pcp_trigger(state, z, u))
 	for z: Dictionary in of_kind(state, "athena"):
 		var o := state.unit(String(z.get("owner", "")))
 		if o != null and o.side != u.side and Combat.is_present(u) and contains(state, z, u):

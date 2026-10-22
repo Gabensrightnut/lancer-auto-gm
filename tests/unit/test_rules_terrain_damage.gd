@@ -156,3 +156,18 @@ func test_materials_and_hp_tags() -> void:
 	s.map.set_column(Vector2i(5, 5), 1, PackedStringArray([BattleMap.TAG_DESTRUCTIBLE, "material:wood", "hp_20", "armor_1"]))
 	var info := TerrainDamage.info(s, Vector2i(5, 5))
 	expect_eq([info["armor"], info["max_hp"]], [1, 20], "explicit armor_N wins over the material; hp_N sets the section HP")
+
+
+func test_portable_bunker_has_40_hp() -> void:
+	_setup()
+	var ev := Zones.add(s, {"kind": "bunker", "owner": "foe", "label": "Portable Bunker", "center": [6, 6], "cells": [[6, 6]], "phase": "up"})
+	var zid := String(Zones.of_kind(s, "bunker")[0]["id"])
+	F.load_dice(s, [10, 6])
+	var out := F.act(e, s, "skirmish", "a", {"weapon": "0:0", "target": "zone:" + zid})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(int(Zones.of_kind(s, "bunker")[0]["hp"]), 34, "40 HP, Evasion 5")
+	Zones.of_kind(s, "bunker")[0]["hp"] = 3
+	_next_turn()
+	F.load_dice(s, [10, 6])
+	F.act(e, s, "skirmish", "a", {"weapon": "0:0", "target": "zone:" + zid})
+	expect(Zones.of_kind(s, "bunker").is_empty(), "destroyed")
