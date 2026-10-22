@@ -222,6 +222,14 @@ func speak(text: String, expr: String = "", duration: float = -1.0) -> float:
 	return _talk_left
 
 
+## For callers that drive talking themselves (hub/dialogue code): on until turned off.
+func set_talking(on: bool) -> void:
+	if on:
+		speak("", "", 3600.0)
+	else:
+		stop_speaking()
+
+
 func stop_speaking() -> void:
 	_talk_left = 0.0
 	if state == "talk":
