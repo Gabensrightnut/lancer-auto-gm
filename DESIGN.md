@@ -34,6 +34,38 @@ Code layout and contracts: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   solo: one person runs a full squad with AI squadmates flying any pilots they don't control.
 - **Scope:** full campaign play: missions, combat, downtime, licenses, leveling, campaign arc.
 
+## Play feel: player-driven, not an auto battler
+Inspiration: Baldur's Gate 3's pacing and agency (feel only; nothing taken from it). What
+you've seen so far are automated tests and scripted demos running at test speed; the real
+game waits for people.
+
+- **Every human makes their own choices.** Nothing a human controls ever acts on its own.
+  The game waits on your turn as long as you need; AI only plays seats set to AI (enemies,
+  and squadmates you hand over).
+- **Turn order the Lancer way, shown like BG3:** a portrait bar across the top shows every
+  unit, who has acted this round, and whose side picks next. Lancer has players and enemies
+  alternate, and the players decide among themselves which of them goes next (anyone
+  clicks "I'll go"; in solo you pick).
+- **Your turn:** the camera moves to your mech, the action bar and resources come up
+  (section 1), you plan freely (movement arrow, targets, previews), and nothing happens until
+  you confirm each action. End turn is a button you press.
+- **Watching other turns:** enemy and ally turns play at a readable pace. The camera
+  follows each action, there's a short pause before attacks resolve, and the roll is shown.
+  Speed setting (cinematic / normal / fast) and a "skip to my turn" option; never faster
+  than you can follow unless you choose it.
+- **Scenes, not just fights (like BG3's exploration vs. combat):**
+  - **Exploration and story scenes:** walk your pilot or mech around a location in real time,
+    talk to people (dialogue scenes, section 10), inspect things, find intel and supplies.
+  - **Skill checks shown big:** a d20 roll pops up center screen with your skill trigger
+    bonus and Accuracy/Difficulty (blue/red) against the target, BG3-style, with outcomes
+    that branch the scene.
+  - **Combat starts from the scene:** ambushes, failed sneaking, or a dialogue choice drop
+    everyone into turn-based combat on the same map. Surprise follows the book.
+  - **Downtime between missions** as its own scene (section 10).
+- **Multiplayer:** in exploration everyone moves freely; in combat each player acts on their
+  own pilot's turn while others watch (and can ping and chat); dialogue choices go to the
+  speaking pilot's player or a vote.
+
 ## 1. Animations and visual feedback
 
 Every effect gets an animation, a combat-log line, and floating text (damage, MISS,
