@@ -263,12 +263,13 @@ func _orders_for(u: Unit) -> Dictionary:
 
 
 ## The GM's narration (GmTwist): how the squad arrived, once combat starts, and the
-## mission's hidden twist when its moment comes. Only an AI GM narrates on its own.
+## mission's hidden twist when its moment comes. Only an AI GM narrates on its own; a human
+## GM reveals the twist themselves (GM tools, BattleSession.gm_reveal_twist).
 func _maybe_narrate() -> bool:
 	if mission == null or not host.is_ai_seat(NetHost.GM_SEAT):
 		return false
 	var a := GmTwist.next_action(mission, host.state)
-	if a.is_empty():
+	if a.is_empty() or (host.human_gm and str(a["params"].get("kind", "")) == "twist"):
 		return false
 	var out := host.submit(NetHost.GM_SEAT, a)
 	GmTwist.done(mission, a)

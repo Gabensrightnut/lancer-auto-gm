@@ -84,6 +84,10 @@ static func can_react(u: Unit, reaction: String, state: GameState = null) -> Rul
 	if state != null and String(u.counters.get("reaction_turn", "")) == _turn_key(state) \
 			and int(u.counters.get("reaction_turn_count", 1)) >= maxi(1, Effects.value(u, "reactions_per_turn")):
 		return RuleResult.deny("Only one reaction per turn (yours or anyone else's).", "Core p.73 Reactions")
+	if Effects.has(u, "no_reactions"):
+		return RuleResult.deny("No reactions until the end of your next turn.", "House rule: No Stun from a Direct Hit")
+	if u.counters.has("dragging"):
+		return RuleResult.deny("While dragging or lifting you can't take reactions.", Riders.REF_DRAG)
 	if state != null and Movement.above_ceiling(state, u):
 		return RuleResult.deny("More than 10 spaces above the battlefield you can't take reactions.", "Core p.63 Flight")
 	if u.has_status("Stunned") or u.has_status("Shut Down"):

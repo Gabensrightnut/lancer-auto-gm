@@ -1,0 +1,22 @@
+[
+  {"id": "lt_split_barrage", "name": "Split Barrage", "source": "Lancer Tactics", "source_link": "https://itch.io/post/15782614", "default": true,
+    "text": "Skirmish twice in a turn with weapons on different mounts, and move in between, instead of firing both together as a Barrage."},
+  {"id": "lt_brace_prompt", "name": "Brace only on big hits", "source": "Lancer Tactics", "source_link": "https://itch.io/post/15524940", "default": true,
+    "text": "Brace is only offered when a hit would take you to 0 HP, overheat you, or deal more than half your HP."},
+  {"id": "lt_repeat_quick_tech", "name": "Repeat a Quick Tech option", "source": "Lancer Tactics", "source_link": "https://itch.io/post/15524940", "default": false,
+    "text": "The same Quick Tech option (say, Invade) may be used twice in a turn."},
+  {"id": "hr_collapse_save", "name": "Building collapse roll", "source": "Your idea", "source_link": "", "default": false,
+    "text": "When a hit deals 5 or more damage to a wall or building section and it's still standing, it rolls 1d6 + its Armor: on 3 or less it collapses anyway."},
+  {"id": "hr_fall_stun", "name": "Stunned by a hard fall", "source": "Your idea", "source_link": "", "default": false,
+    "text": "A character that takes damage from a fall makes a Hull save (10+) or is Stunned until the end of its next turn."},
+  {"id": "hr_brace_fall", "name": "Brace for the fall", "source": "Your idea", "source_link": "", "default": false,
+    "text": "A character about to take fall damage may use its reaction to brace and take half."},
+  {"id": "hr_structure_no_stun", "name": "No Stun from a Direct Hit", "source": "Community", "source_link": "https://lancer-rules.carrd.co/",
+    "default": false, "text": "A Direct Hit's Stun becomes Brace's penalties instead: no reactions and only one quick action until the end of your next turn (so nobody sits out a whole round)."},
+  {"id": "hr_hide_hard_cover", "name": "Hide behind hard cover", "source": "Community", "source_link": "https://lancer-rules.carrd.co/", "default": false,
+    "text": "Hard cover from every hostile that can see you is enough to Hide, and to stay Hidden."},
+  {"id": "hr_npc_recharge_heat", "name": "Recharge costs NPC heat", "source": "Community", "source_link": "https://trainlightning.com/house-rules-structure-overheating/", "default": false,
+    "text": "NPCs with a Heat Cap take 1 heat when they use a Recharge 4+ or 5+ ability, 2 heat for Recharge 6+."},
+  {"id": "hr_overheated", "name": "Overheated", "source": "Community", "source_link": "https://trainlightning.com/house-rules-structure-overheating/", "default": false,
+    "text": "A mech made Exposed by overheating is also Overheated: no Heat (Self) weapons or systems and no Overkill until it Stabilizes to cool down."}
+]

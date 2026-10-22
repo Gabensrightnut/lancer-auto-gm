@@ -92,6 +92,11 @@
         "value": 1,
         "while_flying": true
       }
+    ],
+    "2": [
+      {
+        "kind": "ace_burst"
+      }
     ]
   },
   "t_skirmisher": {
@@ -375,6 +380,11 @@
     "2": [
       {
         "kind": "machine_bond"
+      }
+    ],
+    "3": [
+      {
+        "kind": "supply_drop"
       }
     ]
   },
@@ -749,6 +759,87 @@
     "3": [
       {
         "kind": "covering_fire_two"
+      }
+    ]
+  },
+  "ms_reinforced_cabling": [
+    {
+      "kind": "grapple_swing"
+    }
+  ],
+  "ms_cable_winch_system": [
+    {
+      "kind": "climb_normal",
+      "label": "Cable Winch: climbing on the cables"
+    }
+  ],
+  "t_leader": {
+    "1": [
+      {
+        "kind": "leadership",
+        "dice": 3
+      }
+    ],
+    "2": [
+      {
+        "kind": "leadership",
+        "dice": 5
+      }
+    ],
+    "3": [
+      {
+        "kind": "leadership",
+        "dice": 6
+      },
+      {
+        "kind": "leadership_plus"
+      }
+    ]
+  },
+  "ms_technophile_2": [
+    {
+      "kind": "nhp_assist"
+    }
+  ],
+  "ms_technophile_3": [
+    {
+      "kind": "nhp_assist"
+    },
+    {
+      "kind": "no_cascade"
+    }
+  ],
+  "t_engineer": {
+    "1": [
+      {
+        "kind": "talent_gear"
+      }
+    ],
+    "2": [
+      {
+        "kind": "talent_gear"
+      }
+    ],
+    "3": [
+      {
+        "kind": "talent_gear"
+      }
+    ]
+  },
+  "t_technophile": {
+    "1": [
+      {
+        "kind": "talent_gear"
+      }
+    ],
+    "2": [
+      {
+        "kind": "talent_gear"
+      }
+    ],
+    "3": [
+      {
+        "kind": "talent_gear"
       }
     ]
   }

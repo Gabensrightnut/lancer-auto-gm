@@ -149,6 +149,7 @@ func test_seat_can_only_command_its_own_units() -> void:
 
 func test_secrets_never_reach_player_clients() -> void:
 	_setup()
+	host.human_gm = true  # a person is the GM (only then can anyone join as the GM)
 	var a := _client("Ana")
 	var gm := _client("Remote GM", "gm")
 	expect_eq(gm.seat, "gm")

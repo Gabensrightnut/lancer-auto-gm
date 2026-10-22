@@ -19,6 +19,11 @@ signal changed
 const MODES := ["you", "ai", "open", "reserved"]
 const MODE_LABELS := {"you": "You (this screen)", "ai": "AI pilot", "open": "Open for a friend", "reserved": "Reserved for a friend"}
 const PRESETS := ["Standard", "Ruthless", "Cautious", "Chaotic", "Teaching"]
+## Who runs the game: [id, button, plain description].
+const GM_CHOICES := [
+	["ai", "The AI", "The game is the GM: it runs the enemies, the story and the rules questions."],
+	["local", "A person here", "Someone at this computer is the GM: they see everything and get the GM tools (press G) for the story. The AI still flies the enemies in battle, in the GM style above."],
+	["remote", "A friend online", "A friend is the GM: they pick Join online, tick \"Join as the GM\" and type the room code. They see everything and get the GM tools (G); the AI still flies the enemies."]]
 
 var is_host := true
 var campaign: Campaign
@@ -27,7 +32,7 @@ var host: NetHost
 var mission: Mission
 var client: NetClient
 ## {"preset", "shape": "hex"/"square", "sitrep": "" (random), "seed": int, "fill_empty_with_ai": bool}
-var options: Dictionary = {"preset": "Standard", "shape": "hex", "sitrep": "", "seed": 0, "fill_empty_with_ai": false, "ai_squad_auto": true, "fight_length": "standard"}
+var options: Dictionary = {"preset": "Standard", "shape": "hex", "sitrep": "", "seed": 0, "fill_empty_with_ai": false, "ai_squad_auto": true, "fight_length": "standard", "human_gm": false, "gm_where": "local"}
 ## seat -> mode (host)
 var modes: Dictionary = {}
 ## seat -> pilot id (host)
@@ -53,6 +58,7 @@ static func for_host(the_campaign: Campaign, content: ContentDB, mission_seed: i
 	m.options["seed"] = mission_seed if mission_seed != 0 else int(Time.get_unix_time_from_system()) % 1000000
 	m.options["preset"] = str(the_campaign.gm_settings.get("preset", "Standard"))
 	m.options["fight_length"] = str(the_campaign.gm_settings.get("fight_length", "standard"))
+	m._read_gm_option()
 	var squad := the_campaign.squad()
 	for i in range(squad.size()):
 		var seat: String = squad[i]["seat"]
@@ -74,6 +80,8 @@ static func for_mission(the_campaign: Campaign, content: ContentDB, seat_modes: 
 		net_host.lobby_message.connect(m._on_lobby_message)
 		net_host.seats_changed.connect(m._on_seats_changed)
 	m.options["preset"] = str(the_campaign.gm_settings.get("preset", "Standard"))
+	m.options["fight_length"] = str(the_campaign.gm_settings.get("fight_length", "standard"))
+	m._read_gm_option()
 	m.modes = seat_modes.duplicate()
 	m.assignment = pilots.duplicate()
 	m.mission_builder = builder
@@ -111,6 +119,45 @@ func set_mode(seat: String, mode: String) -> void:
 	modes[seat] = mode
 	_apply_modes()
 	_changed()
+
+
+## "Human GM" (campaign option): a person is the GM, at this computer ("local") or joining
+## online ("remote", Join online → Join as the GM). They see everything and get the story's
+## GM tools (G); the AI still flies the enemies (NetHost.human_gm).
+func set_human_gm(on: bool, where: String = "local") -> void:
+	options["human_gm"] = on
+	options["gm_where"] = where if where in ["local", "remote"] else "local"
+	campaign.options["human_gm"] = on
+	campaign.options["gm_where"] = options["gm_where"]
+	_apply_gm()
+	_changed()
+
+
+func _read_gm_option() -> void:
+	options["human_gm"] = bool(campaign.options.get("human_gm", false))
+	options["gm_where"] = str(campaign.options.get("gm_where", "local"))
+
+
+func _apply_gm() -> void:
+	var on := bool(options.get("human_gm", false))
+	host.human_gm = on
+	if on and options.get("gm_where", "local") == "local" and host.state.seats.has(NetHost.GM_SEAT):
+		host.add_local_seat(NetHost.GM_SEAT)
+	else:
+		host.remove_local_seat(NetHost.GM_SEAT)
+	if not on and host.seat_table().get(NetHost.GM_SEAT, {}).get("where", "") == "remote":
+		host.release_seat(NetHost.GM_SEAT)
+
+
+## The human GM's seat: "" (the AI is the GM), "here", "joined" (a friend is in it) or
+## "waiting" (nobody has joined as the GM yet).
+func gm_status() -> String:
+	if not bool(options.get("human_gm", false)):
+		return ""
+	if options.get("gm_where", "local") == "local":
+		return "here"
+	var row: Dictionary = host.seat_table().get(NetHost.GM_SEAT, {}) if host != null else {}
+	return "joined" if row.get("where", "") == "remote" and row.get("connected", false) else "waiting"
 
 
 func set_fill_empty(on: bool) -> void:
@@ -271,6 +318,8 @@ func start_problems() -> Array:
 			"you":
 				if not r["ready"]:
 					out.append("Press Ready when you're set.")
+	if is_host and gm_status() == "waiting":
+		out.append("Waiting for the GM to join: they pick Join online, tick \"Join as the GM\" and type the room code. Or set the GM to this computer.")
 	var unique: Array = []
 	for o in out:
 		if not unique.has(o):
@@ -318,6 +367,14 @@ func _rebuild() -> void:
 		"squad": squad, "shape": options["shape"], "sitrep": options["sitrep"], "db": db,
 		"settings": gm_settings_for(options["preset"], str(options.get("fight_length", "standard"))), "players": squad.size()})
 	var state: GameState = gen["state"]
+	if HouseRulesFlow.i_decide(campaign):
+		# The host's battle house rules (or a GM's here); story ones switch through the story.
+		var hr: Dictionary = (campaign.options.get("house_rules", {}) as Dictionary).duplicate()
+		var mine := HouseRulesFlow.my_set()
+		for id: String in mine:
+			if HouseRules.is_battle_rule(id):
+				hr[id] = mine[id]
+		campaign.options["house_rules"] = hr
 	campaign.prepare_mission(state)
 	mission = gen["mission"]
 	if host == null:
@@ -327,6 +384,7 @@ func _rebuild() -> void:
 	else:
 		host.state = state
 	_apply_modes()
+	_apply_gm()
 	host.set_fill_empty_with_ai(bool(options["fill_empty_with_ai"]))
 	host.send_updates()
 	_changed()
@@ -360,6 +418,15 @@ func _on_seats_changed(_table: Dictionary) -> void:
 func _on_lobby_message(seat: String, msg: Dictionary) -> void:
 	if msg.has("ready"):
 		ready[seat] = bool(msg["ready"])
+		_changed()
+	var flipped := HouseRulesFlow.on_message(host, campaign, seat, msg)
+	if not flipped.is_empty():
+		# The GM (a friend online) changed the house rules: this battle and everyone's lobby.
+		if not started:
+			HouseRules.put(host.state, HouseRules.of_campaign(campaign))
+			host.send_updates()
+		for id: String in flipped:
+			messages.append({"kind": "info", "text": HouseRules.announce(id, bool(campaign.options["house_rules"][id]))})
 		_changed()
 
 

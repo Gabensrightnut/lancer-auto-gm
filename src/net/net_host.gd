@@ -49,6 +49,11 @@ var ai_squad_auto := false
 ## One-shot "Let the AI go": the AI activates one of its squadmates now, even though people on
 ## that side still have units waiting.
 var ai_go_now := false
+## A person is the GM (campaign option "Human GM"): they sit in the GM seat, here or online,
+## see the GM's whole picture and use the story's GM tools. The AI still flies the enemies and
+## does the battle's GM chores (starting it, rulings, reinforcements), so the GM seat counts as
+## AI-played. Without this nobody may join as the GM.
+var human_gm := false
 ## Seats kept empty for a friend who joins later (never filled by the AI).
 var reserved_seats: Dictionary = {}
 
@@ -74,12 +79,21 @@ func remove_local_seat(seat: String) -> void:
 		_seats_changed()
 
 
-## Sends lobby info to every connected player.
-func send_lobby(data: Dictionary) -> void:
+## Sends lobby info to every connected player (but the seats in `skip`).
+func send_lobby(data: Dictionary, skip: Array = []) -> void:
 	if transport == null:
 		return
 	for seat: String in _seat_peer:
-		transport.send(_seat_peer[seat], {"t": NetProtocol.LOBBY, "lobby": data})
+		if not seat in skip:
+			transport.send(_seat_peer[seat], {"t": NetProtocol.LOBBY, "lobby": data})
+
+
+## Sends lobby info to one connected seat. False if nobody is connected there.
+func send_lobby_to(seat: String, data: Dictionary) -> bool:
+	if transport == null or not _seat_peer.has(seat):
+		return false
+	transport.send(_seat_peer[seat], {"t": NetProtocol.LOBBY, "lobby": data})
+	return true
 
 
 func add_local_seat(seat: String) -> void:
@@ -203,7 +217,7 @@ func _run(seat: String, action: Dictionary) -> Dictionary:
 ## AI and reserved seats, which seats are played at this machine. Host-only: never sent.
 func export_seats() -> Dictionary:
 	return {"tokens": _seat_token.duplicate(), "names": _player_names.duplicate(), "ai": ai_seats.duplicate(),
-		"reserved": reserved_seats.duplicate(), "local": Array(local_seats), "fill_empty_with_ai": fill_empty_with_ai}
+		"reserved": reserved_seats.duplicate(), "local": Array(local_seats), "fill_empty_with_ai": fill_empty_with_ai, "human_gm": human_gm}
 
 
 ## Restores export_seats() on a resumed mission. Players who were connected get their seats
@@ -214,6 +228,7 @@ func import_seats(d: Dictionary) -> void:
 	ai_seats = (d.get("ai", {GM_SEAT: true}) as Dictionary).duplicate()
 	reserved_seats = (d.get("reserved", {}) as Dictionary).duplicate()
 	fill_empty_with_ai = bool(d.get("fill_empty_with_ai", false))
+	human_gm = bool(d.get("human_gm", false))
 	for seat: Variant in d.get("local", []):
 		if state.seats.has(str(seat)):
 			add_local_seat(str(seat))
@@ -392,6 +407,8 @@ func set_seat_reserved(seat: String, on: bool) -> void:
 ## a seat set to AI is played by the AI otherwise (also a local one); with "fill empty seats"
 ## on, any seat nobody is sitting in (and not reserved) gets the AI too.
 func is_ai_seat(seat: String) -> bool:
+	if seat == GM_SEAT and human_gm:
+		return true  # the AI still runs the enemies for a human GM
 	if _seat_peer.has(seat):
 		return false
 	if ai_seats.get(seat, false):
@@ -487,6 +504,9 @@ func _on_hello(peer: int, msg: Dictionary) -> void:
 			seat = s  # Coming back after a drop.
 	if seat == "":
 		var wanted := str(msg.get("seat", ""))
+		if wanted == GM_SEAT and not human_gm:
+			_refuse(peer, NetProtocol.REFUSE_SEAT_TAKEN, "This game's GM is the AI: there's no GM seat to join.")
+			return
 		if wanted != "":
 			if not _seat_is_open(wanted):
 				_refuse(peer, NetProtocol.REFUSE_SEAT_TAKEN, "That seat is already taken.")

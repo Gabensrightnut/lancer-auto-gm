@@ -222,3 +222,31 @@ func test_terrify_and_reactive_weave() -> void:
 	Reactions.brace(s, a, "t", [0, 3])
 	expect_eq(a.cell, Vector2i(0, 3), "Reactive Weave: a move after Bracing")
 	expect(a.has_status("Invisible"))
+
+
+func test_dragging_and_towing() -> void:
+	_setup(["ms_cable_winch_system"], Vector2i(1, 0))
+	t.side = "players"
+	var out := F.act(e, s, "drag", "a", {"target": "t"})
+	expect(F.ok(out), F.reason(out))
+	expect(a.has_status("Slowed"), "Slowed while dragging")
+	expect(not Reactions.can_react(a, "overwatch", s).ok, "no reactions while dragging")
+	F.act(e, s, "move", "a", {"to": [0, 3]})
+	expect(Sight.unit_distance(s, a, t) <= 1, "it follows")
+	F.act(e, s, "release_drag", "a")
+	expect(not a.has_status("Slowed"))
+	var big := F.mech(s, "big", "enemies", Vector2i(1, 4), 3.0)
+	expect(not F.ok(F.act(e, s, "drag", "a", {"target": "big"})), "up to twice your Size")
+
+
+func test_grapple_swing() -> void:
+	_setup(["ms_reinforced_cabling"], Vector2i(9, 9))
+	for x in range(0, 6):
+		for y in range(0, 3):
+			if Vector2i(x, y) != Vector2i(0, 0):
+				s.map.set_column(Vector2i(x, y), 0, PackedStringArray([BattleMap.TAG_DIFFICULT]))  # deep mud
+	expect(not F.ok(F.act(e, s, "move", "a", {"to": [3, 0]})), "too far through the mud on foot")
+	var out := F.act(e, s, "move", "a", {"to": [3, 0], "swing": true})
+	expect(F.ok(out), F.reason(out))
+	expect(not a.flying, "landed on a surface")
+	expect(not F.ok(F.act(e, s, "move", "a", {"to": [3, 2], "swing": true})), "once per turn")
