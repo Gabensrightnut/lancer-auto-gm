@@ -13,6 +13,9 @@ const BUILDERS := {
 	"mf_goblin": "_goblin",
 	"mf_lancaster": "_lancaster",
 	"mf_nelson": "_nelson",
+	"mf_raleigh": "_raleigh",
+	"mf_tortuga": "_tortuga",
+	"mf_vlad": "_vlad",
 	"mf_mourning_cloak": "_mourning_cloak",
 }
 const CLOTH_SHADER := preload("res://src/render/shaders/cloth.gdshader")
@@ -1111,3 +1114,287 @@ func _nelson() -> void:
 		var side := "r" if s > 0 else "l"
 		m.slots["shoulder_" + side] = _p(m.torso, "Slot_shoulder_" + side, Vector3(s * 0.2, 0.42, 0.04))
 		m.slots["back_" + side] = _p(m.torso, "Slot_back_" + side, Vector3(s * 0.08, 0.44, 0.14))
+
+
+## Common biped scaffold for sculpted frames: pelvis, two legs and a torso. Returns the
+## leg dictionaries. `stance` = [hip_x, hip_z_out, knee_x, ankle_x] degrees.
+func _biped(hip_y: float, hip_w: float, thigh: float, shin: float, stance: Array, lean: float) -> Array:
+	m.pelvis = _p(body, "Pelvis", Vector3(0, hip_y, 0))
+	m.pelvis.set_meta("rest_y", hip_y)
+	var legs: Array = []
+	for s: float in [1.0, -1.0]:
+		var leg := _rig_leg("r" if s > 0 else "l", Vector3(s * hip_w, -0.01, 0), thigh, shin)
+		(leg["hip"] as Node3D).rotation_degrees = Vector3(stance[0], 0, s * stance[1])
+		(leg["knee"] as Node3D).rotation_degrees = Vector3(stance[2], 0, s * -stance[1] * 0.6)
+		(leg["ankle"] as Node3D).rotation_degrees = Vector3(stance[3], 0, s * -stance[1] * 0.4)
+		leg["base"] = Vector3(stance[0], stance[2], stance[3])
+		leg["s"] = s
+		legs.append(leg)
+	m.torso = _p(m.pelvis, "Torso", Vector3(0, 0.04, 0), Vector3(-lean, 0, 0))
+	return legs
+
+
+func _slots(shoulder_y: float, x: float, back_z: float) -> void:
+	for s: float in [1.0, -1.0]:
+		var side := "r" if s > 0 else "l"
+		if not m.slots.has("shoulder_" + side):
+			m.slots["shoulder_" + side] = _p(m.torso, "Slot_shoulder_" + side, Vector3(s * x, shoulder_y, 0.02))
+		if not m.slots.has("back_" + side):
+			m.slots["back_" + side] = _p(m.torso, "Slot_back_" + side, Vector3(s * x * 0.5, shoulder_y, back_z))
+
+
+# --- Raleigh (IPS-N) -------------------------------------------------------------------------
+# From the core book art: a rust-red gunslinger. A wide flat disc "hat" over a small sensor
+# head; big drum-shaped shoulders lying sideways with round vents at their ends; a rounded
+# chest with a recessed lens; a ribbed slate belly and a blue belt; long arms with round
+# elbow and wrist pods; long legs with round knee pods, wrapped shins and chunky boots with
+# slate toe caps; a ragged brown poncho over one shoulder. Revolver in the right hand.
+
+func _raleigh() -> void:
+	m.set_meta("custom_pose", true)
+	var RR := MeshKit.paint(Color(0.55, 0.24, 0.19), 0.3, 0.55, 0.2)
+	var RR2 := MeshKit.paint(Color(0.62, 0.3, 0.25), 0.3, 0.5, 0.1)
+	var SL := MeshKit.paint(Color(0.2, 0.33, 0.38), 0.55, 0.45, 0.15)
+	var BL := MeshKit.paint(Color(0.15, 0.32, 0.5), 0.4, 0.45, 0.0)
+	var DK := MeshKit.paint(Color(0.12, 0.12, 0.13), 0.6, 0.5, 0.0)
+	var WRAP := MeshKit.paint(Color(0.6, 0.48, 0.38), 0.05, 0.85, 0.0)
+	var EYE := MeshKit.paint(Color(0.3, 0.1, 0.05), 0.2, 0.2, 0.0, Color(1.0, 0.45, 0.2))
+	var cloth := ShaderMaterial.new()
+	cloth.shader = CLOTH_SHADER
+	cloth.set_shader_parameter("color", Color(0.45, 0.33, 0.25, 1.0))
+	cloth.set_shader_parameter("tip_color", Color(0.4, 0.29, 0.22, 1.0))
+	cloth.set_shader_parameter("wave", 0.02)
+	var legs := _biped(0.47, 0.1, 0.22, 0.23, [-6, 8, 14, -8], 10)
+	for leg: Dictionary in legs:
+		var s: float = leg["s"]
+		_add(leg["hip"], SmoothKit.blob(Vector3(0.07, 0.07, 0.07), 1.0, 1.0), DK)
+		_add(leg["hip"], SmoothKit.rounded_box(Vector3(0.085, 0.2, 0.1), 0.025), RR, Vector3(0, -0.1, 0))
+		_add(leg["hip"], SmoothKit.rounded_box(Vector3(0.04, 0.15, 0.03), 0.01), SL, Vector3(s * 0.02, -0.11, -0.05))
+		_add(leg["knee"], MeshKit.cylinder(0.05, 0.1, 18), RR2, Vector3.ZERO, Vector3(0, 0, 90))
+		_add(leg["knee"], MeshKit.cylinder(0.03, 0.104, 14), DK, Vector3.ZERO, Vector3(0, 0, 90))
+		_add(leg["knee"], _limb(0.22, 0.045, 0.05, 0.1), RR)
+		for k in range(5):
+			_add(leg["knee"], MeshKit.cylinder(0.053, 0.012, 14), WRAP, Vector3(0, -0.04 - k * 0.022, 0), Vector3(k * 4.0 - 8.0, 0, 0))
+		_add(leg["ankle"], SmoothKit.rounded_box(Vector3(0.11, 0.07, 0.19), 0.03), RR, Vector3(0, -0.03, -0.04))
+		_add(leg["ankle"], SmoothKit.blob(Vector3(0.1, 0.05, 0.07), 0.6, 0.7), SL, Vector3(0, -0.04, -0.12))
+		_add(leg["ankle"], MeshKit.cylinder(0.03, 0.12, 14), RR2, Vector3(0, 0.0, 0.02), Vector3(0, 0, 90))
+	var t := m.torso
+	_add(t, MeshKit.cylinder(0.08, 0.04, 18), BL, Vector3(0, 0.0, 0))
+	for k in range(4):
+		_add(t, SmoothKit.blob(Vector3(0.17 + k * 0.012, 0.035, 0.14), 0.4, 0.6), SL, Vector3(0, 0.04 + k * 0.032, -0.005))
+	_add(t, SmoothKit.loft([
+		{"y": 0.15, "w": 0.2, "d": 0.17, "n": 2.1},
+		{"y": 0.24, "w": 0.26, "d": 0.22, "n": 2.1},
+		{"y": 0.33, "w": 0.27, "d": 0.23, "n": 2.1},
+		{"y": 0.4, "w": 0.18, "d": 0.16, "n": 2.0},
+	], 26), RR)
+	_add(t, SmoothKit.blob(Vector3(0.1, 0.09, 0.05), 0.7, 0.7), SL, Vector3(0, 0.25, -0.11))
+	_add(t, MeshKit.cylinder(0.024, 0.03, 16), DK, Vector3(0, 0.25, -0.135), Vector3(90, 0, 0))
+	_add(t, MeshKit.cylinder(0.012, 0.032, 12), EYE, Vector3(0, 0.25, -0.14), Vector3(90, 0, 0))
+	_add(t, MeshKit.cylinder(0.014, 0.01, 12), EYE, Vector3(-0.09, 0.33, -0.1), Vector3(70, 0, 0))
+	# Head: small sensor block under a wide flat disc.
+	m.head = _p(t, "Head", Vector3(0, 0.4, -0.02), Vector3(-8, 0, 6))
+	_add(m.head, SmoothKit.rounded_box(Vector3(0.08, 0.06, 0.07), 0.015), RR2, Vector3(0, 0.03, 0))
+	_add(m.head, SmoothKit.lathe([Vector2(0.17, 0.065), Vector2(0.175, 0.072), Vector2(0.06, 0.09), Vector2(0.03, 0.095)], 32), RR)
+	_add(m.head, MeshKit.cylinder(0.012, 0.01, 12), EYE, Vector3(0.0, 0.06, -0.15), Vector3(80, 0, 0))
+	_eye(m.head, Vector3(0, 0.03, -0.04))
+	# Drum shoulders lying sideways, vents on the outer ends.
+	for s: float in [1.0, -1.0]:
+		var drum := _p(t, "Pad_" + ("r" if s > 0 else "l"), Vector3(s * 0.19, 0.36, 0.0), Vector3(0, s * 12, 0))
+		_add(drum, SmoothKit.loft([{"y": -0.09, "w": 0.12, "d": 0.12, "n": 2.2}, {"y": 0.0, "w": 0.14, "d": 0.14, "n": 2.2}, {"y": 0.09, "w": 0.12, "d": 0.12, "n": 2.2}], 22), RR, Vector3.ZERO, Vector3(0, 0, 90))
+		_add(drum, _torus(0.045, 0.012), SL, Vector3(s * 0.09, 0, 0), Vector3(0, 0, 90))
+		_add(drum, MeshKit.cylinder(0.035, 0.01, 16), DK, Vector3(s * 0.088, 0, 0), Vector3(0, 0, 90))
+		_add(drum, SmoothKit.rounded_box(Vector3(0.12, 0.05, 0.02), 0.008), SL, Vector3(0, -0.03, -0.085))
+	# Poncho over the left shoulder, hanging down the back.
+	for i in range(6):
+		var u := float(i) / 5.0
+		var pts: Array = []
+		var ws: Array = []
+		var start := Vector3(-0.08 - u * 0.2, 0.42, 0.02 + u * 0.05)
+		for k in range(8):
+			var f := k / 7.0
+			pts.append(start + Vector3(-f * 0.08, -f * 0.5, 0.1 + f * 0.1))
+			ws.append(0.08 * (1.0 - 0.3 * f))
+		var pc := _add(t, ribbon(pts, ws), cloth)
+		pc.set_meta("no_height", true)
+	# Long arms with round pods; revolver in the right hand.
+	var arm_r := _rig_arm("r", Vector3.ZERO, 0.21, 0.21, 0.0, 0.04)
+	var arm_l := _rig_arm("l", Vector3.ZERO, 0.21, 0.21, 0.0, 0.04)
+	_pose_arm(arm_r, Vector3(0.24, 0.3, -0.02), Vector3(0.32, 0.1, -0.04), Vector3(0.33, -0.1, -0.08), Vector3(0.0, -0.6, -1.0))
+	_pose_arm(arm_l, Vector3(-0.24, 0.3, -0.02), Vector3(-0.31, 0.1, -0.02), Vector3(-0.28, -0.1, -0.06), Vector3(0.0, -1.0, -0.3))
+	for arm: Dictionary in [arm_r, arm_l]:
+		_add(arm["shoulder"], MeshKit.cylinder(0.04, 0.09, 16), DK, Vector3.ZERO, Vector3(0, 0, 90))
+		_add(arm["shoulder"], _limb(0.2, 0.038, 0.035, 0.1), RR)
+		_add(arm["elbow"], MeshKit.cylinder(0.042, 0.085, 16), RR2, Vector3.ZERO, Vector3(0, 0, 90))
+		_add(arm["elbow"], _limb(0.2, 0.04, 0.045, 0.15), RR)
+		_add(arm["elbow"], MeshKit.cylinder(0.046, 0.03, 16), BL, Vector3(0, -0.17, 0))
+		_add(arm["hand"], SmoothKit.rounded_box(Vector3(0.06, 0.07, 0.06), 0.015), RR2)
+	_slots(0.42, 0.2, 0.12)
+
+
+# --- Tortuga (IPS-N) -------------------------------------------------------------------------
+# From the core book art: a hulking slab of dark slate armor. The torso is a huge rounded box
+# hunched forward with a red domed hatch (sensor) set into its front-top; a tall boxy
+# shoulder block on the right carrying cable reels lashed with rope; stacked rectangular
+# shield plates on the left side; short thick legs with big rounded boots; arms tucked in,
+# holding a long rifle across the body.
+
+func _tortuga() -> void:
+	m.set_meta("custom_pose", true)
+	var SL := MeshKit.paint(Color(0.24, 0.27, 0.28), 0.45, 0.5, 0.25)
+	var SL2 := MeshKit.paint(Color(0.3, 0.34, 0.35), 0.45, 0.5, 0.15)
+	var DK := MeshKit.paint(Color(0.1, 0.1, 0.11), 0.6, 0.5, 0.0)
+	var BRN := MeshKit.paint(Color(0.3, 0.2, 0.15), 0.1, 0.8, 0.0)
+	var RED := MeshKit.paint(Color(0.62, 0.1, 0.08), 0.3, 0.4, 0.0)
+	var ROPE := MeshKit.paint(Color(0.55, 0.42, 0.3), 0.0, 0.9, 0.0)
+	var AMB := MeshKit.paint(Color(0.4, 0.2, 0.0), 0.2, 0.2, 0.0, Color(1.0, 0.6, 0.15))
+	var legs := _biped(0.3, 0.12, 0.14, 0.15, [-10, 8, 22, -12], 32)
+	for leg: Dictionary in legs:
+		var s: float = leg["s"]
+		_add(leg["hip"], SmoothKit.rounded_box(Vector3(0.13, 0.17, 0.15), 0.03), SL, Vector3(0, -0.07, 0))
+		_add(leg["knee"], SmoothKit.blob(Vector3(0.11, 0.09, 0.1), 0.7, 0.7), SL2, Vector3(0, 0, -0.03))
+		_add(leg["knee"], SmoothKit.rounded_box(Vector3(0.12, 0.16, 0.14), 0.03), SL, Vector3(0, -0.08, 0))
+		_add(leg["knee"], SmoothKit.rounded_box(Vector3(0.05, 0.06, 0.02), 0.008), DK, Vector3(0, -0.07, -0.072))
+		_add(leg["ankle"], SmoothKit.blob(Vector3(0.17, 0.09, 0.26), 0.55, 0.65, 0.0), SL, Vector3(0, -0.05, -0.05))
+		_add(leg["ankle"], SmoothKit.rounded_box(Vector3(0.08, 0.02, 0.04), 0.006), DK, Vector3(0, -0.02, -0.16))
+	var t := m.torso
+	# Huge rounded torso box, hunched forward.
+	_add(t, SmoothKit.rounded_box(Vector3(0.44, 0.46, 0.4), 0.1), SL, Vector3(0, 0.26, -0.02))
+	_add(t, SmoothKit.blob(Vector3(0.4, 0.2, 0.36), 0.7, 0.6, 0.0), SL2, Vector3(0, 0.46, -0.02))
+	_add(t, SmoothKit.rounded_box(Vector3(0.36, 0.14, 0.12), 0.03), BRN, Vector3(0, 0.07, -0.18))
+	_add(t, SmoothKit.rounded_box(Vector3(0.3, 0.1, 0.03), 0.02), SL2, Vector3(0, 0.36, -0.23), Vector3(-15, 0, 0))
+	# Red domed hatch with an amber lens.
+	m.head = _p(t, "Head", Vector3(-0.06, 0.48, -0.12), Vector3(-10, 0, 0))
+	_add(m.head, MeshKit.cylinder(0.09, 0.03, 24), DK)
+	_add(m.head, SmoothKit.blob(Vector3(0.16, 0.08, 0.16), 0.7, 0.8, 0.0, 20), RED, Vector3(0, 0.01, 0))
+	_add(m.head, MeshKit.sphere(0.012, 8), AMB, Vector3(0, 0.05, -0.04))
+	_eye(m.head, Vector3(0, 0.05, -0.06))
+	for p: Vector3 in [Vector3(-0.17, 0.28, -0.232), Vector3(0.05, 0.2, -0.232)]:
+		_add(t, SmoothKit.rounded_box(Vector3(0.04, 0.025, 0.01), 0.004), AMB, p)
+	_add(t, SmoothKit.rounded_box(Vector3(0.08, 0.04, 0.02), 0.008), DK, Vector3(-0.08, 0.12, -0.24))
+	# Right shoulder: a tall box with cable reels lashed with rope.
+	var box := _p(t, "Pad_l", Vector3(-0.26, 0.3, 0.0))
+	_add(box, SmoothKit.rounded_box(Vector3(0.18, 0.32, 0.3), 0.04), SL2)
+	for k in range(3):
+		var reel := _p(box, "Reel", Vector3(-0.04 + k * 0.06, 0.13, -0.08 + (k % 2) * 0.04))
+		_add(reel, MeshKit.cylinder(0.045, 0.04, 20), DK, Vector3.ZERO, Vector3(90, 0, 0))
+		_add(reel, MeshKit.cylinder(0.05, 0.008, 20), RED, Vector3(0, 0, -0.02), Vector3(90, 0, 0))
+	for k in range(4):
+		var y := 0.05 + k * 0.05
+		_add(box, SmoothKit.tube([Vector3(-0.09, y, -0.16), Vector3(0.0, y + 0.03, -0.17), Vector3(0.09, y - 0.02, -0.16)], 0.004, 5), ROPE)
+	_add(box, MeshKit.cylinder(0.025, 0.02, 14), DK, Vector3(0, -0.02, -0.155), Vector3(90, 0, 0))
+	# Ropes trailing off the back.
+	for k in range(3):
+		var a := Vector3(-0.1, 0.15 - k * 0.04, 0.14)
+		_add(box, SmoothKit.tube(SmoothKit.bezier(a, a + Vector3(-0.1, -0.05, 0.05), a + Vector3(-0.2, -0.15, 0.0), a + Vector3(-0.3, -0.25, 0.05), 10), 0.005, 5), ROPE)
+	# Left side: stacked rectangular shield plates.
+	var shield := _p(t, "Pad_r", Vector3(0.3, 0.24, -0.04), Vector3(0, 0, -8))
+	for k in range(2):
+		var plate := _p(shield, "Plate", Vector3(0.02 + k * 0.04, 0.12 - k * 0.24, -0.04 * k), Vector3(10 - k * 5, 0, 0))
+		_add(plate, SmoothKit.rounded_box(Vector3(0.04, 0.2, 0.28), 0.012), SL2)
+		for j in range(3):
+			_add(plate, SmoothKit.rounded_box(Vector3(0.046, 0.16, 0.075), 0.01), SL, Vector3(-0.004, 0, -0.09 + j * 0.09))
+	# Arms tucked in, holding the rifle across the body.
+	var arm_r := _rig_arm("r", Vector3.ZERO, 0.14, 0.15, 0.0, 0.05)
+	var arm_l := _rig_arm("l", Vector3.ZERO, 0.14, 0.15, 0.0, 0.05)
+	_pose_arm(arm_r, Vector3(0.24, 0.24, -0.04), Vector3(0.2, 0.1, -0.16), Vector3(0.06, 0.05, -0.27), Vector3(-0.9, -0.35, -0.2))
+	_pose_arm(arm_l, Vector3(-0.26, 0.24, -0.04), Vector3(-0.22, 0.12, -0.18), Vector3(-0.12, 0.13, -0.3), Vector3(-0.9, -0.35, -0.2))
+	for arm: Dictionary in [arm_r, arm_l]:
+		_add(arm["shoulder"], SmoothKit.blob(Vector3(0.08, 0.08, 0.08), 1.0, 1.0), DK)
+		_add(arm["shoulder"], SmoothKit.rounded_box(Vector3(0.09, 0.15, 0.09), 0.02), SL, Vector3(0, -0.07, 0))
+		_add(arm["elbow"], SmoothKit.rounded_box(Vector3(0.1, 0.15, 0.1), 0.02), SL2, Vector3(0, -0.07, 0))
+		_add(arm["hand"], SmoothKit.rounded_box(Vector3(0.07, 0.07, 0.07), 0.016), SL)
+	_slots(0.45, 0.2, 0.2)
+
+
+# --- Vlad (IPS-N) ---------------------------------------------------------------------------
+# From the core book art: a towering khaki-grey brute studded with bone-white spikes. Huge
+# round drum shoulders, a narrow head with an orange-and-white chevron face, a stacked
+# segmented torso with a white loin plate, long arms with spiked forearm guards and heavy
+# clawed hands, thick legs with spiked plates and big boots. A tall spear in one hand.
+
+func _vlad() -> void:
+	m.set_meta("custom_pose", true)
+	m.set_meta("melee_hand", "l")
+	var KH := MeshKit.paint(Color(0.45, 0.42, 0.35), 0.25, 0.65, 0.2)
+	var KH2 := MeshKit.paint(Color(0.52, 0.49, 0.41), 0.25, 0.6, 0.1)
+	var BONE := MeshKit.paint(Color(0.88, 0.85, 0.76), 0.1, 0.5, 0.0)
+	var DK := MeshKit.paint(Color(0.14, 0.15, 0.17), 0.6, 0.5, 0.0)
+	var RUST := MeshKit.paint(Color(0.38, 0.2, 0.14), 0.3, 0.6, 0.0)
+	var OR := MeshKit.paint(Color(0.88, 0.55, 0.12), 0.2, 0.45, 0.0)
+	var GL := MeshKit.paint(Color(0.2, 0.3, 0.2), 0.2, 0.2, 0.0, Color(0.5, 1.0, 0.6))
+	var spike := func(parent: Node3D, pos: Vector3, dir: Vector3, length: float) -> void:
+		var sp := MeshKit.part(parent, MeshKit.cylinder(length * 0.13, length, 7, 0.0), BONE, pos + dir.normalized() * length * 0.5)
+		sp.basis = basis_down(-dir)
+	var legs := _biped(0.44, 0.13, 0.2, 0.22, [-4, 6, 10, -6], 4)
+	for leg: Dictionary in legs:
+		var s: float = leg["s"]
+		_add(leg["hip"], SmoothKit.blob(Vector3(0.08, 0.08, 0.08), 1.0, 1.0), DK)
+		_add(leg["hip"], SmoothKit.loft([{"y": -0.2, "w": 0.13, "d": 0.14, "n": 2.6}, {"y": -0.1, "w": 0.15, "d": 0.15, "n": 2.6}, {"y": 0.0, "w": 0.12, "d": 0.13, "n": 2.6}], 18), KH)
+		for k in range(3):
+			spike.call(leg["hip"], Vector3(s * 0.07, -0.05 - k * 0.05, -0.02), Vector3(s, 0.3, -0.2), 0.06)
+		_add(leg["knee"], MeshKit.cylinder(0.055, 0.12, 18), KH2, Vector3.ZERO, Vector3(0, 0, 90))
+		_add(leg["knee"], MeshKit.cylinder(0.025, 0.124, 12), DK, Vector3.ZERO, Vector3(0, 0, 90))
+		_add(leg["knee"], SmoothKit.loft([{"y": -0.22, "w": 0.13, "d": 0.14, "n": 2.6}, {"y": -0.1, "w": 0.15, "d": 0.15, "n": 2.6}, {"y": -0.02, "w": 0.12, "d": 0.12, "n": 2.6}], 18), KH)
+		for k in range(4):
+			_add(leg["knee"], SmoothKit.rounded_box(Vector3(0.012, 0.12, 0.01), 0.004), BONE, Vector3((k - 1.5) * 0.028, -0.12, -0.077))
+		spike.call(leg["knee"], Vector3(s * 0.06, 0.0, -0.03), Vector3(s, 0.4, -0.3), 0.08)
+		_add(leg["ankle"], SmoothKit.rounded_box(Vector3(0.15, 0.08, 0.24), 0.035), KH, Vector3(0, -0.035, -0.05))
+		for k in range(3):
+			_add(leg["ankle"], SmoothKit.rounded_box(Vector3(0.012, 0.03, 0.08), 0.004), BONE, Vector3((k - 1) * 0.04, -0.0, -0.12), Vector3(-30, 0, 0))
+	var t := m.torso
+	for k in range(4):
+		_add(t, SmoothKit.blob(Vector3(0.22 + k * 0.03, 0.06, 0.18 + k * 0.01), 0.45, 0.6), KH if k % 2 else KH2, Vector3(0, 0.05 + k * 0.055, 0))
+		if k > 0:
+			for j in range(3):
+				spike.call(t, Vector3((j - 1) * 0.06, 0.05 + k * 0.055, -0.1 - k * 0.005), Vector3((j - 1) * 0.2, 0.6, -1), 0.05)
+	_add(t, SmoothKit.loft([
+		{"y": 0.22, "w": 0.3, "d": 0.22, "n": 2.6},
+		{"y": 0.32, "w": 0.34, "d": 0.24, "n": 2.6},
+		{"y": 0.4, "w": 0.26, "d": 0.2, "n": 2.4},
+	], 24), KH)
+	_add(t, SmoothKit.rounded_box(Vector3(0.1, 0.12, 0.03), 0.015), KH2, Vector3(0, 0.33, -0.12))
+	_add(t, SmoothKit.rounded_box(Vector3(0.07, 0.015, 0.012), 0.004), DK, Vector3(0, 0.36, -0.137))
+	_add(m.pelvis, SmoothKit.rounded_box(Vector3(0.1, 0.12, 0.03), 0.02), BONE, Vector3(0, -0.04, -0.07))
+	_add(m.pelvis, SmoothKit.rounded_box(Vector3(0.24, 0.07, 0.15), 0.02), DK, Vector3(0, 0.0, 0))
+	# Narrow chevron-faced head.
+	m.head = _p(t, "Head", Vector3(0, 0.4, -0.05))
+	_add(m.head, SmoothKit.loft([{"y": 0.0, "w": 0.06, "d": 0.08}, {"y": 0.06, "w": 0.07, "d": 0.08}, {"y": 0.11, "w": 0.04, "d": 0.06}, {"y": 0.13, "w": 0.01, "d": 0.03}], 4), BONE, Vector3(0, 0, 0), Vector3(0, 45, 0))
+	_add(m.head, SmoothKit.loft([{"y": 0.02, "w": 0.05, "d": 0.01}, {"y": 0.07, "w": 0.06, "d": 0.01}, {"y": 0.12, "w": 0.01, "d": 0.01}], 4), OR, Vector3(0, 0, -0.04), Vector3(0, 45, 0))
+	for k in range(3):
+		_add(m.head, MeshKit.chamfer_box(Vector3(0.03, 0.005, 0.005), 0.001), DK, Vector3(0, 0.035 + k * 0.015, -0.046), Vector3(0, 0, 0))
+	_add(m.head, MeshKit.sphere(0.007, 8), GL, Vector3(0.012, 0.08, -0.045))
+	_eye(m.head, Vector3(0, 0.07, -0.05))
+	for s: float in [1.0, -1.0]:
+		_add(t, SmoothKit.rounded_box(Vector3(0.05, 0.1, 0.06), 0.015), KH2, Vector3(s * 0.07, 0.42, -0.02))
+	# Huge drum shoulders with spikes.
+	for s: float in [1.0, -1.0]:
+		var drum := _p(t, "Pad_" + ("r" if s > 0 else "l"), Vector3(s * 0.28, 0.4, 0.04), Vector3(0, s * -38, 0))
+		_add(drum, SmoothKit.loft([{"y": -0.1, "w": 0.26, "d": 0.26, "n": 2.2}, {"y": 0.0, "w": 0.29, "d": 0.29, "n": 2.2}, {"y": 0.09, "w": 0.24, "d": 0.24, "n": 2.2}], 24), KH, Vector3.ZERO, Vector3(-90, 0, 0))
+		_add(drum, _torus(0.1, 0.014), RUST, Vector3(0, 0, -0.095), Vector3(90, 0, 0))
+		_add(drum, MeshKit.cylinder(0.1, 0.01, 24), KH2, Vector3(0, 0, -0.098), Vector3(90, 0, 0))
+		for k in range(7):
+			var a := deg_to_rad(-60.0 + k * 30.0)
+			var p := Vector3(cos(a) * 0.14 * s, sin(a) * 0.14, -0.02 + (k % 2) * 0.05)
+			spike.call(drum, p, Vector3(cos(a) * s, sin(a), -0.3), 0.07)
+			_add(drum, SmoothKit.rounded_box(Vector3(0.012, 0.07, 0.012), 0.004), BONE, Vector3(cos(a) * 0.09 * s, sin(a) * 0.09, -0.104), Vector3(0, 0, rad_to_deg(a) * s + 90.0))
+	# Long arms with spiked forearm guards and big clawed hands.
+	var arm_r := _rig_arm("r", Vector3.ZERO, 0.21, 0.24, 0.0, 0.06)
+	var arm_l := _rig_arm("l", Vector3.ZERO, 0.21, 0.24, 0.0, 0.06)
+	_pose_arm(arm_r, Vector3(0.3, 0.3, -0.02), Vector3(0.36, 0.1, -0.06), Vector3(0.37, -0.14, -0.04), Vector3(0.0, -1.0, -0.15))
+	_pose_arm(arm_l, Vector3(-0.3, 0.3, -0.02), Vector3(-0.38, 0.12, -0.12), Vector3(-0.32, 0.16, -0.26), Vector3(0.0, 1.0, 0.0))
+	for arm: Dictionary in [arm_r, arm_l]:
+		_add(arm["shoulder"], SmoothKit.blob(Vector3(0.08, 0.08, 0.08), 1.0, 1.0), DK)
+		_add(arm["shoulder"], SmoothKit.loft([{"y": -0.2, "w": 0.1, "d": 0.1, "n": 2.6}, {"y": -0.1, "w": 0.12, "d": 0.12, "n": 2.6}, {"y": 0.0, "w": 0.1, "d": 0.1, "n": 2.6}], 16), KH)
+		_add(arm["elbow"], MeshKit.cylinder(0.05, 0.11, 16), KH2, Vector3.ZERO, Vector3(0, 0, 90))
+		_add(arm["elbow"], SmoothKit.loft([{"y": -0.23, "w": 0.13, "d": 0.12, "n": 2.6}, {"y": -0.12, "w": 0.14, "d": 0.13, "n": 2.6}, {"y": -0.02, "w": 0.1, "d": 0.1, "n": 2.6}], 16), KH)
+		for k in range(5):
+			_add(arm["elbow"], MeshKit.cylinder(0.072, 0.012, 16), DK, Vector3(0, -0.06 - k * 0.03, 0))
+		for k in range(3):
+			spike.call(arm["elbow"], Vector3(0.06, -0.06 - k * 0.06, 0.0), Vector3(1, 0.3, 0), 0.06)
+		_add(arm["hand"], SmoothKit.rounded_box(Vector3(0.1, 0.09, 0.1), 0.02), KH2)
+		for k in range(4):
+			var f := _p(arm["hand"], "Claw", Vector3((k - 1.5) * 0.024, -0.05, -0.02), Vector3(-15, 0, 0))
+			_add(f, _limb(0.07, 0.012, 0.009), KH)
+			_add(f, SmoothKit.loft([{"y": -0.1, "w": 0.003, "d": 0.003}, {"y": -0.07, "w": 0.014, "d": 0.012}], 6, false), BONE)
+	_slots(0.48, 0.27, 0.12)

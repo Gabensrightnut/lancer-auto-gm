@@ -295,7 +295,10 @@ func _weapons(loadout: Dictionary, content: ContentDB) -> void:
 					prefs = SLOT_PREFS["_heavy"]
 				_:
 					prefs = SLOT_PREFS["_default"]
-		if w.get("mount") == "Auxiliary" and type == "Melee":
+		if type == "Melee" and _m.has_meta("melee_hand"):
+			var mh: String = _m.get_meta("melee_hand")
+			prefs = ["hand_" + mh, "hand_" + ("r" if mh == "l" else "l")]
+		elif w.get("mount") == "Auxiliary" and type == "Melee":
 			prefs = ["forearm_l", "forearm_r", "hand_l", "hand_r"]
 			if _m.has_meta("custom_pose"):
 				prefs = ["hand_l", "hand_r", "forearm_l", "forearm_r"]
