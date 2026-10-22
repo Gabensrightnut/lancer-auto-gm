@@ -29,6 +29,10 @@ var refusals: Array = []
 var log_lines: PackedStringArray = PackedStringArray()
 
 var _reinforced_round := 0
+## side -> unit id -> {"damage", "structure_lost"}: harm each side saw enemies take (AiKnowledge).
+var seen_harm: Dictionary = {}
+## unit id -> round its Hide was refused (someone it can't see has eyes on it).
+var _no_hide: Dictionary = {}
 
 
 func _init(net_host: NetHost, gm: GmSettings = null, the_mission: Mission = null) -> void:
@@ -72,12 +76,36 @@ func step() -> bool:
 			return false  # A human GM starts the fight.
 		var first := mission.first_side if mission != null else Mission.PLAYERS
 		return (host.submit(NetHost.GM_SEAT, {"type": "start_combat", "params": {"first_side": first}})["result"] as RuleResult).ok
+	if mission != null:
+		var carry := mission.carry_action()
+		if not carry.is_empty():
+			host.submit(NetHost.GM_SEAT, carry)
+			return true
 	if _maybe_narrate():
 		return true
 	if _maybe_reinforce():
 		return true
 	if state.active_unit != "":
 		var u := state.unit(state.active_unit)
+		if u != null and NhpAi.auto(u):
+			# An AI drives this mech by its own rules; its pilot answers first (NhpAi.question).
+			var q := host.nhp_question()
+			if not q.is_empty():
+				if host.seat_present(q["seat"]):
+					return false  # the pilot decides, no time limit
+				var answer: Dictionary = q["default"]
+				_log(u.id, "%s's AI pilot: %s." % [TacticsAi._name(u), "Shut Down" if answer.get("type", "") == "shut_down" else "let it act"])
+				if answer.get("type", "") == "nhp_answer":
+					host.nhp_answered[u.id] = host.state.round_number
+					var order: Variant = answer.get("params", {}).get("order")
+					if order is Dictionary:
+						host.nhp_orders[u.id] = (order as Dictionary).duplicate()
+				else:
+					host.submit_ai(answer)
+					host.nhp_answered[u.id] = host.state.round_number
+				return true
+			play_turn(u)
+			return true
 		if u != null and host.is_ai_seat(u.controller):
 			play_turn(u)
 			return true
@@ -102,7 +130,18 @@ func step() -> bool:
 ## Plans and plays the active AI unit's whole turn, then ends it.
 func play_turn(u: Unit) -> void:
 	var know := AiKnowledge.for_side(host.state, host.view_filter, u.side)
-	var plan := ai.plan_turn(know, u.id, _orders_for(u))
+	know.seen_harm = seen_harm.get(u.side, {})
+	var plan: Dictionary
+	match NhpAi.kind(u):
+		"sekhmet":
+			plan = NhpAi.plan_sekhmet(know, u.id)
+		"compcon":
+			var o: Dictionary = host.nhp_orders.get(u.id, {"stance": "defensive"}).duplicate()
+			if mission != null and not o.has("zones"):
+				o.merge(mission.objective_for(u.side))
+			plan = ai.plan_turn(know, u.id, o)
+		_:
+			plan = ai.plan_turn(know, u.id, _orders_for(u))
 	if settings.explain:
 		_log(u.id, plan["log"])
 	var steps: Array = plan["steps"]
@@ -111,10 +150,10 @@ func play_turn(u: Unit) -> void:
 	for action: Dictionary in steps:
 		if u.destroyed or host.state.active_unit != u.id:
 			break
-		var out := host.submit(u.controller, action)
+		var out := _submit(u, action)
 		var asked := String((out["result"] as RuleResult).grey_area)
 		if asked != "" and not Rulings.decided(host.state, asked) and _make_ruling(asked):
-			out = host.submit(u.controller, action)  # the AI GM decided the open question; try again
+			out = _submit(u, action)  # the AI GM decided the open question; try again
 		while _answer_reaction():
 			pass
 		if not host.state.pending.is_empty():
@@ -123,7 +162,13 @@ func play_turn(u: Unit) -> void:
 			# The real battlefield differed from what this side knew (a Hidden enemy in the way...).
 			_refused(u, action, out["result"])
 	if host.state.active_unit == u.id and host.state.pending.is_empty():
-		host.submit(u.controller, {"type": "end_turn", "actor": u.id})
+		_submit(u, {"type": "end_turn", "actor": u.id})
+
+
+## Units an AI drives by its own rules (NhpAi) act through the host's AI path; the rest
+## through their seat like anyone.
+func _submit(u: Unit, action: Dictionary) -> Dictionary:
+	return host.submit_ai(action) if NhpAi.auto(u) else host.submit(u.controller, action)
 
 
 ## After Bracing, a unit's next turn is one quick action only: no normal move, no full or
@@ -205,6 +250,8 @@ func _orders_for(u: Unit) -> Dictionary:
 	var o: Dictionary = orders.get(u.id, {}).duplicate()
 	if mission != null and not o.has("zones"):
 		o.merge(mission.objective_for(u.side))
+	if _no_hide.has(u.id) and host.state.round_number - int(_no_hide[u.id]) <= 2:
+		o["no_hide"] = true  # an enemy it can't see has eyes on it: stop trying for a while
 	return o
 
 
@@ -256,12 +303,38 @@ func _maybe_reinforce() -> bool:
 
 
 func _on_action_resolved(_seat: String, _action: Dictionary, _result: RuleResult, events: Array) -> void:
+	_note_harm(events)
 	if mission != null:
 		mission.observe(host.state, events)
 		GmTwist.observe(mission, host.state, events)
 
 
+## Damage amounts and structure losses are public (every side sees them: ViewFilter keeps them);
+## each side remembers them for enemies it can't read.
+func _note_harm(events: Array) -> void:
+	for e: Dictionary in events:
+		var type := str(e.get("type", ""))
+		if not type in ["damage_dealt", "structure_lost"]:
+			continue
+		var t := host.state.unit(str(e.get("target", e.get("unit", ""))))
+		if t == null:
+			continue
+		for side: String in [Mission.PLAYERS, Mission.ENEMIES]:
+			if side == t.side:
+				continue
+			if not seen_harm.has(side):
+				seen_harm[side] = {}
+			var h: Dictionary = seen_harm[side].get(t.id, {"damage": 0, "structure_lost": 0})
+			if type == "damage_dealt":
+				h["damage"] = int(h["damage"]) + int(e.get("amount", 0))
+			else:
+				h["structure_lost"] = int(h["structure_lost"]) + 1
+			seen_harm[side][t.id] = h
+
+
 func _refused(u: Unit, action: Dictionary, result: RuleResult) -> void:
+	if str(action.get("type", "")) == "hide":
+		_no_hide[u.id] = host.state.round_number
 	refusals.append({"unit": u.id, "action": action, "reason": result.reason})
 	_log(u.id, "%s couldn't %s: %s" % [TacticsAi._name(u), str(action.get("type", "")).replace("_", " "), result.reason])
 

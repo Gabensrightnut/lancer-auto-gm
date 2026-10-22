@@ -43,6 +43,8 @@ var outcome_reason := ""
 var awaiting_handoff := false
 ## Every event of this battle (host), for the story's debrief (CampaignLoop.finish_mission).
 var battle_events: Array = []
+## Host: every batch of events the rules engine produced (all seats'), for the story.
+signal host_events(events: Array)
 
 var _ai_wait := 0.0
 var _local_humans: Array = []
@@ -126,6 +128,20 @@ func my_pick() -> bool:
 	return w.get("state", "") == "pick" and w.get("you", false) and not awaiting_handoff
 
 
+## The question an AI-driven mech's pilot answers at the start of its turn ({} if none, or
+## not for this screen): {kind, text, options: [{label, action, tip}]} (NhpAi.question).
+func nhp_question() -> Dictionary:
+	var w := waiting()
+	if w.get("state", "") != "nhp" or not w.get("you", false) or awaiting_handoff:
+		return {}
+	return w.get("question", {})
+
+
+## Sends the chosen option's action (through the host, like any action).
+func answer_nhp(action: Dictionary) -> void:
+	engine.submit(mirror, action)
+
+
 ## The reaction question the engine is asking the people at this screen ({} if none):
 ## {id, unit, reaction: "brace"/"overwatch"/..., context: {weapons: [...], damage...}}.
 func my_reaction() -> Dictionary:
@@ -194,7 +210,7 @@ func _follow_waiting() -> void:
 	if busy or awaiting_handoff or hot.awaiting_handoff:
 		return
 	var w := host.waiting_on()
-	if not w.get("state", "") in ["turn", "reaction"] or (w.get("seats", []) as Array).is_empty():
+	if not w.get("state", "") in ["turn", "reaction", "nhp"] or (w.get("seats", []) as Array).is_empty():
 		return
 	var target: String = w["seats"][0]
 	if target != hot.current_seat and target in hot.seats and _local_humans.has(target):
@@ -229,6 +245,8 @@ func _seen(events: Array) -> void:
 
 func _on_resolved(_seat: String, _action: Dictionary, _result: RuleResult, events: Array) -> void:
 	battle_events.append_array(events)
+	if not events.is_empty():
+		host_events.emit(events)
 
 
 func _sync_mirror() -> void:
@@ -261,6 +279,16 @@ func _on_ai_log(_unit: String, text: String) -> void:
 
 func _on_mission_over(the_outcome: String, reason: String) -> void:
 	_finish(the_outcome, reason)
+
+
+## A parley ended the fight (story event "battle_end_requested", Core p.60): the GM ends the
+## mission with the agreed outcome, through the rules engine like any GM action. Host only.
+func end_by_parley(e: Dictionary) -> bool:
+	if not is_host or over or mission == null or mission.ended:
+		return false
+	var action := CampaignLoop.end_by_parley(mission, e)
+	mission.ended = true
+	return (host.submit(NetHost.GM_SEAT, action)["result"] as RuleResult).ok
 
 
 func _check_end(events: Array) -> void:

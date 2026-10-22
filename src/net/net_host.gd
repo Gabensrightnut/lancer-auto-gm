@@ -26,6 +26,10 @@ signal waiting_changed(info: Dictionary)
 var state: GameState
 var engine: RulesEngine
 var view_filter: ViewFilter
+## AI-driven units (NhpAi: cascading NHP, SEKHMET, COMP/CON, Fourth Gate): unit id -> the round
+## its pilot's seat answered the start-of-turn question, and a COMP/CON's standing command.
+var nhp_answered: Dictionary = {}
+var nhp_orders: Dictionary = {}
 var transport: NetTransport
 var room_code := ""
 var local_seats := PackedStringArray()
@@ -108,6 +112,8 @@ func submit(seat: String, action: Dictionary) -> Dictionary:
 	if not paused_for.is_empty():
 		return {"result": RuleResult.deny("Waiting for everyone to reconnect before the mission goes on.", ""), "events": []}
 	var actor := state.unit(str(action.get("actor", "")))
+	if actor != null and seat != GM_SEAT and NhpAi.auto(actor):
+		return _pilot_of_ai_unit(seat, actor, action)
 	if actor == null and seat != GM_SEAT:
 		# Actions without an actor (start_combat, gm_spawn, gm_end_mission...) are the host's.
 		return {"result": RuleResult.deny("Only the GM can do that.", ""), "events": []}
@@ -120,6 +126,60 @@ func submit(seat: String, action: Dictionary) -> Dictionary:
 		var no := RuleResult.deny("%s isn't yours to command." % actor.name if actor.name != "" else "That unit isn't yours to command.", "")
 		return {"result": no, "events": []}
 	return _run(seat, action)
+
+
+## The AI (AiDirector) acting for a unit it drives by its own rules (NhpAi), whoever its
+## controller is. Same engine, same updates; no seat check.
+func submit_ai(action: Dictionary) -> Dictionary:
+	if not paused_for.is_empty():
+		return {"result": RuleResult.deny("Waiting for everyone to reconnect before the mission goes on.", ""), "events": []}
+	var actor := state.unit(str(action.get("actor", "")))
+	return _run(actor.controller if actor != null else GM_SEAT, action)
+
+
+## A pilot whose mech an AI drives may still answer its start-of-turn question (nhp_answer),
+## Shut Down a cascading NHP (the seat it had before the cascade), take back control, and
+## react; everything else is the AI's (Core p.107; the systems' text).
+func _pilot_of_ai_unit(seat: String, actor: Unit, action: Dictionary) -> Dictionary:
+	if seat != NhpAi.pilot_seat(actor):
+		return {"result": RuleResult.deny("%s isn't yours to command." % (actor.name if actor.name != "" else "That unit"), ""), "events": []}
+	if not NhpAi.pilot_may(state, actor, action):
+		return {"result": RuleResult.deny("%s's AI is in control: you can only answer it, Shut Down a cascade, or take back control." % actor.name, AISystems.REF), "events": []}
+	var type := str(action.get("type", ""))
+	if type == "nhp_answer":
+		if state.active_unit != actor.id:
+			return {"result": RuleResult.deny("Answer at the start of its turn.", AISystems.REF), "events": []}
+		nhp_answered[actor.id] = state.round_number
+		var order: Variant = action.get("params", {}).get("order")
+		if order is Dictionary:
+			nhp_orders[actor.id] = (order as Dictionary).duplicate()
+		_waiting_check()
+		_seats_changed()
+		return {"result": RuleResult.allow(), "events": []}
+	if type == "start_turn":
+		var why := _pick_refusal(seat, actor) if actor.controller != seat else ""
+		if why != "":
+			return {"result": RuleResult.deny(why, TurnRules.REF_TURN_ORDER), "events": []}
+		return _run(actor.controller, action)
+	if type in ["shut_down", "activate", "ai_control"]:
+		nhp_answered[actor.id] = state.round_number
+	return _run(seat, action)
+
+
+## The start-of-turn question for the active AI-driven unit's pilot (NhpAi.question), or {}
+## when it's answered (or there's nothing to ask).
+func nhp_question() -> Dictionary:
+	var u := state.unit(state.active_unit) if state.active_unit != "" else null
+	if u == null or not state.pending.is_empty() or int(nhp_answered.get(u.id, -1)) == state.round_number:
+		return {}
+	return NhpAi.question(state, u)
+
+
+## The seat is played here or by a connected friend (not AI, not away).
+func seat_present(seat: String) -> bool:
+	if is_ai_seat(seat):
+		return false
+	return seat in local_seats or _seat_peer.has(seat)
 
 
 func _run(seat: String, action: Dictionary) -> Dictionary:
@@ -222,6 +282,26 @@ func waiting_on(for_seat: String = "") -> Dictionary:
 		info["text"] = "Waiting for %s to decide whether to %s." % [
 			(r.name if r.name != "" else r.id) if info["unit"] != "" else "an enemy",
 			String(state.pending.get("reaction", "react")).capitalize()]
+	elif not nhp_question().is_empty():
+		# An AI drives this mech; its pilot decides one thing first (Shut Down, a command...).
+		var q := nhp_question()
+		var u := state.unit(state.active_unit)
+		info["state"] = "nhp"
+		info["ai"] = not seat_present(q["seat"])
+		info["seats"] = [] if info["ai"] else [q["seat"]]
+		info["unit"] = u.id if all_seen or my_side == u.side else ""
+		if for_seat == q["seat"] or for_seat == "":
+			info["question"] = {"kind": q["kind"], "text": q["text"], "options": q["options"]}
+			info["text"] = q["text"]
+		else:
+			info["text"] = "Waiting for %s to decide what %s's AI does." % [_seat_name(q["seat"]), u.name]
+	elif state.active_unit != "" and NhpAi.auto(state.unit(state.active_unit)):
+		var u := state.unit(state.active_unit)
+		info["state"] = "turn"
+		info["ai"] = true
+		info["unit"] = u.id if all_seen or my_side == u.side or not u.has_status("Hidden") else ""
+		info["text"] = {"cascade": "%s's cascading NHP is acting.", "sekhmet": "SEKHMET drives %s.", "compcon": "%s's COMP/CON follows its command.",
+			"fourth_gate": "%s fights for its new side (Fourth Gate)."}.get(NhpAi.kind(u), "%s's AI is acting.") % u.name
 	elif state.active_unit != "":
 		var u := state.unit(state.active_unit)
 		info["state"] = "turn"

@@ -184,6 +184,27 @@ static func join_story(client: NetClient, db: ContentDB, first_payload: Dictiona
 	return story_client
 
 
+## A story battle's rules events for the story (StoryEngine "battle_events": the enemy
+## commander keeps count and may open a parley). Friends online get any story events.
+## Returns the story events.
+static func story_battle_events(campaign: Campaign, events: Array) -> Array:
+	if story == null or _story_campaign != campaign.id:
+		return []
+	var r := story_engine.submit(story, campaign, {"type": "battle_events", "seat": "gm", "params": {"events": events}})
+	var out: Array = r.get("events", []) if r.get("ok", false) else []
+	if not out.is_empty() and story_session != null:
+		story_session._send(out)
+	return out
+
+
+## Copies every script variable of `src` onto `dst` (same class), keeping `dst` the object
+## other code holds (a friend's StoryClient mirror into the objects the story UI shows).
+static func copy_into(dst: Object, src: Object) -> void:
+	for prop: Dictionary in src.get_property_list():
+		if int(prop["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE:
+			dst.set(prop["name"], src.get(prop["name"]))
+
+
 ## Leaving an online story game (either side).
 static func leave_story_online() -> void:
 	story_client = null
@@ -224,8 +245,10 @@ const ARC_CHOICES := {1: "Short: 1 story", 2: "2 stories", 3: "Standard: 3 stori
 ## take their seats online). `arcs` = campaign length. Session zero comes first (Core p.40-41,
 ## the hub shows SessionZeroScreen): the job board fills only after it, so the table's choices
 ## (focus, content left out) shape the first jobs. Saved before it returns.
-static func start_story_campaign(store: SaveStore, db: ContentDB, campaign_name: String, pilots: int, start_ll: int, preset: String, arcs: int = DEFAULT_ARCS) -> Campaign:
+static func start_story_campaign(store: SaveStore, db: ContentDB, campaign_name: String, pilots: int, start_ll: int, preset: String, arcs: int = DEFAULT_ARCS, campaign_id: String = "") -> Campaign:
 	var c := Campaign.create(campaign_name, {"start_ll": start_ll, "gm_preset": preset})
+	if campaign_id != "":
+		c.id = campaign_id  # a fixed id gives the same story every time (tests, balance runs)
 	c.options["story"] = true
 	c.options["campaign_arcs"] = arcs
 	c.options["teaching_hints"] = true

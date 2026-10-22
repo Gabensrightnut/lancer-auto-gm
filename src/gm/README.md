@@ -7,7 +7,9 @@ section 9). Everything it does goes through `NetHost.submit()` -> `RulesEngine.s
 |---|---|
 | `mission_generator.gd` | `MissionGenerator.generate(seed, opts)` -> `{state, mission}`: sitrep, battlefield from `TerrainGen` (landscape + culture, 20-40 spaces; kit in `mission.flavor.kit`), zones, deployment, squad (core Everest builds) and enemies (NPC templates). Same seed, same mission. |
 | (environments) | `MissionGenerator` turns what the world suggests into rules environments (lancer-data environments.json): the weather's (`data/game/biomes/weather.json` "environment": sandstorm, storm, blizzard) and the landscape's (moon/asteroid low gravity, ocean world, volcanic molten world). Each comes into play at the GM dial `environments` (Standard 0.5, Teaching 0) with its own seeded roll. Result: `mission.environments`, `state.environments` (for the rules engine), `flavor.environments` ({id, name, text}), a line in the briefing, and a `gm_narrate` "environment" announcement to everyone when combat starts. |
-| `mission.gd` | Sitrep rules and scoring (Basic Combat, Control, Holdout, Gauntlet); `observe(state, events)` sets `outcome`. Save with `to_dict()`. |
+| `nhp_ai.gd` | `NhpAi`: mechs an AI drives by its own rules, played by the director: a cascading NHP (GM's NPC until Shut Down), SEKHMET (charges the closest visible character, any side, melee only), COMP/CON (follows its pilot's command), Fourth Gate (an allied NPC for its new side). At the start of the turn the pilot's seat answers its question (Shut Down / let it act / take back control / a command); an AI-played or absent pilot gets the safe default. NetHost lets that seat send only those (`nhp_answer`, `shut_down`, take back, react) and the director acts through `NetHost.submit_ai`. |
+| `sitrep_actions.gd` | `SitrepActions` (registered with GmActions): `extract` (Escort/Extraction, free, ends the turn; an adjacent uncontested Objective goes too), `survey_zone` (Recon, full action; `zone_surveyed` seen only by that side), `gm_carry_objective` (the Objective follows the character who started their turn next to it). State: `state.objectives` {sitrep, zones, extraction, objective, true_zone (secret: ViewFilter.objectives_for), surveyed}. |
+| `mission.gd` | Sitrep rules and scoring (all seven book sitreps: Basic Combat, Control, Holdout, Gauntlet, Escort, Extraction, Recon); `observe(state, events)` sets `outcome`. Save with `to_dict()`. |
 | `tactics_ai.gd` | Utility AI: picks a whole turn for one unit (move, attacks, Lock On, Scan, Hide, Stabilize, Boost) and explains it in one line. |
 | `ai_knowledge.gd` | The planning copy of the battle for one side: Hidden enemies left out, unscanned stats unknown. |
 | `ai_director.gd` | Runs AI seats on the host: starts combat, picks who acts, plays AI turns, reinforcements, ends the mission. |
@@ -46,3 +48,18 @@ Names and flavor (callsigns, pilot and mech names, operation, planet, faction, t
 come from COMP/CON's lists in `data/compcon/generators/` via `NameGen`; our own extra lines
 go in `data/game/names/<same file name>`. Pilot details are in `state.seats[seat]`
 (`callsign`, `pilot`, `mech`); `mission.flavor` holds the rest.
+
+## Difficulty
+
+`tools/gm_balance.gd` plays seeded story missions AI vs AI (four LL0 AI pilots, the same ten
+first jobs per preset) and prints win rate, mechs lost and pilot deaths per GM preset:
+
+```bash
+$G --headless --path . -s res://tools/gm_balance.gd -- 10 Teaching,Standard,Ruthless
+```
+
+Last run (after tuning): Teaching 100% wins, 0 mechs lost; Standard 80% wins, 0.4 mechs lost
+and 0.1 pilot deaths per mission; Cautious and Chaotic 80%; Ruthless 60% wins, 30% losses.
+The enemy AI remembers damage and structure losses it saw on squad mechs it hasn't Scanned
+(public at the table) and focuses fire on them; encounter size is still PROVISIONAL
+(`missions.json` per_player x preset difficulty), as the free core book has no GM chapter.

@@ -21,6 +21,14 @@ the hub shows the story's `SessionZeroScreen` over the town before anything else
 board fills only once it's applied (`GameFlow.finish_session_zero`), so its choices shape the
 first jobs. `campaign.options.session_zero_pending` keeps it waiting if the player quits first.
 
+Enemy commanders and parley in story battles (Core p.60): the host sends every batch of rules
+events to the story (`GameFlow.story_battle_events`, StoryEngine `battle_events`); when the
+commander opens a parley, or the squad presses "Call for terms" (refused with the book's reason
+while the fight is in question), the story's `DialogueView` shows over the battle and the AI
+waits. A choice that ends the fight (`battle_end_requested`, from any seat) becomes the GM's
+`gm_end_mission` (`BattleSession.end_by_parley`). Friends online see the conversation through
+their StoryClient. Bark speaker names come from `line.who` (so the commander's taunts are named).
+
 Codex (the story's `CodexPanel`, the rules reference): a main menu button, and in battle the
 pause menu ("Codex: look up <term>") or the rebindable Codex key (F1), opened on whatever the
 player last pointed at: a mech's frame, else the last action hovered on the action bar. After leveling up, talent, license and core bonus picks are made in the pilot builder
@@ -42,7 +50,7 @@ the host passes it on; other players' pilots glide there (cosmetic, not game sta
 AI squadmates in story battles: `GameFlow.apply_squad_orders` gives the AI director each
 one's stance (`Squadmate.orders`: their frame's role or persona) when the battle starts or is
 resumed, and the battle screen shows their barks (`Squadmate.barks_for`) as speech bubbles
-over their mechs (`SpeechBubbles`) and in the combat log.
+over their mechs (the visuals' `BattleBarks`, named from `line.who`) and in the combat log.
 
 | File | What it does |
 |---|---|
@@ -53,7 +61,6 @@ over their mechs (`SpeechBubbles`) and in the combat log.
 | `battle_screen.gd` (`scenes/flow/battle.tscn`) | The visuals work's BattleView, EventPlayer, TurnOrderBar, ActionBar, PlayerTurn, RollPopups, CombatLog on a BattleSession; plus the hot-seat "Pass to" screen, reaction prompt, in-battle menu. |
 | `debrief_screen.gd` (`scenes/flow/debrief.tscn`) | Outcome, level ups with "Spend points" (builder), next mission / main menu. |
 | `hub_screen.gd` (`scenes/flow/hub.tscn`) | A story campaign between missions: the story's HubScene, saved after every story step, a Menu (pilot builder, teaching hints, settings, save and quit). Turns the hub's "boots on the ground" into a battle. |
-| `speech_bubbles.gd` | `SpeechBubbles`: short lines over a mech's nameplate that follow it on screen and fade (squadmates' barks). |
 | `hub_screen_positions.gd` | Wire format for pilots' walking positions at the hub, checked on arrival. |
 | `story_host_engine.gd` | `StoryHostEngine`: the host's hub UI engine; every story action goes through the StorySession (friends online see it). |
 | `narration_popup.gd` | `NarrationPopup`: the GM speaking mid-battle in the story's dialogue look: a mission twist (`twist_revealed`) or narration (`gm_narration`, e.g. the squad arrived late). The AI waits while it's open. |

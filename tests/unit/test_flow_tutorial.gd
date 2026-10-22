@@ -169,3 +169,35 @@ func test_story_campaign_retire_and_sequel() -> void:
 	expect_eq(StoryState.of(store.load_campaign(c.id)["campaign"]).phase, "ending", "the old campaign is saved with its ending")
 	expect_eq(store.load_campaign(c2.id)["error"], "", "the sequel is saved")
 	preload("res://tests/unit/test_campaign_saves.gd")._remove(store.dir)
+
+
+func test_parley_in_a_story_battle() -> void:
+	_store()
+	var db := MissionTest.db()
+	GameFlow.story = null
+	var c := GameFlow.start_story_campaign(store, db, "Parley", 2, 0, "Standard")
+	var story := GameFlow.story
+	GameFlow.story_engine.submit(story, c, {"type": "session_zero", "seat": "gm", "params": {}})
+	GameFlow.finish_session_zero(c, store)
+	_brief_and_deploy(c)
+	var s := GameFlow.start_story_mission(c, db, store)
+	expect(s != null)
+	if s == null:
+		return
+	var b: Dictionary = story.flags.get("_battle", {})
+	expect(not b.is_empty(), "the enemy has a commander")
+	var early := GameFlow.story_engine.submit(story, c, {"type": "parley", "seat": "p1", "params": {}})
+	expect(not early["ok"] and str(early["reason"]).contains("Core p.60"), "no terms while the fight's in question: %s" % early.get("reason", ""))
+	var downs: Array = [{"type": "round_started", "round": 2}]  # nobody yields in the first round
+	for id: String in b["enemy_ids"]:
+		if id != b["unit"]:
+			downs.append({"type": "unit_destroyed", "unit": id})
+	var told := GameFlow.story_battle_events(c, downs)
+	expect(not told.is_empty() or story.flags["_battle"]["offered"], "half their force down: the commander reacts (%s)" % str(told))
+	s.start()
+	expect(s.end_by_parley({"outcome": "players", "reason": "Their commander yields."}), "the GM ends the fight on the agreed terms")
+	expect(s.over and s.outcome == Mission.PLAYERS)
+	expect_eq(s.host.state.phase, GameState.PHASE_ENDED)
+	expect(not s.end_by_parley({"outcome": "enemies"}), "only once")
+	expect(GameFlow.finish_mission(s, c, store, db).get("story", false))
+	preload("res://tests/unit/test_campaign_saves.gd")._remove(store.dir)

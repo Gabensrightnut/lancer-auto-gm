@@ -212,3 +212,46 @@ func test_new_pilots_get_a_look_and_picks_left_count_down() -> void:
 	expect_eq(b.picks_left(), {"talent": 4, "license": 1, "core_bonus": 0}, "LL1, nothing spent: 3 + 1 talent ranks and 1 license rank")
 	expect_eq(b.set_license("mf_blackbeard", 1), "")
 	expect_eq(b.picks_left()["license"], 0, "spent in the builder")
+
+
+func test_integrated_weapon_mount() -> void:
+	var b := _builder(3)
+	expect(not b.has_integrated_mount())
+	expect_eq(b.toggle_core_bonus("cb_integrated_weapon"), "")
+	expect(b.has_integrated_mount(), "Integrated Weapon gives an extra Auxiliary mount")
+	var sp_before: int = b.sp()["used"]
+	expect_eq(b.set_integrated_weapon("mw_tactical_knife"), "")
+	expect_eq(b.mech()["loadout"]["integrated_weapon"], "mw_tactical_knife")
+	expect(b.sp()["used"] >= sp_before, "its SP counts")
+	expect(b.set_integrated_weapon("mw_assault_rifle") != "", "only an Auxiliary weapon fits")
+	var opt := _find(b.integrated_options(), "mw_pistol")
+	expect(opt["ok"], str(opt))
+	expect(_find(b.integrated_options(), "mw_assault_rifle").is_empty(), "only Auxiliary weapons are offered")
+	expect_eq(b.toggle_core_bonus("cb_integrated_weapon"), "")
+	expect(not b.mech()["loadout"].has("integrated_weapon"), "dropping the core bonus empties the mount")
+
+
+func test_core_bonus_choices_and_mount_retrofitting() -> void:
+	var b := _builder(6)
+	expect_eq(b.toggle_core_bonus("cb_mount_retrofitting"), "")
+	expect_eq(b.toggle_core_bonus("cb_overpower_caliber"), "")
+	var specs := b.core_bonus_choices()
+	expect_eq(specs.map(func(c: Dictionary) -> String: return c["cb"]), ["cb_mount_retrofitting", "cb_overpower_caliber"])
+	expect_eq((specs[0]["options"] as Array).size(), 3, "a choice of the Everest's three mounts")
+	expect(not (specs[1]["options"] as Array).is_empty(), "a choice of weapon for Overpower Caliber")
+	expect_eq(b.set_core_bonus_choice("cb_mount_retrofitting", 1), "")
+	expect_eq(b.pilot["core_bonus_choices"]["cb_mount_retrofitting"], 1)
+	expect_eq(b.mounts()[1]["type"], "Main/Aux", "the chosen mount becomes Main/Aux")
+	expect_eq(b.mounts()[1]["slots"], 2)
+	expect(b.set_core_bonus_choice("cb_auto_stabilizing_hardpoints", 0) != "", "only for a core bonus the pilot has")
+	var key: String = specs[1]["options"][0]["value"]
+	expect_eq(b.set_core_bonus_choice("cb_overpower_caliber", key), "")
+	expect(b.is_legal(), str(b.problems()))
+
+
+func test_mod_goes_on_the_chosen_weapon() -> void:
+	var b := _builder()
+	expect_eq(b.set_weapon(1, 0, "mw_pistol"), "")
+	expect_eq(b.set_weapon(1, 1, "mw_tactical_knife"), "")
+	expect_eq(b.set_mod_slot(1, 1), "")
+	expect_eq(b.mounts()[1]["mod_slot"], 1)

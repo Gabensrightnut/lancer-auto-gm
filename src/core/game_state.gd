@@ -37,6 +37,10 @@ var rulings: Dictionary = {}
 var packs: Array = []
 ## Areas left on the field by frame systems (Mag Field, smoke clouds, holograms): see Zones.
 var zones: Array = []
+## The sitrep's objectives (src/gm SitrepActions and Mission): {"sitrep", "zones": {name:
+## [[x, y]]}, "deployment": {side: [[x, y]]}, "extraction": [[x, y]], "objective": unit id, "true_zone": recon secret,
+## "surveyed": {side: {zone: bool}}}. ViewFilter hides "true_zone" and other sides' surveys.
+var objectives: Dictionary = {}
 ## Rules environments for the whole battle (lancer-data environments.json ids, e.g.
 ## "env_particulatestorms"), set by the mission generator from the world's weather.
 var environments: Array = []
@@ -84,6 +88,7 @@ func to_dict() -> Dictionary:
 		"intel": intel.duplicate(true), "pending": pending.duplicate(true), "seats": seats.duplicate(true),
 		"rulings": rulings.duplicate(true), "packs": packs.duplicate(true), "dice_state": str(dice.get_state()),
 		"zones": zones.duplicate(true), "environments": environments.duplicate(), "terrain_damage": terrain_damage.duplicate(),
+		"objectives": objectives.duplicate(true),
 	}
 
 
@@ -107,6 +112,7 @@ static func from_dict(d: Dictionary) -> GameState:
 	s.zones = (d.get("zones", []) as Array).duplicate(true)
 	s.terrain_damage = (d.get("terrain_damage", {}) as Dictionary).duplicate()
 	s.environments = (d.get("environments", []) as Array).duplicate()
+	s.objectives = (d.get("objectives", {}) as Dictionary).duplicate(true)
 	if d.has("dice_state"):
 		s.dice.set_state(String(d["dice_state"]).to_int())
 	return s

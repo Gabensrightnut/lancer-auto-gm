@@ -27,11 +27,23 @@ var menu_layer: Control
 var tutorial: TutorialPanel
 var narration: NarrationPopup
 ## AI squadmates' barks over their mechs (story campaigns).
-var bubbles: SpeechBubbles
+var bubbles: BattleBarks
 ## The rules reference (CodexPanel): from the pause menu, or the Codex key (F1) on whatever is
 ## hovered (an action on the bar, or a mech's frame).
 var codex: CodexPanel
 var _hover_term := ""
+## Story campaigns: the enemy commander's parley (Core p.60) as a conversation over the battle,
+## and the squad's "Call for terms". The engine is the host's StoryHostEngine or a friend's
+## StoryClient; `dlg_story`/`dlg_campaign` are the objects the dialogue shows.
+var dialogue: DialogueView
+var terms_button: Button
+var story_engine: StoryEngine
+var dlg_story: StoryState
+var dlg_campaign: Campaign
+## Sitrep actions the turn UI doesn't offer (SitrepActions): Extract, Survey this zone.
+var sitrep_box: VBoxContainer
+var _sitrep_sig := ""
+var _objectives_sig := ""
 ## The campaign's story (host), for the tutorial's lessons and which tips were shown. A friend
 ## in someone else's game gets a fresh one (tips only; the host keeps the campaign).
 var story: StoryState
@@ -43,6 +55,7 @@ var _draining := false
 var _ended := false
 var _asked := ""
 var _hud_sig := ""
+var _nhp_asked := ""
 
 
 func _ready() -> void:
@@ -54,7 +67,7 @@ func _ready() -> void:
 	add_child(view)
 	_build_ui()
 	bubbles.view = view
-	bubbles.duration_scale = MenuSession.settings().popup_duration
+	bubbles.read_rate *= MenuSession.settings().popup_duration
 	player = EventPlayer.new(view, rolls, combat_log)
 	player.camera = view.tactical
 	player.on_banner = show_banner
@@ -83,6 +96,8 @@ func _ready() -> void:
 		story = StoryState.new(0)
 	tutorial.bind(campaign)
 	session.events_seen.connect(_on_events_seen)
+	_setup_story_battle()
+	SitrepActions.register(session.engine)
 	var speed := MenuSession.settings().animation_speed
 	session.ai_interval = {"cinematic": 0.9, "normal": 0.45, "fast": 0.1}.get(speed, 0.45)
 	if not session.view.is_empty():
@@ -121,7 +136,7 @@ func _stage_twist() -> void:
 		var mv: MechView = view.units[id]
 		var u: Dictionary = mv.unit
 		if u.get("side", "") == Mission.PLAYERS and not mates.has(id) and screen.has_point(cam.unproject_position(mv.plate_anchor())):
-			bubbles.say(id, str(u.get("name", id)), "Contact front. I'll hold this side, you push.")
+			bubbles.say({"unit": id, "name": str(u.get("name", id)), "text": "Contact front. I'll hold this side, you push."})
 			break
 	var lesson: Dictionary = Tutorial.lessons()[3]
 	tutorial.show_events([{"type": "tutorial_prompt", "kind": "lesson", "id": lesson["id"], "title": lesson.get("title", ""), "text": lesson.get("text", ""),
@@ -130,7 +145,7 @@ func _stage_twist() -> void:
 
 func _process(delta: float) -> void:
 	# The in-battle menu really pauses the AI when everyone in the game is at this screen.
-	session.busy = _draining or player.playing or turn.busy or narration.visible or (menu_layer.visible and _can_pause())
+	session.busy = _draining or player.playing or turn.busy or narration.visible or (dialogue != null and dialogue.visible) or (menu_layer.visible and _can_pause())
 	session.poll(delta)
 	if _ended or not _loaded:
 		return
@@ -153,6 +168,12 @@ func _process(delta: float) -> void:
 	if key != _asked:
 		_asked = key
 		_show_reaction(q)
+	var nq := session.nhp_question()
+	var nkey := JSON.stringify(nq)
+	if nkey != _nhp_asked:
+		_nhp_asked = nkey
+		_show_nhp(nq)
+	_update_sitrep_buttons()
 	_update_status()
 
 
@@ -200,9 +221,158 @@ func _barks(events: Array) -> void:
 			seat_of[id] = seat
 	for e: Dictionary in events:
 		for line: Dictionary in Squadmate.barks_for(st, c, e, unit_pilot, seat_of):
-			var who := str(c.pilots.get(str(line["pilot"]), {}).get("callsign", ""))
-			bubbles.say(str(line["unit"]), who, str(line["text"]))
+			var who := str(line.get("who", c.pilots.get(str(line.get("pilot", "")), {}).get("callsign", "")))
+			var bark := line.duplicate()
+			bark["name"] = who
+			bubbles.say(bark)
 			combat_log.add_line("[color=#9fc3e8]%s:[/color] %s" % [who, line["text"]])
+
+
+# --- Sitrep objectives -----------------------------------------------------------------------
+
+## The sitrep's zones and deployment on the board, as this seat knows them (ViewFilter.objectives_for): Recon's
+## four zones (the True one named once found), Escort/Extraction's Extraction Zone.
+func _show_objectives(v: Dictionary) -> void:
+	var o: Dictionary = v.get("objectives", {})
+	var setup := str(v.get("phase", "")) == GameState.PHASE_SETUP
+	var sig := JSON.stringify([o.get("zones", {}).keys(), o.get("true_zone", ""), o.get("surveyed", {}), setup])
+	if sig == _objectives_sig or view.terrain == null:
+		return
+	_objectives_sig = sig
+	var zones := {}
+	var src: Dictionary = o.get("zones", {})
+	for name: String in src:
+		var label := name
+		if name.begins_with("zone_") and str(o.get("sitrep", "")) == "sitrep_recon":
+			var known: Dictionary = (o.get("surveyed", {}) as Dictionary).get(_my_side(), {})
+			label = ("TRUE ZONE" if name == str(o.get("true_zone", "")) else ("not it" if known.has(name) else name.replace("_", " ")))
+		zones[label] = src[name]
+	# Deployment zones are tinted while the battle is being set up.
+	view.terrain.show_objectives(zones, o.get("deployment", {}), setup)
+
+
+## Extract / Survey this zone, when the rules allow them for the unit whose turn it is here.
+func _update_sitrep_buttons() -> void:
+	var uid: String = turn.unit_id if turn.active else ""
+	var offers: Array = []
+	if uid != "" and session.mirror != null and session.mirror.unit(uid) != null:
+		for t: String in ["extract", "survey_zone"]:
+			var r := session.engine.validate(session.mirror, {"type": t, "actor": uid, "params": {}})
+			if r.ok:
+				offers.append(t)
+	var sig := "%s|%s" % [uid, ",".join(PackedStringArray(offers))]
+	if sig == _sitrep_sig:
+		return
+	_sitrep_sig = sig
+	for c in sitrep_box.get_children():
+		c.queue_free()
+	for t: String in offers:
+		var b := Button.new()
+		b.theme = MenuTheme.theme()
+		b.custom_minimum_size = Vector2(300, 46)
+		if t == "extract":
+			b.text = "Extract (ends your turn)"
+			b.tooltip_text = "Free action at the end of your turn while in the Extraction Zone: your mech leaves the battlefield. An adjacent Objective that no enemy is next to goes with you (sitreps: Escort, Extraction)."
+		else:
+			b.text = "Survey this zone (full action)"
+			b.tooltip_text = "Find out whether this is the True Control Zone. Only your side learns the answer (sitreps: Recon)."
+		var action := {"type": t, "actor": uid, "params": {}}
+		b.pressed.connect(func() -> void:
+			if t == "extract":
+				turn.cancel()
+				turn.active = false
+				bar.visible = false
+			session.engine.submit(session.mirror, action)
+			_sitrep_sig = "")
+		sitrep_box.add_child(b)
+
+
+# --- Story campaigns: the enemy commander and parley -------------------------------------
+
+func _setup_story_battle() -> void:
+	if session.is_host and campaign != null and GameFlow.is_story(campaign) and not story.seats.is_empty():
+		var sess := GameFlow.open_story_session(campaign, content, session.local_humans())
+		story_engine = StoryHostEngine.new(content, sess)
+		dlg_story = story
+		dlg_campaign = campaign
+		session.host_events.connect(_on_host_events)
+		sess.updated.connect(_on_story_update)
+	elif not session.is_host and GameFlow.story_client != null and GameFlow.story_client.story != null:
+		story_engine = GameFlow.story_client
+		dlg_story = GameFlow.story_client.story
+		dlg_campaign = GameFlow.story_client.campaign
+		GameFlow.story_client.mirror_changed.connect(_on_story_mirror)
+		GameFlow.story_client.refused.connect(_on_story_refused)
+	if story_engine == null:
+		return
+	dialogue = DialogueView.new()
+	ui.add_child(dialogue)
+	ui.move_child(dialogue, codex.get_index())  # under the codex, over the board and HUD
+	dialogue.bind(story_engine, dlg_story, dlg_campaign, _story_seat())
+	dialogue.story_events.connect(_on_dialogue_events)
+	terms_button = Button.new()
+	terms_button.theme = MenuTheme.theme()
+	terms_button.text = "Call for terms"
+	terms_button.tooltip_text = "Call on the enemy commander to stand down. Only once the fight's outcome is clear: the GM ends a fight early only then (Core p.60)."
+	terms_button.position = Vector2(150, 16)
+	terms_button.pressed.connect(_call_for_terms)
+	ui.add_child(terms_button)
+
+
+func _story_seat() -> String:
+	if not session.is_host:
+		return session.seat
+	var humans := session.local_humans()
+	return str(humans[0]) if not humans.is_empty() else session.seat
+
+
+## Host: each batch of rules events goes to the story (the commander may open a parley).
+func _on_host_events(events: Array) -> void:
+	GameFlow.story_battle_events(dlg_campaign, events)  # its story events reach _on_story_update
+
+
+## Host: everything the story reports, from any seat (a friend's parley choice too).
+func _on_story_update(_view: Dictionary, events: Array) -> void:
+	_story_events(events)
+
+
+## A friend: a new view of the host's story.
+func _on_story_mirror(s: StoryState, c: Campaign, events: Array) -> void:
+	GameFlow.copy_into(dlg_story, s)
+	GameFlow.copy_into(dlg_campaign, c)
+	_story_events(events)
+
+
+func _on_story_refused(reason: String, _ref: String) -> void:
+	show_banner(reason)
+	combat_log.add_line("[color=#ff8a7a]%s[/color]" % reason)
+
+
+func _on_dialogue_events(events: Array) -> void:
+	if session.is_host:
+		return  # the session's update brings them (with everyone else's)
+	_story_events(events)
+
+
+func _story_events(events: Array) -> void:
+	for e: Dictionary in events:
+		match str(e.get("type", "")):
+			"rival_defiant":
+				combat_log.add_line("[color=#ff8a7a]%s[/color]" % e.get("text", ""))
+			"battle_end_requested":
+				session.end_by_parley(e)
+	if dialogue != null:
+		dialogue.refresh()
+
+
+## "Call for terms": the engine says no, with the book's reason, while the fight's in question.
+func _call_for_terms() -> void:
+	var r := story_engine.submit(dlg_story, dlg_campaign, {"type": "parley", "seat": _story_seat(), "params": {}})
+	if not r.get("ok", false):
+		_on_story_refused(str(r.get("reason", "")), str(r.get("rule_ref", "")))
+		return
+	if dialogue != null:
+		dialogue.refresh()
 
 
 func _load(v: Dictionary) -> void:
@@ -226,6 +396,7 @@ func _load(v: Dictionary) -> void:
 	view.tactical.snap()
 	player.local_units = mine
 	_render_portraits(v)
+	_show_objectives(v)
 	_refresh_hud()
 
 
@@ -248,7 +419,8 @@ func _sync(v: Dictionary) -> void:
 	var units: Dictionary = v.get("units", {})
 	for id: String in units:
 		var u: Dictionary = units[id]
-		if u.get("hidden", false):
+		if u.get("hidden", false) or (u.get("counters", {}) as Dictionary).has("extracted"):
+			# Hidden from this seat, or extracted (off the battlefield for good).
 			if view.units.has(id):
 				(view.units[id] as MechView).queue_free()
 				view.units.erase(id)
@@ -262,6 +434,7 @@ func _sync(v: Dictionary) -> void:
 			if u.has(k):
 				mv.unit[k] = u[k]
 		mv.refresh()
+	_show_objectives(v)
 	_refresh_hud()
 
 
@@ -271,8 +444,8 @@ func _refresh_hud() -> void:
 	var my_side := _my_side()
 	for id: String in v.get("units", {}):
 		var u: Dictionary = v["units"][id]
-		if u.get("hidden", false):
-			continue
+		if u.get("hidden", false) or str(u.get("kind", "")) == Unit.KIND_DEPLOYABLE or (u.get("counters", {}) as Dictionary).has("extracted"):
+			continue  # objects (the Objective, deployables) take no turns; extracted mechs are gone
 		var e := {"id": id, "name": u.get("name", id), "side": u.get("side", ""), "frame": u.get("content_id", ""),
 			"acted": (v.get("acted", []) as Array).has(id) or u.get("destroyed", false), "active": v.get("active_unit", "") == id}
 		if u.has("hp"):
@@ -384,6 +557,42 @@ func _on_handoff(_next_seat: String, display_name: String) -> void:
 	b.add_child(ready)
 	center.add_child(p)
 	handoff_layer.visible = true
+
+
+## An AI drives one of your mechs (a cascading NHP, SEKHMET, a COMP/CON): its pilot's choice
+## at the start of its turn, with the options the rules leave to the pilot.
+func _show_nhp(q: Dictionary) -> void:
+	for c in reaction_panel.get_children():
+		c.queue_free()
+	if q.is_empty():
+		reaction_panel.visible = not session.my_reaction().is_empty()
+		if reaction_panel.visible:
+			_show_reaction(session.my_reaction())
+		return
+	reaction_panel.visible = true
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	reaction_panel.add_child(v)
+	var title: String = {"cascade": "Your NHP has cascaded", "sekhmet": "SEKHMET is in control", "compcon": "Command your COMP/CON"}.get(str(q.get("kind", "")), "Your AI")
+	v.add_child(MenuTheme.heading(title, 22, MenuTheme.BAD if q.get("kind", "") == "cascade" else MenuTheme.WARN))
+	var text := MenuTheme.label(str(q.get("text", "")), 16, MenuTheme.TEXT, true)
+	text.custom_minimum_size = Vector2(590, 0)
+	v.add_child(text)
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 10)
+	row.add_theme_constant_override("v_separation", 8)
+	row.custom_minimum_size = Vector2(590, 0)
+	for o: Dictionary in q.get("options", []):
+		var b := Button.new()
+		b.text = str(o.get("label", ""))
+		b.tooltip_text = str(o.get("tip", ""))
+		var action: Dictionary = o.get("action", {})
+		b.pressed.connect(func() -> void:
+			reaction_panel.visible = false
+			session.answer_nhp(action))
+		row.add_child(b)
+	v.add_child(row)
+	_place_reaction.call_deferred()
 
 
 func _show_reaction(q: Dictionary) -> void:
@@ -520,9 +729,13 @@ func _build_ui() -> void:
 	reaction_panel.custom_minimum_size = Vector2(620, 0)
 	reaction_panel.visible = false
 	ui.add_child(reaction_panel)
-	bubbles = SpeechBubbles.new()
+	bubbles = BattleBarks.new()
 	ui.add_child(bubbles)
 	ui.move_child(bubbles, 0)
+	sitrep_box = VBoxContainer.new()
+	sitrep_box.add_theme_constant_override("separation", 8)
+	sitrep_box.position = Vector2(1920 - 320, 1080 - 330)
+	ui.add_child(sitrep_box)
 	narration = NarrationPopup.new()
 	narration.theme = MenuTheme.theme()
 	ui.add_child(narration)
@@ -678,6 +891,10 @@ func _example_session() -> BattleSession:
 	var lobby := LobbyModel.for_host(MenuSession.campaign, MenuSession.content(), 4242)
 	if "stage:hotseat" in OS.get_cmdline_user_args():
 		lobby.set_mode("p2", "you")
+	for a: String in OS.get_cmdline_user_args():
+		if a.begins_with("sitrep:"):  # screenshots: a given sitrep
+			lobby.options["sitrep"] = "sitrep_" + a.substr(7)
+			lobby.set_shape(str(lobby.options["shape"]))
 	lobby.set_local_ready(true)
 	var s := GameFlow.start_mission(lobby, SaveStore.new("user://example_saves"))
 	return s

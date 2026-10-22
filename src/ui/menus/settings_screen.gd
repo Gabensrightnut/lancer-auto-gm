@@ -1,5 +1,6 @@
 extends Control
 ## Settings: display (UI scale, text size, action bar size, colorblind mode), graphics preset,
+## story text (StorySettings: size, skip lines already read),
 ## gameplay pacing (animation speed, pop-up time) and key bindings. Saved to user://settings.cfg.
 
 var s: GameSettings
@@ -41,14 +42,29 @@ func _ready() -> void:
 		{"cinematic": "Cinematic", "normal": "Normal", "fast": "Fast"}))
 	pb.add_child(_slider("Roll and damage pop-ups stay up", s.popup_duration, 0.5, 2.0, func(v: float) -> void: s.popup_duration = v, "×1 is normal; ×2 gives you twice as long to read them."))
 	left.add_child(play)
+	# Story text (StorySettings: kept on this computer, applied right away).
+	var story_panel := MenuTheme.panel("Story text", MenuTheme.maker_color("SSC").lightened(0.2), "compendium")
+	var sb := MenuTheme.body(story_panel)
+	sb.add_child(_slider("Story text size", StorySettings.text_scale(), 0.8, 1.6, func(v: float) -> void: StorySettings.set_text_scale(v),
+		"Conversations, the hub and other story text. Changes the next time story text appears."))
+	var skip := CheckButton.new()
+	skip.text = "Skip lines I've already read (they go by on their own)"
+	skip.button_pressed = StorySettings.skip_seen()
+	skip.toggled.connect(func(on: bool) -> void: StorySettings.set_skip_seen(on))
+	sb.add_child(skip)
 
+	var right := VBoxContainer.new()
+	right.add_theme_constant_override("separation", 20)
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(right)
 	var keys := MenuTheme.panel("Controls", MenuTheme.maker_color("IPS-N"), "system")
 	keys.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(keys)
+	right.add_child(keys)
+	right.add_child(story_panel)
 	var kb := MenuTheme.body(keys)
 	kb.add_child(MenuTheme.label("Click a key, then press the new one. A key already in use swaps over.", 15, MenuTheme.MUTED, true))
 	keys_box = VBoxContainer.new()
-	keys_box.add_theme_constant_override("separation", 6)
+	keys_box.add_theme_constant_override("separation", 4)
 	kb.add_child(keys_box)
 	var reset := Button.new()
 	reset.text = "Reset keys to defaults"
@@ -86,7 +102,7 @@ func _refresh_keys() -> void:
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		h.add_child(l)
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(200, 40)
+		b.custom_minimum_size = Vector2(200, 34)
 		b.text = "Press a key…" if waiting_for_key == a else GameSettings.key_name(int(s.keybinds[a]))
 		b.pressed.connect(func() -> void:
 			waiting_for_key = a
