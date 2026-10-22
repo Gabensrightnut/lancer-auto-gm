@@ -115,6 +115,8 @@ func _ready() -> void:
 		codex.open.call_deferred("Overcharge")
 	if "stage:twist" in OS.get_cmdline_user_args():
 		_stage_twist.call_deferred()
+	if "stage:radio" in OS.get_cmdline_user_args():
+		_stage_radio.call_deferred()
 
 
 func _stage_turn() -> void:
@@ -126,6 +128,17 @@ func _stage_turn() -> void:
 			if not mine.is_empty():
 				session.pick(mine[0])
 			return
+
+
+## Screenshot staging: an enemy commander on the open channel, clear and then Jammed.
+func _stage_radio() -> void:
+	for i in range(10):
+		await get_tree().process_frame
+	var look := PortraitSpec.for_npc({"name": "Ilse Vey", "id": "rival_demo"})
+	bubbles.say({"name": "Vey", "mode": "radio", "channel": "Open channel", "face": {"portrait": look, "expression": "smug"},
+		"text": "Lancers. You're a long way from your printer.", "duration": 30.0})
+	bubbles.say({"name": "Vey", "mode": "radio", "channel": "Open channel", "jammed_here": true, "face": {"portrait": look, "expression": "smug"},
+		"text": "You can't hear this.", "duration": 30.0})
 
 
 ## Screenshot staging: a twist pop-up and a tutorial lesson over the board.
@@ -235,6 +248,9 @@ func _barks(events: Array) -> void:
 			var who := str(line.get("who", c.pilots.get(str(line.get("pilot", "")), {}).get("callsign", "")))
 			var bark := line.duplicate()
 			bark["name"] = who
+			if line.get("jammed") is Array:
+				# Radio to a Jammed pilot on this screen: static instead of the words.
+				bark["jammed_here"] = (line["jammed"] as Array).has(st.pilot_of_seat(session.seat))  # pilot ids
 			bubbles.say(bark)
 			combat_log.add_line("[color=#9fc3e8]%s:[/color] %s" % [who, line["text"]])
 
