@@ -18,6 +18,9 @@ func _ready() -> void:
 	if MenuSession.lobby == null:
 		MenuSession.ensure_campaign()
 		MenuSession.lobby = LobbyModel.for_host(MenuSession.campaign, MenuSession.content())
+		if MenuSession.map_doc != null:
+			MenuSession.lobby.set_map_doc(MenuSession.map_doc)  # "Play this map" in the editor
+			MenuSession.map_doc = null
 	lobby = MenuSession.lobby
 	var subtitle := lobby.campaign.name if lobby.is_host else "Joined %s's game" % str(lobby.remote.get("campaign", "a"))
 	var col := MenuTheme.screen(self, "Lobby", subtitle, _back)
@@ -285,6 +288,25 @@ func _mission_panel() -> Control:
 		lengths.add_child(btn)
 	b.add_child(lengths)
 	b.add_child(MenuTheme.label(str(fl.get(lobby.options.get("fight_length", "standard"), {}).get("description", "")) + " Rules like HP and damage never change.", 15, MenuTheme.MUTED, true))
+	b.add_child(_caption("Map"))
+	var maps := OptionButton.new()
+	maps.add_item("A new generated map")
+	var names := MapDoc.list()
+	if lobby.map_doc != null and not lobby.map_doc.name in names:
+		names.append(lobby.map_doc.name)  # played straight from the editor, not saved
+	for n: String in names:
+		maps.add_item("Saved map: %s" % n)
+	maps.select(names.find(str(lobby.options.get("map", ""))) + 1 if str(lobby.options.get("map", "")) != "" else 0)
+	maps.disabled = not lobby.is_host
+	maps.tooltip_text = "Fight on a map you made in the map editor (main menu), or a new one generated for this mission."
+	maps.item_selected.connect(func(i: int) -> void:
+		if i == 0:
+			lobby.set_map("")
+		elif lobby.map_doc != null and names[i - 1] == lobby.map_doc.name and not names[i - 1] in MapDoc.list():
+			pass
+		else:
+			lobby.set_map(names[i - 1]))
+	b.add_child(maps)
 	b.add_child(_caption("Battle grid"))
 	var grid := HBoxContainer.new()
 	grid.add_theme_constant_override("separation", 6)

@@ -26,8 +26,13 @@ static func all() -> Array:
 	return out
 
 
+## The groups on the page: the three known sources first, then any new one a rule brings.
 static func sources() -> Array:
-	return SOURCES
+	var out: Array = SOURCES.duplicate()
+	for r: Dictionary in all():
+		if not str(r["source"]) in out:
+			out.append(str(r["source"]))
+	return out
 
 
 static func rule(id: String) -> Dictionary:
