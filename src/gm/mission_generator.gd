@@ -38,7 +38,7 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	# The world uses its own RNG so terrain changes never shift the rest of the mission.
 	var world_rng := RandomNumberGenerator.new()
 	world_rng.seed = hash([mission_seed, "world"])
-	var bf := battlefield(rng, world_rng, m.sitrep_id, w, h, shape, str(opts.get("landscape", "")), str(opts.get("culture", "")))
+	var bf := battlefield(rng, world_rng, m.sitrep_id, w, h, shape, str(opts.get("landscape", "")), str(opts.get("culture", "")), int(settings.approach))
 	state.map = bf["map"]
 	var layout: Dictionary = bf["layout"]
 	var fairness: Dictionary = bf["fairness"]
@@ -120,8 +120,8 @@ static func _rect(c0: int, r0: int, cw: int, rh: int, w: int, h: int, shape: Gri
 ## sitrep's fortifications, then fairness repairs (MapFairness). `rng` lays out the zones;
 ## `world_rng` builds the terrain. Returns {map, layout, fairness, world: [landscape, culture]}.
 static func battlefield(rng: RandomNumberGenerator, world_rng: RandomNumberGenerator, sitrep_id: String, w: int, h: int,
-		shape: GridLayout.Shape, landscape: String = "", culture: String = "") -> Dictionary:
-	var layout := SitrepLayout.layout(sitrep_id, w, h, shape, rng)
+		shape: GridLayout.Shape, landscape: String = "", culture: String = "", approach: int = 0) -> Dictionary:
+	var layout := SitrepLayout.layout(sitrep_id, w, h, shape, rng, approach)
 	var blocked := {}  # cells kept clear of rocks and woods (deployment, zones, routes)
 	for list: Array in (layout["deployment"] as Dictionary).values() + (layout["zones"] as Dictionary).values() + [layout["clear"]]:
 		for c: Array in list:

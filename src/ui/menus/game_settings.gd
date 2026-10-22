@@ -36,6 +36,9 @@ var graphics := "high"
 var animation_speed := "normal"
 ## How long roll and damage pop-ups stay up (1 = normal, 2 = twice as long).
 var popup_duration := 1.0
+## Solo and hot-seat: AI squadmates take their turns on their own once only they are left to
+## act (people can still pick them earlier). Online games start with it off.
+var ai_squad_auto := true
 ## action name -> keycode
 var keybinds: Dictionary = {}
 
@@ -56,6 +59,7 @@ static func load_settings(path: String = FILE) -> GameSettings:
 	s.graphics = _one_of("high" if gfx == "ultra" else gfx, GRAPHICS, s.graphics)  # "ultra" was folded into high
 	s.animation_speed = _one_of(cfg.get_value("gameplay", "animation_speed", "normal"), ANIMATION, "normal")
 	s.popup_duration = clampf(float(cfg.get_value("gameplay", "popup_duration", 1.0)), 0.5, 2.0)
+	s.ai_squad_auto = bool(cfg.get_value("gameplay", "ai_squad_auto", true))
 	for a: String in ACTIONS:
 		s.keybinds[a] = int(cfg.get_value("keys", a, s.keybinds[a]))
 	return s
@@ -70,6 +74,7 @@ func save(path: String = FILE) -> Error:
 	cfg.set_value("graphics", "preset", graphics)
 	cfg.set_value("gameplay", "animation_speed", animation_speed)
 	cfg.set_value("gameplay", "popup_duration", popup_duration)
+	cfg.set_value("gameplay", "ai_squad_auto", ai_squad_auto)
 	for a: String in keybinds:
 		cfg.set_value("keys", a, keybinds[a])
 	return cfg.save(path)

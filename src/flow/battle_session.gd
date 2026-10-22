@@ -137,6 +137,23 @@ func nhp_question() -> Dictionary:
 	return w.get("question", {})
 
 
+## "Let the AI go": the AI activates one of its squadmates now (host).
+func let_ai_go() -> void:
+	if is_host:
+		host.ai_go_now = true
+
+
+## AI squadmates waiting to act on the side whose pick it is, when it's this screen's pick.
+func ai_squadmates_waiting() -> Array:
+	if not is_host or not my_pick():
+		return []
+	var out: Array = []
+	for u in TurnRules.waiting(host.state, host.state.turn_side):
+		if host.is_ai_seat(u.controller):
+			out.append(u.id)
+	return out
+
+
 ## Sends the chosen option's action (through the host, like any action).
 func answer_nhp(action: Dictionary) -> void:
 	engine.submit(mirror, action)

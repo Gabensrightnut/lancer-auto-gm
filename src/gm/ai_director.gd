@@ -110,14 +110,21 @@ func step() -> bool:
 			play_turn(u)
 			return true
 		return false
-	if not host.waiting_on()["ai"]:
-		return false  # Humans on this side choose who goes next.
 	var mine: Array[Unit] = []
+	var humans_waiting := false
 	for u in TurnRules.waiting(state, state.turn_side):
 		if host.is_ai_seat(u.controller):
 			mine.append(u)
+		else:
+			humans_waiting = true
 	if mine.is_empty():
 		return false
+	if not host.waiting_on()["ai"]:
+		# Humans on this side choose who goes next, unless the AI squadmates go on their own
+		# (only they are left, or the people pressed "Let the AI go").
+		if not (host.ai_go_now or (host.ai_squad_auto and not humans_waiting)):
+			return false
+	host.ai_go_now = false
 	var pick := _choose_activation(mine)
 	var out := host.submit(pick.controller, {"type": "start_turn", "actor": pick.id})
 	if not (out["result"] as RuleResult).ok:

@@ -42,6 +42,13 @@ const GM_SEAT := "gm"
 var ai_seats: Dictionary = {GM_SEAT: true}
 ## Host option, off by default: every seat nobody is sitting in gets an AI pilot.
 var fill_empty_with_ai := false
+## AI squadmates take their turns on their own: once only AI-flown units are left to act on a
+## side that also has people, the AI activates them (best pick first). People can still send
+## one earlier with "I'll go". On by default in solo and hot-seat, off online (the lobby sets it).
+var ai_squad_auto := false
+## One-shot "Let the AI go": the AI activates one of its squadmates now, even though people on
+## that side still have units waiting.
+var ai_go_now := false
 ## Seats kept empty for a friend who joins later (never filled by the AI).
 var reserved_seats: Dictionary = {}
 

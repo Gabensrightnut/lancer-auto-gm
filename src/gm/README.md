@@ -13,7 +13,7 @@ section 9). Everything it does goes through `NetHost.submit()` -> `RulesEngine.s
 | `tactics_ai.gd` | Utility AI: picks a whole turn for one unit (move, attacks, Lock On, Scan, Hide, Stabilize, Boost) and explains it in one line. |
 | `ai_knowledge.gd` | The planning copy of the battle for one side: Hidden enemies left out, unscanned stats unknown. |
 | `ai_director.gd` | Runs AI seats on the host: starts combat, picks who acts, plays AI turns, reinforcements, ends the mission. |
-| `gm_settings.gd` | Dials (aggression, caution, focus fire, reinforcements, difficulty, randomness) and presets. |
+| `gm_settings.gd` | Dials (aggression, caution, focus fire, reinforcements, difficulty, randomness, environments, approach: Basic Combat's distance between deployment zones) and presets. |
 | `sitrep_layout.gd` | `SitrepLayout.layout(sitrep, w, h, shape, rng)`: deployment zones, sitrep zones (control/recon quadrants mirrored, holdout center with a wrap-around EDZ, gauntlet, escort extraction and route, extraction objective) and cells kept clear. |
 | `map_fairness.gd` | `MapFairness.check/repair`: balanced cover between halves, part of each deployment zone out of the other's sight, every objective reachable on foot by Size 1-3. PROVISIONAL thresholds (GM choice). |
 | `name_gen.gd` | Seeded callsigns, pilot/mech names and mission flavor from the COMP/CON generator lists. |
@@ -63,3 +63,10 @@ and 0.1 pilot deaths per mission; Cautious and Chaotic 80%; Ruthless 60% wins, 3
 The enemy AI remembers damage and structure losses it saw on squad mechs it hasn't Scanned
 (public at the table) and focuses fire on them; encounter size is still PROVISIONAL
 (`missions.json` per_player x preset difficulty), as the free core book has no GM chapter.
+
+## AI squadmates on their own
+
+`NetHost.ai_squad_auto` (lobby checkbox and Settings > Pacing; on by default in solo and
+hot-seat, off when hosting online): on the squad's pick, once only AI-flown units are left to
+act, the director activates them, best pick first. `NetHost.ai_go_now` ("Let the AI go" on
+the battle screen) lets one go now. People can always click an AI squadmate's "I'll go".
