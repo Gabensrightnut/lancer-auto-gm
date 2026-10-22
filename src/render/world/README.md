@@ -79,3 +79,29 @@ $G --path . -s res://tools/screenshot.gd -- res://scenes/world_preview.tscn "out
 ```
 
 `TerrainRenderer.profile = true` prints build time per step (a 40x40 map builds in 1-3 s).
+
+## Readability
+
+- A light rim runs along every edge where the ground drops: on the top surface and along the top
+  of cliff faces and building walls. Night styles make it glow (`ground.rim`, `rim_strength`,
+  `rim_glow`; `architecture.rim*` for roofs).
+- Land and buildings outside the board are darker and greyer (`ground.backdrop_fade`), and the
+  board's outer edge has a bold border, so the playable area is always clear.
+- Grid lines are two-tone: a line over a soft shade band. Bright styles (snow, sand, crystal)
+  use dark lines (`grid_color`, `grid_shade`).
+
+## Quality presets and frame rate
+
+`WorldQuality.set_preset("high" | "medium" | "low", viewport)`, before building a board.
+Medium drops SSIL, SSR and shadow splits and thins scenery. Low also turns off SSAO and
+volumetric fog, uses one shadow split, thins grass, trees, particles and lights, and renders
+at 75% with FSR upscaling. The settings menu should call it and save the choice.
+
+```bash
+$G --path . -s res://src/render/world/world_bench.gd -- high      # or medium / low, then kits
+```
+
+RTX 3080, 1080p, generated 40x40 maps with 8 mechs, vsync off. Average fps across five kits
+(hills/medieval, neon city, alien wilds, desert/Old West, burning city) at a wide and a close
+camera: high 177-274 (1% low 78-210), medium 162-336, low 306-512 (1% low 210-340).
+

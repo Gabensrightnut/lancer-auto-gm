@@ -107,6 +107,11 @@ static func make_material(arch: Dictionary) -> ShaderMaterial:
 	for k: String in nums:
 		if arch.has(k):
 			m.set_shader_parameter(nums[k], float(arch[k]))
+	for k: String in ["rim_strength", "rim_glow", "backdrop"]:
+		if arch.has(k):
+			m.set_shader_parameter(k, float(arch[k]))
+	if arch.has("rim"):
+		m.set_shader_parameter("rim_color", WorldStyle.color(arch["rim"]))
 	m.set_shader_parameter("roof_style", {"tar": 0, "tiles": 1, "shingles": 2, "panels": 3, "metal": 4}.get(str(arch.get("roof_surface", "tar")), 0))
 	var cols := {"trim": "trim", "glass": "glass", "window_light": "window_light", "shop_light": "shop_light", "roof": "roof_color",
 		"fire": "fire_color", "neon_a": "neon_a", "neon_b": "neon_b"}
