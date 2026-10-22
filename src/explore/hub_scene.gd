@@ -60,6 +60,11 @@ var fp: FirstPerson
 var _inside: Dictionary = {}
 var _interior: Node3D
 var _iroom := ""
+var _mechs: Array = []  # parked mechs to aim at: [{pid, name, pos: Vector3}]
+var _inner_blockers: Array = []  # inside: furniture you walk around
+var _jump_h := 0.0
+var _jump_v := 0.0
+var _orbit := false  # third person: right mouse held, dragging turns the camera
 var _shown_floor := -1  # inside, seen from above: the highest floor drawn
 var _keep_pos := Vector3.INF  # where the local pilot stood inside, across a rebuild
 var _near_thing: Dictionary = {}  # inside: the door or thing in reach {kind: "door"|"item"|"exit", ...}
@@ -87,6 +92,7 @@ func rebuild() -> void:
 	avatars.clear()
 	npc_nodes.clear()
 	_blockers.clear()
+	_mechs.clear()
 	_buildings.clear()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([story.hub.get("seed", 0), "hub_props"])
@@ -279,6 +285,9 @@ func _landing(root: Node3D, w: float, d: float) -> void:
 				model.position = Vector3(x, 0.2, -1.2)
 				model.rotation.y = PI
 				root.add_child(model)
+				var pid := str((squad[i]["pilot"] as Dictionary).get("id", ""))
+				_mechs.append({"pid": pid, "name": "%s's %s" % [(squad[i]["pilot"] as Dictionary).get("callsign", "the squad"), frame.get("name", "mech")],
+					"local": Vector3(x, 4.5, -1.2), "root": root})
 	_blockers.append({"inv": root.transform.affine_inverse() * Transform3D(Basis(), Vector3(0, 0, -1.5)), "half": Vector2(w / 2.0, 1.6)})
 
 
@@ -401,22 +410,18 @@ func _physics_process(delta: float) -> void:
 		return
 	var busy := dialogue.visible or downtime_screen.visible or hud.board_open() or level_panel.visible or gear_panel.visible or codex.visible or map.visible
 	var dir := Vector3.ZERO
-	var speed := WALK_SPEED * (0.5 if fp != null and fp.sneaking else 1.0)
+	var first := fp != null and fp.enabled
+	_capture_mouse(first and not busy and not dialogue.visible)
+	var speed := ExploreInput.speed(not busy and InputMap.has_action("run") and Input.is_action_pressed("run"), fp != null and fp.sneaking)
 	if not busy:
-		var f := Vector3(-sin(_yaw), 0, -cos(_yaw))
-		var r := Vector3(cos(_yaw), 0, -sin(_yaw))
-		if Input.is_action_pressed("cam_pan_up"):
-			dir += f
-		if Input.is_action_pressed("cam_pan_down"):
-			dir -= f
-		if Input.is_action_pressed("cam_pan_right"):
-			dir += r
-		if Input.is_action_pressed("cam_pan_left"):
-			dir -= r
-		if Input.is_action_pressed("cam_rotate_left"):
-			_yaw += delta * 1.8
-		if Input.is_action_pressed("cam_rotate_right"):
-			_yaw -= delta * 1.8
+		var ax := ExploreInput.axes()
+		dir = ExploreInput.direction(_yaw, ax.y, ax.x)
+		# Third person turns with keys (and right-drag); first person turns with the mouse.
+		if not first and InputMap.has_action("turn_left"):
+			if Input.is_action_pressed("turn_left"):
+				_yaw += delta * 1.8
+			if Input.is_action_pressed("turn_right"):
+				_yaw -= delta * 1.8
 	if dir != Vector3.ZERO:
 		_target = null
 	elif _target is Vector3 and not busy:
@@ -426,7 +431,14 @@ func _physics_process(delta: float) -> void:
 			_target = null
 		else:
 			dir = to
+	me.position.y -= _jump_h
 	_move(me, dir.normalized() * speed * delta)
+	if first:
+		me.rotation.y = lerp_angle(me.rotation.y, _yaw, clampf(delta * 12.0, 0.0, 1.0))
+	var j := ExploreInput.jump_step(_jump_h, _jump_v, delta) if _jump_h > 0.0 or _jump_v > 0.0 else Vector2.ZERO
+	_jump_h = j.x
+	_jump_v = j.y
+	me.position.y += _jump_h
 	_follow_squad(delta)
 	_update_near()
 	_update_camera(delta)
@@ -527,7 +539,7 @@ func _update_camera(delta: float) -> void:
 	if fp != null and fp.enabled and me != null and not face_talk:
 		fp.place_camera(_cam, me, _yaw, delta)
 		_set_ceiling(true)
-		fp.pick(_cam, npc_nodes, story.hub.get("spots", []) if _inside.is_empty() else [], story)
+		fp.pick(_cam, npc_nodes, story.hub.get("spots", []) if _inside.is_empty() else [], story, _aim_targets())
 		fp.show(story, story.pilot_of_seat(local_seat), "")
 		return
 	if me != null and not me.visible:
@@ -591,7 +603,14 @@ func _fade_occluders(focus: Vector3) -> void:
 func _fp_use(rough: bool) -> void:
 	var pid := story.pilot_of_seat(local_seat)
 	var t := fp.target
+	if str(t.get("kind", "")) == "mech":
+		_check_mech(str(t["id"]))
+		return
 	if not _inside.is_empty() and t.get("kind", "") != "npc":
+		if str(t.get("kind", "")) in ["item", "exit", "idoor"]:
+			_near_thing = t.duplicate()
+			if str(t["kind"]) == "idoor":
+				_near_thing["kind"] = "door"
 		_inside_use(rough)
 		return
 	var a := {}
@@ -668,8 +687,25 @@ func talk_to(npc_id: String) -> void:
 
 
 func _unhandled_input(ev: InputEvent) -> void:
-	if fp != null and fp.enabled and ev is InputEventMouseMotion and not dialogue.visible:
+	if fp != null and fp.enabled and ev is InputEventMouseMotion and not dialogue.visible \
+			and (Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or DisplayServer.get_name() == "headless"):
 		_yaw = fp.look((ev as InputEventMouseMotion).relative, _yaw)
+		return
+	if ev is InputEventMouseMotion and _orbit:
+		_yaw -= (ev as InputEventMouseMotion).relative.x * ExploreInput.LOOK * StorySettings.look_sensitivity()
+		return
+	if ev is InputEventMouseButton and (ev as InputEventMouseButton).button_index == MOUSE_BUTTON_RIGHT:
+		_orbit = ev.pressed and not (fp != null and fp.enabled)
+	# Walking actions (rebindable, data/game/keybinds.json).
+	if InputMap.has_action("jump") and ev.is_action_pressed("jump") and not dialogue.visible and _jump_h <= 0.0:
+		_jump_v = ExploreInput.JUMP_SPEED
+		_jump_h = 0.001
+		return
+	if InputMap.has_action("use") and ev.is_action_pressed("use") and not ev.is_echo() and not dialogue.visible:
+		if fp.enabled:
+			_fp_use(false)
+		else:
+			_use_nearby(false)
 		return
 	if ev is InputEventKey and ev.pressed and not ev.echo:
 		match (ev as InputEventKey).keycode:
@@ -699,11 +735,6 @@ func _unhandled_input(ev: InputEvent) -> void:
 			KEY_C:
 				if fp.enabled and not dialogue.visible:
 					fp.sneaking = not fp.sneaking
-			KEY_E:
-				if fp.enabled and not dialogue.visible:
-					_fp_use(false)
-				elif not dialogue.visible:
-					_use_nearby(false)
 			KEY_R:
 				if fp.enabled and not dialogue.visible:
 					_fp_use(true)
@@ -734,6 +765,10 @@ func _unhandled_input(ev: InputEvent) -> void:
 				gear_panel.visible = false
 				hud.close_board()
 				hud.set_busy(false)
+	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT and fp != null and fp.enabled and not dialogue.visible and not downtime_screen.visible:
+		# First person: left click uses what's under the crosshair.
+		_fp_use(false)
+		return
 	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT and not dialogue.visible and not downtime_screen.visible:
 		var from := _cam.project_ray_origin(ev.position)
 		var dir := _cam.project_ray_normal(ev.position)
@@ -833,6 +868,14 @@ func _show_inside(keep_place: bool) -> void:
 		fig.position = (was if s == local_seat and was != Vector3.INF else start + inward * 0.9 * i + inward.cross(Vector3.UP) * (0.5 if i % 2 else -0.5) * signf(i))
 		i += 1
 	_shown_floor = -1
+	# The furniture you walk around (not rugs or anything you'd step over).
+	_inner_blockers.clear()
+	for f: Dictionary in _inside["layout"].get("furniture", []):
+		var sz: Array = f["size"]
+		if float(sz[1]) < 0.25 or float(sz[0]) * float(sz[2]) < 0.08:
+			continue
+		var at := Vector3(float(f["pos"][0]), float(f["pos"][1]), float(f["pos"][2]))
+		_inner_blockers.append({"inv": Transform3D(Basis(Vector3.UP, float(f.get("yaw", 0.0))), at).affine_inverse(), "half": Vector2(float(sz[0]) / 2.0 + 0.22, float(sz[2]) / 2.0 + 0.22), "y": at.y})
 	if old != null:
 		old.queue_free()
 
@@ -898,6 +941,7 @@ func _move_inside(fig: PilotFigure, step: Vector3) -> void:
 		y = lerpf(f0 * fh, f1 * fh, float(st["t"]))
 		floor_i = f1 if float(st["t"]) > 0.5 else f0
 	var here := HubInterior.room_at(_inside, from, int(round(fig.position.y / fh)), 0.0)
+	to = _push_inner(to, y)
 	var there := HubInterior.room_at(_inside, to, floor_i, 0.25)
 	if there == "" and st.is_empty():
 		var d := HubInterior.door_near(_inside, to, y, 0.6)
@@ -1007,6 +1051,77 @@ func _inside_use(rough: bool) -> void:
 	_handle(r["events"])
 	if not _inside.is_empty():
 		_show_inside(true)
+
+
+# --- Walking controls (ExploreInput) ------------------------------------------------------
+
+## First person: the mouse is captured while you walk; any panel or conversation frees it.
+func _capture_mouse(on: bool) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var want := Input.MOUSE_MODE_CAPTURED if on else Input.MOUSE_MODE_VISIBLE
+	if Input.mouse_mode != want:
+		Input.mouse_mode = want
+
+
+## Inside: pushed out of furniture on this floor.
+func _push_inner(p: Vector2, y: float) -> Vector2:
+	for b: Dictionary in _inner_blockers:
+		if absf(float(b["y"]) - y) > 1.5:
+			continue
+		var inv: Transform3D = b["inv"]
+		var half: Vector2 = b["half"]
+		var lp := inv * Vector3(p.x, y, p.y)
+		if absf(lp.x) < half.x and absf(lp.z) < half.y:
+			var dx := half.x - absf(lp.x)
+			var dz := half.y - absf(lp.z)
+			if dx < dz:
+				lp.x = signf(lp.x if lp.x != 0 else 1.0) * half.x
+			else:
+				lp.z = signf(lp.z if lp.z != 0 else 1.0) * half.y
+			var wp := inv.affine_inverse() * lp
+			p = Vector2(wp.x, wp.z)
+	return p
+
+
+## Things the crosshair can land on besides people and building doors: inside, what's kept
+## here, the doors and the way out; outside, the squad's parked mechs.
+func _aim_targets() -> Array:
+	var out: Array = []
+	if not _inside.is_empty():
+		for it: Dictionary in _inside["items"]:
+			out.append({"kind": "item", "id": it["id"], "name": it["name"], "container": it["container"],
+				"pos": Vector3(float(it["pos"][0]), float(it["pos"][1]) + 1.0, float(it["pos"][2]))})
+		for d: Dictionary in _inside["doors"]:
+			var dp := Vector3(float(d["pos"][0]), float(d["pos"][1]) + 1.2, float(d["pos"][2]))
+			if bool(d["outside"]):
+				out.append({"kind": "exit", "id": d["id"], "door": d, "pos": dp, "name": "the way out"})
+			elif bool(d["locked"]):
+				var target := ""
+				for r: String in d["rooms"]:
+					if r != _iroom and _inside["rooms"].has(r):
+						target = r
+				if target != "":
+					out.append({"kind": "idoor", "id": d["id"], "door": d, "room": target, "locked": true, "pos": dp, "name": "a locked door"})
+		return out
+	for m: Dictionary in _mechs:
+		var root: Node3D = m["root"]
+		if is_instance_valid(root):
+			out.append({"kind": "mech", "id": m["pid"], "name": m["name"], "pos": root.transform * (m["local"] as Vector3), "reach": 3.0})
+	return out
+
+
+## Your parked mech: how it is (and whether it's waiting on a printer).
+func _check_mech(pid: String) -> void:
+	var m: Dictionary = {}
+	for x: Dictionary in _mechs:
+		if str(x["pid"]) == pid:
+			m = x
+	var wrecked := Economy.wrecked(story, campaign).has(pid)
+	hud.toast("%s: %s." % [m.get("name", "The mech"), "wrecked, waiting to be reprinted at a printer" if wrecked else "parked on the gantry, ready to go"],
+		StoryStyle.RED if wrecked else StoryStyle.BLUE)
+	if fp != null:
+		fp.used()
 
 # --- UI ----------------------------------------------------------------------------------
 

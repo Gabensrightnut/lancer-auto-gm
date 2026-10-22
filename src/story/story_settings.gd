@@ -23,6 +23,9 @@ static var _skip_seen := false
 ## holds on the person's face, subtitles at the bottom). Radio calls always use the comms frame.
 static var _view := "third"
 static var _seen: Dictionary = {}
+## Walking in first person: mouse look speed (0.25..3) and invert-Y.
+static var _look := 1.0
+static var _invert_y := false
 static var _notifier: Notifier
 
 
@@ -48,6 +51,8 @@ static func _load() -> void:
 		_scale = clampf(float(cfg.get_value("text", "scale", 1.0)), 0.8, 1.6)
 		_skip_seen = bool(cfg.get_value("dialogue", "skip_seen", false))
 		_view = str(cfg.get_value("dialogue", "view", "third"))
+		_look = clampf(float(cfg.get_value("walking", "look_sensitivity", 1.0)), 0.25, 3.0)
+		_invert_y = bool(cfg.get_value("walking", "invert_y", false))
 	if FileAccess.file_exists(SEEN_FILE):
 		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(SEEN_FILE))
 		if d is Array:
@@ -62,6 +67,8 @@ static func _save() -> void:
 	cfg.set_value("text", "scale", _scale)
 	cfg.set_value("dialogue", "skip_seen", _skip_seen)
 	cfg.set_value("dialogue", "view", _view)
+	cfg.set_value("walking", "look_sensitivity", _look)
+	cfg.set_value("walking", "invert_y", _invert_y)
 	cfg.save(FILE)
 
 
@@ -112,6 +119,30 @@ static func dialogue_view() -> String:
 static func set_dialogue_view(v: String) -> void:
 	_load()
 	_view = "first" if v == "first" else "third"
+	_save()
+	notifier().changed.emit()
+
+
+static func look_sensitivity() -> float:
+	_load()
+	return _look
+
+
+static func set_look_sensitivity(v: float) -> void:
+	_load()
+	_look = clampf(v, 0.25, 3.0)
+	_save()
+	notifier().changed.emit()
+
+
+static func invert_y() -> bool:
+	_load()
+	return _invert_y
+
+
+static func set_invert_y(on: bool) -> void:
+	_load()
+	_invert_y = on
 	_save()
 	notifier().changed.emit()
 

@@ -35,6 +35,8 @@ const ACTIONS := {
 
 const FILE := "res://data/game/keybinds.json"
 
+static var _contexts: Dictionary = {}
+
 
 ## The defaults: data/game/keybinds.json when present (the Settings screen reads the same
 ## file), else ACTIONS. {id: [label, keycodes...]}
@@ -45,6 +47,7 @@ static func defaults() -> Dictionary:
 		for e: Dictionary in (d as Dictionary).get("actions", []):
 			if e.get("fixed", false):
 				continue
+			_contexts[String(e["id"])] = String(e.get("context", "battle"))
 			var row: Array = [String(e.get("label", e["id"]))]
 			for k: String in e.get("keys", []):
 				var code := OS.find_keycode_from_string(k)
@@ -52,6 +55,13 @@ static func defaults() -> Dictionary:
 					row.append(code)
 			out[String(e["id"])] = row
 	return out if not out.is_empty() else ACTIONS
+
+
+## "battle" or "explore" (walking around out of combat): keys only clash within one.
+static func context(action: String) -> String:
+	if _contexts.is_empty():
+		defaults()
+	return str(_contexts.get(action, "battle"))
 
 
 static func ensure() -> void:

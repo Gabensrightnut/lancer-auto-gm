@@ -115,7 +115,7 @@ func apply_keys() -> void:
 	var table := actions()
 	var primary := {}
 	for a: String in keybinds:
-		primary[int(keybinds[a])] = true
+		primary["%s:%d" % [BattleKeys.context(a), int(keybinds[a])]] = true
 	for a: String in keybinds:
 		if not InputMap.has_action(a):
 			InputMap.add_action(a)
@@ -123,7 +123,7 @@ func apply_keys() -> void:
 		var keys: Array = [int(keybinds[a])]
 		# The defaults' second keys (arrows, keypad...) stay, unless one is now another's key.
 		for i in range(2, (table.get(a, []) as Array).size()):
-			if not primary.has(int(table[a][i])):
+			if not primary.has("%s:%d" % [BattleKeys.context(a), int(table[a][i])]):
 				keys.append(int(table[a][i]))
 		for k: int in keys:
 			var ev := InputEventKey.new()
@@ -147,9 +147,10 @@ static func default_clashes() -> Array:
 	for a: String in table:
 		for i in range(1, (table[a] as Array).size()):
 			var k := int(table[a][i])
-			if owner.has(k):
-				out.append([owner[k], a, key_name(k)])
-			owner[k] = a
+			var ck := "%s:%d" % [BattleKeys.context(a), k]
+			if owner.has(ck):
+				out.append([owner[ck], a, key_name(k)])
+			owner[ck] = a
 	return out
 
 
@@ -158,7 +159,7 @@ static func default_clashes() -> Array:
 func rebind(action: String, key: int) -> String:
 	var old := int(keybinds.get(action, 0))
 	for other: String in keybinds:
-		if other != action and int(keybinds[other]) == key:
+		if other != action and int(keybinds[other]) == key and BattleKeys.context(other) == BattleKeys.context(action):
 			keybinds[other] = old
 			keybinds[action] = key
 			return other
