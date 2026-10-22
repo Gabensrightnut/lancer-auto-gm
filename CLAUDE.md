@@ -28,7 +28,10 @@ Run the tests before every commit. For visual work, take a screenshot and look a
 - **Grid-agnostic.** Only `src/core/grid/` knows hex vs square. Use `GridLayout` everywhere else.
 - **Secrets stay on the host.** Clients only ever get `ViewFilter.view_for()` output.
 - **All randomness through `state.dice`.**
-- **Nothing taken from other games.** Models, art, animation and code are made here. Lancer
+- **Nothing taken from other games.** Models, art, animation and code are made here. Mechs are
+  modeled to look as close as possible to Massif's official frame art (user's decision), using
+  the art in frames.json `image_url` as reference only; never put official images or
+  Lancer Tactics files in the game or repo. Lancer
   Tactics is the reference for look, UI and how systems are presented (public trailers,
   screenshots, devlogs only). If Lancer Tactics handles a rule differently from the book, follow
   the book and add a row to DESIGN.md's "Rule differences" table for the user to decide.

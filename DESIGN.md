@@ -154,10 +154,18 @@ them, and they disappear when the turn moves on.
 - **Full scene rendering in every view:** terrain, buildings, cover, deployables, smoke,
   other mechs and effects are all rendered in 3D around you. In first person you see your
   own mech's arms and weapons in the cockpit view, matching your loadout.
-- Mechs built from parts (torso, legs, arms, shoulder mounts, weapons), so each frame has
-  its own silhouette. Parts are modeled in house with scripted Blender (free) and exported as
-  glTF, or generated in Godot directly; no third-party models. Manufacturer color schemes for GMS, IPS-N, SSC,
-  HORUS and Harrison Armory.
+- **Mechs look as close as possible to their official art** (your choice): each frame is
+  modeled individually to match its book / Lancer Tactics look: same silhouette, armor
+  shapes, proportions, head, and signature details, with smooth curved surfaces, panel lines
+  and bevels, not blocks. Reference: the official frame art linked in 
+  (`image_url`), viewed for reference only; those images are never put in the game or repo.
+- Modeled in Blender by script (free, open source), exported as glTF, one model per frame,
+  with mount points where weapons attach. Weapons and systems still come from the real
+  loadout (above) and match their official art too.
+- Manufacturer paint schemes for GMS, IPS-N, SSC, HORUS and Harrison Armory as defaults;
+  the mech customizer repaints them.
+- **Publishing note:** matching Massif's designs this closely is fine for you and friends;
+  a public release would need Massif's permission (see Publishing).
 - Mech size matches the rules (Size 1/2, 1, 2, 3); pilots on foot are smaller models.
 - Weapon models: one per weapon, as described above.
 
@@ -528,7 +536,8 @@ each with a narrow, self-contained brief, and a new piece only starts once one f
   account. Just include Godot's license notice in the credits.
 - **Free places to publish:** GitHub Releases (already the update channel) and itch.io.
   Steam charges a $100 fee per game, so it's not free.
-- **Our own code and models:** all made in house, so they're yours to publish.
+- **Our own code and models:** all made in house. The mech models are faithful recreations of
+  Massif's frame designs, so publishing them needs Massif's permission even though we built them.
 - **The Lancer IP is the real question, not the engine.** Lancer belongs to Massif Press.
   Before publishing, check Massif's third-party license / community content guidelines for
   what's allowed (name, logo, rules text, game data, free vs. paid). A full digital adaptation
