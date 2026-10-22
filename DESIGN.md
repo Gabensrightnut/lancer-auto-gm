@@ -480,6 +480,10 @@ differently without an AI. Each game has a **seed**: share it to replay the same
   protecting allies, retreating when damaged. Scored by a utility system, with randomness so
   enemies aren't predictable. Enemies only act on what *they* could know (they can't target
   someone Hidden).
+- **Fight length dial:** Short / Standard / Long. A tabletop fight takes about 1-3 hours;
+  with automation we aim for ~15-25 / 20-40 / 40-60+ minutes solo. It changes encounter
+  size, deployment distance and how early surrender or retreat becomes possible, never
+  rules like HP or damage.
 - **GM personality / difficulty dials:** aggression, caution, focus fire vs. spread damage,
   reinforcement rate, how often complications happen, overall difficulty. Presets (e.g.
   "Ruthless", "Cautious", "Chaotic", "Teaching") plus custom sliders.
