@@ -21,6 +21,8 @@ var turn: PlayerTurn
 var banner: Label
 var reaction_prompt: ReactionPrompt
 var table_notice: TableNotice
+## Squadmate barks and NPC lines (speech bubbles with portraits).
+var barks: BattleBarks
 ## Staging/tests: answer reaction prompts automatically with the suggested answer.
 var auto_react := false
 ## Set by screenshot staging to pick units without clicks.
@@ -55,6 +57,9 @@ func setup(db: ContentDB, battle_view: BattleView, events: EventPlayer, layer: C
 	ui.add_child(reaction_prompt)
 	table_notice = TableNotice.new()
 	ui.add_child(table_notice)
+	barks = BattleBarks.new()
+	barks.view = view
+	ui.add_child(barks)
 	player.on_table_note = table_notice.show_note
 	player.camera = view.tactical
 	turn = PlayerTurn.new()

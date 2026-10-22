@@ -576,6 +576,16 @@ func _battle_stage(tag: String) -> void:
 			t.hover_target("goblin")
 			view.tactical.frame_pair(view.units["everest"].global_position, view.units["goblin"].global_position, 7.0)
 			view.tactical.snap()
+		"barks":
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 8
+			battle.barks.say({"unit": "everest", "name": "Hawk", "face": {"portrait": PortraitSpec.randomize(rng), "expression": "determined"},
+				"text": "Moving up. Cover me, Blackbeard.", "duration": 30.0})
+			battle.barks.say({"unit": "blackbeard", "name": "Rook", "face": {"portrait": PortraitSpec.randomize(rng), "expression": "smiling"},
+				"text": "Always do.", "duration": 30.0})
+			battle.barks.say({"name": "Harrow Actual", "side": "enemies", "face": {"portrait": PortraitSpec.randomize(rng), "expression": "angry"},
+				"text": "All units, hold the ridge. Nobody gets past the river.", "duration": 30.0})
+			await get_tree().create_timer(0.6).timeout
 		"gear", "gear_aim", "gear_table":
 			# Zones on the board (real ones from the engine plus one of each other kind),
 			# then the step-by-step picker aiming a smoke grenade.
@@ -689,6 +699,9 @@ func lockout_samples() -> Array:
 func screenshot_stage(tag: String) -> void:
 	world_spec = ""
 	battle_systems = {}
+	if tag == "barks":
+		await _battle_stage(tag)
+		return
 	if tag.begins_with("gear"):
 		battle_systems = {"everest": ["ms_pattern_a_smoke_charges", "ms_javelin_rockets", "ms_caltrop_launcher", "ms_lb_oc_cloaking_field", "ms_comp_con_class_assistant_unit"]}
 		await _battle_stage(tag)
