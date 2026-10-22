@@ -5,6 +5,8 @@ extends Control
 
 var content: ContentDB
 var preview: MechPreview
+var panel: PanelContainer
+var _sheet: Control
 
 
 func _ready() -> void:
@@ -14,7 +16,7 @@ func _ready() -> void:
 	bg.color = Color(0.05, 0.06, 0.075)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
-	var panel := PanelContainer.new()
+	panel = PanelContainer.new()
 	panel.position = Vector2(560, 40)
 	panel.size = Vector2(800, 1000)
 	add_child(panel)
@@ -32,7 +34,57 @@ func screenshot_setup(args: Array) -> Array:
 
 
 func screenshot_stage(tag: String) -> void:
+	panel.visible = tag.begins_with("paint")
+	if _sheet:
+		_sheet.queue_free()
+		_sheet = null
 	match tag:
+		"creator_portrait", "creator_token", "creator_beard":
+			var pc := PilotCreator.new()
+			add_child(pc)
+			_sheet = pc
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 5
+			pc.open(PortraitSpec.randomize(rng))
+			pc.toggle_lock("hair")
+			pc.toggle_lock("face")
+			if tag == "creator_beard":
+				pc.select_part("beard")
+				pc.set_expression("smiling")
+			if tag == "creator_token":
+				pc.set_tab("token")
+		"portraits":
+			# A grid of random pilots.
+			var grid := GridContainer.new()
+			grid.columns = 6
+			grid.position = Vector2(40, 30)
+			grid.add_theme_constant_override("h_separation", 12)
+			grid.add_theme_constant_override("v_separation", 12)
+			add_child(grid)
+			_sheet = grid
+			var rng := RandomNumberGenerator.new()
+			rng.seed = int(tag.hash()) & 0xffff
+			for i in range(12):
+				var pa := PortraitArt.new()
+				pa.custom_minimum_size = Vector2(290, 330)
+				pa.set_look(PortraitSpec.randomize(rng), PortraitArt.EXPRESSIONS[i % PortraitArt.EXPRESSIONS.size()])
+				grid.add_child(pa)
+		"expressions":
+			var grid := GridContainer.new()
+			grid.columns = 5
+			grid.position = Vector2(40, 30)
+			grid.add_theme_constant_override("h_separation", 12)
+			grid.add_theme_constant_override("v_separation", 12)
+			add_child(grid)
+			_sheet = grid
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 21
+			var look := PortraitSpec.randomize(rng)
+			for e: String in PortraitArt.EXPRESSIONS:
+				var pa := PortraitArt.new()
+				pa.custom_minimum_size = Vector2(350, 400)
+				pa.set_look(look, e)
+				grid.add_child(pa)
 		"paint_factory":
 			_show("mf_lancaster", {"mounts": [{"weapons": ["mw_assault_rifle"]}]})
 		"paint_preset":

@@ -179,6 +179,28 @@ Presets: `data/game/paint_presets.json` plus the player's saved ones in
 `user://paint_presets.json`. Screenshot scene: `scenes/customizer.tscn` (tags paint_factory,
 paint_preset, paint_random, paint_everest).
 
+## Pilot looks (`PortraitArt`, `PilotCreator`, `PilotToken`)
+
+All three read the story session's v2 portrait (`PortraitSpec`, `data/game/story/portraits.json`):
+`{version: 2, parts: {part id: {option, primary, secondary}}}`, stored in `pilot["portrait"]`.
+
+- `PortraitArt` (Control): the illustrated bust, drawn in code from the parts. It is a drop-in
+  for the placeholder `Portrait`, with the same `set_look(look, expr)` and `lit`. It draws all
+  10 expressions in portraits.json (neutral, smiling, angry, worried, shouting, sad,
+  surprised, determined, smug, hurt) and also reads older flat looks. `card = false` skips
+  the background.
+- `PilotCreator` (PanelContainer, full screen): `open(portrait)`, then the
+  `confirmed(portrait)` or `cancelled` signal. It has the parts list with lock pins, an
+  option grid with live thumbnails, primary and secondary colors from the part's palette,
+  saved color pairs, the expression strip, a Token tab, Randomize all (keeps locked parts),
+  save and load looks, Reset, Cancel and Confirm. Saved files: `user://pilot_looks.json` and
+  `user://portrait_colors.json`.
+- `PilotToken` (Node3D): `PilotToken.new().build(portrait)` builds the on-foot figure, about
+  1.8 m tall and facing -Z.
+
+Screenshot scene: `scenes/customizer.tscn`, tags creator_portrait, creator_token,
+creator_beard, portraits, expressions.
+
 ## Cameras
 
 `BattleView.set_camera_mode("tactical")` or `set_camera_mode("cockpit", unit_id, target_id)`.
