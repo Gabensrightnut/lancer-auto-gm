@@ -321,3 +321,83 @@ func test_dusk_wing_holograms() -> void:
 	expect(Zones.of_kind(s, "hologram").is_empty(), "every hologram detonates")
 	F.act(e, s, "move", "dw", {"to": [0, 2]})
 	expect(Zones.of_kind(s, "hologram").is_empty(), "no new holograms until its next turn")
+
+
+func _rest_state() -> void:
+	s.phase = GameState.PHASE_ENDED
+
+
+func test_rest_and_everest_replaceable_parts() -> void:
+	_setup()
+	var ev := _frame("ev", "mf_standard_pattern_i_everest", "players", Vector2i(0, 0))
+	F.begin(e, s, ev)
+	expect(not F.ok(F.act(e, s, "rest", "ev")), "not in combat")
+	_rest_state()
+	ev.heat = 3
+	ev.statuses["Impaired"] = {"source": "x"}
+	ev.structure = 2
+	ev.hp = 1
+	var reps := ev.repairs
+	var out := F.act(e, s, "rest", "ev", {"spend": [{"what": "structure"}, {"what": "hp"}]})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(ev.heat, 0)
+	expect(not ev.has_status("Impaired"))
+	expect_eq(ev.structure, 3)
+	expect_eq(ev.hp, ev.max_hp)
+	expect_eq(ev.repairs, reps - 2, "Replaceable Parts: 1 Repair per Structure, plus 1 for HP")
+
+
+func test_rest_wreck_repair_and_balor() -> void:
+	_setup()
+	var bal := _frame("bal", "mf_balor", "players", Vector2i(0, 0))
+	var wreck := _frame("w", "mf_standard_pattern_i_everest", "players", Vector2i(3, 0))
+	_rest_state()
+	wreck.destroyed = true
+	bal.hp = 3
+	var reps := bal.repairs
+	var out := F.act(e, s, "rest", "bal", {"spend": [{"what": "mech", "target": "w", "from": {"bal": 2, "w": 2}}]})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(bal.hp, bal.max_hp, "Self-Perpetuating: full HP without Repairs")
+	expect(not wreck.destroyed)
+	expect_eq([wreck.structure, wreck.stress, wreck.hp], [1, 1, wreck.max_hp])
+	expect_eq(bal.repairs, reps - 2, "others can chip in for a wreck")
+
+
+func test_manticore_castigation_and_minotaur_metafold() -> void:
+	_setup()
+	var man := _frame("man", "mf_manticore", "players", Vector2i(0, 0))
+	var p := Pilots.ensure_pilot(s, man)
+	var t := F.mech(s, "t", "enemies", Vector2i(2, 0))
+	t.max_hp = 60
+	t.hp = 60
+	_rest_state()
+	expect(F.ok(F.act(e, s, "rest", "man", {"castigation": true})))
+	s.phase = GameState.PHASE_COMBAT
+	F.load_dice(s, [3, 3, 3, 3, 3, 3, 3, 3, 1])
+	man.structure = 1
+	man.hp = 1
+	Combat.deal_damage(s, man, [{"type": "Kinetic", "amount": 50}], {"ap": true})
+	expect(man.counters.get("vaporized", false), "explodes at once, vaporized")
+	expect(p.destroyed, "and the pilot inside dies")
+	expect_eq(t.hp, 60 - 24, "8d6 explosive, failed save")
+	var mino := _frame("mino", "mf_minotaur", "players", Vector2i(8, 8))
+	var mp := Pilots.ensure_pilot(s, mino)
+	Pilots.explode(s, mino, "test")
+	expect(not mp.destroyed, "Internal Metafold: the pilot inside can't be harmed")
+
+
+func test_hydra_orochi_choice_and_full_deployment() -> void:
+	_setup()
+	var hy := UnitFactory.build_mech(db(), "hy", "mf_hydra", {"mounts": [], "systems": [], "orochi": "Snare OROCHI Drone"})
+	hy.side = "players"
+	s.add_unit(hy)
+	_turn(hy)
+	var guard := _ability(hy, "Deploy Guardian OROCHI Drone")
+	var snare := _ability(hy, "Deploy Snare OROCHI Drone")
+	expect(not F.ok(F.act(e, s, "activate", "hy", {"ability": guard, "to": [3, 0]})), "only the chosen drone")
+	expect(F.ok(F.act(e, s, "activate", "hy", {"ability": snare, "to": [3, 0]})))
+	_turn(hy, true)
+	expect(not F.ok(F.act(e, s, "core_power", "hy", {"drones": [[4, 4]]})), "a space for each drone still in")
+	var out := F.act(e, s, "core_power", "hy", {"drones": [[4, 4], [5, 4], [6, 4]]})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(F.events_of(out, "deployed").size(), 3, "all four out")

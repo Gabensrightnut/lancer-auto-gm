@@ -139,6 +139,7 @@ cover, line of sight, attack/area/tech previews with hit chance).
 | `zone_created` / `zone_changed` / `zone_removed` | `zone` {`id`, `kind` (`mag_field`, `smoke_cloud`, `hologram`), `owner`, `label`, `cells` [[x, y]], `center`, `phase`} / `id`, `reason`. Zones are also in the view as `zones` |
 | `zone_triggered` | `zone`, `unit` (a character set off a zone's effect) |
 | `attack_blocked` | `attacker`, `target`, `zone` (a Mag Field stopped the shot) |
+| `rested` / `repaired` | `unit` / `unit`, `what` (`structure`, `stress`, `weapon`, `system`), `key` (Core p.82). Action: `{"type": "rest", "actor", "params": {"spend": [{"what", "key", "target", "from"}], "castigation", "orochi"}}` outside combat |
 | `ruling_needed` | `id`, `question`, `options` {id: text}, `rule_ref`, `trigger_action`: the engine is paused; the host answers `{"type": "set_ruling", "params": {"id", "choice"}}` |
 | `ruling_made` | `id`, `choice`, `text` |
 

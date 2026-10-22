@@ -499,6 +499,9 @@ static func destroy(state: GameState, u: Unit, why: String) -> Array[Dictionary]
 	u.destroyed = true
 	u.hp = 0
 	var events: Array[Dictionary] = [{"type": "unit_destroyed", "unit": u.id, "reason": why}]
+	if Pilots.castigating(state, u) and not u.counters.get("vaporized", false) and why != "Self Destruct.":
+		# Manticore Castigate the Enemies of the Godhead: it explodes at once (burst 2, 8d6).
+		events.append_array(Pilots.explode(state, u, "Castigation: " + why))
 	if Effects.has(u, "unstable_system") and not u.counters.get("vaporized", false):
 		# Manticore Unstable System: explodes as a reactor meltdown at the end of its next turn
 		# (its pilot's turn inside the wreck).

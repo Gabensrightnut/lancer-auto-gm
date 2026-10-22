@@ -51,7 +51,7 @@ func test_everest_traits_are_listed_and_initiative_is_a_free_quick_action() -> v
 	F.mech(s, "t", "enemies", Vector2i(5, 0))
 	var traits: Array = ev.loadout["traits"]
 	expect_eq(traits.size(), 2)
-	expect(traits[0]["automated"] and not traits[1]["automated"], "Initiative automated, Replaceable Parts (resting) not")
+	expect(traits[0]["automated"] and traits[1]["automated"], "Initiative and Replaceable Parts (at a rest) are automated")
 	_next_turn(ev)
 	F.act(e, s, "lock_on", "ev", {"target": "t"})
 	F.act(e, s, "boost", "ev", {"to": [1, 0]})

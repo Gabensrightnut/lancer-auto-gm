@@ -297,6 +297,13 @@ static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dic
 	gear_ids.append_array(pilot.get("core_bonuses", []))
 	_add_gear_effects(u, gear_ids, pilot.get("talents", {}))
 	u.loadout["abilities"] = _abilities(db, u, frame, loadout.get("systems", []), pilot.get("talents", {}))
+	if (frame_effects_data().get(frame_id, {}) as Dictionary).get("orochi_choice", false):
+		# Hydra: one OROCHI drone accompanies it; Full Deployment brings all four.
+		for a: Dictionary in u.loadout["abilities"]:
+			if a["source_key"] == "core" and a["kind"] == "deploy":
+				a["orochi"] = true
+		if loadout.has("orochi"):
+			u.loadout["orochi"] = String(loadout["orochi"])
 	return u
 
 
@@ -493,6 +500,8 @@ static func _frame_effects(u: Unit, frame: Dictionary) -> void:
 		"manual_note": core_note, "target": (data.get("core_target", {}) as Dictionary).duplicate(true)}
 	if data.get("core_sections", false):
 		u.loadout["core"]["sections"] = true
+	if data.get("core_deploy_all", false):
+		u.loadout["core"]["deploy_all"] = true
 	if data.has("core_zone"):
 		u.loadout["core"]["zone"] = (data["core_zone"] as Dictionary).duplicate(true)
 	# One Core Power per mission, recovered by a Full Repair (Core p.32, 82).

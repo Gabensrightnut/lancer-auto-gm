@@ -113,7 +113,8 @@ static func _free_for_pilot(state: GameState, c: Vector2i, lv: int) -> bool:
 ## Agility save for half; destroys the mech and kills anyone inside.
 static func explode(state: GameState, mech: Unit, why: String) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
-	var roll := state.dice.roll("4d6")
+	var castigation := castigating(state, mech) and why != "Self Destruct."
+	var roll := state.dice.roll("8d6" if castigation else "4d6")
 	var me := Sight.body_of(state, mech)
 	var hit: Array = []
 	for u: Unit in state.units.values():
@@ -134,7 +135,8 @@ static func explode(state: GameState, mech: Unit, why: String) -> Array[Dictiona
 				amount = mini(amount, 1)  # Napoleon Heavy Shielding: half damage on a save becomes 1
 		events.append_array(Combat.deal_damage(state, u, [{"type": "Explosive", "amount": amount}], {"source": mech.id}))
 	var pilot := pilot_of(state, mech)
-	if pilot != null and pilot.counters.get("mounted_in", "") == mech.id and not pilot.destroyed:
+	if pilot != null and pilot.counters.get("mounted_in", "") == mech.id and not pilot.destroyed and not Effects.has(mech, "pilot_protected"):
+		# (Minotaur Internal Metafold: the pilot inside can't be harmed in any way.)
 		pilot.destroyed = true
 		events.append({"type": "unit_destroyed", "unit": pilot.id, "reason": "Inside the mech when its reactor exploded."})
 	mech.counters["vaporized"] = true  # "The wreck is annihilated" (Core p.81)
@@ -144,6 +146,14 @@ static func explode(state: GameState, mech: Unit, why: String) -> Array[Dictiona
 
 ## Pilots at 0 HP are DOWN AND OUT (unconscious and Stunned); more damage kills them
 ## (statuses: Down and Out).
+## Manticore Castigation State: set at a rest, and only while its pilot is inside.
+static func castigating(state: GameState, mech: Unit) -> bool:
+	if not mech.counters.get("castigation", false):
+		return false
+	var pilot := pilot_of(state, mech)
+	return pilot == null or pilot.counters.get("mounted_in", "") == mech.id
+
+
 static func pilot_hit_zero(state: GameState, p: Unit, source: String) -> Array[Dictionary]:
 	if p.has_status("Down and Out"):
 		return Combat.destroy(state, p, "Took damage while Down and Out.")

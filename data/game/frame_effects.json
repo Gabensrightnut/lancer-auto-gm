@@ -10,7 +10,11 @@
           "per": "scene"
         }
       ],
-      "Replaceable Parts": "manual"
+      "Replaceable Parts": [
+        {
+          "kind": "replaceable_parts"
+        }
+      ]
     },
     "core": [
       {
@@ -521,7 +525,11 @@
           "fraction": 0.25
         }
       ],
-      "Self-Perpetuating": "manual"
+      "Self-Perpetuating": [
+        {
+          "kind": "self_perpetuating"
+        }
+      ]
     },
     "core": [
       {
@@ -617,7 +625,9 @@
         }
       ]
     },
-    "core": "manual"
+    "core": [],
+    "core_deploy_all": true,
+    "orochi_choice": true
   },
   "mf_manticore": {
     "traits": {
@@ -635,7 +645,11 @@
           "kind": "unstable_system"
         }
       ],
-      "Castigate the Enemies of the Godhead": "manual"
+      "Castigate the Enemies of the Godhead": [
+        {
+          "kind": "castigation_state"
+        }
+      ]
     },
     "core": [
       {
@@ -672,7 +686,11 @@
           "per": "round"
         }
       ],
-      "Internal Metafold": [],
+      "Internal Metafold": [
+        {
+          "kind": "pilot_protected"
+        }
+      ],
       "Localized Maze": [
         {
           "kind": "maze"

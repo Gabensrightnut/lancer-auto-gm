@@ -275,6 +275,9 @@ class CorePower:
 		var tr := FrameSystems.check_target(state, u, action.get("params", {}))
 		if not tr.ok:
 			return tr
+		var dr := FrameSystems.check_deploy_all(state, u, action.get("params", {}))
+		if not dr.ok:
+			return dr
 		var zr := Zones.check_core_zone(state, u, action.get("params", {}))
 		if not zr.ok:
 			return zr

@@ -106,6 +106,8 @@ static func can_activate(state: GameState, u: Unit, a: Dictionary) -> RuleResult
 		return RuleResult.deny("%s is out of charges until a Full Repair." % a.get("source_name", "That system"), "tags: Limited")
 	if not src.get("charged", true):
 		return RuleResult.deny("%s is recharging (Recharge %d+)." % [a.get("source_name", ""), int(src.get("recharge", 6))], "tags: Recharge")
+	if a.get("orochi", false) and not u.counters.get("core_active", false) and String(a.get("deployable", {}).get("name", "")) != orochi_choice(u):
+		return RuleResult.deny("Only your chosen OROCHI drone (%s) until Full Deployment." % orochi_choice(u), "frames: Hydra core system")
 	var f := frequency_of(a)
 	for e: Dictionary in Effects.of(u, "frequency_override"):
 		if String(e.get("ability", "")) == String(a.get("name", "")) and not f.is_empty():
@@ -117,6 +119,18 @@ static func can_activate(state: GameState, u: Unit, a: Dictionary) -> RuleResult
 	if act == "Quick Tech" and (u.turn.get("quick_tech", []) as Array).has(String(a["key"])) and int(u.turn.get("free_quick", 0)) <= 0:
 		return RuleResult.deny("Pick a different Quick Tech option: each once per turn.", "Core p.69 Quick Tech")
 	return RuleResult.allow()
+
+
+## Hydra: the OROCHI drone that accompanies it (chosen at creation or a rest).
+static func orochi_choice(u: Unit) -> String:
+	if u.counters.has("orochi"):
+		return String(u.counters["orochi"])
+	if u.loadout.has("orochi"):
+		return String(u.loadout["orochi"])
+	for a: Dictionary in all(u):
+		if a.get("orochi", false):
+			return String(a.get("deployable", {}).get("name", ""))
+	return ""
 
 
 ## The economy cost of an ability ("quick", "full", "free").

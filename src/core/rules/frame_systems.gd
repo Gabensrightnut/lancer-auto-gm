@@ -147,7 +147,48 @@ static func on_core(state: GameState, u: Unit, params: Dictionary) -> Array[Dict
 	if core.has("sections"):
 		events.append_array(_fortress_sections(state, u, params))
 	events.append_array(Zones.create_core_zone(state, u, params))
+	if core.get("deploy_all", false):
+		var spots: Array = params.get("drones", [])
+		var i := 0
+		for a: Dictionary in _undeployed_drones(state, u):
+			events.append_array(Abilities.deploy(state, u, a, Vector2i(int(spots[i][0]), int(spots[i][1]))))
+			i += 1
 	return events
+
+
+## Hydra Full Deployment: every OROCHI drone not already out, each to its own space within
+## Sensors (params.drones: [[x, y], ...] in the order of RulesQueries' drone list).
+static func _undeployed_drones(state: GameState, u: Unit) -> Array:
+	var out: Array = []
+	for a: Dictionary in Abilities.all(u):
+		if not a.get("orochi", false):
+			continue
+		var out_already := false
+		for o: Unit in state.units.values():
+			if o.kind == Unit.KIND_DEPLOYABLE and o.counters.get("owner", "") == u.id and o.counters.get("ability", "") == a["key"] and not o.destroyed:
+				out_already = true
+		if not out_already:
+			out.append(a)
+	return out
+
+
+static func check_deploy_all(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+	if not u.loadout.get("core", {}).get("deploy_all", false):
+		return RuleResult.allow()
+	var need := _undeployed_drones(state, u)
+	var spots: Variant = params.get("drones", [])
+	if not spots is Array or (spots as Array).size() != need.size():
+		return RuleResult.deny("Give a space for each OROCHI drone not yet deployed (params.drones: %d)." % need.size(), "frames: Hydra core system")
+	var seen := {}
+	for i in range(need.size()):
+		var c := Vector2i(int(spots[i][0]), int(spots[i][1]))
+		if seen.has(c):
+			return RuleResult.deny("Each drone needs its own space.", "frames: Hydra core system")
+		seen[c] = true
+		var ok := Abilities.check_spot(state, u, need[i]["deployable"], c)
+		if not ok.ok:
+			return ok
+	return RuleResult.allow()
 
 
 ## Drake Fortress: two Line 2 sections of hard cover from the mech, Immunity to all damage.
