@@ -1,0 +1,44 @@
+{
+  "_note": "Hand-written placeholder NPCs for testing the rules engine. Made-up stats, not official NPC data; replace once NPC data is available.",
+  "training_drone": {
+    "id": "training_drone",
+    "name": "Training Drone",
+    "size": 1,
+    "hp": 10,
+    "armor": 0,
+    "evasion": 8,
+    "edef": 8,
+    "heat_cap": 6,
+    "speed": 4,
+    "sensors": 10,
+    "save_target": 10,
+    "hull": 0, "agility": 0, "systems": 0, "engineering": 0,
+    "structure": 1,
+    "stress": 1,
+    "weapons": [
+      {"name": "Practice Rifle", "type": "Rifle", "size": "Main", "attack_bonus": 1,
+       "damage": [{"type": "Kinetic", "val": "1d6"}], "range": [{"type": "Range", "val": 8}], "tags": []}
+    ]
+  },
+  "training_brawler": {
+    "id": "training_brawler",
+    "name": "Training Brawler",
+    "size": 2,
+    "hp": 14,
+    "armor": 1,
+    "evasion": 6,
+    "edef": 6,
+    "heat_cap": 6,
+    "speed": 3,
+    "sensors": 8,
+    "save_target": 10,
+    "hull": 2, "agility": 0, "systems": 0, "engineering": 1,
+    "structure": 1,
+    "stress": 1,
+    "weapons": [
+      {"name": "Practice Hammer", "type": "Melee", "size": "Heavy", "attack_bonus": 1,
+       "damage": [{"type": "Kinetic", "val": "1d6+2"}], "range": [{"type": "Threat", "val": 1}],
+       "tags": [{"id": "tg_knockback", "val": 1}]}
+    ]
+  }
+}
