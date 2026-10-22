@@ -74,6 +74,39 @@ Weapon animation comes from the weapon's data (`WeaponBuilder.attack_style`): Me
 swing, Nexus → drone swarm, Burn + Cone → flamethrower, Launcher → arcing missiles, Explosive →
 shell (arcing with a warning ring if it has Blast), Energy → charge + beam, else kinetic tracers.
 
+## Resource HUD (`ResourceHUD.set_data(d)`)
+
+```gdscript
+{
+  "name": "Everest", "frame": "GMS Everest",
+  "hp": [8, 10], "overshield": 0, "heat": [2, 6], "danger_zone": 3,   # [current, total]
+  "structure": [4, 4], "stress": [4, 4], "repairs": [3, 5], "burn": 0,
+  "core_power": "available" | "used",
+  "economy": {"quick": [1, 2], "full": [0, 1], "move": [4, 4], "reaction": [1, 1],
+              "overcharge_next": "1d3"},
+}
+```
+
+Any missing pool shows "??" (enemies the seat hasn't scanned). Hovering an action calls
+`set_preview(action.preview)`.
+
+## Action buttons (`ActionBar.set_actions(list)`, `ActionBar.resources = hud`)
+
+```gdscript
+{
+  "id": "act_overcharge", "name": "Overcharge",
+  "cost": "quick" | "full" | "free" | "reaction" | "protocol" | "move",
+  "desc": "short text on the button", "text": "full rule text (hover)", "rule_ref": "Core rules: ...",
+  "extras": [{"kind": "heat" | "charges" | "overcharge", "value": "1d3"}],   # badges with numbers
+  "enabled": false, "reason": "Already used a Quick action this turn",      # greyed with reason
+  "preview": {"heat": [1, 3], "quick": 1, "full": 1, "reaction": 1, "overcharge": 1,
+              "core_power": 1, "repairs": 1, "hp": -2, "overshield": 3},    # shown on the HUD bars
+}
+```
+
+Signals: `action_pressed(action)`, `action_hovered(action)`. Heat previews warn when they
+would reach `danger_zone` or exceed the heat cap.
+
 ## Cameras
 
 `BattleView.set_camera_mode("tactical")` or `set_camera_mode("cockpit", unit_id, target_id)`.

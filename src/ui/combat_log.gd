@@ -23,6 +23,7 @@ func _init() -> void:
 	_text.add_theme_font_size_override("bold_font_size", 15)
 	_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_text)
+	visible = false  # shown once there's something to read
 
 
 func add_line(bbcode: String) -> void:
@@ -31,3 +32,4 @@ func add_line(bbcode: String) -> void:
 
 func clear_log() -> void:
 	_text.clear()
+	visible = false

@@ -11,6 +11,8 @@ var player: EventPlayer
 var rolls: RollDisplay
 var combat_log: CombatLog
 var hud: CockpitHUD
+var resources: ResourceHUD
+var action_bar: ActionBar
 var shape := GridLayout.Shape.HEX
 var _ui: CanvasLayer
 var _help: Label
@@ -56,9 +58,15 @@ func _build_ui() -> void:
 	rolls = RollDisplay.new()
 	_ui.add_child(rolls)
 	combat_log = CombatLog.new()
-	combat_log.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	combat_log.position = Vector2(16, 900 - 200)
+	combat_log.position = Vector2(1600 - 496, 70)
 	_ui.add_child(combat_log)
+	resources = ResourceHUD.new()
+	_ui.add_child(resources)
+	action_bar = ActionBar.new()
+	action_bar.resources = resources
+	action_bar.position = Vector2(412, 900 - 2 * 84 - 10)
+	action_bar.size = Vector2(1600 - 412 - 16, 2 * 84)
+	_ui.add_child(action_bar)
 	_help = Label.new()
 	_help.position = Vector2(16, 12)
 	_help.add_theme_font_size_override("font_size", 15)
@@ -101,6 +109,9 @@ func _build_board() -> void:
 	view.tactical.look_at_point(Vector3(7.5, 0.8, 7.0), 15.0)
 	view.tactical.snap()
 	_update_help()
+	resources.set_data(sample_resources())
+	resources.position = Vector2(16, 900 - 314)
+	action_bar.set_actions(sample_actions())
 	hud.battle = view
 	hud.unit_id = "everest"
 	hud.target_id = "goblin"
@@ -135,14 +146,13 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _toggle_camera() -> void:
-	if view.camera_mode == "tactical":
+	var cockpit := view.camera_mode == "tactical"
+	if cockpit:
 		view.set_camera_mode("cockpit", "everest", "goblin")
-		hud.visible = true
-		combat_log.visible = false
 	else:
 		view.set_camera_mode("tactical")
-		hud.visible = false
-		combat_log.visible = true
+	hud.visible = cockpit
+	resources.visible = not cockpit
 
 
 # --- sample data -------------------------------------------------------------------------
@@ -208,6 +218,51 @@ func los_plan() -> Dictionary:
 			dim.append([c.x, c.y])
 	return {"los": {"dim_cells": dim, "no_los_units": ["barbarossa"]},
 		"cover": [{"cell": [DemoMap.cell_at(view.map, 11.9, 5.5).x, DemoMap.cell_at(view.map, 11.9, 5.5).y], "level": 1, "kind": "hard"}]}
+
+
+## Sample resource HUD data for the Everest (ResourceHUD format; the rules engine supplies it).
+func sample_resources() -> Dictionary:
+	return {
+		"name": "Everest", "frame": "GMS Everest", "hp": [8, 10], "overshield": 0, "heat": [2, 6],
+		"danger_zone": 3, "structure": [4, 4], "stress": [4, 4], "repairs": [3, 5], "burn": 0,
+		"core_power": "available",
+		"economy": {"quick": [1, 2], "full": [0, 1], "move": [4, 4], "reaction": [1, 1], "overcharge_next": "1d3"},
+	}
+
+
+## Sample action buttons (ActionBar format). Names and text come from lancer-data; the
+## availability and reasons here are made-up samples until the rules engine provides them.
+func sample_actions() -> Array:
+	var act := func(id: String, extra: Dictionary) -> Dictionary:
+		var e := content.get_entry("actions", id)
+		var a := {"id": id, "name": e.get("name", id), "cost": String(e.get("activation", "Quick")).to_lower().replace("quick tech", "quick"),
+			"desc": _plain(e.get("terse", "")), "text": _plain(e.get("detail", "")), "rule_ref": "Core rules: %s (lancer-data %s)" % [e.get("name", id), id]}
+		a.merge(extra, true)
+		return a
+	var core: Dictionary = content.frame("mf_standard_pattern_i_everest").get("core_system", {})
+	return [
+		{"id": "w_assault_rifle", "name": "Assault Rifle", "cost": "quick", "desc": "Skirmish: Range 10, 1d6 kinetic.",
+			"text": "Attack with the Assault Rifle as a Skirmish.", "rule_ref": "Core rules: Skirmish", "preview": {"quick": 1}},
+		{"id": "w_howitzer", "name": "Howitzer", "cost": "quick", "desc": "Range 20, Blast 1, 2d6 explosive.",
+			"extras": [{"kind": "charges", "value": "0/1"}], "enabled": false, "reason": "Loading: not reloaded yet",
+			"text": "Loading weapon: after firing it must be reloaded before it can fire again.", "rule_ref": "Tag: Loading"},
+		act.call("act_barrage", {"enabled": false, "reason": "Already used a Quick action this turn"}),
+		act.call("act_boost", {"preview": {"quick": 1}}),
+		act.call("act_lockon", {"enabled": false, "reason": "No enemy within Sensors range"}),
+		act.call("act_hide", {"preview": {"quick": 1}}),
+		act.call("act_overcharge", {"extras": [{"kind": "overcharge", "value": "1d3"}], "preview": {"heat": [1, 3], "overcharge": 1}}),
+		act.call("act_stabilize", {"enabled": false, "reason": "Needs a Full action; one Quick action is spent"}),
+		act.call("act_brace", {"preview": {"reaction": 1}}),
+		act.call("act_overwatch", {"preview": {"reaction": 1}}),
+		{"id": "core", "name": String(core.get("active_name", "Core Power")), "cost": String(core.get("activation", "Protocol")).to_lower(),
+			"desc": _plain(core.get("active_effect", "")), "text": _plain(core.get("active_effect", "")),
+			"extras": [{"kind": "charges", "value": "1/1"}], "rule_ref": "Everest core system: %s" % core.get("name", ""), "preview": {"core_power": 1}},
+	]
+
+
+static func _plain(html: String) -> String:
+	return RegEx.create_from_string("<[^>]+>").sub(html.replace("<br>", "
+"), "", true).strip_edges()
 
 
 func _check(d20: int, acc: Array, diff: Array, dice: Array, bonuses: Array, target: int, target_label: String = "Evasion") -> Dictionary:
@@ -336,7 +391,7 @@ func _focus_for(key: String) -> void:
 func screenshot_setup(args: PackedStringArray) -> Array:
 	var tags: Array = Array(args)
 	if tags.is_empty() or tags[0] == "all":
-		tags = ["board", "square", "move", "sky", "los", "roll", "kinetic", "beam", "missile", "melee", "tech", "deploy", "heat", "vent", "destroy", "cockpit"]
+		tags = ["board", "square", "move", "sky", "los", "roll", "kinetic", "beam", "missile", "melee", "tech", "deploy", "heat", "vent", "destroy", "cockpit", "hud"]
 	return tags
 
 
@@ -414,6 +469,12 @@ func screenshot_stage(tag: String) -> void:
 			view.tactical.snap()
 			player.play(ev["structure"] + ev["destroy"])
 			await Fx.wait(self, 3.4)
+		"hud":
+			view.overlays.show_plan(move_plan())
+			view.tactical.look_at_point(Vector3(5.5, 0.8, 8.0), 9.5)
+			view.tactical.snap()
+			await get_tree().process_frame
+			action_bar.hover("act_overcharge")
 		"cockpit":
 			player.play([ev["tech"][0]])
 			await Fx.wait(self, 0.2)
