@@ -105,6 +105,8 @@ const BIOMES := ["urban_ruins", "grassy_hills", "alien_wilds"]
 var world_spec := ""
 ## Screenshot-only: systems for roster units ({id: [system ids]}).
 var battle_systems: Dictionary = {}
+## Screenshot-only: the generated mission of a world=gen... board (objectives on the board).
+var world_mission: Mission
 var battle_offset := Vector2.ZERO
 
 
@@ -124,6 +126,7 @@ func _world_map(spec_text: String) -> Array:
 		var g := MissionGenerator.generate(int(parts[0]), opts)
 		map = (g["state"] as GameState).map
 		kit = (g["mission"] as Mission).flavor.get("kit", "grassy_hills")
+		world_mission = g["mission"]
 	else:
 		match name:
 			"hills":
@@ -265,6 +268,9 @@ func start_battle() -> void:
 		off = Vector2((lo.x + hi.x) * 0.5 - 7.5, (lo.z + hi.z) * 0.5 - 8.5)
 	battle_offset = off
 	view.set_map(map, kit)
+	if world_mission and world_spec.begins_with("gen"):
+		# What the players' seat may know of the sitrep: zones and deployment areas.
+		view.show_mission({"zones": world_mission.zones, "deployment": world_mission.deployment}, GameState.PHASE_COMBAT)
 	battle = DemoBattle.new()
 	add_child(battle)
 	battle.setup(content, view, player, _ui)
@@ -749,6 +755,11 @@ func screenshot_setup(args: PackedStringArray) -> Array:
 	return tags
 
 
+func player_turn_cancel() -> void:
+	if battle and battle.turn:
+		battle.turn.cancel()
+
+
 func _ring_cells(c: Vector2i, r: int) -> Array:
 	var out: Array = []
 	for x in view.map.grid.cells_within(c, r):
@@ -793,6 +804,7 @@ func lockout_samples() -> Array:
 
 func screenshot_stage(tag: String) -> void:
 	world_spec = ""
+	world_mission = null
 	battle_systems = {}
 	if tag in ["barks", "eject", "dismount", "on_foot", "barriers"]:
 		await _battle_stage(tag)
@@ -810,6 +822,13 @@ func screenshot_stage(tag: String) -> void:
 		# The player's turn HUD on one of the world session's boards.
 		world_spec = tag.trim_prefix("world=")
 		await _battle_stage("my_turn")
+		if world_mission and not world_mission.zones.is_empty():
+			# Pull back to show the sitrep's objectives across the board.
+			player_turn_cancel()
+			view.tactical.look_at_point(view.units["everest"].global_position + Vector3(0, 0, -6.0), 26.0)
+			view.tactical.pitch = -58.0
+			view.tactical.snap()
+			await get_tree().create_timer(0.6).timeout
 		return
 	if tag in ["turn_order", "my_turn", "target", "cooldowns", "enemy_turn", "skill", "bar_small", "bar_large", "reaction"]:
 		await _battle_stage(tag)

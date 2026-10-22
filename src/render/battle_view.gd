@@ -56,6 +56,8 @@ func _init() -> void:
 ## Builds the board and units from a seat's view (ViewFilter.view_for output).
 func load_view(view: Dictionary) -> void:
 	set_map(BattleMap.from_dict(view.get("map", {})))
+	if view.get("mission") is Dictionary:
+		show_mission(view["mission"], String(view.get("phase", GameState.PHASE_SETUP)))
 	clear_units()
 	for id: String in view.get("units", {}):
 		var u: Dictionary = view["units"][id]
@@ -136,6 +138,44 @@ func set_map(battle_map: BattleMap, kit: String = "urban_ruins") -> void:
 		hi = Vector3(maxf(hi.x, p.x), 0, maxf(hi.z, p.z))
 	tactical.look_at_point((lo + hi) * 0.5 + Vector3(0, 1, 0), maxf(hi.x - lo.x, hi.z - lo.z) * 0.95)
 	tactical.snap()
+
+
+## The sitrep's objectives as this seat may see them: {"zones": {name: [[x, y]]},
+## "deployment": {side: [[x, y]]}} (Mission.zones / Mission.deployment, from the seat's view,
+## never the host's full mission). Deployment areas show only during setup. Zone names that
+## mark a secret ("_" prefix, "true"/"secret" in the name: Recon's True Control Zone) are
+## dropped as a safeguard; the view filter is the real gate.
+var mission_view: Dictionary = {}
+var phase := GameState.PHASE_SETUP
+
+
+func show_mission(m: Dictionary, battle_phase: String = GameState.PHASE_SETUP) -> void:
+	mission_view = m.duplicate(true)
+	phase = battle_phase
+	var zones := {}
+	var src: Dictionary = m.get("zones", {}) if m.get("zones") is Dictionary else {}
+	for zname: String in src:
+		var low := zname.to_lower()
+		if zname.begins_with("_") or "true" in low or "secret" in low:
+			continue
+		zones[zname] = src[zname]
+	var dep: Dictionary = m.get("deployment", {}) if m.get("deployment") is Dictionary else {}
+	# Workaround: TerrainRenderer._draw_objectives can't remove its old markers (a void
+	# ternary); take them off first. Remove once world-maps fixes it.
+	var old := terrain.get_node_or_null("Objectives")
+	if old:
+		terrain.remove_child(old)
+		old.queue_free()
+	terrain.show_objectives(zones, dep, phase == GameState.PHASE_SETUP)
+
+
+## Combat started (or anything else changing the phase): deployment tints go away.
+func set_phase(battle_phase: String) -> void:
+	if battle_phase == phase:
+		return
+	phase = battle_phase
+	if not mission_view.is_empty():
+		show_mission(mission_view, phase)
 
 
 ## Brings the board up to date with the rules' current map: destroyed terrain collapses

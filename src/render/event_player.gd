@@ -100,7 +100,7 @@ func play_event(e: Dictionary) -> void:
 			if on_banner.is_valid():
 				on_banner.call("Round %d" % int(e.get("round", 1)))
 			await Fx.wait(self, 0.8)
-		"next_side", "combat_started":
+		"next_side":
 			pass
 		"ejected":
 			var emv := _view(e.get("unit", ""))
@@ -140,6 +140,8 @@ func play_event(e: Dictionary) -> void:
 				Fx.float_text(battle.fx_root, cmv2.body_center() + Vector3.UP * 0.5, "NHP CASCADE", Color(1.0, 0.25, 0.2), 56)
 				Fx.light_flash(battle.fx_root, cmv2.body_center(), Color(1.0, 0.2, 0.15), 5.0, 3.5, 0.5)
 				await Fx.wait(self, 0.8)
+		"combat_started":
+			battle.set_phase(GameState.PHASE_COMBAT)
 		"zone_created":
 			var z: Dictionary = e.get("zone", {})
 			battle.zones.add_zone(z)
