@@ -1,0 +1,18 @@
+# Godot
+.godot/
+/android/
+*.translation
+
+# Builds and exports
+/build/
+/exports/
+*.pck
+*.exe
+
+# Local-only: rulebook text and personal files never go in this public repo
+/local/
+*.pdf
+
+# OS
+Thumbs.db
+.DS_Store
