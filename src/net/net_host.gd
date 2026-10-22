@@ -39,6 +39,8 @@ var fill_empty_with_ai := false
 ## Seats kept empty for a friend who joins later (never filled by the AI).
 var reserved_seats: Dictionary = {}
 
+## Seats that must reconnect before a resumed mission goes on (see hold_until_back()).
+var paused_for: Array = []
 var _last_waiting: Dictionary = {}
 var _peer_seat: Dictionary = {}  # peer -> seat
 var _seat_peer: Dictionary = {}  # seat -> connected peer
@@ -86,6 +88,8 @@ func close() -> void:
 ## decide among themselves which of them goes next, so a human seat may pick its own unit,
 ## an AI squadmate on its side, or (people sharing this screen) any seat played here.
 func submit(seat: String, action: Dictionary) -> Dictionary:
+	if not paused_for.is_empty():
+		return {"result": RuleResult.deny("Waiting for everyone to reconnect before the mission goes on.", ""), "events": []}
 	var actor := state.unit(str(action.get("actor", "")))
 	if actor == null and seat != GM_SEAT:
 		# Actions without an actor (start_combat, gm_spawn, gm_end_mission...) are the host's.
@@ -111,6 +115,42 @@ func _run(seat: String, action: Dictionary) -> Dictionary:
 
 
 ## Why `seat` may not pick `u` to act next ("" if it may).
+## Seat setup worth keeping in a mission autosave: who sat where (reconnect tokens, names),
+## AI and reserved seats, which seats are played at this machine. Host-only: never sent.
+func export_seats() -> Dictionary:
+	return {"tokens": _seat_token.duplicate(), "names": _player_names.duplicate(), "ai": ai_seats.duplicate(),
+		"reserved": reserved_seats.duplicate(), "local": Array(local_seats), "fill_empty_with_ai": fill_empty_with_ai}
+
+
+## Restores export_seats() on a resumed mission. Players who were connected get their seats
+## back by reconnecting (their token), and the game holds until they all are.
+func import_seats(d: Dictionary) -> void:
+	_seat_token = (d.get("tokens", {}) as Dictionary).duplicate()
+	_player_names = (d.get("names", {}) as Dictionary).duplicate()
+	ai_seats = (d.get("ai", {GM_SEAT: true}) as Dictionary).duplicate()
+	reserved_seats = (d.get("reserved", {}) as Dictionary).duplicate()
+	fill_empty_with_ai = bool(d.get("fill_empty_with_ai", false))
+	for seat: Variant in d.get("local", []):
+		if state.seats.has(str(seat)):
+			add_local_seat(str(seat))
+	_seats_changed()
+
+
+## Resuming a saved mission: nothing happens until every remote player is back (or the host
+## lets the game go on without them with stop_holding()).
+func hold_until_back() -> void:
+	paused_for.clear()
+	for seat: String in _seat_token:
+		if not _seat_peer.has(seat) and not ai_seats.get(seat, false):
+			paused_for.append(seat)
+	_seats_changed()
+
+
+func stop_holding() -> void:
+	paused_for.clear()
+	_seats_changed()
+
+
 func _pick_refusal(seat: String, u: Unit) -> String:
 	var info: Dictionary = state.seats.get(seat, {})
 	if info.is_empty() or str(info.get("side", "")) != u.side:
@@ -134,7 +174,14 @@ func waiting_on(for_seat: String = "") -> Dictionary:
 	var my_side: String = state.seats.get(for_seat, {}).get("side", "")
 	var all_seen := for_seat == "" or for_seat == GM_SEAT
 	var info := {"state": "", "seats": [], "ai": false, "unit": "", "side": "", "units": [], "text": ""}
-	if state.phase == GameState.PHASE_ENDED:
+	if not paused_for.is_empty():
+		info["state"] = "reconnect"
+		info["seats"] = paused_for.duplicate()
+		var names := PackedStringArray()
+		for seat: String in paused_for:
+			names.append(_seat_name(seat))
+		info["text"] = "Waiting for %s to reconnect." % ", ".join(names)
+	elif state.phase == GameState.PHASE_ENDED:
 		info["state"] = "ended"
 		info["text"] = "The mission is over."
 	elif state.phase != GameState.PHASE_COMBAT:
@@ -315,6 +362,11 @@ func _on_hello(peer: int, msg: Dictionary) -> void:
 		_refuse(peer, NetProtocol.REFUSE_VERSION,
 			"The host is on version %s and you're on %s. Close the game and open the launcher to update." % [NetProtocol.game_version(), msg.get("version", "?")])
 		return
+	var lacking := PackLibrary.missing(state.packs, msg.get("packs", []) if msg.get("packs") is Array else [])
+	if not lacking.is_empty():
+		_refuse(peer, NetProtocol.REFUSE_PACKS,
+			"This game uses content packs you don't have (or a different version): %s. Add them to your packs folder and join again." % PackLibrary.describe(lacking))
+		return
 	var seat := ""
 	var token := str(msg.get("token", ""))
 	for s: String in _seat_token:
@@ -343,6 +395,7 @@ func _on_hello(peer: int, msg: Dictionary) -> void:
 		transport.disconnect_peer(old)
 	_peer_seat[peer] = seat
 	_seat_peer[seat] = peer
+	paused_for.erase(seat)
 	_player_names[seat] = str(msg.get("name", "")).left(32)
 	transport.send(peer, {
 		"t": NetProtocol.WELCOME, "seat": seat, "token": _seat_token[seat],

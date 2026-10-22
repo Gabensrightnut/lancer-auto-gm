@@ -56,7 +56,7 @@ func run(max_steps: int = 100000) -> int:
 ## Does one piece of AI work. Returns false when there's nothing for the AI to do.
 func step() -> bool:
 	var state := host.state
-	if state.phase == GameState.PHASE_ENDED:
+	if state.phase == GameState.PHASE_ENDED or not host.paused_for.is_empty():
 		return false
 	if not state.pending.is_empty():
 		# The engine is paused on a reaction question; answer it if an AI seat is being asked.

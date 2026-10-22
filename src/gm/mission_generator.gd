@@ -9,7 +9,8 @@ extends RefCounted
 ##
 ## opts: {"players": 1-4 (default 4), "sitrep": id (default: weighted pick),
 ##   "size": 20-40 (default: random), "shape": "hex"/"square" (default hex),
-##   "settings": GmSettings, "db": ContentDB, "npc_templates": Dictionary}
+##   "settings": GmSettings, "db": ContentDB, "npc_templates": Dictionary,
+##   "squad": Campaign.squad() entries [{seat, pilot, mech}] to field the campaign's pilots}
 ## Returns {"state": GameState (setup phase, seats p1..pN + gm), "mission": Mission}.
 
 const KIT := "grassy_hills"
@@ -46,7 +47,10 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 		"team": names.team_name(), "cargo": names.cargo()}
 	var players := clampi(int(opts.get("players", 4)), 1, 4)
 	state.seats["gm"] = {"name": "GM", "side": Mission.ENEMIES, "gm": true}
-	_add_squad(state, m, rng, players, opts.get("db"), names)
+	if opts.get("squad", []) is Array and not (opts.get("squad", []) as Array).is_empty():
+		_add_campaign_squad(state, m, rng, opts["squad"], opts.get("db"))
+	else:
+		_add_squad(state, m, rng, players, opts.get("db"), names)
 	_add_enemies(state, m, rng, cfg, players, settings, opts.get("npc_templates", UnitFactory.npc_templates()))
 	m.briefing = _briefing(m, w, h, players, state)
 	return {"state": state, "mission": m}
@@ -237,6 +241,27 @@ static func _add_squad(state: GameState, m: Mission, rng: RandomNumberGenerator,
 		u.loadout["ai_role"] = str(b.get("role", ""))
 		state.seats[seat] = {"name": callsign, "side": Mission.PLAYERS, "callsign": callsign,
 			"pilot": names.pilot_name(), "mech": "%s (%s)" % [names.mech_name(), frame_name]}
+		_place(state, u, free)
+
+
+## The campaign's own pilots and their active mechs.
+static func _add_campaign_squad(state: GameState, m: Mission, rng: RandomNumberGenerator, squad: Array, db_opt: Variant) -> void:
+	var db: ContentDB = db_opt if db_opt is ContentDB else null
+	if db == null:
+		db = ContentDB.new()
+		db.load_all()
+	var free := _free_cells(m.deployment[Mission.PLAYERS], rng)
+	for entry: Dictionary in squad:
+		var p: Dictionary = entry["pilot"]
+		var mech: Dictionary = entry["mech"]
+		var seat := str(entry["seat"])
+		var u := UnitFactory.build_mech(db, seat, str(mech["frame"]), mech.get("loadout", {}), p)
+		u.name = str(p.get("callsign", u.name))
+		u.side = Mission.PLAYERS
+		u.controller = seat
+		state.seats[seat] = {"name": u.name, "side": Mission.PLAYERS, "callsign": u.name,
+			"pilot": str(p.get("name", "")), "mech": "%s (%s)" % [mech.get("name", ""), db.frame(str(mech["frame"])).get("name", "")],
+			"pilot_id": str(p.get("id", ""))}
 		_place(state, u, free)
 
 
