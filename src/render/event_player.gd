@@ -44,6 +44,8 @@ var on_banner: Callable
 var on_table_note: Callable
 ## Returns the rules' current BattleMap (host side) for terrain_destroyed; optional.
 var on_map_changed: Callable
+## Returns the seat's current mission view ({zones, deployment}) for objectives_changed.
+var on_mission_view: Callable
 ## Called with (unit_id) when a unit's turn starts.
 var on_turn_started: Callable
 var _saved_speed := 1.0
@@ -115,11 +117,19 @@ func play_event(e: Dictionary) -> void:
 			await _pilot_out(e)
 		"pilot_mounted":
 			await _pilot_in(e)
-		"terrain_destroyed":
+		"objectives_changed":
+			# The GM moved objectives (map editor): redraw them from the seat's fresh view.
+			if on_mission_view.is_valid():
+				var mvw: Variant = on_mission_view.call()
+				if mvw is Dictionary and not (mvw as Dictionary).is_empty():
+					battle.show_mission(mvw, battle.phase)
+			_log("Objectives changed%s." % ((": " + String(e["reason"])) if String(e.get("reason", "")) != "" else ""))
+		"terrain_destroyed", "terrain_edited":
 			# Walls and buildings knocked down: collapse them with dust and rubble. The board
 			# gets the rules' current map from on_map_changed when there is one (the host),
 			# else the event's cells and new heights are applied to the board's own copy.
-			_log("Terrain destroyed (%d space%s)." % [(e.get("cells", []) as Array).size(), "" if (e.get("cells", []) as Array).size() == 1 else "s"])
+			var nc := (e.get("cells", []) as Array).size()
+			_log("Terrain %s (%d space%s)." % ["edited by the GM" if e.get("type") == "terrain_edited" else "destroyed", nc, "" if nc == 1 else "s"])
 			var current: BattleMap = on_map_changed.call() if on_map_changed.is_valid() else null
 			if current == null:
 				current = BattleMap.from_dict(battle.map.to_dict())

@@ -260,3 +260,21 @@ func test_new_talent_actions_and_attack_options() -> void:
 	pt.bar.free()
 	pt.free()
 	ui.free()
+
+
+func test_gm_edits_reach_the_board() -> void:
+	var view := BattleView.new()
+	var rules_map := BattleMap.flat(GridLayout.Shape.HEX, 8, 8)
+	view.set_map(rules_map, "grassy_hills")
+	var ep := EventPlayer.new(view, null, null)
+	Fx.speed = 0.0
+	ep.on_map_changed = func() -> BattleMap: return rules_map
+	ep.on_mission_view = func() -> Dictionary: return {"zones": {"zone_1": [[2, 2]]}, "deployment": {}}
+	rules_map.column(Vector2i(3, 3)).ground = 2
+	await ep.play_event({"type": "terrain_edited", "cells": [[3, 3, 2]]})
+	expect_eq(view.map.ground_height(Vector2i(3, 3)), 2, "the edited column is on the board")
+	await ep.play_event({"type": "objectives_changed"})
+	expect_eq((view.terrain.objectives[0] as Dictionary).keys(), ["zone_1"], "objectives redrawn from the seat's view")
+	Fx.speed = 1.0
+	ep.free()
+	view.free()
