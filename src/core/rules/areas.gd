@@ -188,6 +188,10 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, params: Dict
 	FrameSystems.before_area(attacker, w)
 	if not params.get("skip_spend", false):
 		events.append_array(Attacks._spend_weapon(state, attacker, w))
+	if String(w.get("id", "")) == "mw_gravity_gun":
+		events.append_array(GearSystems.gravity_gun(state, attacker, w, p))
+		attacker.turn["attacked"] = true
+		return events
 	var shared: Dictionary = params.get("_shared", {})
 	var origin: Array = p["origin"]
 	for id: String in p["targets"]:

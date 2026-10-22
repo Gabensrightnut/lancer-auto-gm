@@ -304,6 +304,16 @@
         "when": "first_main_melee",
         "accuracy": 1
       }
+    ],
+    "2": [
+      {
+        "kind": "blademaster"
+      }
+    ],
+    "3": [
+      {
+        "kind": "blademaster_strike"
+      }
     ]
   },
   "t_drone_commander": {
@@ -311,6 +321,11 @@
       {
         "kind": "drone_hp_bonus",
         "value": 5
+      }
+    ],
+    "2": [
+      {
+        "kind": "drone_pulse"
       }
     ]
   },
@@ -380,6 +395,11 @@
       {
         "kind": "lunge"
       }
+    ],
+    "3": [
+      {
+        "kind": "hunter_throw"
+      }
     ]
   },
   "t_infiltrator": {
@@ -424,6 +444,11 @@
       {
         "kind": "impact"
       }
+    ],
+    "3": [
+      {
+        "kind": "collateral"
+      }
     ]
   },
   "t_spotter": {
@@ -431,12 +456,22 @@
       {
         "kind": "particularize"
       }
+    ],
+    "2": [
+      {
+        "kind": "spotter_lock"
+      }
     ]
   },
   "t_stormbringer": {
     "1": [
       {
         "kind": "seismic_deluge"
+      }
+    ],
+    "2": [
+      {
+        "kind": "storm_effects"
       }
     ]
   },
@@ -692,6 +727,16 @@
     "1": [
       {
         "kind": "exemplar"
+      }
+    ],
+    "2": [
+      {
+        "kind": "exemplar_overwatch"
+      }
+    ],
+    "3": [
+      {
+        "kind": "duel"
       }
     ]
   },

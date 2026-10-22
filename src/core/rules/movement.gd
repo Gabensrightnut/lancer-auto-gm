@@ -112,6 +112,10 @@ static func _others(state: GameState, u: Unit) -> Array[Dictionary]:
 		var blocks: bool = (object or o.side != u.side) and o.size >= u.size
 		if o.kind == Unit.KIND_PILOT and u.kind != Unit.KIND_PILOT:
 			blocks = false  # mechs can always move through unmounted humans (Core p.62)
+		if blocks and (GearSystems.intangible(u) or GearSystems.intangible(o)):
+			blocks = false  # FADE Cloak: through other characters (not ending there)
+		if blocks and String(u.turn.get("trip_through", "")) == o.id:
+			blocks = false  # Duelist Trip: through the tripped character's space this turn
 		if blocks and not object and o.side != u.side and TalentRules.prowling(state, u):
 			blocks = false  # Infiltrator Prowl: through enemy spaces on its turn (not ending there)
 		if Effects.has(o, "maze") and o.side != u.side:
@@ -168,6 +172,8 @@ static func _engagers(state: GameState, u: Unit, body: Sight.Body, others: Array
 			continue
 		if ou.kind == Unit.KIND_PILOT and u.kind != Unit.KIND_PILOT:
 			continue  # pilots don't cause mechs to become Engaged (Core p.74)
+		if String(u.counters.get("feint", "")) == ou.id:
+			continue  # Duelist Feint: moving ignores engagement with it
 		if Sight.distance(state, body, o["body"]) <= 1:
 			out.append(ou)
 	return out
