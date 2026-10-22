@@ -106,6 +106,8 @@ book in a way that changes the setting; parked.
 | Hub clock, waiting, NPC schedules and where things are kept | Consistent | Our own bookkeeping for narrative play |
 | Comms: a Jammed pilot can't take or answer radio calls (static) | Canon | Statuses: Jammed ("can't use comms to talk to other characters") |
 | Conversation views: pop-up, face to face, radio frame | Consistent | Presentation only |
+| Tone replies, NPC temper and patience; an NPC who's pushed too far draws, which starts the fight | Consistent | Switching to combat when talks fail (Core p.45); our own numbers |
+| Wallet house rule: each world's own money, manna's buying power by world, free basics in the Union Core | Not canon (house rule), canon note | Manna is the currency outside the Core and the Core is communal and post-capital (Core p.10); the rest is our house-rule economy |
 
 ## When canon allows more than one answer
 

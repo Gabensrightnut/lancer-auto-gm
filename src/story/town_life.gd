@@ -63,6 +63,10 @@ static func advance(story: StoryState, n: int = 1) -> Array:
 		if int(c["period"]) >= ps:
 			c["period"] = 0
 			c["day"] = int(c["day"]) + 1
+			# Tempers cool a little overnight (Tones).
+			for id: String in story.npcs:
+				if int(story.npcs[id].get("temper", 0)) > 0:
+					story.npcs[id]["temper"] = int(story.npcs[id]["temper"]) - 1
 	story.flags["_open"] = {}
 	var out: Dictionary = story.flags.get("_out", {})
 	for npc: String in out.keys():

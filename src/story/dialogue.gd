@@ -63,6 +63,7 @@ static func is_open(story: StoryState) -> bool:
 static func start(story: StoryState, campaign: Campaign, scene_id: String, ctx: Dictionary) -> Array:
 	var sc := scene_of(story, scene_id)
 	story.dialogue = {"scene": scene_id, "node": "", "ctx": ctx.duplicate(true), "log": [], "votes": {}, "choices": []}
+	Tones.begin(story, str(ctx.get("npc", "")))
 	var events: Array = [{"type": "dialogue_started", "scene": scene_id, "npc": ctx.get("npc", ""), "speaker": ctx.get("speaker", "")}]
 	events.append_array(_enter(story, campaign, str(sc.get("start", ""))))
 	return events
@@ -202,7 +203,7 @@ static func _build_choices(story: StoryState, campaign: Campaign, raw: Array, ct
 			continue
 		if bool(c.get("once", false)) and (story.dialogue.get("asked", []) as Array).has(str(c.get("id", ""))):
 			continue
-		var cc := {"id": str(c.get("id", "c%d" % i)), "order": i, "tags": c.get("tags", []), "pinned": bool(c.get("pinned", false)),
+		var cc := {"id": str(c.get("id", "c%d" % i)), "order": i, "tags": c.get("tags", []), "pinned": bool(c.get("pinned", false)), "extra": c.has("tone") and str(c["tone"]) in ["insult", "push"],
 			"priority": int(c.get("priority", 2 if c.has("trigger") else 1))}
 		cc["text"] = StoryText.line(c.get("text", "..."), story, campaign, ctx)
 		if c.has("trigger"):
@@ -234,7 +235,10 @@ static func _build_choices(story: StoryState, campaign: Campaign, raw: Array, ct
 		if a["priority"] != b["priority"]:
 			return a["priority"] > b["priority"]
 		return a["order"] < b["order"])
-	var kept := ranked.slice(0, MAX_CHOICES)
+	# Tone replies (insult, push your luck) are always there on top of the cap: escalation is
+	# never squeezed out (DESIGN section 11).
+	var extras: Array = ranked.filter(func(o: Dictionary) -> bool: return bool(o.get("extra", false)))
+	var kept := ranked.filter(func(o: Dictionary) -> bool: return not bool(o.get("extra", false))).slice(0, MAX_CHOICES) + extras.slice(0, 2)
 	kept.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["order"] < b["order"])
 	return kept
 
@@ -260,6 +264,10 @@ static func resolve_choice(story: StoryState, campaign: Campaign, choice_id: Str
 		story.dialogue["asked"] = []
 	(story.dialogue["asked"] as Array).append(choice_id)
 	events.append_array(StoryEffects.apply_all(c.get("effects", []), story, campaign, ctx))
+	if not is_open(story):
+		return events
+	# How the reply's tone lands: temper and patience (Tones). It can end the talk, or start a fight.
+	events.append_array(Tones.land(story, campaign, c, ctx))
 	if not is_open(story):
 		return events
 	var next := str(c.get("next", ""))

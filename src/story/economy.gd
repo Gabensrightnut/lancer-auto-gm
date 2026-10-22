@@ -32,7 +32,7 @@ static func start(story: StoryState, campaign: Campaign, id: String) -> Array:
 		R_WALLET:
 			if not story.flags.has(WALLET):
 				var w: Dictionary = cfg().get("wallet", {})
-				story.flags[WALLET] = {"manna": int(w.get("start_manna", 600)), "local": {currency(story): int(w.get("start_local", 120))}, "salvage": 0}
+				story.flags[WALLET] = {"manna": int(w.get("start_manna", 600)), "local": {money_key(story): int(w.get("start_local", 120))}, "salvage": 0}
 				return [{"type": "wallet_started", "text": "The squad has %s." % describe(story), "label": LABEL}]
 		R_FOOD:
 			if not story.flags.has(SURVIVAL):
@@ -48,20 +48,89 @@ static func wallet(story: StoryState) -> Dictionary:
 	return story.flags.get(WALLET, {})
 
 
-## This world's money ("dollars" on an Old West world, manna in the Union core).
+## Which world's money this is: each world has its own, good only there (the sector world, or
+## the hub when there's no sector).
+static func money_key(story: StoryState) -> String:
+	var w := Sector.current(story)
+	return str(w.get("id", "")) if not w.is_empty() else str(story.hub.get("id", "here"))
+
+
+static func _world(story: StoryState) -> Dictionary:
+	var w := Sector.current(story)
+	return w if not w.is_empty() else {"id": story.hub.get("id", "here"), "name": story.hub.get("planet", story.hub.get("name", "")), "culture": story.hub.get("culture", "")}
+
+
+## In the Union Core there's no money for basics: "communal and post-capital" (Core p.10).
+static func communal(story: StoryState) -> bool:
+	return str(_world(story).get("culture", "")) == "union_core"
+
+
+## This world's own money, named after it ("Karrakis dollar"), or manna in the Union Core.
 static func currency(story: StoryState) -> String:
-	var c: Dictionary = cfg().get("currencies", {})
-	return str(c.get(str(story.hub.get("culture", "")), c.get("default", "scrip")))
+	if communal(story):
+		return "manna"
+	var w := _world(story)
+	var names: Dictionary = cfg().get("currency_names", {})
+	var list: Array = names.get(str(w.get("culture", "")), names.get("default", ["{world} scrip"]))
+	var pick := str(list[absi(hash([story.story_seed, str(w.get("id", "")), "money"])) % list.size()])
+	return pick.replace("{world}", str(w.get("name", "local")))
 
 
-## Local money per manna here.
+## A short symbol for it: the world's and the unit's first letters.
+static func symbol(story: StoryState) -> String:
+	if communal(story):
+		return "m"
+	var parts := currency(story).split(" ", false)
+	return (parts[0].left(1) + parts[parts.size() - 1].left(1)).to_upper() if parts.size() > 1 else currency(story).left(2).to_upper()
+
+
+## How well-off this world is, 1 (poor frontier) to 5 (rich).
+static func wealth(story: StoryState) -> int:
+	var w := _world(story)
+	var r: Array = cfg().get("wealth", {}).get(str(w.get("culture", "")), [2, 3])
+	return int(r[0]) + absi(hash([story.story_seed, str(w.get("id", "")), "wealth"])) % (int(r[1]) - int(r[0]) + 1)
+
+
+## Local money per manna here: manna buys more on poor worlds, less on rich ones.
 static func rate(story: StoryState) -> int:
-	var r: Dictionary = cfg().get("wallet", {}).get("rate", {})
-	return maxi(1, int(r.get(str(story.hub.get("culture", "")), r.get("default", 4))))
+	if communal(story):
+		return 1
+	return maxi(1, roundi(5.0 * (6 - wealth(story)) / 3.0))
 
 
 static func local(story: StoryState) -> int:
-	return int(wallet(story).get("local", {}).get(currency(story), 0))
+	return int(wallet(story).get("local", {}).get(money_key(story), 0))
+
+
+## Exchanging at a hub: this world's money for manna or back (only here).
+static func exchange(story: StoryState, to_manna: bool, amount: int) -> Array:
+	var w: Dictionary = wallet(story)
+	var loc: Dictionary = w.get("local", {})
+	var key := money_key(story)
+	if to_manna:
+		var m := amount / rate(story)
+		loc[key] = int(loc.get(key, 0)) - m * rate(story)
+		w["manna"] = int(w.get("manna", 0)) + m
+	else:
+		w["manna"] = int(w.get("manna", 0)) - amount
+		loc[key] = int(loc.get(key, 0)) + amount * rate(story)
+	w["local"] = loc
+	story.flags[WALLET] = w
+	return [{"type": "exchanged", "text": "Changed money. Now: %s." % describe(story), "label": LABEL}]
+
+
+static func exchange_refusal(story: StoryState, campaign: Campaign, to_manna: bool, amount: int) -> String:
+	if not StoryHouseRules.on(campaign, R_WALLET):
+		return "Money isn't tracked (the wallet house rule is off)."
+	if communal(story):
+		return "Nobody here deals in anything but manna."
+	if amount <= 0:
+		return "How much?"
+	if to_manna and (local(story) < amount or amount < rate(story)):
+		return "You don't have that much %s (it's %d to a manna here)." % [currency(story), rate(story)]
+	if not to_manna and int(wallet(story).get("manna", 0)) < amount:
+		return "You don't have that much manna."
+	return ""
 
 
 static func describe(story: StoryState) -> String:
@@ -70,6 +139,12 @@ static func describe(story: StoryState) -> String:
 	var t := "%d manna" % int(w.get("manna", 0))
 	if cur != "manna":
 		t += " and %d %s" % [local(story), cur]
+	var elsewhere := 0
+	for k: String in w.get("local", {}):
+		if k != money_key(story) and int(w["local"][k]) > 0:
+			elsewhere += 1
+	if elsewhere > 0:
+		t += " (plus money from %d other world%s, good only there)" % [elsewhere, "" if elsewhere == 1 else "s"]
 	if int(w.get("salvage", 0)) > 0:
 		t += ", salvage worth %d manna" % int(w["salvage"])
 	return t
@@ -81,15 +156,22 @@ static func price(story: StoryState, campaign: Campaign, item: String) -> Dictio
 	if p.is_empty():
 		return {}
 	var out := {"name": str(p.get("name", item))}
-	if p.has("local"):
-		if currency(story) == "manna":
-			out["manna"] = maxi(1, int(ceil(float(p["local"]) / 4.0)))
-		else:
-			out["local"] = int(p["local"])
+	if communal(story) and (cfg().get("communal_free", []) as Array).has(item):
+		out["manna"] = 0
+		out["text"] = "free here (the Union Core is communal, Core p.10)"
+		return out
+	if p.has("local") and not communal(story):
+		out["local"] = int(p["local"])
+		out["text"] = "%d %s (about %s manna)" % [out["local"], currency(story), _manna_text(float(out["local"]) / rate(story))]
 	else:
-		out["manna"] = int(p.get("manna", 0))
-	out["text"] = ("%d %s" % [out["local"], currency(story)]) if out.has("local") else "%d manna" % out["manna"]
+		var m := int(p.get("manna", ceili(float(p.get("local", 0)) / 4.0)))
+		out["manna"] = maxi(0, m / 2) if communal(story) else m
+		out["text"] = "%d manna (about %d %s)" % [out["manna"], out["manna"] * rate(story), currency(story)] if not communal(story) else "%d manna" % out["manna"]
 	return out
+
+
+static func _manna_text(v: float) -> String:
+	return ("%d" % roundi(v)) if v >= 1.0 else "%.1f" % v
 
 
 ## Manna-equivalent of everything the squad can pay with: local money first, then manna, then
@@ -106,7 +188,7 @@ static func can_pay(story: StoryState, campaign: Campaign, cost: Dictionary) -> 
 
 static func pay(story: StoryState, campaign: Campaign, cost: Dictionary, why: String) -> Array:
 	var w: Dictionary = wallet(story)
-	var cur := currency(story)
+	var cur := money_key(story)
 	var loc: Dictionary = w.get("local", {})
 	if cost.has("local"):
 		var need := int(cost["local"])

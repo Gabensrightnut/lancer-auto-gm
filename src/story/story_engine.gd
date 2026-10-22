@@ -96,6 +96,9 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 				return _no("Nobody like that is here.")
 			if bool(npc.get("dead", false)):
 				return _no("%s is dead." % npc["name"])
+			var cold := Tones.refuses(story, str(npc["id"]))
+			if cold != "":
+				return _no(cold)
 			var w := _able(story, campaign, me)
 			if not w.is_empty():
 				return w
@@ -242,6 +245,10 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 			var why_h := StoryHouseRules.refusal(str(p.get("id", "")))
 			if why_h != "":
 				return _no(why_h)
+		"exchange":
+			var why_x := Economy.exchange_refusal(story, campaign, bool(p.get("to_manna", true)), int(p.get("amount", 0)))
+			if why_x != "":
+				return _no(why_x)
 		"buy", "sell_salvage", "use_printer", "restock", "fight_for_it":
 			if story.phase == "mission":
 				return _no("Not in the middle of a mission.")
@@ -428,6 +435,8 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 			return Economy.buy(story, campaign, str(p["item"]), str(p.get("pilot", me)))
 		"sell_salvage":
 			return Economy.sell_salvage(story)
+		"exchange":
+			return Economy.exchange(story, bool(p.get("to_manna", true)), int(p["amount"]))
 		"use_printer":
 			return Economy.use_printer(story, campaign, str(p.get("pilot", me)))
 		"restock":
