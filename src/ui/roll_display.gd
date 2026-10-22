@@ -60,7 +60,7 @@ static func formula_bbcode(check: Dictionary, result: String) -> String:
 
 ## Damage breakdown: dice, bonus, Armor, resistance, final.
 static func damage_bbcode(e: Dictionary) -> String:
-	var roll: Dictionary = e.get("roll", {})
+	var roll: Dictionary = e["roll"] if e.get("roll") is Dictionary else {}
 	var parts: Array = []
 	var dice: Array = []
 	for r: Variant in roll.get("rolls", roll.get("dice", [])):
