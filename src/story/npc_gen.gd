@@ -39,7 +39,7 @@ static func make_hub(story: StoryState, campaign: Campaign, hub_seed: int, kind:
 		"name": pattern.replace("{a}", _pick(rng, a_pool)),
 		"planet": names.planet(), "faction": names.faction(), "seed": hub_seed, "npcs": [], "spots": [],
 	}
-	hub["spots"] = HubLayout.spots(kind, rng, kit.get("spots", {}))
+	hub["spots"] = HubLayout.spots(kind, rng, kit.get("spots", {}), float(kit.get("door_gap", 1.6)))
 	hub["conflict"] = _conflict(rng, names, hub)
 	var plan: Dictionary = _json(ROLES_FILE).get("hub_roles", {}).get(kind, {})
 	var role_list: Array = (plan.get("always", []) as Array).duplicate()

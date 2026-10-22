@@ -14,6 +14,9 @@ signal story_events(events: Array)
 signal mission_requested(hook: Dictionary)
 
 const WALK_SPEED := 4.2
+## The world/maps session's culture kits for hub towns (buildings, props, plaza, sky). Used
+## when present; until then the town is built from plain blocks.
+const WORLD_KITS := "res://src/render/world/world_kits.gd"
 const TALK_RANGE := 2.6
 const CAM_DIST := 14.0
 const CAM_PITCH := deg_to_rad(40.0)
@@ -33,7 +36,8 @@ var _cam: Camera3D
 var _world: Node3D
 var _blockers: Array = []  # [{xf: Transform3D (inverse), half: Vector2}]
 var _near_npc := ""
-var _buildings: Array = []  # [{"root": Node3D, "radius": float}] faded when they hide your pilot
+var _buildings: Array = []
+var _kits: Variant = null  # the WorldKits script, or null  # [{"root": Node3D, "radius": float}] faded when they hide your pilot
 
 var ui: CanvasLayer
 var dialogue: DialogueView
@@ -68,6 +72,7 @@ func rebuild() -> void:
 	_buildings.clear()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([story.hub.get("seed", 0), "hub_props"])
+	_kits = load(WORLD_KITS) if ResourceLoader.exists(WORLD_KITS) else null
 	_environment()
 	_ground(rng)
 	for spot: Dictionary in story.hub.get("spots", []):
@@ -116,11 +121,18 @@ func _environment() -> void:
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 80.0
 	_world.add_child(sun)
+	if _kits != null:
+		_kits.apply_hub_environment(_culture(), e, sun)
 
 
 func _ground(rng: RandomNumberGenerator) -> void:
 	var kind := str(story.hub.get("kind", "town"))
 	var dirt := Color(0.56, 0.47, 0.36) if kind != "station" else Color(0.32, 0.34, 0.37)
+	var pave_col := dirt.lightened(0.18) if kind != "station" else Color(0.42, 0.44, 0.47)
+	if _kits != null:
+		var gc: Dictionary = _kits.hub_ground(_culture())
+		dirt = gc.get("ground", dirt)
+		pave_col = gc.get("pave", pave_col)
 	var ground := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(160, 160)
@@ -129,7 +141,7 @@ func _ground(rng: RandomNumberGenerator) -> void:
 	ground.material_override = MeshKit.paint(dirt, 0.0, 0.95, 0.0)
 	_world.add_child(ground)
 	# Plaza paving and roads out to each building.
-	var pave := MeshKit.paint(dirt.lightened(0.18) if kind != "station" else Color(0.42, 0.44, 0.47), 0.05, 0.9, 0.25)
+	var pave := MeshKit.paint(pave_col, 0.05, 0.9, 0.25)
 	MeshKit.part(_world, MeshKit.cylinder(8.5, 0.06, 28), pave, Vector3(0, 0.03, 0))
 	for spot: Dictionary in story.hub.get("spots", []):
 		if str(spot["kind"]) == "plaza":
@@ -173,6 +185,12 @@ func _building(spot: Dictionary, rng: RandomNumberGenerator) -> void:
 	if kind == "landing":
 		_landing(root, w, d)
 		label_h = 0.5
+	elif kind != "plaza" and _kits != null:
+		# The culture's own building (door toward +Z, walls inside the footprint).
+		root.add_child(_kits.build_hub_building(_culture(), spot, int(story.hub.get("seed", 0))))
+		_blockers.append({"inv": root.transform.affine_inverse(), "half": Vector2(w / 2.0 + 0.35, d / 2.0 + 0.35)})
+		_buildings.append({"root": root, "radius": maxf(w, d) * 0.6, "faded": false})
+		label_h = h + 1.6
 	elif kind != "plaza":
 		var wall := MeshKit.paint(col, 0.15, 0.8, 0.35)
 		var roof := MeshKit.paint(col.darkened(0.35), 0.3, 0.7, 0.5)
@@ -243,6 +261,9 @@ func _landing(root: Node3D, w: float, d: float) -> void:
 
 
 func _props(rng: RandomNumberGenerator) -> void:
+	if _kits != null:
+		_kit_props(rng)
+		return
 	var crate := MeshKit.paint(Color(0.45, 0.38, 0.26), 0.05, 0.85, 0.4)
 	var barrel := MeshKit.paint(Color(0.35, 0.45, 0.4), 0.5, 0.5, 0.0)
 	for i in range(26):
@@ -266,6 +287,42 @@ func _props(rng: RandomNumberGenerator) -> void:
 	MeshKit.part(_world, MeshKit.cylinder(1.3, 0.8, 16), MeshKit.paint(Color(0.5, 0.48, 0.45), 0.1, 0.9, 0.4), Vector3(0, 0.4, 0))
 	MeshKit.part(_world, MeshKit.cylinder(1.05, 0.05, 16), MeshKit.paint(Color(0.2, 0.35, 0.45), 0.6, 0.15, 0.0), Vector3(0, 0.78, 0))
 	_blockers.append({"inv": Transform3D.IDENTITY, "half": Vector2(1.4, 1.4)})
+
+
+## Props, lamps and the plaza centerpiece in the hub culture's style (WorldKits).
+func _kit_props(rng: RandomNumberGenerator) -> void:
+	var c := _culture()
+	var kinds: Array = _kits.hub_prop_kinds(c)
+	var radius: Dictionary = _kits.PROP_RADIUS
+	var small: Array = kinds.filter(func(k: String) -> bool: return k != "lamp")
+	if small.is_empty():
+		small = kinds
+	for i in range(26):
+		var a := rng.randf_range(0, TAU)
+		var r := rng.randf_range(9.5, 24.0)
+		var p := Vector3(cos(a) * r, 0, sin(a) * r)
+		if _blocked(Vector2(p.x, p.z)) or _near_door(Vector2(p.x, p.z)):
+			continue
+		# The culture's favourite kinds come first in its list, so weight toward them.
+		var kind := str(small[mini(rng.randi_range(0, small.size() - 1), rng.randi_range(0, small.size() - 1))])
+		var prop: Node3D = _kits.build_hub_prop(c, kind, rng.randi())
+		prop.position = p
+		prop.rotation.y = rng.randf_range(0, TAU)
+		_world.add_child(prop)
+		var pr := float(radius.get(kind, 0.6))
+		_blockers.append({"inv": Transform3D(Basis(), p).affine_inverse(), "half": Vector2(pr, pr)})
+	if kinds.has("lamp"):
+		for i in range(6):
+			var a := TAU * i / 6.0 + 0.3
+			var lamp: Node3D = _kits.build_hub_prop(c, "lamp", i)
+			lamp.position = Vector3(cos(a), 0, sin(a)) * 8.0
+			_world.add_child(lamp)
+	_world.add_child(_kits.build_hub_centerpiece(c, int(story.hub.get("seed", 0))))
+	_blockers.append({"inv": Transform3D.IDENTITY, "half": Vector2(1.6, 1.6)})
+
+
+func _culture() -> String:
+	return str(story.hub.get("culture", ""))
 
 
 func _near_door(p: Vector2) -> bool:
