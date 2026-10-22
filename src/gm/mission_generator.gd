@@ -19,6 +19,8 @@ extends RefCounted
 ##     in the middle of the battle band; "landscape" / "map_culture" when given),
 ##   "region": a previous mission's flavor.region ({seed, landscape, culture, weather}): the
 ##     next fight in the same stretch of world keeps its look, with new terrain,
+##   "boarding": {kind, map}: a boarding fight; map "docked" (two ships side by side, landscape
+##     boarding), "enemy_ship" (boarding_assault) or "own_ship" (boarding_defend),
 ##   "map_doc": MapDoc (a saved/edited map: its terrain, kit and zones; sitrep defaults to its own),
 ##   "weather": a weather.json id ("clear" for none), "environments": [ids] (overrides the pick),
 ##   "squad": Campaign.squad() entries [{seat, pilot, mech}] to field the campaign's pilots}
@@ -67,6 +69,11 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	# A region (the last fight's flavor.region): the same stretch of world, so its landscape,
 	# culture, weather and look carry over; the terrain is new.
 	var region: Dictionary = opts["region"] if opts.get("region") is Dictionary else {}
+	# A boarding fight (story: opts.boarding {kind, map}): the map kind picks the ship map.
+	var boarding: Dictionary = opts["boarding"] if opts.get("boarding") is Dictionary else {}
+	if not boarding.is_empty():
+		landscape = str(BOARDING_MAPS.get(str(boarding.get("map", "docked")), "boarding"))
+		culture = ""
 	if not region.is_empty():
 		if landscape == "":
 			landscape = str(region.get("landscape", ""))
@@ -114,6 +121,8 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 		"team": names.team_name(), "cargo": names.cargo(), "kit": kit,
 		"terrain": TerrainGen.describe(world[0], world[1]), "weather": weather,
 		"region": {"seed": place_seed, "landscape": world[0], "culture": world[1], "weather": weather}}
+	if not boarding.is_empty():
+		m.flavor["boarding"] = boarding.duplicate()
 	_pick_environments(m, state, mission_seed, world[0], weather, settings, opts)
 	var players := clampi(int(opts.get("players", 4)), 1, 4)
 	state.seats["gm"] = {"name": "GM", "side": Mission.ENEMIES, "gm": true}
@@ -235,6 +244,9 @@ static func _pick_weather(rng: RandomNumberGenerator, landscape: String, culture
 
 
 const WEATHER_FILE := "res://data/game/biomes/weather.json"
+## Boarding map kinds (story's opts.boarding.map) to landscapes: two ships docked side by side,
+## an enemy ship's interior (the squad boards it), the squad's own ship (pirates board it).
+const BOARDING_MAPS := {"docked": "boarding", "enemy_ship": "boarding_assault", "own_ship": "boarding_defend"}
 ## Worlds whose own nature suggests a rules environment (weather suggests others: weather.json).
 const LANDSCAPE_ENVIRONMENTS := {"moon": "env_lowgravity", "asteroid": "env_lowgravity", "ocean": "env_oceanworld", "volcanic": "env_moltenworld"}
 

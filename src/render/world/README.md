@@ -285,3 +285,17 @@ has punched through each hull: a hole in the rim, its body in the deck, wreckage
 The far ship is the near one turned around, so both sides get the same ground. Beyond the board
 (`SpaceScenery._docked`) both hulls run on with the gap between them, armor belts down their
 flanks, more docking tubes, and the far ship's superstructure.
+
+Ship interiors for boarding fights (`TerrainGen._ship_interior`; enemies hold the top of the
+map, the squad the bottom): the outer hull (Armor 4) runs down both side edges; rooms by role
+from the boarders' edge: cargo holds and the airlock bay, then quarters (bunks), engineering
+(reactor housings, coolant leaks) and the mess, then the bridge (console banks). Inner
+bulkheads are breakable more often than a station's; bunks, tables, consoles and crates break.
+- `boarding_defend` (story map "own_ship"): pirates board the squad's ship; two boarding
+  torpedoes have punched through the side hulls near the top (wreckage around them, the
+  torpedo tails outside the hull). Red alert light.
+- `boarding_assault` (story map "enemy_ship"): the squad boards; a docking airlock in one side
+  hull near the bottom, the boarding tube running off to the other ship. Rusty, amber light.
+- `boarding` (story map "docked"): the two docked hulls above.
+`MissionGenerator.generate(seed, {"boarding": {"kind": ..., "map": "docked" | "enemy_ship" |
+"own_ship"}})` picks the map; mission.flavor.boarding keeps the dict.

@@ -21,6 +21,7 @@ static func build(t: TerrainRenderer, root: Node3D, b: Rect2, kind: String) -> v
 		_docked(root, b, gap, hull_m, plate_m, glow)
 	elif kind == "ship":
 		_ship(root, c, r0, hull_m, plate_m, glow, light)
+		_breaches(t, root, c, hull_m, plate_m, glow)
 	else:
 		_station(root, c, r0, hull_m, plate_m, glow)
 
@@ -196,3 +197,32 @@ static func _docked(root: Node3D, b: Rect2, gap: Vector2, hull_m: Material, plat
 		var x := (b.position.x - 20.0 - 25.0 * k) if k % 2 == 0 else (b.end.x + 20.0 + 25.0 * (k - 1))
 		var tube := MeshKit.part(root, MeshKit.cylinder(1.2, gap.y - gap.x + 1.0, 10), hull_m, Vector3(x, -0.6, (gap.x + gap.y) * 0.5), Vector3(90, 0, 0))
 		tube.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+
+## Outside the hull where a boarding fight got in: the tail of each boarding torpedo sticking
+## out of its breach ("torpedo" cells), and the docking tube clamped over the airlock.
+static func _breaches(t: TerrainRenderer, root: Node3D, c: Vector3, hull_m: Material, plate_m: Material, glow: Material) -> void:
+	var tube_done := false
+	for cell in t.map.cells():
+		var col := t.map.column(cell)
+		var torpedo := col.has_tag("torpedo")
+		var airlock := col.has_tag("airlock")
+		if not torpedo and not (airlock and not tube_done):
+			continue
+		var p := t.map.grid.to_world(cell)
+		var out := Vector3(signf(p.x - c.x), 0, 0)
+		if torpedo:
+			# Body through the hull, tail fins and a dull engine glow outside.
+			var body := MeshKit.part(root, MeshKit.cylinder(0.32, 2.6, 10, 0.22), hull_m, p + out * 1.3 + Vector3.UP * 0.5, Vector3(0, 0, -90.0 * out.x))
+			body.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			for k in range(3):
+				var fin := MeshKit.part(root, MeshKit.chamfer_box(Vector3(0.5, 0.04, 0.3), 0.01), plate_m, p + out * 2.4 + Vector3.UP * 0.5, Vector3(k * 60.0, 0, 0))
+				fin.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			MeshKit.part(root, MeshKit.sphere(0.18, 8), glow, p + out * 2.65 + Vector3.UP * 0.5)
+		else:
+			# The tube runs out from the airlock to the other ship's collar.
+			tube_done = true
+			var tube := MeshKit.part(root, MeshKit.cylinder(1.1, 14.0, 14), plate_m, p + out * 7.5 + Vector3(0, 1.0, 0.5), Vector3(0, 0, 90))
+			tube.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			for k in range(4):
+				MeshKit.part(root, MeshKit.cylinder(1.18, 0.12, 14), glow, p + out * (1.5 + k * 4.0) + Vector3(0, 1.0, 0.5), Vector3(0, 0, 90))

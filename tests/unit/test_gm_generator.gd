@@ -356,3 +356,35 @@ func test_the_next_fight_in_a_region_keeps_its_look() -> void:
 	expect_eq(m2.flavor["kit"], first.flavor["kit"], "the same look")
 	var s1: GameState = _gen(11, {"landscape": "desert_mesas", "culture": "old_west"})["state"]
 	expect(JSON.stringify(s1.map.to_dict()) != JSON.stringify((second["state"] as GameState).map.to_dict()), "new terrain down the road")
+
+
+func test_boarding_opts_pick_the_ship_map() -> void:
+	var want := {"docked": "boarding", "enemy_ship": "boarding_assault", "own_ship": "boarding_defend"}
+	for kind: String in want:
+		var g := _gen(5, {"landscape": "starship", "boarding": {"kind": "seize", "map": kind}})
+		var m: Mission = g["mission"]
+		expect(str(m.flavor["kit"]).begins_with(want[kind]), "%s: %s" % [kind, m.flavor["kit"]])
+		expect_eq(m.flavor["boarding"]["map"], kind)
+		expect(bool(g["fairness"]["ok"]), "%s map is fair: %s" % [kind, g["fairness"]])
+
+
+func test_ship_interiors_have_hull_rooms_and_a_way_in() -> void:
+	for defend: bool in [true, false]:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 6
+		var map := TerrainGen.generate(rng, 36, 44, GridLayout.Shape.SQUARE, {}, "boarding_defend" if defend else "boarding_assault", "")
+		var hull := 0
+		var way_in := 0
+		var breakable_walls := 0
+		for c in map.cells():
+			var col := map.column(c)
+			if col.has_tag("hull"):
+				hull += 1
+				expect(col.has_tag("armor_4"), "the outer hull is Armor 4")
+			if col.has_tag("torpedo") or col.has_tag("airlock"):
+				way_in += 1
+			if col.has_tag("bulkhead") and col.has_tag(BattleMap.TAG_DESTRUCTIBLE):
+				breakable_walls += 1
+		expect(hull > 60, "hull down both sides: %d" % hull)
+		expect(way_in >= (2 if defend else 2), "%s: torpedo breaches or an airlock (%d)" % ["defend" if defend else "assault", way_in])
+		expect(breakable_walls > 0, "some inner bulkheads can be broken through")
