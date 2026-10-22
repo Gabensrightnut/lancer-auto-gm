@@ -45,7 +45,7 @@
       ],
       "stakes": [
         "If the convoy falls, {hub} goes hungry this season.",
-        "Lose the trucks and {patron} loses everything they've put into this.",
+        "Lose the trucks and I lose everything I've put into this.",
         "The convoy carries medicine. People die if it doesn't arrive."
       ],
       "success": [
@@ -91,7 +91,7 @@
       ],
       "stakes": [
         "If {place} falls, {enemy} have a straight road into {hub}.",
-        "{patron} has promised the people here that the line will hold.",
+        "I've promised the people here that the line will hold.",
         "Lose it and the whole valley's water goes with it."
       ],
       "success": [
@@ -136,7 +136,7 @@
       ],
       "stakes": [
         "Without those supplies, {enemy} can't keep up the pressure on {hub}.",
-        "{patron} wants this done before {enemy} can dig in.",
+        "I want this done before {enemy} can dig in.",
         "If the raid fails, {enemy} will know exactly who sent you."
       ],
       "success": [
@@ -176,7 +176,7 @@
         "Get to the wreck at {place} before {enemy} strip it."
       ],
       "stakes": [
-        "{patron} needs that cargo back, and no questions asked.",
+        "I need that cargo back, and no questions asked.",
         "Whoever holds the cargo holds {hub}'s future.",
         "If {enemy} get there first, they'll sell it to the highest bidder."
       ],
@@ -218,7 +218,7 @@
       ],
       "stakes": [
         "Every week {enemy} stay, another farm empties.",
-        "{patron} is out of patience, and out of other options.",
+        "I'm out of patience, and out of other options.",
         "If they're not stopped, {enemy} will come for {hub} next."
       ],
       "success": [
@@ -263,7 +263,7 @@
       ],
       "stakes": [
         "They won't last another night out there.",
-        "{patron} is begging. There's no one else to send.",
+        "I'm begging you. There's no one else to send.",
         "If they die out there, {hub} will never trust Union pilots again."
       ],
       "success": [
@@ -434,10 +434,10 @@
         "Calling It In"
       ],
       "objective": [
-        "{patron} has called in the favor you owe. They need {place} dealt with."
+        "I'm calling in the favor you owe. I need {place} dealt with."
       ],
       "stakes": [
-        "Do this and the debt is clear. Refuse, and {patron}'s people remember."
+        "Do this and the debt is clear. Refuse, and my people remember."
       ],
       "success": [
         {
@@ -466,7 +466,7 @@
         "The Passenger"
       ],
       "objective": [
-        "Get {patron}'s envoy from {place} to safety.",
+        "Get my envoy from {place} to safety.",
         "Escort a witness out of {place} before {enemy} silence them."
       ],
       "stakes": [
@@ -552,7 +552,7 @@
       ],
       "stakes": [
         "If the tip is good, this changes everything. If it's bad, it's a trap.",
-        "{patron} trusts the informant. You don't have to."
+        "I trust the informant. You don't have to."
       ],
       "question": [
         "Is the tip true, and who wanted you to hear it?"
@@ -699,12 +699,12 @@
         "Lockdown"
       ],
       "objective": [
-        "Secure {place} and hold it until {patron}'s people arrive.",
+        "Secure {place} and hold it until my people arrive.",
         "Take {place} from {enemy}, intact."
       ],
       "stakes": [
         "Whoever holds {place} controls the valley.",
-        "{patron} needs it standing, not burning."
+        "I need it standing, not burning."
       ],
       "question": [
         "Will {place} be in friendly hands when the dust settles?"
@@ -742,7 +742,7 @@
         "Run {cargo} past {enemy}'s patrols at {place}."
       ],
       "stakes": [
-        "If it's seized, {patron} is finished, and so is your welcome here.",
+        "If it's seized, I'm finished, and so is your welcome here.",
         "Someone on the other side is waiting for this, and they can't wait long."
       ],
       "question": [
@@ -779,7 +779,7 @@
         "Reputation"
       ],
       "objective": [
-        "Track down the mercenary squad that's been working for {enemy} and stop them.",
+        "Track down the lancer squad working for {enemy} and stop them.",
         "Find the pilots who hit {place} and end their run."
       ],
       "stakes": [
@@ -945,12 +945,12 @@
         "A Matter of Honor"
       ],
       "objective": [
-        "Stand as champions for {patron} against the lancers {enemy} have hired.",
+        "Stand as my champions against the lancers {enemy} have hired.",
         "Settle the dispute over {place} on the field, mech against mech."
       ],
       "stakes": [
         "By custom, whoever loses the field loses the claim.",
-        "{patron}'s name, and the people under it, ride on this."
+        "My name, and the people under it, ride on this."
       ],
       "question": [
         "Whose claim will the field decide for?"
@@ -990,7 +990,7 @@
         "Hard Copy"
       ],
       "objective": [
-        "Hold the server stack at {place} while {patron}'s people pull the data.",
+        "Hold the server stack at {place} while my people pull the data.",
         "Hit the corporate data vault at {place} and keep {enemy} off the extraction team."
       ],
       "stakes": [

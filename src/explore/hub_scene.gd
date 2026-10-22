@@ -716,6 +716,9 @@ func screenshot_setup(args: Array) -> Array:
 		return ["ending"]
 	if args.has("codex"):
 		return ["codex"]
+	if args.has("parley"):
+		StorySettings.persist = false
+		return ["parley", "log"]
 	return ["walk", "talk", "choices", "check", "downtime", "supplies", "gear", "board", "briefing", "levelup"]
 
 
@@ -753,6 +756,31 @@ func screenshot_stage(tag: String) -> void:
 	match tag:
 		"codex":
 			codex.open("engaged")
+		"parley":
+			# Mid-battle terms with the enemy commander (Rivals), shown over the hub for the picture.
+			if Dialogue.is_open(story):
+				_handle(Dialogue.close(story))
+			engine.submit(story, campaign, {"type": "end_downtime", "seat": "gm", "params": {}})
+			Dialogue.close(story)
+			engine.submit(story, campaign, {"type": "choose_hook", "seat": "gm", "params": {"hook": story.hooks[0]["id"]}})
+			Dialogue.close(story)
+			engine.submit(story, campaign, {"type": "confirm_reserves", "seat": "gm", "params": {}})
+			CampaignLoop.build_mission(campaign, story, db)
+			var b := Rivals.battle(story)
+			story.npcs[b["rival"]]["personality"] = "honorable"
+			var evs: Array = []
+			for id: String in b["enemy_ids"]:
+				if id != str(b["unit"]):
+					evs.append({"type": "unit_destroyed", "unit": id})
+			_handle(engine.submit(story, campaign, {"type": "battle_events", "seat": "gm", "params": {"events": evs}})["events"])
+			var guard := 0
+			while Dialogue.offered(story).is_empty() and Dialogue.is_open(story) and guard < 4:
+				dialogue.advance()
+				guard += 1
+		"log":
+			StorySettings.set_text_scale(1.3)
+			dialogue.refresh()
+			dialogue.toggle_log()
 		"tutorial_briefing":
 			dialogue.advance()
 		"tutorial_hub":

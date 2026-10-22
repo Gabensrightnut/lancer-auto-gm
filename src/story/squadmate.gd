@@ -257,7 +257,7 @@ static func barks_for(story: StoryState, campaign: Campaign, e: Dictionary, unit
 			return
 		var vars := _vars(story, campaign, pid)
 		vars.merge(extra, true)
-		out.append({"unit": unit, "pilot": pid, "face": {"portrait": PortraitSpec.for_pilot(campaign.pilots.get(pid, {"id": pid})),
+		out.append({"unit": unit, "pilot": pid, "who": str(campaign.pilots.get(pid, {}).get("callsign", "")), "face": {"portrait": PortraitSpec.for_pilot(campaign.pilots.get(pid, {"id": pid})),
 			"expression": _bark_face(moment)}, "text": StoryText.fill(str(lines[rng.randi_range(0, lines.size() - 1)]), story, campaign, {"speaker": pid, "vars": vars})})
 	match str(e.get("type", "")):
 		"combat_started":
@@ -284,6 +284,8 @@ static func barks_for(story: StoryState, campaign: Campaign, e: Dictionary, unit
 				for u: String in unit_pilot:
 					say.call(u, "enemy_down", {})
 					break
+	# The enemy commander has things to say too.
+	out.append_array(Rivals.barks_for(story, e))
 	return out
 
 

@@ -74,7 +74,7 @@ func open() -> void:
 			cb.text = str(g["name"])
 			cb.button_pressed = have.has(g["id"])
 			cb.tooltip_text = _describe(g)
-			cb.add_theme_font_size_override("font_size", 14)
+			cb.add_theme_font_size_override("font_size", StorySettings.size(14))
 			cb.toggled.connect(func(_on: bool) -> void: _update())
 			list.add_child(cb)
 			_boxes[str(g["id"])] = cb

@@ -152,6 +152,9 @@ static func mission_vars(story: StoryState, campaign: Campaign, outcome: String)
 	var v := {"outcome": outcome, "kills": str(sm.get("kills", 0)), "mvp": str(sm.get("mvp", ""))}
 	if sm.has("rounds"):
 		v["rounds"] = str(sm["rounds"])
+		v["rounds_text"] = "1 round" if int(sm["rounds"]) == 1 else "%d rounds" % int(sm["rounds"])
+	var kills := int(sm.get("kills", 0))
+	v["kills_line"] = "None of theirs went down." if kills == 0 else ("One of theirs went down." if kills == 1 else "%d of theirs went down." % kills)
 	if lost.is_empty():
 		v["lost_line"] = "Every mech came back in one piece."
 	else:
@@ -166,6 +169,7 @@ static func mission_vars(story: StoryState, campaign: Campaign, outcome: String)
 		v["fallen"] = ", ".join(PackedStringArray(fallen))
 	var ejected: Array = sm.get("ejected", [])
 	v["ejected_line"] = ("%s had to get out on foot." % ", ".join(PackedStringArray(ejected))) if not ejected.is_empty() else ""
+	v["rival_line"] = str(story.flags.get(Rivals.DEBRIEF, ""))
 	return v
 
 
