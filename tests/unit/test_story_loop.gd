@@ -72,7 +72,7 @@ func test_vote_with_remote_and_ai_seats() -> void:
 	while Dialogue.offered(s).is_empty() and Dialogue.is_open(s) and guard < 5:
 		session.submit("p1", {"type": "dialogue_next", "params": {}})
 		guard += 1
-	expect(s.dialogue["votes"].has("p3"), "the AI squadmate voted in character")
+	expect(not s.dialogue["votes"].has("p3"), "AI squadmates don't vote: only the humans do")
 	var pick := str(Dialogue.offered(s)[0]["id"])
 	session.submit("p1", {"type": "dialogue_choose", "params": {"choice": pick}})
 	expect(Dialogue.is_open(s) and s.dialogue["votes"].has("p1"), "still waiting on p2")

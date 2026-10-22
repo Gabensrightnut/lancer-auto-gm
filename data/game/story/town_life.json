@@ -38,5 +38,16 @@
     "wait": ["Time passes. It's {period} now.", "You wait. {period} comes on slowly.", "The town turns over into {period}."],
     "seen": ["{witness} sees it happen.", "A shout: {witness} saw you.", "{witness} is staring right at you."],
     "alarm": ["Someone's raising the alarm.", "Doors open up and down the street.", "Boots on the boardwalk. They're coming."]
+  },
+  "interiors": {
+    "_note": "Which interior (data/game/interiors.json, world's Interiors kit) each kind of building has inside, and how its rooms map onto TownLife's rooms above: a room id maps to a room of the same building, or to [spot, room] for a room that belongs to another building (a ship's deck). kinds_by_culture picks another interior for some cultures. containers: which interior container holds things kept in which story room. A hub can override all of this in hub['interiors'] (campaign worlds).",
+    "spots": {
+      "bar": {"kind": "bar", "kinds_by_culture": {"medieval_tech": "inn", "east_asian": "inn"}, "rooms": {"main": "main", "back": "back", "hall": "main", "upstairs": "upstairs", "landing": "main", "room_1": "upstairs", "room_2": "upstairs", "room_3": "upstairs", "room_4": "upstairs", "room_5": "upstairs", "owner": "upstairs"}, "containers": {"safe": "back", "owner_chest": "upstairs"}},
+      "office": {"kind": "office", "kinds_by_culture": {"old_west": "marshal"}, "rooms": {"front": "front", "back": "back", "records": "safe", "cell_1": "back", "cell_2": "back", "cell_3": "back"}, "containers": {"safe": "safe"}},
+      "market": {"kind": "market", "rooms": {"floor": "floor", "store": "store"}},
+      "workshop": {"kind": "workshop", "rooms": {"floor": "floor", "loft": "loft"}},
+      "printer": {"kind": "printer", "rooms": {"floor": "floor", "control": "control"}},
+      "house": {"kind": "house", "rooms": {"front": "front", "bedroom": "bedroom", "pantry": "bedroom"}}
+    }
   }
 }

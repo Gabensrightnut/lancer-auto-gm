@@ -1,0 +1,57 @@
+{
+  "_note": "Our own lists. A pilot's origin is a richer background: where they grew up, how, who they worked for, what they're good at. By the book a background can be invoked for +1 Accuracy on a relevant skill check (Core p.20); an origin only widens what counts as relevant (its tags), it never adds a second bonus, License Levels or gear. Perks with kind 'combat' are for the rules engine's 'Origin perks' house rule (off by default; the user's idea, not a book rule). Food likes follow from the origin (the food-and-water house rule).",
+  "max_perks": 5,
+  "homeworld": [
+    {"id": "city", "name": "City kid", "text": "Grew up in a metroswathe: crowds, noise, every street a shortcut.", "tags": ["city", "crowds", "streets"], "food": ["street_food"]},
+    {"id": "desert", "name": "Desert world", "text": "Water was worth more than money where you grew up.", "tags": ["desert", "heat", "survival"], "food": ["spicy", "dried"]},
+    {"id": "ice", "name": "Ice world", "text": "Long nights, deep cold, people who never waste anything.", "tags": ["cold", "survival", "patience"], "food": ["stew", "fatty"]},
+    {"id": "ocean", "name": "Ocean world", "text": "Platforms, boats and storms; you can swim before you can walk.", "tags": ["water", "storms", "boats"], "food": ["fish", "salty"]},
+    {"id": "jungle", "name": "Jungle world", "text": "Green, loud and alive; everything bites.", "tags": ["jungle", "wilderness", "animals"], "food": ["fruit", "spicy"]},
+    {"id": "spacer", "name": "Spacer (Cosmopolitan)", "text": "Born in transit at near light speed; worlds come and go, the ship stays (Core p.20).", "tags": ["ships", "zero_g", "cosmopolitan"], "food": ["printed", "bland"]},
+    {"id": "orbital", "name": "Orbital habitat", "text": "Spun-up gravity, recycled air, neighbours on every side.", "tags": ["habitat", "machines", "stations"], "food": ["printed", "algae"]},
+    {"id": "frontier", "name": "Frontier colony", "text": "A young settlement where everyone does a bit of everything.", "tags": ["frontier", "farming", "survival"], "food": ["stew", "bread"]},
+    {"id": "core", "name": "Union Core", "text": "Cradle or a world near it: communal, post-capital, very far from the frontier (Core p.10).", "tags": ["union", "bureaucracy", "manners"], "food": ["fine", "fresh"]},
+    {"id": "mining", "name": "Mining world", "text": "Dust in the lungs and a company store at the end of every shift.", "tags": ["mining", "machines", "labor"], "food": ["fatty", "dried"]},
+    {"id": "agri", "name": "Agri world", "text": "Endless fields, early mornings, weather is everything.", "tags": ["farming", "weather", "animals"], "food": ["fresh", "bread"]}
+  ],
+  "upbringing": [
+    {"id": "comfortable", "name": "Comfortable", "tags": ["etiquette", "wealth"]},
+    {"id": "working", "name": "Working family", "tags": ["labor", "machines"]},
+    {"id": "street", "name": "On the streets", "tags": ["streets", "crime"]},
+    {"id": "military", "name": "Military family", "tags": ["military", "discipline"]},
+    {"id": "religious", "name": "Faithful", "tags": ["faith", "community"]},
+    {"id": "nomadic", "name": "Always moving", "tags": ["travel", "wilderness"]}
+  ],
+  "employer": [
+    {"id": "none", "name": "Nobody, until now", "tags": []},
+    {"id": "gms", "name": "General Massive Systems", "manufacturer": "GMS", "tags": ["gms", "corporate", "printers"]},
+    {"id": "ipsn", "name": "IPS-Northstar", "manufacturer": "IPS-N", "tags": ["ipsn", "ships", "shipping"]},
+    {"id": "ssc", "name": "Smith-Shimano Corpro", "manufacturer": "SSC", "tags": ["ssc", "corporate", "luxury"]},
+    {"id": "horus", "name": "HORUS (as far as anyone knows)", "manufacturer": "HORUS", "tags": ["horus", "omninet", "secrets"]},
+    {"id": "ha", "name": "Harrison Armory", "manufacturer": "HA", "tags": ["ha", "military", "imperial"]},
+    {"id": "union_navy", "name": "Union Navy", "tags": ["union", "military", "ships"]},
+    {"id": "dojhr", "name": "Union DoJ/HR", "tags": ["union", "law"]},
+    {"id": "militia", "name": "A local militia", "tags": ["military", "frontier"]},
+    {"id": "mercs", "name": "A mercenary company", "tags": ["mercenary", "military"]}
+  ],
+  "specialty": [
+    {"id": "hacker", "name": "Hacker", "tags": ["tech", "omninet", "systems"]},
+    {"id": "medic", "name": "Medic", "tags": ["medicine", "first_aid"]},
+    {"id": "mechanic", "name": "Mechanic", "tags": ["machines", "repair"]},
+    {"id": "smuggler", "name": "Smuggler", "tags": ["smuggling", "crime", "ships"]},
+    {"id": "scout", "name": "Scout", "tags": ["wilderness", "stealth"]},
+    {"id": "diplomat", "name": "Diplomat", "tags": ["politics", "etiquette"]},
+    {"id": "soldier", "name": "Soldier", "tags": ["military", "weapons"]},
+    {"id": "pilot", "name": "Pilot (ships)", "tags": ["ships", "zero_g"]}
+  ],
+  "perks": [
+    {"id": "know_streets", "kind": "knowledge", "name": "Knows the streets", "tags": ["streets", "crime", "city"]},
+    {"id": "survivor", "kind": "knowledge", "name": "Hard to kill out there", "tags": ["survival", "wilderness"]},
+    {"id": "corporate_insider", "kind": "knowledge", "name": "Corporate insider", "tags": ["corporate"]},
+    {"id": "spacer_legs", "kind": "knowledge", "name": "Spacer's legs", "tags": ["ships", "zero_g", "stations"]},
+    {"id": "fixer_hands", "kind": "knowledge", "name": "Good with machines", "tags": ["machines", "repair"]},
+    {"id": "netrunner", "kind": "knowledge", "name": "Grew up on the omninet", "tags": ["omninet", "tech"]},
+    {"id": "weak_spots", "kind": "combat", "name": "Knows their weak spots", "needs_employer": true,
+     "effect": {"type": "accuracy_vs_manufacturer", "value": 1, "note": "+1 Accuracy on attacks against the former employer's frames, once per scene (Origin perks house rule)"}}
+  ]
+}

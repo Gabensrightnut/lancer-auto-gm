@@ -60,6 +60,15 @@ static func build_mission(campaign: Campaign, story: StoryState, db: ContentDB, 
 		gen_opts["landscape"] = hook["landscape"]
 	if hook.has("map_culture"):
 		gen_opts["culture"] = hook["map_culture"]
+	# The same stretch of world as the last fight here keeps its look (world-maps' region).
+	var region: Variant = story.flags.get("_regions", {}).get(region_key(story, hook))
+	if region is Dictionary and not hook.has("boarding"):
+		gen_opts["region"] = region
+	if not (hook.get("environments", []) as Array).is_empty():
+		gen_opts["environments"] = hook["environments"]
+	# Boarding: world-maps builds the ships (opts.boarding: {kind, map}).
+	if hook.has("boarding"):
+		gen_opts["boarding"] = (hook["boarding"] as Dictionary).duplicate()
 	# A fight in the hub itself: world-maps builds the battle from the town's own layout.
 	var town := MissionHooks.town_for(story, hook)
 	if not town.is_empty():
@@ -97,6 +106,7 @@ static func build_mission(campaign: Campaign, story: StoryState, db: ContentDB, 
 	if hook.has("operation"):
 		mission.flavor["operation"] = hook["operation"]
 	mission.flavor["town"] = town
+	mission.flavor["boarding"] = (hook.get("boarding", {}) as Dictionary).duplicate()
 	var manual: Array = []
 	for entry: Dictionary in gen_opts["squad"]:
 		var seat := str(entry["seat"])
@@ -126,7 +136,10 @@ static func build_mission(campaign: Campaign, story: StoryState, db: ContentDB, 
 					manual.append({"pilot": pid, "callsign": p.get("callsign", ""), "reserve": r.duplicate()})
 	mission.flavor["reserves"] = manual
 	# Allies who came because of what the squad did (the main campaign's finales).
-	_add_allies(state, mission, hook.get("allies", []), int(hook.get("seed", 0)))
+	var allies: Array = (hook.get("allies", []) as Array).duplicate()
+	if hook.has("boarding"):
+		allies.append_array(Plunder.boarders(story, campaign))
+	_add_allies(state, mission, allies, int(hook.get("seed", 0)))
 	# Someone leads the enemy force (Rivals): mission.flavor["commander"].
 	Rivals.setup_battle(story, campaign, state, mission)
 	return gen
@@ -316,6 +329,15 @@ static func battle_summary(state: GameState, _story: StoryState, events: Array =
 	return {"rounds": state.round_number, "kills": kills, "lost": lost, "ejected": ejected, "mvp": mvp, "mvp_damage": best, "cascades": cascades}
 
 
+## Which stretch of world a fight is in: the world and the place.
+static func region_key(story: StoryState, hook: Dictionary) -> String:
+	return "%s:%s" % [str(Sector.get_sector(story).get("at", story.hub.get("id", ""))), str(hook.get("place", ""))]
+
+
 static func finish_mission(campaign: Campaign, story: StoryState, engine: StoryEngine, state: GameState, mission: Mission, events: Array = []) -> Dictionary:
 	campaign.record_mission(state, mission)
+	if mission.flavor.get("region") is Dictionary and not mission.flavor.get("hook", {}).has("boarding"):
+		var regions: Dictionary = story.flags.get("_regions", {})
+		regions[region_key(story, mission.flavor.get("hook", {}))] = (mission.flavor["region"] as Dictionary).duplicate()
+		story.flags["_regions"] = regions
 	return engine.submit(story, campaign, {"type": "mission_finished", "seat": "gm", "params": mission_result(state, mission, story, events)})

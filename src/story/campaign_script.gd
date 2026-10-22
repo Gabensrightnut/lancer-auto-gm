@@ -68,7 +68,8 @@ static func begin(story: StoryState, campaign: Campaign, engine: StoryEngine, id
 	campaign.options["campaign_script"] = id
 	var sd := data(id)
 	story.flags[KEY] = {"id": id, "chapter": "", "branches": {}, "done": [], "worlds": {}, "commanders": {}}
-	var town: Dictionary = sd.get("worlds", {}).get("town", {})
+	var worlds: Dictionary = sd.get("worlds", {})
+	var town: Dictionary = worlds[worlds.keys()[0]] if not worlds.is_empty() else {}
 	var events: Array = engine.submit(story, campaign, {"type": "enter_hub", "seat": "gm", "params": {"kind": str(town.get("kind", "town")),
 		"seed": absi(hash([campaign.id, id])) % 100000, "culture": str(town.get("culture", "")), "no_jobs": true}})["events"]
 	_shape_sector(story, campaign)
@@ -81,7 +82,12 @@ static func begin(story: StoryState, campaign: Campaign, engine: StoryEngine, id
 static func _shape_sector(story: StoryState, campaign: Campaign) -> void:
 	var sec := Sector.get_sector(story)
 	var worlds: Dictionary = script(campaign).get("worlds", {})
-	var ids := {"town": "w_0_0", "dock": "w_0_1"}
+	var ids := {}
+	var slots := ["w_0_0", "w_0_1", "w_1_0", "w_1_1", "w_2_0"]
+	var n := 0
+	for key: String in worlds:
+		ids[key] = str(worlds[key].get("slot", slots[mini(n, slots.size() - 1)]))
+		n += 1
 	for key: String in ids:
 		var w := Sector.world(story, str(ids[key]))
 		var def: Dictionary = worlds.get(key, {})
@@ -95,7 +101,8 @@ static func _shape_sector(story: StoryState, campaign: Campaign) -> void:
 		w["summary"] = str(kit.get("summary", ""))
 		state(story)["worlds"][key] = ids[key]
 	if not sec.is_empty():
-		var def: Dictionary = worlds.get("town", {})
+		var first := str(worlds.keys()[0]) if not worlds.is_empty() else "town"
+		var def: Dictionary = worlds.get(first, {})
 		story.hub["planet"] = str(def.get("name", story.hub.get("planet", "")))
 		story.hub["name"] = str(def.get("hub", story.hub.get("name", "")))
 		story.hub["landscape"] = str(def.get("landscape", story.hub.get("landscape", "")))
@@ -120,6 +127,23 @@ static func populate(story: StoryState, campaign: Campaign) -> void:
 	var here := _world_key(story)
 	var sd := script(campaign)
 	var factions: Dictionary = sd.get("factions", {})
+	# The world's own look for its hub: renamed buildings (a ship's mess, engineering, the
+	# captain's quarters) and what it has (a flash-clone vat...).
+	var wdef: Dictionary = sd.get("worlds", {}).get(here, {})
+	for sp: Dictionary in story.hub.get("spots", []):
+		if wdef.get("spot_names", {}).has(str(sp["kind"])):
+			sp["name"] = str(wdef["spot_names"][str(sp["kind"])])
+	if wdef.has("room_names"):
+		story.hub["room_names"] = (wdef["room_names"] as Dictionary).duplicate(true)
+	# What's inside its buildings (HubInterior): a ship's deck, a sleeper vault.
+	if wdef.has("interiors"):
+		story.hub["interiors"] = (wdef["interiors"] as Dictionary).duplicate(true)
+	for k: String in wdef.get("hub_flags", {}):
+		story.hub[k] = wdef["hub_flags"][k]
+	if wdef.has("hub") and str(story.hub.get("name", "")) != str(wdef["hub"]) and not bool(story.hub.get("_named", false)):
+		story.hub["name"] = str(wdef["hub"])
+		story.hub["_named"] = true
+		Sector.current(story)["hub_name"] = story.hub["name"]
 	for local: String in sd.get("npcs", {}):
 		var def: Dictionary = sd["npcs"][local]
 		if str(def.get("world", "")) != here:
@@ -137,6 +161,10 @@ static func populate(story: StoryState, campaign: Campaign) -> void:
 			made["trust"] = 0
 			story.npcs[id] = made
 		var list: Array = story.hub.get("npcs", [])
+		# Someone who isn't here (not yet come aboard, marooned, dead) isn't in the hub.
+		if def.has("if") and not check(story, campaign, def["if"], {}):
+			list.erase(id)
+			continue
 		if list.has(id):
 			continue
 		var replaces := str(def.get("replaces", ""))
@@ -171,12 +199,16 @@ static func start_chapter(story: StoryState, campaign: Campaign, cid: String) ->
 		story.phase = "downtime"
 		events.append_array(Sector.travel(story, campaign, want))
 		story.phase = saved_phase
-		populate(story, campaign)
+	# Who's around changes with the story (Hask comes aboard, the old captain leaves).
+	populate(story, campaign)
 	story.hooks = story.hooks.filter(func(h: Dictionary) -> bool: return not h.has("chapter"))
 	var intro := " ".join(PackedStringArray((ch.get("intro", []) as Array).map(func(t: String) -> String: return fill(story, campaign, t, ch))))
 	events.append({"type": "chapter_started", "chapter": cid, "act": int(ch.get("act", 1)), "act_name": str(ch.get("act_name", "")), "title": str(ch.get("title", "")), "text": intro})
 	story.add_log("%s: %s" % [ch.get("title", ""), intro])
 	for h: Dictionary in fill_board(story, campaign):
+		events.append({"type": "hook_added", "hook": h})
+	# Work for the people aboard the squad's ship (ShipLife).
+	for h: Dictionary in ShipLife.side_jobs(story, campaign):
 		events.append({"type": "hook_added", "hook": h})
 	if bool(ch.get("final", false)):
 		var names: Array = (fill_allies(story, campaign) as Array).map(func(a: Dictionary) -> String: return a["name"])
@@ -203,7 +235,17 @@ static func fill_board(story: StoryState, campaign: Campaign) -> Array:
 static func build_hook(story: StoryState, campaign: Campaign, cid: String) -> Dictionary:
 	var sd := script(campaign)
 	var ch: Dictionary = sd.get("chapters", {})[cid]
-	var hs: Dictionary = ch.get("hook", {})
+	var hs: Dictionary = (ch.get("hook", {}) as Dictionary).duplicate(true)
+	# The job can take another shape from what the squad has done (a challenge instead of a
+	# mutiny...): the first matching variant's fields replace the job's.
+	for v: Dictionary in hs.get("variants", []):
+		if check(story, campaign, v.get("if"), {}):
+			for k: String in v:
+				if k != "if":
+					hs[k] = v[k]
+			if not v.has("foes_var") and v.has("npc_templates"):
+				hs.erase("foes_var")
+			break
 	var hook := MissionHooks.make(story, campaign, str(hs.get("template", "clear_raiders")), {"patron": npc(str(hs.get("patron", "")))})
 	hook.erase("twist")
 	hook.erase("commander")
@@ -213,6 +255,14 @@ static func build_hook(story: StoryState, campaign: Campaign, cid: String) -> Di
 	for k: String in ["sitrep", "landscape"]:
 		if hs.has(k):
 			hook[k] = str(hs[k])
+	if hs.has("boarding"):
+		hook["boarding"] = (hs["boarding"] as Dictionary).duplicate()
+		hook["landscape"] = ""
+	# Rules environments the story calls for (zero-g aboard a ship with its systems dead, Core p.63).
+	for env: Dictionary in hs.get("environments_if", []):
+		if check(story, campaign, env.get("if"), {}):
+			hook["environments"] = (env["ids"] as Array).duplicate()
+			break
 	if bool(hs.get("in_town", false)):
 		hook["in_town"] = true
 		hook["town_spot"] = "plaza"
@@ -232,6 +282,8 @@ static func build_hook(story: StoryState, campaign: Campaign, cid: String) -> Di
 		state(story)["betrayal_used"] = true
 		hook["twist"] = {"id": "betrayal", "reveal": "%s sold you out: the enemy knew exactly where you'd be." % story.npcs.get(betrayer, {}).get("name", "Someone"),
 			"question": "Why did they turn on you?", "effects": [{"set_flag": "la_betrayed"}]}
+	if hs.has("loot"):
+		hook["loot"] = {"name": fill(story, campaign, str(hs["loot"].get("name", "")), ch), "value": int(hs["loot"].get("value", 200)), "reserve": str(hs["loot"].get("reserve", "reserve_supplies"))}
 	hook["chapter"] = cid
 	hook["short_title"] = str(hook["title"])
 	var lines: Array = (ch.get("briefing", []) as Array).map(func(t: String) -> Dictionary: return {"who": "npc", "text": fill(story, campaign, t, ch)})
@@ -285,7 +337,9 @@ static func fill(story: StoryState, campaign: Campaign, text: String, ch: Dictio
 				if check(story, campaign, opt.get("if"), {}):
 					text = text.replace("{%s}" % k, str(opt["text"]))
 					break
-	return text
+	# The pilot with a grudge (Agendas), by callsign.
+	var sore := Agendas.anyone(story, "grievance")
+	return text.replace("{aggrieved}", str(campaign.pilots.get(sore, {}).get("callsign", "one of the pilots")))
 
 
 static func _final_foe(story: StoryState, campaign: Campaign) -> Dictionary:
@@ -303,7 +357,7 @@ static func line_of(story: StoryState, campaign: Campaign) -> String:
 	var best := "sleepers"
 	var top := -1
 	var lines: Dictionary = script(campaign).get("lines", {})
-	for k: String in ["sleepers", "town", "corp"]:
+	for k: String in lines:
 		var n := 0
 		for c: Variant in lines.get(k, []):
 			if check(story, campaign, c, {}):
@@ -327,6 +381,8 @@ static func check(story: StoryState, campaign: Campaign, cond: Variant, ctx: Dic
 	var c: Dictionary = cond
 	if c.has("not"):
 		return not check(story, campaign, c["not"], ctx)
+	if c.has("any"):
+		return (c["any"] as Array).any(func(x: Variant) -> bool: return check(story, campaign, x, ctx))
 	if c.has("line"):
 		return line_of(story, campaign) == str(c["line"])
 	if c.has("rival"):
@@ -374,11 +430,12 @@ static func advance(story: StoryState, campaign: Campaign) -> Array:
 		return []
 	var events := _resolve(story, campaign, cid, {"won": bool(st.get("won", true))})
 	var ch: Dictionary = script(campaign).get("chapters", {})[cid]
-	if int(ch.get("act", 1)) == 1 and not st.has("line"):
+	var line_act := int(script(campaign).get("line_act", 1))
+	if int(ch.get("act", 1)) == line_act and not st.has("line"):
 		var nxt_act := 1
 		for n: Dictionary in ch.get("next", []):
 			nxt_act = int(script(campaign)["chapters"].get(str(n.get("chapter", "")), {}).get("act", 1))
-		if nxt_act > 1:
+		if nxt_act > line_act:
 			st["line"] = line_of(story, campaign)
 			events.append({"type": "story_line", "line": st["line"]})
 	for n: Dictionary in ch.get("next", []):
@@ -449,6 +506,10 @@ static func aftermath(story: StoryState, campaign: Campaign, first_alive: String
 	var ch: Dictionary = script(campaign).get("chapters", {}).get(cid, {})
 	if ch.is_empty() or Dialogue.is_open(story):
 		return []
+	# The pilot with a grudge speaks first (Agendas): they're the one pushing.
+	var sore := Agendas.anyone(story, str(ch.get("speaker_agenda", "")))
+	if str(ch.get("speaker_agenda", "")) != "" and sore != "":
+		first_alive = sore
 	if ch.has("aftermath_scene"):
 		var a: Dictionary = ch["aftermath_scene"]
 		return Dialogue.start(story, campaign, str(a["scene"]), {"speaker": first_alive, "npc": npc(str(a.get("npc", "")))})
@@ -469,3 +530,27 @@ static func aftermath(story: StoryState, campaign: Campaign, first_alive: String
 	all[sid] = scene
 	story.flags[GmTools.SCENES] = all
 	return Dialogue.start(story, campaign, sid, {"speaker": first_alive, "npc": npc(str(am.get("npc", "")))})
+
+
+## A clone wakes (Cloning): whoever runs the ship has something to say about it (the
+## script's "clone_beats": the first whose "if" holds, {if, npc, lines}).
+static func on_clone(story: StoryState, campaign: Campaign, pid: String) -> Array:
+	if not active(campaign):
+		return []
+	story.flags["cloned_" + pid] = true
+	story.flags["dr_cloned"] = true
+	for b: Dictionary in script(campaign).get("clone_beats", []):
+		if not check(story, campaign, b.get("if"), {}):
+			continue
+		var cs := str(campaign.pilots[pid].get("callsign", ""))
+		var lines: Array = (b.get("lines", []) as Array).map(func(l: Dictionary) -> Dictionary: return {"who": l.get("who", "npc"), "text": str(l["text"]).replace("{name}", cs)})
+		var sid := "cs_clone_%s" % pid
+		var all: Dictionary = GmTools.scenes(story).duplicate()
+		all[sid] = GmTools.build_scene(sid, {"lines": lines})
+		story.flags[GmTools.SCENES] = all
+		if Dialogue.is_open(story):
+			return [{"type": "clone_beat", "pilot": pid, "text": str(lines[0]["text"]) if not lines.is_empty() else ""}]
+		var ev := Dialogue.start(story, campaign, sid, {"speaker": pid, "npc": npc(str(b.get("npc", "")))})
+		ev.push_front({"type": "clone_beat", "pilot": pid, "text": str(lines[0]["text"]) if not lines.is_empty() else ""})
+		return ev
+	return []

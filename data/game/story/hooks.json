@@ -1165,6 +1165,301 @@
           "add": -1
         }
       ]
+    },
+    "seize_ship": {
+      "weight": 1,
+      "boarding": {
+        "kind": "seize",
+        "map": "docked"
+      },
+      "sitreps": [
+        "sitrep_control",
+        "sitrep_standardcombat"
+      ],
+      "title": [
+        "Prize Crew",
+        "Take the {cargo} Runner",
+        "Boarding Action"
+      ],
+      "objective": [
+        "Dock with the {enemy} ship holding station near {hub}, board her, and take her bridge.",
+        "Board the {enemy} gunship and take her intact."
+      ],
+      "stakes": [
+        "I want that ship whole: her crew can stand trial, her hold comes back to its owners.",
+        "If she gets away, she'll be back with friends."
+      ],
+      "question": [
+        "Can you take the ship without wrecking her?"
+      ],
+      "success": [
+        {
+          "standing": "$hook.faction",
+          "add": 1
+        }
+      ],
+      "failure": []
+    },
+    "rescue_crew": {
+      "weight": 1,
+      "boarding": {
+        "kind": "rescue",
+        "map": "enemy_ship"
+      },
+      "sitreps": [
+        "sitrep_extraction",
+        "sitrep_standardcombat"
+      ],
+      "title": [
+        "Dead in the Water",
+        "Mayday Aboard",
+        "The Silent Freighter"
+      ],
+      "objective": [
+        "A freighter has gone silent near {hub} with {enemy} aboard. Board her and get the crew out.",
+        "Cut your way into the drifting hauler and bring her crew home."
+      ],
+      "stakes": [
+        "I've got family on that crew.",
+        "Every hour, the air in there gets thinner."
+      ],
+      "question": [
+        "Who's still alive in there, and who's holding them?"
+      ],
+      "success": [
+        {
+          "standing": "$hook.faction",
+          "add": 1
+        }
+      ],
+      "failure": [
+        {
+          "standing": "$hook.faction",
+          "add": -1
+        }
+      ]
+    },
+    "take_smuggler": {
+      "weight": 1,
+      "boarding": {
+        "kind": "smuggler",
+        "map": "docked"
+      },
+      "sitreps": [
+        "sitrep_standardcombat",
+        "sitrep_control"
+      ],
+      "title": [
+        "Contraband",
+        "The Smuggler's Run",
+        "Cut Them Off"
+      ],
+      "objective": [
+        "Catch the smuggler running {cargo} out of {hub}, board her, and take what she's carrying.",
+        "Board the smuggler before she reaches the gate."
+      ],
+      "stakes": [
+        "What she's carrying is going to get people killed.",
+        "Let her go and the whole system will know you can be outrun."
+      ],
+      "question": [
+        "What is the smuggler really carrying?"
+      ],
+      "success": [
+        {
+          "standing": "$hook.faction",
+          "add": 1
+        }
+      ],
+      "failure": []
+    },
+    "repel_boarders": {
+      "weight": 1,
+      "board": false,
+      "boarding": {
+        "kind": "defend",
+        "map": "own_ship"
+      },
+      "sitreps": [
+        "sitrep_holdout",
+        "sitrep_standardcombat"
+      ],
+      "title": [
+        "Boarders!",
+        "Pirates on the Hull",
+        "Repel Boarders"
+      ],
+      "objective": [
+        "Pirates have latched onto your transport mid-trip. Throw them off before they reach the bridge.",
+        "Hold your own ship's decks against the boarders."
+      ],
+      "stakes": [
+        "Lose the ship and you'll be the ones held for ransom.",
+        "The crew is counting on you."
+      ],
+      "question": [
+        "Who sent them, and how did they find you?"
+      ],
+      "success": [],
+      "failure": [
+        {
+          "harm": 1,
+          "to": "squad"
+        }
+      ]
+    },
+    "make_it_right_water": {
+      "weight": 1,
+      "board": false,
+      "sitreps": [
+        "sitrep_holdout",
+        "sitrep_standardcombat"
+      ],
+      "title": [
+        "Make It Right",
+        "Water for {hub}",
+        "Dig Deep"
+      ],
+      "objective": [
+        "Guard the crews repairing {what}, or cutting a new well, until the water flows again.",
+        "Keep {enemy} off the well-diggers until {hub} has water again."
+      ],
+      "stakes": [
+        "People in {hub} are going thirsty because of what happened at {what}.",
+        "You broke it. Nobody else is going to fix it."
+      ],
+      "question": [
+        "Can you give {hub} its water back?"
+      ],
+      "success": [
+        {
+          "world": {
+            "set": {
+              "water": "",
+              "what": ""
+            }
+          }
+        },
+        {
+          "standing": "$hub.faction",
+          "add": 1
+        }
+      ],
+      "failure": []
+    },
+    "make_it_right_power": {
+      "weight": 1,
+      "board": false,
+      "sitreps": [
+        "sitrep_holdout",
+        "sitrep_standardcombat"
+      ],
+      "title": [
+        "Lights Back On",
+        "Make It Right"
+      ],
+      "objective": [
+        "Protect the engineers bringing {hub}'s power back after {what}.",
+        "Hold the line at the relay while the grid comes back up."
+      ],
+      "stakes": [
+        "The clinic can't run on candles.",
+        "{hub} has been dark since {what}."
+      ],
+      "question": [
+        "Can you get the power back on?"
+      ],
+      "success": [
+        {
+          "world": {
+            "set": {
+              "power": "",
+              "what": ""
+            }
+          }
+        },
+        {
+          "standing": "$hub.faction",
+          "add": 1
+        }
+      ],
+      "failure": []
+    },
+    "make_it_right_supply": {
+      "weight": 1,
+      "board": false,
+      "sitreps": [
+        "sitrep_standardcombat",
+        "sitrep_standardcombat"
+      ],
+      "title": [
+        "Fill the Shelves",
+        "Make It Right"
+      ],
+      "objective": [
+        "Escort the relief convoy into {hub}.",
+        "Bring in the supplies {hub} lost with {what}."
+      ],
+      "stakes": [
+        "Families are going hungry since {what}.",
+        "Prices have doubled. People blame you."
+      ],
+      "question": [
+        "Can you get supplies through?"
+      ],
+      "success": [
+        {
+          "world": {
+            "set": {
+              "supply": "",
+              "what": ""
+            }
+          }
+        },
+        {
+          "standing": "$hub.faction",
+          "add": 1
+        }
+      ],
+      "failure": []
+    },
+    "rebuild_town": {
+      "weight": 1,
+      "board": false,
+      "sitreps": [
+        "sitrep_holdout",
+        "sitrep_standardcombat"
+      ],
+      "title": [
+        "Rebuild",
+        "Clean Up"
+      ],
+      "objective": [
+        "Help {hub} rebuild after the fighting, and keep the scavengers off the wreckage.",
+        "Hold off the looters while {hub} patches its walls."
+      ],
+      "stakes": [
+        "Some of those holes are yours.",
+        "People are sleeping in the street."
+      ],
+      "question": [
+        "Will {hub} forgive the mess?"
+      ],
+      "success": [
+        {
+          "world": {
+            "set": {
+              "repairs": "",
+              "what": ""
+            }
+          }
+        },
+        {
+          "standing": "$hub.faction",
+          "add": 1
+        }
+      ],
+      "failure": []
     }
   }
 }

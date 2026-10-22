@@ -374,12 +374,17 @@ static func _roll_choice(story: StoryState, campaign: Campaign, chk: Dictionary,
 static func decider(story: StoryState, campaign: Campaign) -> Dictionary:
 	var mode := str(campaign.options.get("dialogue_choice", "speaker")) if campaign != null else "speaker"
 	var speaker_seat := story.seat_of(str(story.dialogue.get("ctx", {}).get("speaker", "")))
+	# AI squadmates follow their human: when one is speaking, its human picks the reply; in
+	# a vote only the humans vote (DESIGN.md: AI players follow the players' choices).
+	if speaker_seat != "" and story.is_ai(speaker_seat) and not Decisions.humans(story).is_empty():
+		speaker_seat = Decisions.leader_of(story, speaker_seat)
 	if mode == "vote":
-		var seats: Array = []
-		for s: String in story.seats:
-			if story.is_alive(story.pilot_of_seat(s)):
-				seats.append(s)
-		seats.sort()
+		var seats: Array = Decisions.humans(story)
+		if seats.is_empty():
+			for s: String in story.seats:
+				if story.is_alive(story.pilot_of_seat(s)):
+					seats.append(s)
+			seats.sort()
 		return {"mode": "vote", "seats": seats, "speaker_seat": speaker_seat}
 	return {"mode": "speaker", "seats": [speaker_seat], "speaker_seat": speaker_seat}
 

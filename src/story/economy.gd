@@ -236,8 +236,8 @@ static func offers(story: StoryState, campaign: Campaign) -> Array:
 	var out: Array = []
 	if not StoryHouseRules.on(campaign, R_WALLET):
 		return out
-	for item: String in ["drink", "food", "lodging", "information", "supplies", "repair_kit"]:
-		if item == "food" and not StoryHouseRules.on(campaign, R_FOOD):
+	for item: String in ["drink", "food", "meal", "street_food", "lodging", "information", "supplies", "repair_kit"]:
+		if item in ["food", "meal", "street_food"] and not StoryHouseRules.on(campaign, R_FOOD):
 			continue
 		var p := price(story, campaign, item)
 		p["item"] = item
@@ -276,8 +276,12 @@ static func _deliver(story: StoryState, campaign: Campaign, item: String, pid: S
 		"food":
 			events.append_array(add_rations(story, campaign, int(def.get("rations", 2)) * _alive(story, campaign).size()))
 		"lodging":
+			story.flags["lodged:%d" % story.mission_number] = true
+			story.flags.erase("_sick")
 			for p: String in _alive(story, campaign):
 				events.append_array(StoryEffects.rest(story, campaign, p))
+		"meal", "street_food":
+			events.append_array(meal(story, campaign))
 		"information":
 			var hk: Dictionary = story.hooks[0] if not story.hooks.is_empty() else {}
 			events.append({"type": "bought", "item": item, "text": ("Word is the next job will be against %s, at %s." % [hk.get("enemy", "someone"), hk.get("place", "somewhere")]) if not hk.is_empty() else "Nothing worth hearing right now."})
@@ -330,7 +334,8 @@ static func after_mission(story: StoryState, campaign: Campaign, hook: Dictionar
 			else:
 				events.append({"type": "deal_off", "text": "The deal for %s is off. You can still pay for it, in money or salvage." % deal["name"], "label": LABEL})
 	if StoryHouseRules.on(campaign, R_FOOD):
-		events.append_array(eat(story, campaign))
+		var cut: Array = (summary.get("lost", []) as Array) + (summary.get("ejected", []) as Array)
+		events.append_array(eat(story, campaign, maxi(1, int(hook.get("nights", 2 if bool(hook.get("hazardous", false)) else 1))), cut))
 	if StoryHouseRules.on(campaign, R_PRINTERS):
 		var lost: Array = summary.get("lost", [])
 		var wrecked: Array = (story.flags.get(WRECKED, []) as Array).duplicate()
@@ -364,7 +369,7 @@ static func printer_refusal(story: StoryState, campaign: Campaign, pid: String) 
 		return "Printers are everywhere (the printer scarcity house rule is off)."
 	if not wrecked(story, campaign).has(pid):
 		return "That pilot's mech isn't wrecked."
-	if not has_printer(story):
+	if not has_printer(story) and not Plunder.has_printer(story, campaign):
 		return "There's no printer on this world. Travel somewhere with one (the map shows which)."
 	if StoryHouseRules.on(campaign, R_WALLET):
 		var p := price(story, campaign, "printer")
@@ -375,7 +380,9 @@ static func printer_refusal(story: StoryState, campaign: Campaign, pid: String) 
 
 static func use_printer(story: StoryState, campaign: Campaign, pid: String) -> Array:
 	var events: Array = []
-	if StoryHouseRules.on(campaign, R_WALLET):
+	if Plunder.has_printer(story, campaign):
+		pass  # The squad's own printer, aboard their ship.
+	elif StoryHouseRules.on(campaign, R_WALLET):
 		events.append_array(pay(story, campaign, price(story, campaign, "printer"), "printer access"))
 	else:
 		events.append_array(StoryEffects.apply({"obligation": {"to": str(story.hub.get("faction", "")), "what": "Printer time at %s" % story.hub.get("name", "")}}, story, campaign, {}))
@@ -466,15 +473,30 @@ static func add_rations(story: StoryState, campaign: Campaign, n: int) -> Array:
 	return [{"type": "rations", "rations": sv["rations"], "text": "+%d days of food and water (%d now)%s." % [n, sv["rations"], ", and the hungry get to eat" if not fed.is_empty() else ""], "label": LABEL}]
 
 
-## A mission uses a day's rations per pilot; without them they go hungry.
-static func eat(story: StoryState, campaign: Campaign) -> Array:
+## A mission's nights of food and water (one each per pilot per night), from the mech's
+## cockpit storage. A pilot whose mech was lost, or who left it, only has their grab bag.
+static func eat(story: StoryState, campaign: Campaign, nights: int = 1, cut_off: Array = []) -> Array:
 	start(story, campaign, R_FOOD)
 	var sv: Dictionary = story.flags[SURVIVAL]
 	var events: Array = []
 	var hun: Dictionary = sv.get("hungry", {})
+	var bag := int(cfg().get("survival", {}).get("grab_bag_nights", 1))
 	for pid: String in _alive(story, campaign):
-		if int(sv["rations"]) > 0:
-			sv["rations"] = int(sv["rations"]) - 1
+		var away := cut_off.has(str(campaign.pilots[pid].get("callsign", "")))
+		var need := nights
+		var fed := 0
+		if away:
+			fed = mini(bag, need)
+			if need > fed:
+				events.append({"type": "cut_off", "pilot": pid, "text": "%s couldn't get back to the mech's stores: only a grab bag to live on." % campaign.pilots[pid].get("callsign", ""), "label": LABEL})
+		else:
+			fed = mini(int(sv["rations"]), need)
+			sv["rations"] = int(sv["rations"]) - fed
+			# A pilot with no mech of their own is last in line for the stores.
+			if wrecked(story, campaign).has(pid) and fed > 0:
+				fed = maxi(0, fed - ceili(need / 2.0))
+				events.append_array(Agendas.add(story, campaign, pid, "grievance", "short rations since their mech was wrecked"))
+		if fed >= need:
 			hun.erase(pid)
 		else:
 			hun[pid] = int(hun.get(pid, 0)) + 1
@@ -484,6 +506,49 @@ static func eat(story: StoryState, campaign: Campaign) -> Array:
 				events.append_array(StoryEffects.harm(story, campaign, pid, 1, true))
 	sv["hungry"] = hun
 	story.flags[SURVIVAL] = sv
+	return events
+
+
+## The squad is hosted (a room bought, a patron's quarters, a ship's passage, the communal
+## Union Core): meals come with the stay.
+static func hosted(story: StoryState, campaign: Campaign) -> bool:
+	return bool(story.flags.get("lodged:%d" % story.mission_number, false)) or rides_free(campaign) or communal(story) \
+		or bool(story.flags.get("travelled:%d" % story.mission_number, false))
+
+
+## A night in town during downtime: hosted, or from the squad's stores.
+static func downtime_night(story: StoryState, campaign: Campaign) -> Array:
+	if not StoryHouseRules.on(campaign, R_FOOD):
+		return []
+	if hosted(story, campaign):
+		return [{"type": "rations", "rations": rations(story), "text": "Meals come with the stay tonight.", "label": LABEL}]
+	return eat(story, campaign, 1)
+
+
+## Eating out: tonight's food for the squad, and how it sits with each pilot (their origin
+## against this world's food).
+static func meal(story: StoryState, campaign: Campaign) -> Array:
+	var events: Array = []
+	var here: Array = cfg().get("culture_food", {}).get(str(_world(story).get("culture", "")), [])
+	var sv: Dictionary = story.flags.get(SURVIVAL, {})
+	var mood: Dictionary = story.flags.get("_mood", {})
+	var sick: Dictionary = story.flags.get("_sick", {})
+	for pid: String in _alive(story, campaign):
+		var likes := Origin.food_likes(campaign.pilots[pid])
+		var match_ := likes.any(func(f: String) -> bool: return here.has(f))
+		var roll := story.dice.die(6)
+		var cs := str(campaign.pilots[pid].get("callsign", ""))
+		if roll == 6 or (match_ and roll >= 5):
+			mood[pid] = true
+			events.append({"type": "meal", "pilot": pid, "text": "%s has found a new favourite (+1 Accuracy on their next skill check)." % cs, "label": LABEL})
+		elif roll == 1 and not match_ and not likes.is_empty():
+			sick[pid] = true
+			events.append({"type": "meal", "pilot": pid, "text": "The food doesn't sit right with %s (+1 Difficulty on skill checks until they rest)." % cs, "label": LABEL})
+	story.flags["_mood"] = mood
+	story.flags["_sick"] = sick
+	if not sv.is_empty():
+		sv["hungry"] = {}
+		story.flags[SURVIVAL] = sv
 	return events
 
 
@@ -509,12 +574,23 @@ static func restock(story: StoryState, campaign: Campaign) -> Array:
 
 ## Skill checks while hungry: +1 Difficulty (house rule).
 static func check_opts(story: StoryState, campaign: Campaign, pid: String, opts: Dictionary) -> Dictionary:
-	if not hungry(story, campaign, pid):
+	if not StoryHouseRules.on(campaign, R_FOOD):
 		return opts
 	var o := opts.duplicate(true)
-	o["difficulty"] = int(o.get("difficulty", 0)) + 1
 	var src: Array = o.get("sources", [])
-	src.append({"label": "Hungry (house rule)", "kind": "difficulty", "type": "difficulty", "value": 1, "rule_ref": LABEL})
+	var diff := 0
+	if hungry(story, campaign, pid):
+		diff += 1
+		src.append({"label": "Hungry (house rule)", "kind": "difficulty", "type": "difficulty", "value": 1, "rule_ref": LABEL})
+	if (story.flags.get("_sick", {}) as Dictionary).has(pid):
+		diff += 1
+		src.append({"label": "The food didn't agree with them (house rule)", "kind": "difficulty", "type": "difficulty", "value": 1, "rule_ref": LABEL})
+	var mood: Dictionary = story.flags.get("_mood", {})
+	if mood.has(pid):
+		mood.erase(pid)
+		o["accuracy"] = int(o.get("accuracy", 0)) + 1
+		src.append({"label": "A good meal (house rule)", "kind": "accuracy", "type": "accuracy", "value": 1, "rule_ref": LABEL})
+	o["difficulty"] = int(o.get("difficulty", 0)) + diff
 	o["sources"] = src
 	return o
 
