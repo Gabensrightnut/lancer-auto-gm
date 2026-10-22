@@ -54,5 +54,12 @@
       "range": 15,
       "los": true
     }
-  ]
+  ],
+  "mf_saladin:Retarget Tachyon Shield": [
+    {
+      "op": "tachyon_target"
+    }
+  ],
+  "mf_saladin:Defensive Pulse": [],
+  "mf_swallowtail:Tactical Simulation": []
 }

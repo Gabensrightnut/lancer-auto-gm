@@ -61,6 +61,10 @@ const CATALOG := {
 		"question": "Eject: 'flying 6 spaces in the direction of your choice' (Core p.71). Where can the pilot land?",
 		"options": {"straight_six": "Exactly 6 spaces away, in a straight line in the chosen direction.", "within_six": "Any free space up to 6 spaces away."},
 		"suggested": "straight_six", "rule_ref": "Core p.71 Eject"},
+	"basilisk_failed_save": {
+		"question": "Gorgon Basilisk: hostiles 'must succeed on a Systems save before attacking'. On a failure (Stunned), does the attack still happen?",
+		"options": {"no_attack": "No: the save comes first, and a Stunned character can't attack.", "attack_continues": "Yes: the attack goes ahead, then the attacker is Stunned."},
+		"suggested": "no_attack", "rule_ref": "Core p.77 Stunned; frames: Gorgon core system"},
 	"prone_ignore_difficult": {
 		"question": "Does 'ignore difficult terrain' (Bulwark Mods, Kai Bioplating) also cancel Prone's 'counts as moving in difficult terrain'?",
 		"options": {"cancels": "Yes.", "still_double": "No: Prone still costs double."},

@@ -214,7 +214,11 @@
           ]
         }
       ],
-      "Mag Parry": "manual"
+      "Mag Parry": [
+        {
+          "kind": "mag_parry"
+        }
+      ]
     },
     "core": "manual"
   },
@@ -281,7 +285,11 @@
   },
   "mf_metalmark": {
     "traits": {
-      "Flash Cloak": "manual",
+      "Flash Cloak": [
+        {
+          "kind": "flash_cloak"
+        }
+      ],
       "Carapace Adaptation": [
         {
           "kind": "soft_cover_plus",
@@ -370,7 +378,11 @@
         }
       ]
     },
-    "core": "manual"
+    "core": [
+      {
+        "kind": "tactical_simulation"
+      }
+    ]
   },
   "mf_balor": {
     "traits": {
@@ -400,7 +412,11 @@
           "value": 1
         }
       ],
-      "Reactive Code": "manual",
+      "Reactive Code": [
+        {
+          "kind": "reactive_code"
+        }
+      ],
       "Fragile": [
         {
           "kind": "accuracy",
@@ -437,7 +453,12 @@
         }
       ]
     },
-    "core": "manual"
+    "core": [
+      {
+        "kind": "basilisk",
+        "range": 3
+      }
+    ]
   },
   "mf_hydra": {
     "traits": {
@@ -613,9 +634,17 @@
           "kind": "guardian"
         }
       ],
-      "Warp Shield": "manual"
+      "Warp Shield": [
+        {
+          "kind": "warp_shield"
+        }
+      ]
     },
-    "core": "manual"
+    "core": [
+      {
+        "kind": "defensive_pulse"
+      }
+    ]
   },
   "mf_sherman": {
     "traits": {

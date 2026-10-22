@@ -194,7 +194,8 @@ static func overwatch(state: GameState, mover: Unit) -> Array[Dictionary]:
 		if Weapons.area(w) != "":
 			events.append_array(Areas.attack(state, h, w, {"aim": [mover.cell.x, mover.cell.y], "aim_level": mover.level, "reaction": true}))
 		else:
-			var res := Attacks.attack(state, h, w, mover, {"reaction": true})
+			# Metalmark Flash Cloak: Invisible while moving.
+			var res := Attacks.attack(state, h, w, mover, {"reaction": true, "target_invisible": Effects.has(mover, "flash_cloak")})
 			events.append_array(res)
 			var hit := res.any(func(x: Dictionary) -> bool: return x["type"] == "attack_rolled" and x["result"] != "miss")
 			for e: Dictionary in Effects.of(h, "overwatch_hit_status"):

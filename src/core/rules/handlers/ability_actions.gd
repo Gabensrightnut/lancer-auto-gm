@@ -124,6 +124,10 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit) ->
 				events.append({"type": "effect_triggered", "unit": u.id, "effect": "Mark for Death", "target": target.id, "rule_ref": "frames: Death's Head core system"})
 			"unfocus":
 				events.append_array(AbilityActions._unfocus(u))
+			"tachyon_target":
+				# Saladin Tachyon Shield: choose a new ally to protect.
+				u.counters["tachyon_target"] = target.id
+				events.append({"type": "effect_triggered", "unit": u.id, "effect": "Tachyon Shield", "target": target.id, "rule_ref": "frames: Saladin core system"})
 			"omnigun":
 				# Pegasus Ushabti Omnigun: not an attack; hits automatically, ignores cover,
 				# bypasses Immunity, and can't be reduced.
@@ -139,6 +143,14 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit) ->
 					target.hp = 1
 					events.append({"type": "revived", "unit": target.id, "by": u.id})
 	return events
+
+
+static func ally_in_sensors(state: GameState, u: Unit, t: Unit) -> RuleResult:
+	if t == null or not Combat.is_present(t) or t.side != u.side or t == u or t.kind == Unit.KIND_DEPLOYABLE:
+		return RuleResult.deny("Choose an allied character.", "frames: core_system")
+	if Sight.unit_distance(state, u, t) > u.sensors:
+		return RuleResult.deny("It must be within Sensors (%d)." % u.sensors, "glossary: Sensors")
+	return RuleResult.allow()
 
 
 static func _unfocus(u: Unit) -> Array[Dictionary]:
@@ -190,6 +202,10 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 					(" but further than range %d" % int(op["min"])) if op.has("min") else ""], ref)
 			if op.get("los", false) and not Sight.unit_line_of_sight(state, u, t):
 				return RuleResult.deny("No line of sight to the target.", Sight.REF_LOS)
+		if op.get("op", "") == "tachyon_target":
+			var r := AbilityActions.ally_in_sensors(state, u, state.unit(String(params.get("target", ""))))
+			if not r.ok:
+				return r
 		if op.get("op", "") == "revive":
 			var t := state.unit(String(params.get("target", "")))
 			if t == null or not t.destroyed or t.kind != Unit.KIND_MECH or t.counters.get("vaporized", false):
@@ -257,6 +273,8 @@ static func listing(state: GameState, u: Unit) -> Array:
 			"uses_left": int(ws["uses"]), "recharge": {"value": int(ws.get("recharge", 0)), "charged": ws.get("charged", true)},
 			"destroyed": ws["destroyed"], "superheavy": w.get("size", "") == "Superheavy"})
 	for a: Dictionary in Abilities.all(u):
+		if a.get("activation", "") == "Reaction" and a.get("automated", false):
+			continue  # listed with the other reactions below (TraitReactions)
 		var src := Abilities.source_state(u, String(a["source_key"]))
 		var r := RuleResult.deny("Not your turn.", TurnRules.REF_TURN_ORDER)
 		if a.get("activation", "") == "Reaction":
@@ -276,6 +294,14 @@ static func listing(state: GameState, u: Unit) -> Array:
 			"used": Abilities._times_used(u, String(a["key"]), f.get("per", "scene")) if not f.is_empty() else 0,
 			"recharge": {"value": int(src.get("recharge", 0)), "charged": src.get("charged", true)},
 			"destroyed": src["destroyed"], "automated": a.get("automated", false), "detail": a.get("detail", ""), "kind": a.get("kind", "action")})
+	for kind: String in TraitReactions.KINDS:
+		if not Effects.has(u, kind):
+			continue
+		var tr := Reactions.can_react(u, kind, state)
+		out.append({"id": "reaction:" + kind, "type": "react", "params": {}, "name": String(Effects.of(u, kind)[0].get("label", kind)),
+			"group": "reaction", "available": tr.ok, "reason": tr.reason, "rule_ref": tr.rule_ref, "frequency": "1/round",
+			"used": 1 if (u.counters.get("reactions", []) as Array).has(kind) else 0, "policy": Reactions.policy(u, kind),
+			"reaction": kind, "automated": true})
 	for reaction in ["brace", "overwatch"]:
 		if u.kind == Unit.KIND_DEPLOYABLE:
 			break

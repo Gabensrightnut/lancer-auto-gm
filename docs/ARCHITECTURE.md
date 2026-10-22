@@ -91,6 +91,7 @@ cover, line of sight, attack/area/tech previews with hit chance).
 | `damage_rolled` | `attacker`, `target`, `damage_type`, `crit`, `roll` (`expr`, `dice`, `kept`, `bonus`, `total`, `overkill_heat`) |
 | `reliable_damage` | `attacker`, `target`, `amount` |
 | `bonus_damage` | `attacker`, `target`, `source` (trait/talent/system), `damage_type`, `roll`, `amount`, `halved` (Core p.67) |
+| `attack_cancelled` | `attacker`, `target`, `reason` (Gorgon Basilisk: failed the save before attacking) |
 | `attack_rerolled` | `attacker`, `target`, `first` (the discarded check), `source` (Death's Head Neurolink); the `attack_rolled` that follows has the kept roll |
 | `damage_dealt` | `target`, `source`, `amount` (taken), `damage_type`, `roll` (before reductions), `exposed`, `armor_reduced`, `resisted`, `hp` and `overshield` (after), `immune` |
 | `hp_changed` | `unit`, `hp`, `overshield`, `source` |
@@ -106,7 +107,7 @@ cover, line of sight, attack/area/tech previews with hit chance).
 | `falling` | `unit`, `reason` (falls at the end of the turn, then a `moved` with mode `fall`) |
 | `status_added` / `status_removed` | `unit`, `status`, `source` |
 | `knockback_blocked` | `unit` |
-| `reaction` | `unit`, `reaction` (`brace`), `trigger` (attacker) |
+| `reaction` | `unit`, `reaction` (`brace`, `overwatch`, or a trait reaction: `mag_parry`, `warp_shield`, `defensive_pulse`, `reactive_code`, `tactical_simulation`), `trigger` (attacker), `target`, `roll`/`missed`/`resist`/`action` where they apply |
 | `reaction_policy` | `unit`, `reaction`, `policy` |
 | `overcharged` | `unit`, `roll`, `count` |
 | `stabilized` / `reloaded` | `unit`, `choices` |
