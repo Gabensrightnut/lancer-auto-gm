@@ -516,3 +516,21 @@ func test_roads_have_a_hierarchy_and_no_bare_city_ground() -> void:
 				railed += 1
 				break
 	expect(railed >= 3, "railways past some frontier towns: %d of 8" % railed)
+
+
+func test_no_two_towns_alike() -> void:
+	# Twenty hub towns: each its own order of buildings round the square, spacing, distances
+	# and sizes, and each its own look (sun, palette) from its seed.
+	var layouts := {}
+	var looks := {}
+	for s in range(1, 21):
+		var rng := RandomNumberGenerator.new()
+		rng.seed = s
+		var sig: Array = []
+		for sp: Dictionary in HubLayout.spots("town", rng):
+			sig.append("%s@%d,%d:%d" % [sp["kind"], int(float(sp["pos"][0])), int(float(sp["pos"][1])), int(float(sp["size"][0]) * 10.0)])
+		layouts[" ".join(sig)] = true
+		var style := WorldStyle.resolve("desert_mesas/old_west#%d" % s)
+		looks["%d|%s" % [int(float(style["light"]["sun_yaw"])), str(style["architecture"]["walls"])]] = true
+	expect_eq(layouts.size(), 20, "twenty different town layouts")
+	expect_eq(looks.size(), 20, "twenty different town looks")
