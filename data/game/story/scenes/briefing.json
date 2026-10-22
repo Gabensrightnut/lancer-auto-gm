@@ -12,6 +12,19 @@
     {
      "if": [
       {
+       "var": "legacy_line"
+      },
+      {
+       "not": {
+        "flag": "legacy_told"
+       }
+      }
+     ],
+     "next": "legacy"
+    },
+    {
+     "if": [
+      {
        "var": "downtime_recap"
       },
       {
@@ -56,6 +69,16 @@
    "effects": [
     {
      "set_flag": "recap_told:{operation}"
+    }
+   ],
+   "next": "open"
+  },
+  "legacy": {
+   "speaker": "narrator",
+   "line": "{legacy_line}",
+   "effects": [
+    {
+     "set_flag": "legacy_told"
     }
    ],
    "next": "open"

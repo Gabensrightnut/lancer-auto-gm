@@ -47,6 +47,8 @@ and follows the core book. Page numbers are the free core book ("Core p.N").
 | `ui/downtime_screen.gd` | Downtime as its own scene: the squad's cards with every narrated result (AI too), the action picker, back to the hub or on to the briefing. |
 | `squadmate.gd` | `Squadmate`: AI squadmates as characters. `suggest(pilot)` picks a persona from triggers and background; `role()` / `orders()` give the team role (frame mechtype, or the persona for the Everest) and AiDirector stance; a memory per pilot (wounds, wrecks, fallen friends, choices) shifts their likes and downtime picks, and drives `banter()` between missions (banter.json) and `barks_for(event)` in battle (barks.json, cosmetic, own RNG). |
 | `background_story.gd` | `BackgroundStory`: background-only dialogue options per NPC role and personal stakes on jobs (background_story.json). |
+| `bonds.gd` | `Bonds`: relationships between pilots (Rivals .. Inseparable) from shared missions, mourning, teamwork, drinking together and vote clashes; the GM's bond reward (+1 Accuracy helping each other next mission, Core p.50; option `bond_rewards`); the Bonded talent's bondmate rule (`set_bondmate`, Core p.90). |
+| `ending.gd` | `Ending`: when a campaign ends (options.campaign_arcs situations, LL12, the squad fallen, or `end_campaign`), its kind and an epilogue per pilot (endings.json); `CampaignLoop.sequel()` starts a new campaign with the same pilots. `ui/epilogue_screen.gd` shows it. |
 | `story_data.gd` | `StoryData.lint()`: checks every scene, effect, condition, pool, trigger and reserve id (run by the tests). |
 | `ui/` | `DialogueView` (portrait cards, speech bubble, choices, votes, log), `Portrait` (drawn placeholder faces with expressions), `StoryCheckPopup` (instant roll, one big number, breakdown on hover), `DowntimePanel`, `LevelUpPanel`, `PilotGearPanel` (the quartermaster's racks). |
 
@@ -119,7 +121,9 @@ The walkable hub is in `src/explore/` (`HubScene`, `scenes/explore/hub.tscn`).
   cyberpunk, retrofuturistic, east_asian, union_core) for picking a matching map kit; the hub's
   3D town could use the same kit's props.
 - **Visuals**: draw the parts and 10 expressions in `portraits.json`; `Portrait.set_look()` already
-  takes a v2 portrait and any expression id.
+  takes a v2 portrait and any expression id. Every `dialogue_line`, `banter`, bark and epilogue
+  carries `face: {portrait, expression}`; NPCs have `npc.portrait`, pilots `pilot.portrait`.
+- **Rules engine**: `pilot.bondmate` (set by `set_bondmate`) for the Bonded talent's +1/+2 and reactions.
 - **Flow / battle screen**: `Squadmate.orders(story, campaign, db)` -> `AiDirector.set_orders(seat, ...)` when a mission starts; after each batch of events, `Squadmate.barks_for(story, campaign, event, unit->pilot, unit->seat)` gives speech-bubble lines for AI squadmates.
 - **Net**: route story actions (`StoryEngine.submit`) through the host like battle actions, send
   story events to clients, and relay hub walking positions to `HubScene.set_avatar_position()`.

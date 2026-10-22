@@ -96,6 +96,8 @@ static func make_npc(rng: RandomNumberGenerator, names: NameGen, campaign: Campa
 	for k: String in looks:
 		npc["look"][k] = _pick(rng, looks[k])
 	npc["look"]["seed"] = rng.randi()
+	# A full portrait for the builder's parts (the visuals session draws them).
+	npc["portrait"] = PortraitSpec.complete(npc["look"], rng)
 	return npc
 
 

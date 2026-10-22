@@ -1,0 +1,112 @@
+{
+  "_note": "Our own writing. Campaign endings (src/story/ending.gd): a campaign ends when it has told enough stories (campaign.options.campaign_arcs situations finished, default 3), when every pilot has reached License Level 12 (the book's top level, Core p.18), when the whole squad has fallen, or when the host retires the squad. The ending is a triumph, bittersweet or a defeat, from the situations won and lost and who was lost along the way. Each pilot gets an epilogue built from their persona, their fate and what they remember.",
+  "kinds": {
+    "triumph": "Triumph",
+    "bittersweet": "Bittersweet",
+    "defeat": "Defeat"
+  },
+  "titles": {
+    "triumph": [
+      "The squad's name means something now.",
+      "They came, they held, and the people remember.",
+      "A job well done, from first drop to last."
+    ],
+    "bittersweet": [
+      "They won, mostly. Not everyone was there to see it.",
+      "The work got done. The cost will be remembered.",
+      "Some victories don't feel like it."
+    ],
+    "defeat": [
+      "Not every story ends the way you hoped.",
+      "They lost more than they won, and it shows.",
+      "The squad scatters. The galaxy goes on without them."
+    ]
+  },
+  "alive": {
+    "triumph": [
+      "{callsign} stays on with the squad and takes bigger contracts every year.",
+      "{callsign} becomes the kind of pilot rookies whisper about in mess halls.",
+      "{callsign} retires on their own terms, and visits {hub} every spring."
+    ],
+    "bittersweet": [
+      "{callsign} keeps flying, but quieter now.",
+      "{callsign} carries the squad's losses like a second callsign.",
+      "{callsign} takes a long leave, and comes back a different pilot."
+    ],
+    "defeat": [
+      "{callsign} drifts from contract to contract, trying not to look back.",
+      "{callsign} goes home, and doesn't talk about the war.",
+      "{callsign} swears the next squad will do better. Maybe it will."
+    ]
+  },
+  "dead": {
+    "triumph": [
+      "{callsign} didn't live to see the end, but the end was theirs too.",
+      "{callsign}'s name is painted on the hangar wall at {hub}."
+    ],
+    "bittersweet": [
+      "{callsign} fell at {death_place}. The squad never forgot.",
+      "Somewhere at {hub}, someone still leaves a drink out for {callsign}."
+    ],
+    "defeat": [
+      "{callsign} died at {death_place}, and too few people know why.",
+      "{callsign}'s mech was never recovered. Neither were they."
+    ]
+  },
+  "persona": {
+    "steady": {
+      "triumph": "They taught the next squad everything they knew.",
+      "bittersweet": "They became the one everyone leans on.",
+      "defeat": "They kept the survivors together, which was something."
+    },
+    "bold": {
+      "triumph": "They never once went in second.",
+      "bittersweet": "They still charge first, but they look back now.",
+      "defeat": "They never stopped looking for the rematch."
+    },
+    "kind": {
+      "triumph": "The people of {hub} named a well after them.",
+      "bittersweet": "They wrote to every family, by hand.",
+      "defeat": "They stayed behind to help the people the squad couldn't save."
+    },
+    "mercenary": {
+      "triumph": "They negotiated the best contract the squad ever had.",
+      "bittersweet": "They counted every favor, and the losses too.",
+      "defeat": "They took the next paying job before the dust settled."
+    },
+    "curious": {
+      "triumph": "They finally worked out what had really happened, and wrote it all down.",
+      "bittersweet": "They still dig through the records, looking for what they missed.",
+      "defeat": "They never stopped asking why it went wrong."
+    },
+    "sly": {
+      "triumph": "Half of {hub} owes them a favor, and they know exactly which half.",
+      "bittersweet": "They kept a few secrets the squad never learned.",
+      "defeat": "They vanished one night, with everyone's debts in a notebook."
+    },
+    "grim": {
+      "triumph": "They let themselves smile, once, at the end.",
+      "bittersweet": "They added the names to the list and kept walking.",
+      "defeat": "They expected nothing less, and were not surprised."
+    },
+    "joker": {
+      "triumph": "Their victory speech was mostly jokes. Everyone laughed anyway.",
+      "bittersweet": "They kept everyone laughing through the worst of it.",
+      "defeat": "They made one last joke on the way out. Nobody laughed, but they remember it."
+    }
+  },
+  "memories": {
+    "bond": "{callsign} and {friend} stayed {bond_label_lower} for the rest of their lives.",
+    "lost": "They never forgot {lost}.",
+    "mvp": "No one in the squad hit harder.",
+    "ll": "They finished at License Level {ll}."
+  },
+  "sequel": {
+    "suffix": " II",
+    "briefing_legacy": [
+      "You flew together through {legacy_name}. This is a new chapter.",
+      "The squad that ended {legacy_name} is back in the cockpit.",
+      "After {legacy_name}, everyone wondered what you'd do next. This is it."
+    ]
+  }
+}
