@@ -30,7 +30,8 @@ Code layout and contracts: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   On rules, the book is the default, but every place Lancer Tactics does it differently is
   reported to you with both versions and the likely reason, and you choose (see "Rule
   differences: Lancer Tactics vs. the book" below).
-- **Players:** online multiplayer (one host, others join remotely), plus hot-seat at one table.
+- **Players:** online multiplayer (one host, others join remotely), hot-seat at one table, or
+  solo: one person runs a full squad with AI squadmates flying any pilots they don't control.
 - **Scope:** full campaign play: missions, combat, downtime, licenses, leveling, campaign arc.
 
 ## 1. Animations and visual feedback
@@ -369,6 +370,21 @@ differently without an AI. Each game has a **seed**: share it to replay the same
 - Skill checks with skill triggers and their consequences, reserves, downtime actions
   (from the book) rolled per the rules, and procedural GM narration (section 9).
 - Mission failure, retreat and pilot death have real consequences, as the book describes.
+
+### Solo play and AI squadmates
+- **Play a full 4-pilot campaign alone.** For each pilot you choose who controls it: you, or
+  an AI squadmate. Control all four yourself, one and let the AI fly the rest, or anything
+  in between.
+- **Switch any time:** take over an AI pilot mid-mission or hand yours to the AI. When a
+  friend joins online, they can take over an AI pilot (drop-in); when they leave, the AI picks
+  it back up.
+- **AI squadmates** use the same tactics system as enemies (section 9), on your side: they
+  follow the book's rules through the same rules engine, and only know what your squad knows
+  (no peeking at hidden enemies or unscanned stats).
+- **Orders:** give squadmates a stance (aggressive, defensive, support, hold position, follow
+  me) and focus targets; they explain their move in the log ("Moving to hard cover, heat is high").
+- **Between missions:** for AI pilots you either make their builds and level-up choices
+  yourself, or let the AI pick (by role: e.g. "keep this pilot a support build").
 
 ### Progression
 - License level up after missions, unlocking manufacturer gear by license rank, talent ranks,
