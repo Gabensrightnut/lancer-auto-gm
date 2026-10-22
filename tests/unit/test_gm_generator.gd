@@ -472,3 +472,20 @@ func test_roads_have_a_hierarchy_and_no_bare_city_ground() -> void:
 	expect(widths.has(2) or widths.has(3), "streets: %s" % widths.keys())
 	expect(deck > 20, "an elevated highway on pillars in the mega-city: %d" % deck)
 	expect_eq(bare, 0, "no bare ground in the city")
+	var ramps := 0
+	var walks := 0
+	for c in city.cells():
+		ramps += 1 if city.column(c).has_tag("ramp") else 0
+		walks += 1 if city.column(c).has_tag("crosswalk") else 0
+	expect(ramps >= 2 and walks > 4, "ramps up to the highway (%d) and crosswalks at intersections (%d)" % [ramps, walks])
+	# Frontier towns often have a railway past them, bridged over water, crossing the roads.
+	var railed := 0
+	for s in range(1, 9):
+		var r2 := RandomNumberGenerator.new()
+		r2.seed = s
+		var town := TerrainGen.generate(r2, 40, 40, GridLayout.Shape.SQUARE, {}, "desert_mesas", "old_west")
+		for c in town.cells():
+			if town.column(c).has_tag("rail"):
+				railed += 1
+				break
+	expect(railed >= 3, "railways past some frontier towns: %d of 8" % railed)

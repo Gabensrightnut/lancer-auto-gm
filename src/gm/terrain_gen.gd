@@ -1465,6 +1465,15 @@ func _village(cc: int, cr: int, culture: String, landscape: String, street_from:
 			var cell := _cell(c, r)
 			if map.has_cell(cell) and built.has(cell) and map.column(cell).tags.is_empty():
 				map.column(cell).tags = PackedStringArray(["lot"])
+	# A railway past the town on its own line, for frontier, industrial, port, atomic-age and
+	# Union towns: a level bed, bridges over water, level crossings where it meets a road.
+	if culture in RAIL_CULTURES and rng.randf() < 0.75:
+		var rr := cr - rad - 3
+		if rr >= 2:
+			var line: Array = []
+			for c in range(w):
+				line.append(Vector2i(c, rr))
+			_rail(line, base)
 	# Fields around the village on terraces (levelled plots), with field walls.
 	if landscape in ["grassy_hills", "tundra", "jungle", "toxic_swamp", "desert_mesas"] and culture != "cyberpunk":
 		var want := 5 + rng.randi_range(0, 3)
@@ -1597,6 +1606,35 @@ func _clear_rock_near_built() -> void:
 		col.tags = PackedStringArray()
 
 
+## Towns that get a railway past them.
+const RAIL_CULTURES := ["old_west", "industrial", "port", "retro", "union"]
+
+
+## A railway along a line of map cells on a level bed: over water a bridge, over a road a
+## level crossing (still a road), buildings and walls left alone. Look only: track is open ground.
+func _rail(cells: Array, level: int) -> void:
+	for cr: Vector2i in cells:
+		if cr.x < 0 or cr.y < 0 or cr.x >= w or cr.y >= h:
+			continue
+		var cell := _cell(cr.x, cr.y)
+		if not map.has_cell(cell) or blocked.has(cell):
+			continue
+		var col := map.column(cell)
+		if col.has_tag("building") or col.has_tag("wall") or col.has_tag("house"):
+			continue
+		if col.has_tag("water"):
+			col.ground = level + 1
+			col.gap_bottom = 0
+			col.gap_top = level + 1
+			col.tags = PackedStringArray(["rail", "rail_x"])
+		elif col.has_tag("road"):
+			col.tags.append("rail")  # a level crossing
+		else:
+			col.ground = level
+			col.tags = PackedStringArray(["rail", "rail_x"])
+		built[cell] = true
+
+
 ## An elevated highway along two rows (row0, row0 + 1): a deck two levels up on pillars, the
 ## street open beneath it (gap columns: units pass under and stand on top), ramps down to the
 ## ground at both ends.
@@ -1615,6 +1653,19 @@ func _elevated(row0: int) -> void:
 			col.gap_top = lift
 			col.tags = PackedStringArray(["road", "road_x", "highway"])
 			built[cell] = true
+	# On- and off-ramps: from the boulevard's outer lanes up to the deck, two spaces long (one
+	# level a step), one on each side, a third of the way along.
+	for side: Array in [[row0 - 1, w / 3], [row0 + 2, (w * 2) / 3]]:
+		for k in range(2):
+			var c: int = side[1] + k
+			var cell := _cell(c, side[0])
+			if not map.has_cell(cell) or blocked.has(cell):
+				continue
+			var col := map.column(cell)
+			col.ground = k + 1
+			col.gap_bottom = 0
+			col.gap_top = k + 1
+			col.tags = PackedStringArray(["road", "road_x", "highway", "ramp"])
 
 
 ## Lane tags for the road markings: for each straight road cell, its place across the road and
@@ -1644,6 +1695,16 @@ func _lane_tags() -> void:
 				hi += 1
 			var n := mini(lo + hi + 1, 6)
 			col.tags.append("lane%d_%d" % [mini(lo, n - 1), n])
+			# A crosswalk on the stretch right before an intersection (streets, not alleys).
+			var ahead := Vector2i(1, 0) if axis == "road_x" else Vector2i(0, 1)
+			if n >= 2:
+				for sgn: int in [-1, 1]:
+					var q := Vector2i(c, r) + ahead * sgn
+					if q.x >= 0 and q.y >= 0 and q.x < w and q.y < h:
+						var qc := _cell(q.x, q.y)
+						if map.has_cell(qc) and map.column(qc).has_tag("crossing"):
+							col.tags.append("crosswalk")
+							break
 
 
 func _rect_blocked(r: Rect2i) -> bool:
