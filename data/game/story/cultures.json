@@ -1,5 +1,5 @@
 {
-  "_note": "Our own writing. Hub culture/era kits (DESIGN.md 'Every kind of world'; canon: diaspora worlds differ greatly, Core p.10, p.21; feudal baronies exist, p.92; frontier vs core, p.21). Look and flavor only: no new canon factions or rules. Kit ids match the world/map session's kits by name; hooks carry hook['culture'] so a mission's map can use the same kit. Line pools named '<pool>_<kit>' are added to '<pool>' at a hub of that kit (src/story/story_text.gd). 'conflicts' and 'hooks' list ids that are more likely here (weight x3); hooks with a 'cultures' list only appear at those kits. 'map_culture' = the world/maps session's culture id for the mission map (their data/game/biomes/cultures.json; '' = plain landscape, no settlement), 'landscapes' = landscape ids a mission from this hub picks from (TerrainGen falls back to a fitting culture if one doesn't fit).",
+  "_note": "Our own writing. Hub culture/era kits (DESIGN.md 'Every kind of world'; canon: diaspora worlds differ greatly, Core p.10, p.21; feudal baronies exist, p.92; frontier vs core, p.21). Look and flavor only: no new canon factions or rules. Kit ids match the world/map session's kits by name; hooks carry hook['culture'] so a mission's map can use the same kit. Line pools named '<pool>_<kit>' are added to '<pool>' at a hub of that kit (src/story/story_text.gd). 'conflicts' and 'hooks' list ids that are more likely here (weight x3); hooks with a 'cultures' list only appear at those kits. 'map_culture' = the world/maps session's culture id for the mission map (their data/game/biomes/cultures.json; '' = plain landscape, no settlement), 'landscapes' = landscape ids a mission from this hub picks from (TerrainGen falls back to a fitting culture if one doesn't fit). 'door_gap' = how far in front of a door people stand (metres; default 1.6), e.g. past an Old West boardwalk.",
   "weights": {
     "frontier_colony": 4,
     "old_west": 3,
@@ -154,7 +154,8 @@
       "landscapes": [
         "desert_mesas",
         "grassy_hills"
-      ]
+      ],
+      "door_gap": 3.4
     },
     "medieval_tech": {
       "name": "Medieval-tech world",

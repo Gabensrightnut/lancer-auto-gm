@@ -27,11 +27,11 @@ const BOUNDS := 30.0
 ## The buildings for a hub kind, placed around the plaza with a little seeded jitter. `names`
 ## = a culture kit's building names (cultures.json "spots"), mixed in with the general ones.
 ## [{id, kind, name, pos: [x, z], size: [w, d, h], color: html, door: [x, z], facing}]
-static func spots(kind: String, rng: RandomNumberGenerator, names: Dictionary = {}) -> Array:
+static func spots(kind: String, rng: RandomNumberGenerator, names: Dictionary = {}, door_gap: float = 1.6) -> Array:
 	var out: Array = []
 	var pool := func(k: String) -> Array: return (names.get(k, []) as Array) + (names.get(k, []) as Array) + (SPOT_NAMES[k] as Array) if names.has(k) else SPOT_NAMES[k]
 	var plaza_name := _pick(rng, pool.call("plaza"))
-	out.append(_spot("plaza", plaza_name, Vector2.ZERO, 0.0))
+	out.append(_spot("plaza", plaza_name, Vector2.ZERO, 0.0, door_gap))
 	var order := RING.duplicate()
 	if kind == "station":
 		order.erase("landing")
@@ -41,15 +41,15 @@ static func spots(kind: String, rng: RandomNumberGenerator, names: Dictionary = 
 		var a := start + TAU * i / order.size() + rng.randf_range(-0.15, 0.15)
 		var r := rng.randf_range(15.0, 19.0)
 		var pos := Vector2(cos(a), sin(a)) * r
-		out.append(_spot(order[i], _pick(rng, pool.call(order[i])), pos, a))
+		out.append(_spot(order[i], _pick(rng, pool.call(order[i])), pos, a, door_gap))
 	return out
 
 
-static func _spot(kind: String, name: String, pos: Vector2, angle: float) -> Dictionary:
+static func _spot(kind: String, name: String, pos: Vector2, angle: float, door_gap: float = 1.6) -> Dictionary:
 	var look: Array = SPOT_LOOK[kind]
 	# The door faces the plaza; NPCs stand just outside it.
 	var inward := -Vector2(cos(angle), sin(angle)) if pos != Vector2.ZERO else Vector2.ZERO
-	var door := pos + inward * (float(look[1]) / 2.0 + 1.6)
+	var door := pos + inward * (float(look[1]) / 2.0 + door_gap)
 	return {"id": kind, "kind": kind, "name": name, "pos": [pos.x, pos.y], "size": [look[0], look[1], look[2]],
 		"color": (look[3] as Color).to_html(false), "door": [door.x, door.y], "facing": angle}
 
