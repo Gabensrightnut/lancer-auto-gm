@@ -48,7 +48,7 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	names_rng.seed = hash([mission_seed, "names"])
 	var names := NameGen.new(names_rng)
 	m.flavor = {"operation": names.operation(), "planet": names.planet(), "faction": names.faction(),
-		"team": names.team_name(), "cargo": names.cargo(), "kit": TerrainGen.kit(world[0], world[1]),
+		"team": names.team_name(), "cargo": names.cargo(), "kit": TerrainGen.kit(world[0], world[1]) + _weather_suffix(world_rng, world[0], world[1], str(opts.get("weather", "?"))),
 		"terrain": TerrainGen.describe(world[0], world[1])}
 	var players := clampi(int(opts.get("players", 4)), 1, 4)
 	state.seats["gm"] = {"name": "GM", "side": Mission.ENEMIES, "gm": true}
@@ -140,6 +140,11 @@ static func _layout_zones(m: Mission, rng: RandomNumberGenerator, w: int, h: int
 
 
 # --- Terrain (TerrainGen) -------------------------------------------------------------
+
+## "+weather" for the kit (look only), from opts.weather or a pick that suits the landscape.
+static func _weather_suffix(rng: RandomNumberGenerator, landscape: String, culture: String, wanted: String) -> String:
+	var w := wanted if wanted != "?" else TerrainGen.pick_weather(rng, landscape, culture)
+	return "+" + w if w != "" and w != "clear" else ""
 
 static func _tag(col: BattleMap.Column, tags: Array) -> void:
 	var have := col.tags  # Packed arrays are values: change a copy and put it back.
