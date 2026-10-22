@@ -19,6 +19,8 @@ var sun: DirectionalLight3D
 var world_env: WorldEnvironment
 ## Keeps nameplates apart and out from under the HUD (set active_unit / hover_unit on it).
 var labels: LabelDeclutter
+## Smoke, sealant, caltrops, bunkers... left on the field (state.zones).
+var zones: ZoneLayer
 ## 0 in daylight, up to 1 on night maps: how much mechs are lit up to stay readable.
 var mech_lift := 0.0
 var _units_root: Node3D
@@ -39,6 +41,8 @@ func _init() -> void:
 	add_child(overlays)
 	labels = LabelDeclutter.new(self)
 	add_child(labels)
+	zones = ZoneLayer.new(self)
+	add_child(zones)
 	tactical = TacticalCamera.new()
 	tactical.name = "TacticalCamera"
 	add_child(tactical)

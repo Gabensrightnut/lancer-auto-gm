@@ -103,6 +103,8 @@ const BIOME_OFFSET := {"urban_ruins": Vector2.ZERO, "grassy_hills": Vector2(6.0,
 const BIOMES := ["urban_ruins", "grassy_hills", "alien_wilds"]
 ## Screenshot-only: battle board from the world styles (see start_battle).
 var world_spec := ""
+## Screenshot-only: systems for roster units ({id: [system ids]}).
+var battle_systems: Dictionary = {}
 var battle_offset := Vector2.ZERO
 
 
@@ -269,6 +271,8 @@ func start_battle() -> void:
 	var roster := ROSTER.duplicate(true)
 	for id: String in BATTLE_LOADOUTS:
 		(roster[id] as Array)[6] = BATTLE_LOADOUTS[id]
+	for id: String in battle_systems:
+		(roster[id] as Array).append(battle_systems[id])
 	battle.load_battle(map, roster, off)
 	view.tactical.look_at_point(Vector3(7.5 + off.x, 0.8, 7.0 + off.y), 15.0)
 	view.tactical.snap()
@@ -572,6 +576,41 @@ func _battle_stage(tag: String) -> void:
 			t.hover_target("goblin")
 			view.tactical.frame_pair(view.units["everest"].global_position, view.units["goblin"].global_position, 7.0)
 			view.tactical.snap()
+		"gear", "gear_aim", "gear_table":
+			# Zones on the board (real ones from the engine plus one of each other kind),
+			# then the step-by-step picker aiming a smoke grenade.
+			var me_cell := me.cell
+			var zl := [
+				{"id": "z1", "kind": "caltrops", "owner": "everest", "label": "Caltrops", "cells": _ring_cells(me_cell + Vector2i(-3, 1), 1)},
+				{"id": "z2", "kind": "sealant", "owner": "everest", "label": "Sealant", "cells": _ring_cells(me_cell + Vector2i(2, 3), 1)},
+				{"id": "z3", "kind": "javelin", "owner": "everest", "label": "Javelin", "cells": [[me_cell.x + 4, me_cell.y - 2]]},
+				{"id": "z4", "kind": "smoke", "owner": "everest", "label": "Smoke", "cells": _ring_cells(me_cell + Vector2i(1, -4), 1)},
+				{"id": "z5", "kind": "bunker", "owner": "everest", "label": "Bunker", "cells": [[me_cell.x - 1, me_cell.y - 2]]},
+				{"id": "z6", "kind": "cloak", "owner": "swallowtail", "label": "Cloaking Field", "cells": [], "radius": 2, "center": [0, 0]},
+			]
+			view.zones.set_zones(zl)
+			if tag == "gear_aim":
+				for a: Dictionary in battle.bar.actions:
+					if String(a.get("name", "")).contains("Smoke Grenade"):
+						t._on_action(a)
+				var target_cell := me_cell + Vector2i(2, -3)
+				var cam := view.get_viewport().get_camera_3d()
+				t.hover_screen(cam.unproject_position(view.cell_pos(target_cell, view.map.ground_height(target_cell))))
+			elif tag == "gear_table":
+				player.play_event({"type": "manual_effect", "unit": "everest", "source": "COMP/CON Class Assistant Unit",
+					"text": "Your mech gains the AI tag... (rule text shown here)", "guidance": "Not automated yet: read the system's text and apply it at the table."})
+				battle.bar.set_tab("systems")
+				await get_tree().process_frame
+				for a: Dictionary in battle.bar.actions:
+					if a.has("table"):
+						battle.bar.hover(String(a["id"]))
+						break
+			else:
+				battle.bar.set_tab("all")
+			view.tactical.look_at_point(view.units["everest"].global_position + Vector3(0, 0.5, -1.5), 13.0)
+			view.tactical.pitch = -55.0
+			view.tactical.snap()
+			await get_tree().create_timer(1.0).timeout
 		"cooldowns":
 			t.cancel()
 			battle.bar.set_actions(lockout_samples(), "demo_cooldowns")
@@ -603,6 +642,14 @@ func screenshot_setup(args: PackedStringArray) -> Array:
 		tags = ["board", "square", "move", "sky", "los", "roll", "kinetic", "beam", "missile", "melee", "tech", "deploy", "heat", "vent", "destroy", "cockpit", "hud", "hills", "hills_close", "hills_nogrid", "hills_square", "alien", "alien_close", "alien_vista",
 			"turn_order", "my_turn", "target", "cooldowns", "enemy_turn", "skill", "walk", "reaction", "wreck"]
 	return tags
+
+
+func _ring_cells(c: Vector2i, r: int) -> Array:
+	var out: Array = []
+	for x in view.map.grid.cells_within(c, r):
+		if view.map.has_cell(x):
+			out.append([x.x, x.y])
+	return out
 
 
 ## Sample actions with one of each lockout kind, for the cooldown screenshot.
@@ -641,6 +688,11 @@ func lockout_samples() -> Array:
 
 func screenshot_stage(tag: String) -> void:
 	world_spec = ""
+	battle_systems = {}
+	if tag.begins_with("gear"):
+		battle_systems = {"everest": ["ms_pattern_a_smoke_charges", "ms_javelin_rockets", "ms_caltrop_launcher", "ms_lb_oc_cloaking_field", "ms_comp_con_class_assistant_unit"]}
+		await _battle_stage(tag)
+		return
 	if tag.begins_with("world="):
 		# The player's turn HUD on one of the world session's boards.
 		world_spec = tag.trim_prefix("world=")
