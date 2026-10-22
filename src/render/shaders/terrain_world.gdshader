@@ -481,8 +481,13 @@ void fragment() {
 	}
 	// Destructible terrain: a web of deep cracks and chipped, lighter edges.
 	if (breakable > 0.5) {
+		// breakable = 1 + damage fraction: more and wider cracks as the section is worn down.
+		float dmg = clamp(breakable - 1.0, 0.0, 1.0);
 		vec2 cp = top ? wpos.xz * 1.3 : vec2(hcoord * 1.3, wpos.y * 1.1);
-		float web = smoothstep(0.05, 0.0, cracks(cp)) * smoothstep(0.3, 0.55, fbm3(cp * 0.8 + 2.0));
+		float web = smoothstep(0.05 + 0.05 * dmg, 0.0, cracks(cp)) * smoothstep(0.3 - 0.3 * dmg, 0.55 - 0.3 * dmg, fbm3(cp * 0.8 + 2.0));
+		float gouge = smoothstep(0.62 - 0.25 * dmg, 0.7 - 0.25 * dmg, fbm(cp * 0.6 + 9.0)) * step(0.05, dmg);
+		col = mix(col, col * 0.35, gouge * 0.8);
+		relief -= gouge;
 		float chip = smoothstep(0.12, 0.0, top_y - wpos.y) * smoothstep(0.55, 0.7, fbm3(cp * 3.0));
 		col = mix(col, col * 0.25, web);
 		col = mix(col, col * 1.35 + 0.05, chip);

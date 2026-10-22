@@ -40,7 +40,7 @@ static func generated(seed_value: int, width: int, height: int, shape: GridLayou
 	rng.seed = hash([seed_value, "mission"])
 	var wr := RandomNumberGenerator.new()
 	wr.seed = hash([seed_value, "world"])
-	var bf := MissionGenerator.battlefield(rng, wr, sitrep_id, width, height, shape, landscape_id, culture_id)
+	var bf := MissionGenerator.battlefield(rng, wr, sitrep_id, width, height, shape, landscape_id, culture_id, int(GmSettings.new().approach))
 	var d := MapDoc.new()
 	d.w = width
 	d.h = height

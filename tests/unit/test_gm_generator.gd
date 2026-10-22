@@ -22,7 +22,7 @@ func test_map_is_grassy_hills_in_size_range() -> void:
 	for mission_seed in [1, 2, 3]:
 		var s: GameState = _gen(mission_seed, {"landscape": "grassy_hills"})["state"]
 		var n := s.map.cells().size()
-		expect(n >= 20 * 20 * 0.75 and n <= 40 * 40, "size %d" % n)
+		expect(n >= 30 * 30 and n <= 60 * 60, "size %d" % n)
 		var heights := {}
 		var soft := 0
 		var difficult := 0
@@ -204,3 +204,66 @@ func test_names_and_flavor_come_from_the_compcon_lists() -> void:
 		expect(seat["pilot"].split(" ").size() >= 2, "full pilot name: %s" % seat["pilot"])
 		expect(seat["mech"].contains("Everest"), seat["mech"])
 	expect_eq(_gen(42)["mission"].flavor, m.flavor, "same seed, same names")
+
+
+func test_bigger_maps_scale_with_the_squad_and_keep_deployment_close() -> void:
+	var cfg := GmSettings.load_json(GmSettings.MISSIONS_FILE)
+	var small := MissionGenerator.map_size(RandomNumberGenerator.new(), cfg, 1, "sitrep_standardcombat")
+	var big := MissionGenerator.map_size(RandomNumberGenerator.new(), cfg, 4, "sitrep_standardcombat")
+	expect(big.x * big.y > small.x * small.y, "4 players get a bigger map than 1 (%s vs %s)" % [big, small])
+	for sitrep: String in ["sitrep_standardcombat", "sitrep_escort", "sitrep_control"]:
+		for p in range(1, 5):
+			var wh := MissionGenerator.map_size(RandomNumberGenerator.new(), cfg, p, sitrep)
+			expect(wh.x >= 30 and wh.x <= 60 and wh.y >= 30 and wh.y <= 60, "%s %d players: %s" % [sitrep, p, wh])
+	var esc := MissionGenerator.map_size(RandomNumberGenerator.new(), cfg, 4, "sitrep_escort")
+	expect(esc.y > esc.x, "an escort map is longer than wide: %s" % esc)
+	# The approach dial keeps the zones close on a 60-long map.
+	var lay := SitrepLayout.layout("sitrep_standardcombat", 50, 60, GridLayout.Shape.SQUARE, RandomNumberGenerator.new(), 14)
+	var rows := func(side: String) -> Array:
+		var r: Array = []
+		for c: Array in lay["deployment"][side]:
+			r.append(int(c[1]))
+		return r
+	var gap: int = (rows.call("players") as Array).min() - (rows.call("enemies") as Array).max() - 1
+	expect(gap <= 14, "deployment zones at most 14 rows apart on a 60-row map (%d)" % gap)
+
+
+func test_a_fight_in_town_uses_the_hub() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var hub := {"kind": "town", "culture": "old_west", "seed": 5, "spots": HubLayout.spots("town", rng)}
+	var g := _gen(31, {"hub": hub, "sitrep": "sitrep_standardcombat", "players": 2})
+	var s: GameState = g["state"]
+	var m: Mission = g["mission"]
+	expect(str(m.flavor["kit"]).contains("old_west"), "the hub's culture: %s" % m.flavor["kit"])
+	var buildings := 0
+	for c in s.map.cells():
+		var col := s.map.column(c)
+		if col.has_tag("building"):
+			buildings += 1
+			expect(col.ground >= 1 and col.ground <= 2, "small-town buildings are 1-2 levels")
+			expect(col.has_tag(BattleMap.TAG_DESTRUCTIBLE), "and can be knocked down")
+			expect(col.has_tag("material_wood") and col.has_tag("armor_0"), "Old West wood: no Armor (Core p.68)")
+	expect(buildings > 20, "the town's buildings take up their spaces (%d)" % buildings)
+
+
+func test_materials_follow_the_culture() -> void:
+	var want := {"medieval": ["stone", "armor_1"], "union": ["fortified", "armor_3"], "cyberpunk": ["concrete", "armor_1"]}
+	for culture: String in want:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 2
+		var map := TerrainGen.generate(rng, 30, 30, GridLayout.Shape.SQUARE, {}, "city", culture)
+		var seen := false
+		for c in map.cells():
+			var col := map.column(c)
+			if col.has_tag("building"):
+				expect(col.has_tag("material_" + want[culture][0]) and col.has_tag(want[culture][1]), "%s building %s: %s" % [culture, c, col.tags])
+				seen = true
+				break
+		expect(seen, "%s has buildings" % culture)
+	var rng2 := RandomNumberGenerator.new()
+	var ship := TerrainGen.generate(rng2, 30, 30, GridLayout.Shape.SQUARE, {}, "starship", "")
+	for c in ship.cells():
+		if ship.column(c).has_tag("bulkhead"):
+			expect(ship.column(c).has_tag("armor_4"), "starship hull: Armor 4")
+			break
