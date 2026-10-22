@@ -43,7 +43,20 @@ static func source_state(u: Unit, source_key: String) -> Dictionary:
 		u.counters["sources"] = {}
 	var all_states: Dictionary = u.counters["sources"]
 	if not all_states.has(source_key):
-		all_states[source_key] = {"uses": max_uses(u, source_key), "destroyed": false}
+		var st := {"uses": max_uses(u, source_key), "destroyed": false}
+		# NPC features carry their own tags: Recharge X+ and Limited X (tags: Recharge, Limited).
+		for a: Dictionary in all(u):
+			if String(a.get("source_key", "")) != source_key or not a.has("tags"):
+				continue
+			var rc := Weapons.tag_value(a, "tg_recharge")
+			if rc > 0:
+				st["recharge"] = rc
+				st["charged"] = true
+			var lim := Weapons.tag_value(a, "tg_limited")
+			if lim > 0 and int(st["uses"]) < 0:
+				st["uses"] = lim + Effects.value(u, "limited_bonus")
+			break
+		all_states[source_key] = st
 	return all_states[source_key]
 
 

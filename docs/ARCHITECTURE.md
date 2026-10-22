@@ -165,6 +165,14 @@ list every trait, core system, system, weapon and talent rank with `status`
 for the player) and `text` (the rule). `available_actions` entries carry `automation` and
 `table_note`. Notes for partly automated gear: `data/game/automation_notes.json`.
 
+## NPCs
+
+`UnitFactory.build_npc_class(db, id, class_id, tier, {"templates": [...], "optional": [...], "name", "side", "controller"})`
+builds an NPC from a pack's NPC classes (or the placeholder pack, `NPCBuilder.source(db)`).
+NPC units carry `counters.activations` (turns per round); `loadout.class`, `tier`,
+`templates`, `placeholder`. The old `UnitFactory.build_npc(template)` still reads
+`data/game/npc_templates.json`.
+
 ## Commands
 
 ```bash

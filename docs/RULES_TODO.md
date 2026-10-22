@@ -152,9 +152,23 @@ take damage and are destroyed or recalled.
 | Core bonuses | All 31: stats (Reinforced Frame, Sloped Plating, Full Subjectivity Sync, Disbelief, Open Door, Superior by Design), Accuracy (Gyges, Kai, Disbelief, Armory-Sculpted), reach (Gyges, Neurolink Targeting), mounts (Improved Armament, Mount Retrofitting, Integrated Weapon), choices in `pilot.core_bonus_choices` (Auto-Stabilizing Hardpoints: mount index; Overpower Caliber: weapon key; Mount Retrofitting: mount index), Universal Compatibility (automatic on core power), Briareos, Titanomachy, the five Lessons, Adaptive Reactor (`adaptive` on Stabilize), Heatfall, Integrated Ammo Feeds, Stasis Shielding, Fomorian, flight and movement ones | Open Door's heat only follows saves from systems, weapons and mines the game resolves; Transubstantiation's "nearest free space" when it comes back |
 | Data corrections | Explosive Mine deals 2d6 as Core p.120 says (lancer-data has 3d6): `activation_effects.json` "deploy:" entries override deployable data | - |
 
+## NPCs
+
+NPCs are built from NPC class data in the lancer-data / COMP/CON format (npc_classes,
+npc_features, npc_templates): from a loaded content pack, or from our placeholder pack
+(`data/game/npc_placeholder_pack.json`, not official) when no pack has NPCs. Code:
+`src/content/npc_builder.gd`, `UnitFactory.build_npc_class(db, id, class_id, tier, opts)`.
+
+| Rule | Current state | Where in code |
+|---|---|---|
+| NPC rules source | The free core book has no NPC rules; the NPC numbers come from the pack's data. Recharge follows lancer-data's tag text (one 1d6 roll at the start of each of the NPC's turns recharges everything at or under it) | `abilities.gd` |
+| Multiple activations (PROVISIONAL) | An NPC with N activations (class stats.activations plus template bonuses, e.g. Elite) takes N turns per round, each a normal turn in the sides' alternation; Recharge rolls and reactions refresh at the start of each of them. Whether an NPC may take two turns in a row isn't restricted | `turn_rules.gd` |
+| NPC features | Weapons (tiered damage, attack bonus, accuracy, tags), tech features (rolled with their own attack bonus), systems with activation tags, Recharge and Limited, and stat bonuses/overrides (templates) work for any pack. Effect text is applied by the table unless `data/game/npc_feature_effects.json` encodes the feature | `npc_builder.gd` |
+| Placeholder Elite/Ultra | Our stand-ins: Elite +1 Structure, +1 Stress, 2 activations; Ultra +2/+2, 3 activations. The official templates replace them when an NPC pack is loaded | `data/game/npc_placeholder_pack.json` |
+
 ## Not implemented yet
 
-NPC templates and multiple activations, weapon profile choice, mod effects, frame traits and core systems
+ frame traits and core systems
 marked "manual" in `data/game/frame_effects.json`, talents (beyond unlocking talent gear),
 Jockey and Reload (p.75), pilot armor and gear, zero-g
 (p.63), lifting and dragging (p.62), dragging wrecks, objects as attack targets (p.68),

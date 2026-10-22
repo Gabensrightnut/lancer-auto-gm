@@ -548,6 +548,10 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 		events.append_array(drill["events"])
 		parts.append({"type": "Kinetic", "amount": int(drill["total"])})
 		overkill_heat += int(drill["heat"])
+	if String(w.get("npc_on_hit", "")) != "":
+		# An NPC weapon's on-hit rule the game doesn't encode: the table applies it.
+		events.append({"type": "manual_effect", "unit": attacker.id, "source": String(w.get("name", "")), "text": String(w["npc_on_hit"]),
+			"note": "On hit (not automated): the table applies this.", "guidance": Automation.MANUAL_GUIDANCE})
 	var pv: Dictionary = opts.get("preview", {})
 	if not opts.get("no_bonus_damage", false) and not damage.is_empty():
 		# PROVISIONAL (docs/RULES_TODO.md): bonus damage only on attacks that deal damage.
@@ -858,9 +862,10 @@ static func pull_to(state: GameState, target: Unit, goal: Sight.Body, reach: int
 ## A tech attack: d20 + Tech Attack vs E-Defense. Range is SENSORS and needs line of sight
 ## (Core p.64): tech attacks ignore cover and can't crit.
 static func tech_preview(state: GameState, attacker: Unit, target: Unit, opts: Dictionary = {}) -> Dictionary:
-	var out := {"ok": false, "reason": "", "rule_ref": "actions: Invade", "kind": KIND_TECH, "accuracy": 0,
-		"difficulty": 0, "sources": [], "bonus": FrameSystems.shared_stat(state, attacker, "tech_attack"),
-		"bonus_sources": [{"label": "Tech Attack", "value": FrameSystems.shared_stat(state, attacker, "tech_attack")}],
+	var tech_bonus: int = int(opts["tech_bonus"]) if opts.has("tech_bonus") else FrameSystems.shared_stat(state, attacker, "tech_attack")
+	var out := {"ok": false, "reason": "", "rule_ref": "actions: Invade", "kind": KIND_TECH, "accuracy": int(opts.get("tech_accuracy", 0)),
+		"difficulty": 0, "sources": [], "bonus": tech_bonus,
+		"bonus_sources": [{"label": "Tech Attack", "value": tech_bonus}],
 		"defense_name": "E-Defense", "target_number": FrameSystems.shared_stat(state, target, "edef") if target else 0, "lock_on": false}
 	var r := tech_target_check(state, attacker, target)
 	if not r.ok:
@@ -873,7 +878,7 @@ static func tech_preview(state: GameState, attacker: Unit, target: Unit, opts: D
 	var sources: Array = []
 	if target.has_status("Lock On") and target.side != attacker.side and opts.get("use_lock_on", true):
 		sources.append(_src("Lock On", "accuracy", "statuses: Lock On"))
-		out["accuracy"] = 1
+		out["accuracy"] = int(out["accuracy"]) + 1
 		out["lock_on"] = true
 	if target.has_status("Prone"):
 		sources.append(_src("Target is Prone", "accuracy", "statuses: Prone"))

@@ -89,7 +89,12 @@ class Activate:
 				var tech: bool = (a.get("ops", []) as Array).any(func(o: Dictionary) -> bool: return o.get("tech_attack", false))
 				if a.get("activation", "") == "Invade" or tech:
 					# Invade options and systems that make a tech attack (Markerlight, Tracking Bug).
-					var r := Attacks.tech_attack(state, u, target, String(a["name"]), params)
+					var topts := params.duplicate()
+					for o: Dictionary in a.get("ops", []):
+						if o.get("op", "") == "npc_tech":
+							topts["tech_bonus"] = int(o.get("attack_bonus", 0))  # an NPC tech feature's own attack bonus
+							topts["tech_accuracy"] = int(o.get("accuracy", 0))
+					var r := Attacks.tech_attack(state, u, target, String(a["name"]), topts)
 					events.append_array(r["events"])
 					hit = r["hit"]
 					if hit and a.get("activation", "") == "Invade":

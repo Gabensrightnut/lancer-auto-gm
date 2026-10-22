@@ -82,6 +82,7 @@ static func _start_round(state: GameState, last_side: String) -> Array[Dictionar
 		# "Each character only needs to make one such check per round" (glossary: Dangerous Terrain).
 		u.counters.erase("dangerous_checked")
 		u.counters.erase("round_grants_used")
+		u.counters.erase("activations_used")
 	return [{"type": "round_started", "round": state.round_number, "side": state.turn_side}] as Array[Dictionary]
 
 
@@ -148,7 +149,11 @@ static func finish_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 		if int(wreck.counters["unstable_explosion"]) <= 0:
 			wreck.counters.erase("unstable_explosion")
 			events.append_array(Pilots.explode(state, wreck, "Unstable System: the wreck explodes."))
-	state.acted.append(u.id)
+	# NPCs with several activations (Elite, Ultra...) take that many turns each round.
+	var used := int(u.counters.get("activations_used", 0)) + 1
+	u.counters["activations_used"] = used
+	if used >= maxi(1, int(u.counters.get("activations", 1))) or u.destroyed:
+		state.acted.append(u.id)
 	state.active_unit = ""
 	events.append({"type": "turn_ended", "unit": u.id})
 	var next := _next_side(state, u.side)
