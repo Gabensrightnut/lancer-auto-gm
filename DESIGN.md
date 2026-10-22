@@ -104,6 +104,18 @@ Every effect gets an animation, a combat-log line, and floating text (damage, MI
     rule reference);
   - greyed out with the reason when it can't be used ("Already used your Quick actions",
     "Jammed: can't take tech actions").
+- **Action bar, BG3-style:** one bar along the bottom center holding every attack, ability,
+  dash/Boost, tech action, system, weapon, reaction, protocol and core power: anything that
+  isn't a basic move. Basic movement stays click-to-move on the board.
+  - Grouped into tabs or sections (Weapons, Quick, Full, Tech, Systems, Reactions/Protocols,
+    Core) so it stays tidy; a small resource cluster sits beside it (HP, heat, structure,
+    stress, actions left).
+  - Icon buttons with cost badges (Quick/Full/Free/Reaction icons, heat, charges); hover for
+    the description card described above; number-key shortcuts.
+  - **Size:** big enough to read and click comfortably, never a skinny strip, never so big it
+    hides the battlefield. Start around 9% of screen height on 1080p, with a bar-size slider
+    in settings so we can tune it together; it scales with resolution.
+  - Players can rearrange buttons; the layout is saved per pilot.
 - **Cost preview:** hovering a button shows what it will spend on the resource bars (e.g. the
   heat bar previews +2), and warns if it would push you into the Danger Zone or overheat.
 - Enemies show only what the view rules allow (section 6): unscanned enemies show "??".
