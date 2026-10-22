@@ -118,7 +118,8 @@ static func _enter(story: StoryState, campaign: Campaign, node_id: String) -> Ar
 		if text != "":
 			(story.dialogue["log"] as Array).append({"speaker": speaker, "name": speaker_name(story, campaign, speaker), "text": text})
 			events.append({"type": "dialogue_line", "speaker": speaker, "name": speaker_name(story, campaign, speaker),
-				"expression": story.dialogue["expression"], "text": text, "choices": story.dialogue["choices"].duplicate(true)})
+				"expression": story.dialogue["expression"], "text": text, "choices": story.dialogue["choices"].duplicate(true),
+				"face": PortraitSpec.of_speaker(story, campaign, ctx, speaker, str(story.dialogue["expression"]))})
 		if node.has("choices") and (story.dialogue["choices"] as Array).is_empty():
 			# Nothing to say here any more: go on (or end) instead of getting stuck.
 			if node.has("next"):
@@ -258,8 +259,16 @@ static func _roll_choice(story: StoryState, campaign: Campaign, chk: Dictionary,
 				return pid != speaker and not story.down_and_out.has(pid) and bool(said.get(story.seat_of(pid), true)))
 			opts["helpers"] = helpers.size()
 			sharing = [speaker] + helpers
+			# A bond the GM rewarded in downtime: +1 Accuracy to help each other (Core p.50).
+			var mate := Bonds.reward_between(story, speaker, helpers)
+			if mate != "":
+				opts["accuracy"] = int(opts.get("accuracy", 0)) + 1
+				var srcs: Array = opts.get("sources", [])
+				srcs.append({"label": "Bond with %s" % campaign.pilots.get(mate, {}).get("callsign", ""), "kind": "accuracy", "type": "accuracy", "value": 1, "rule_ref": Bonds.REF_REWARD})
+				opts["sources"] = srcs
 		var rec := NarrativeCheck.roll(story.dice, campaign.pilots.get(speaker, {}), opts)
-		events.append({"type": "narrative_check", "pilot": speaker, "check": rec, "rule_ref": NarrativeCheck.REF})
+		events.append({"type": "narrative_check", "pilot": speaker, "check": rec, "rule_ref": NarrativeCheck.REF,
+			"helpers": sharing.filter(func(x: String) -> bool: return x != speaker)})
 		story.dialogue["pilot_expression"] = PortraitSpec.check_expression(str(rec["outcome"]))
 		success = rec["success"]
 		consequence = rec["consequence"]

@@ -214,7 +214,7 @@ static func harm(story: StoryState, campaign: Campaign, pid: String, amount: int
 
 
 static func kill(story: StoryState, pid: String, cause: String) -> Array:
-	story.dead[pid] = {"cause": cause, "mission": story.mission_number}
+	story.dead[pid] = {"cause": cause, "mission": story.mission_number, "place": str(story.current_hook.get("place", ""))}
 	story.down_and_out.erase(pid)
 	story.flags["dead_" + pid] = true
 	return [{"type": "pilot_died", "pilot": pid, "cause": cause, "rule_ref": "Core p.49, p.83: death"}]

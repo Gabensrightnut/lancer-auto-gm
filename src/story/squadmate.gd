@@ -215,7 +215,8 @@ static func banter(story: StoryState, campaign: Campaign, max_lines: int = 2) ->
 			continue
 		var ctx := {"speaker": pid, "vars": _vars(story, campaign, pid)}
 		var text := StoryText.fill(str(lines[_pick(story, "banter:%s:%s" % [persona, t], lines.size())]), story, campaign, ctx)
-		events.append({"type": "banter", "pilot": pid, "seat": s, "persona": persona, "topic": t, "text": text})
+		events.append({"type": "banter", "pilot": pid, "seat": s, "persona": persona, "topic": t, "text": text,
+			"face": {"portrait": PortraitSpec.for_pilot(campaign.pilots[pid]), "expression": _banter_face(t)}})
 		memory(story, pid)["last_topic"] = t
 		# Someone answers, now and then.
 		var others: Array = seats.filter(func(o: String) -> bool: return o != s and story.is_alive(story.pilot_of_seat(o)))
@@ -224,7 +225,8 @@ static func banter(story: StoryState, campaign: Campaign, max_lines: int = 2) ->
 			var replies: Array = b.get("replies", {}).get("reply_" + persona_of(story, o), [])
 			if not replies.is_empty():
 				events.append({"type": "banter", "pilot": story.pilot_of_seat(o), "seat": o, "persona": persona_of(story, o), "topic": "reply",
-					"text": str(replies[_pick(story, "reply:" + persona_of(story, o), replies.size())])})
+					"text": str(replies[_pick(story, "reply:" + persona_of(story, o), replies.size())]),
+					"face": {"portrait": PortraitSpec.for_pilot(campaign.pilots[story.pilot_of_seat(o)]), "expression": "neutral"}})
 	for pid: String in campaign.pilots:
 		memory(story, pid)["recent"] = {}
 	return events
@@ -255,7 +257,8 @@ static func barks_for(story: StoryState, campaign: Campaign, e: Dictionary, unit
 			return
 		var vars := _vars(story, campaign, pid)
 		vars.merge(extra, true)
-		out.append({"unit": unit, "pilot": pid, "text": StoryText.fill(str(lines[rng.randi_range(0, lines.size() - 1)]), story, campaign, {"speaker": pid, "vars": vars})})
+		out.append({"unit": unit, "pilot": pid, "face": {"portrait": PortraitSpec.for_pilot(campaign.pilots.get(pid, {"id": pid})),
+			"expression": _bark_face(moment)}, "text": StoryText.fill(str(lines[rng.randi_range(0, lines.size() - 1)]), story, campaign, {"speaker": pid, "vars": vars})})
 	match str(e.get("type", "")):
 		"combat_started":
 			for u: String in unit_pilot:
@@ -282,6 +285,15 @@ static func barks_for(story: StoryState, campaign: Campaign, e: Dictionary, unit
 					say.call(u, "enemy_down", {})
 					break
 	return out
+
+
+static func _banter_face(t: String) -> String:
+	return {"lost_friend": "sad", "wrecked": "worried", "wounded": "hurt", "mvp": "smug", "won": "smiling", "lost": "sad", "arc": "determined"}.get(t, "neutral")
+
+
+static func _bark_face(moment: String) -> String:
+	return {"start": "determined", "hit": "smiling", "crit": "shouting", "miss": "angry", "damaged": "hurt", "structure": "hurt",
+		"overheat": "worried", "ally_down": "shouting", "enemy_down": "smug"}.get(moment, "neutral")
 
 
 static func _vars(story: StoryState, campaign: Campaign, pid: String) -> Dictionary:
