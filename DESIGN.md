@@ -700,6 +700,8 @@ until you decide to turn any of these on as your own campaign rules.
 - Buying food and water as a survival need.
 - A saving roll to see whether a hit building collapses (the book uses HP, Armor and AP
   instead, Core p.68).
+- Being Stunned after falling, and a general "brace for the fall" reaction (the book gives
+  falls damage only, 3 AP per 3 spaces, max 9; only specific systems like flight avoid a fall).
 
 ## Rule differences: Lancer Tactics vs. the book
 
