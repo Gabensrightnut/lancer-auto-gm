@@ -265,3 +265,37 @@ func test_lifting_and_flying_carry_limit() -> void:
 	a.flight = "flight"
 	F.act(e, s, "drag", "a", {"target": "t"})
 	expect(not F.ok(F.act(e, s, "move", "a", {"to": [0, 3], "fly": true})), "flying carries at most Size 1/2")
+
+
+func test_ghast_nexus_drone() -> void:
+	_setup([], Vector2i(11, 0))
+	s.units.erase("a")
+	a = UnitFactory.build_mech(db(), "a", "mf_standard_pattern_i_everest", {"mounts": [{"weapons": []}, {"weapons": []}, {"weapons": ["mw_ghast_nexus"]}], "systems": []}, {"ll": 12})
+	a.side = "players"
+	s.add_unit(a)
+	s.active_unit = "a"
+	a.turn = {"quick": 0, "full": false, "taken": [], "quick_tech": [], "move_spent": 0, "moved": false, "acted": false, "overcharged": false, "free_quick": 0}
+	var key: String = Weapons.find(a, "2:0")["key"]
+	expect(not F.ok(F.act(e, s, "skirmish", "a", {"weapon": key, "target": "t"})), "11 away: out of Range 10")
+	var out := F.act(e, s, "activate", "a", {"ability": _key("Deploy Ghast Drone"), "to": [6, 0]})
+	expect(F.ok(out), F.reason(out))
+	expect(F.ok(F.act(e, s, "skirmish", "a", {"weapon": key, "target": "t"})), "Range traced from the drone")
+
+
+func test_dimensional_emblems_and_shackles() -> void:
+	_setup(["ms_h0r_os_system_upgrade_iii"], Vector2i(4, 4))
+	F.load_dice(s, [19])
+	var out := F.act(e, s, "activate", "a", {"ability": _key("Dimensional Emblems"), "target": "t"})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(Zones.of_kind(s, "emblem").size(), 3, "three constructs around the target")
+	F.act(e, s, "end_turn", "a")
+	s.acted = PackedStringArray()
+	s.turn_side = "players"
+	F.act(e, s, "start_turn", "a")
+	F.load_dice(s, [19])
+	out = F.act(e, s, "activate", "a", {"ability": _key("Celestial Shackles"), "target": "t"})
+	expect(F.ok(out), F.reason(out))
+	t.cell = Vector2i(8, 8)
+	out = F.act(e, s, "shackle_return", "a", {"target": "t"})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(t.cell, Vector2i(4, 4), "pulled back to its marked space")

@@ -275,6 +275,10 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				events.append_array(Attacks.attack(state, u, Weapons.find(u, "cbi:0"), target, {"fired_by_rule": true}))
 			"jackhammer":
 				events.append_array(TalentRules.jackhammer(state, u, target))
+			"emblems":
+				events.append_array(GearSystems.emblems(state, u, target, params))
+			"shackle":
+				events.append_array(GearSystems.shackle(u, target))
 			"fade":
 				events.append_array(GearSystems.fade(state, u, bool(op.get("on", true))))
 			"monitor":
@@ -624,7 +628,7 @@ const BASIC := [
 	["end_grapple", "Let Go", "other"], ["break_free", "Break Free", "other"], ["grapple_contest", "Grapple Contest", "other"],
 	["climb_on", "Climb On", "move"], ["board", "Board", "other"], ["disembark", "Climb Out", "other"], ["cut_cable", "Cut Cable", "attack"],
 	["pull_stake", "Pull Out Stake", "other"], ["use_object", "Use Object", "other"], ["ai_control", "Hand Over to AI", "other"],
-	["break_ice", "Break Free of the Ice", "other"], ["dig_out", "Dig Out of the Mud", "other"], ["backswing", "Backswing Cut", "attack"], ["hunter_throw", "Throw Knife (Hunter)", "attack"], ["drag", "Drag", "other"], ["issue_order", "Issue Order", "other"], ["detect_mines", "Detect Mines", "tech"], ["disarm_mine", "Disarm Mine", "other"], ["ace_burst", "Afterburners (Ace)", "move"], ["release_drag", "Let Go (drag)", "other"], ["feint", "Blademaster: Feint", "other"], ["trip", "Blademaster: Trip", "attack"], ["duelist_strike", "Blademaster: Grapple or Ram", "attack"],
+	["break_ice", "Break Free of the Ice", "other"], ["dig_out", "Dig Out of the Mud", "other"], ["backswing", "Backswing Cut", "attack"], ["hunter_throw", "Throw Knife (Hunter)", "attack"], ["drag", "Drag", "other"], ["issue_order", "Issue Order", "other"], ["detect_mines", "Detect Mines", "tech"], ["shackle_return", "Pull Back (Shackles)", "other"], ["break_shackles", "Break the Shackles", "other"], ["dispel_construct", "Dispel Construct", "other"], ["disarm_mine", "Disarm Mine", "other"], ["ace_burst", "Afterburners (Ace)", "move"], ["release_drag", "Let Go (drag)", "other"], ["feint", "Blademaster: Feint", "other"], ["trip", "Blademaster: Trip", "attack"], ["duelist_strike", "Blademaster: Grapple or Ram", "attack"],
 ]
 ## Actions whose own check needs no target, so the bar can show exactly whether they work.
 const NO_TARGET := ["stand_up", "bonus_move", "disengage", "hide", "overcharge", "shut_down", "boot_up",

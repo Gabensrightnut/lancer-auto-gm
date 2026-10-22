@@ -194,6 +194,15 @@ static func check_path(state: GameState, mover: Unit, path: Array) -> Array[Dict
 					events.append_array(_enter(state, z, mover))
 			"hardlight":
 				events.append_array(hardlight_crossing(state, mover, path))
+			"emblem":
+				# H0R_OS Dimensional Emblems: passing through one: 2 heat, and it's gone.
+				for i in range(1, path.size()):
+					var c := Vector2i(int(path[i][0]), int(path[i][1]))
+					if state.map.grid.footprint(c, mover.size).any(func(f: Vector2i) -> bool: return _has_cell(z, f)):
+						events.append_array(remove(state, String(z["id"]), "passed through"))
+						events.append({"type": "zone_triggered", "zone": z["id"], "unit": mover.id, "rule_ref": "systems: H0R_OS System Upgrade III"})
+						events.append_array(Combat.apply_heat(state, mover, 2, String(z.get("owner", ""))))
+						break
 			"javelin":
 				for i in range(1, path.size()):
 					if int(path[i][0]) == int(z["center"][0]) and int(path[i][1]) == int(z["center"][1]):

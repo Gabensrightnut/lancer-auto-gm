@@ -9,7 +9,31 @@ const IMPROVISED := {"key": "improvised", "name": "Improvised Attack", "type": "
 	"damage": [{"type": "Kinetic", "val": "1d6"}], "range": [{"type": "Threat", "val": 1}], "tags": []}
 
 
+## Ghast Nexus deployed as a drone: Range and line of sight from the drone (weapons: Ghast
+## Nexus). A destroyed drone can't be used until repaired. Returns the attack params to use, or
+## {"denied": reason}.
+static func from_drone(state: GameState, u: Unit, a: Dictionary) -> Dictionary:
+	var w := Weapons.find(u, String(a.get("weapon", "")))
+	if String(w.get("id", "")) != "mw_ghast_nexus":
+		return a
+	for d: Unit in state.units.values():
+		if String(d.counters.get("owner", "")) != u.id or not String(d.counters.get("ability", "")).begins_with("w:" + String(w["key"])):
+			continue
+		if d.destroyed:
+			return {"denied": "The Ghast drone was destroyed: repair it before using the weapon again."}
+		var out := a.duplicate()
+		out["origin_cell"] = d.cell
+		return out
+	return a
+
+
 static func _check_attack(state: GameState, u: Unit, a: Variant, ref: String) -> RuleResult:
+	if a is Dictionary:
+		var fd := AttackActions.from_drone(state, u, a)
+		if fd.has("denied"):
+			return RuleResult.deny(String(fd["denied"]), "weapons: Ghast Nexus")
+		if fd.has("origin_cell") and not (a as Dictionary).has("origin_cell"):
+			return _check_attack(state, u, fd, ref)
 	if a is Dictionary and (a as Dictionary).get("lunge", false):
 		# Hunter Lunge: check the attack from where the lunge ends.
 		var lr := TalentRules.check_lunge(state, u, Weapons.find(u, String(a.get("weapon", ""))), state.unit(String(a.get("target", ""))))
@@ -99,7 +123,8 @@ static func _check_aux(state: GameState, u: Unit, aux: Array, fired: Array[Dicti
 	return RuleResult.allow()
 
 
-static func _run(state: GameState, u: Unit, a: Dictionary, aux: bool) -> Array[Dictionary]:
+static func _run(state: GameState, u: Unit, a0: Dictionary, aux: bool) -> Array[Dictionary]:
+	var a := AttackActions.from_drone(state, u, a0)
 	var w := WeaponRules.variant(Weapons.find(u, String(a["weapon"])), a)
 	var pre := TalentRules.spend_ammo(u, String(a.get("ammo", "")))
 	var lunge: Array[Dictionary] = TalentRules.lunge(state, u, state.unit(String(a.get("target", "")))) if a.get("lunge", false) else ([] as Array[Dictionary])

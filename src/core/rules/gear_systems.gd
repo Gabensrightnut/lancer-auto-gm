@@ -980,6 +980,44 @@ static func fade_roll(state: GameState, u: Unit) -> Array[Dictionary]:
 	return events
 
 
+## H0R_OS III Dimensional Emblems: three Size 1 constructs in free spaces next to the target,
+## not next to each other (params.cells to choose, else the first that fit). Replaces your
+## earlier ones.
+static func emblems(state: GameState, u: Unit, t: Unit, params: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for z: Dictionary in Zones.of_kind(state, "emblem").duplicate():
+		if z.get("owner", "") == u.id:
+			events.append_array(Zones.remove(state, String(z["id"]), "replaced"))
+	var wanted: Array = params.get("cells", [])
+	var options: Array[Vector2i] = []
+	for c: Variant in wanted:
+		options.append(Vector2i(int(c[0]), int(c[1])))
+	if options.is_empty():
+		for c in Zones.cells_around(state, state.map.grid.footprint(t.cell, t.size), 1):
+			options.append(Vector2i(int(c[0]), int(c[1])))
+	var chosen: Array[Vector2i] = []
+	for c in options:
+		if chosen.size() >= 3 or state.map.grid.footprint(t.cell, t.size).has(c) or not Movement.placement(state, 1.0, c, state.map.ground_height(c))["ok"]:
+			continue
+		var taken := false
+		for o: Unit in state.units.values():
+			taken = taken or (Combat.is_present(o) and state.map.grid.footprint(o.cell, o.size).has(c))
+		if taken or chosen.any(func(x: Vector2i) -> bool: return state.map.grid.distance(x, c) <= 1):
+			continue
+		chosen.append(c)
+	for c in chosen:
+		events.append_array(Zones.add(state, {"kind": "emblem", "owner": u.id, "label": "Dimensional Emblem", "cells": [[c.x, c.y]], "center": [c.x, c.y],
+			"rule_ref": "systems: H0R_OS System Upgrade III"}))
+	return events
+
+
+## Celestial Shackles: the target's space is marked; once during your turn, if it has left,
+## a free action (shackle_return) teleports it back. A Systems save (quick action) ends it.
+static func shackle(u: Unit, t: Unit) -> Array[Dictionary]:
+	t.counters["shackled"] = {"by": u.id, "cell": [t.cell.x, t.cell.y], "level": t.level}
+	return [{"type": "effect_triggered", "unit": u.id, "effect": "Celestial Shackles", "target": t.id, "rule_ref": "systems: H0R_OS System Upgrade III"}] as Array[Dictionary]
+
+
 ## Weapon and system reactions to an attack: Autopod (an ally's attack consumed Lock On on a
 ## target within 15: hit it automatically for 3 kinetic), Vorpal Gun (a hostile in Range and
 ## line of sight damaged an ally: attack it), Monitor Module (the monitored ally was attacked

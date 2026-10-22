@@ -1025,5 +1025,20 @@
       ]
     }
   ],
-  "t_leader:Issue Order": []
+  "t_leader:Issue Order": [],
+  "ms_h0r_os_system_upgrade_iii:Dimensional Emblems": [
+    {
+      "op": "emblems",
+      "label": "Dimensional Emblems"
+    }
+  ],
+  "ms_h0r_os_system_upgrade_iii:Celestial Shackles": [
+    {
+      "op": "shackle",
+      "label": "Celestial Shackles"
+    }
+  ],
+  "deploy:ms_h0r_os_system_upgrade_iii:Dimensional Emblems": {
+    "skip": true
+  }
 }

@@ -248,6 +248,100 @@ class DisarmMine:
 		return events
 
 
+class ShackleReturn:
+	extends TurnAction
+	## Celestial Shackles: free, once during your turn: teleport the shackled character back to
+	## its marked space (or as close as possible); the effect ends. params: {"target"}
+
+	func type() -> String:
+		return "shackle_return"
+
+	func cost() -> String:
+		return TurnRules.FREE
+
+	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		var t := state.unit(String(params.get("target", "")))
+		var sh: Dictionary = t.counters.get("shackled", {}) if t != null else {}
+		if sh.is_empty() or String(sh.get("by", "")) != u.id:
+			return RuleResult.deny("Choose a character you shackled.", "systems: H0R_OS System Upgrade III")
+		if t.cell == Vector2i(int(sh["cell"][0]), int(sh["cell"][1])):
+			return RuleResult.deny("It hasn't left its space.", "systems: H0R_OS System Upgrade III")
+		return RuleResult.allow()
+
+	func apply(state: GameState, _u: Unit, params: Dictionary) -> Array[Dictionary]:
+		var t := state.unit(String(params["target"]))
+		var sh: Dictionary = t.counters["shackled"]
+		t.counters.erase("shackled")
+		var goal := Sight.make_body(state, Vector2i(int(sh["cell"][0]), int(sh["cell"][1])), int(sh.get("level", 0)), t.size)
+		var path := Movement.pull_path_to(state, t, goal, 0)
+		var last: Array = path.back()
+		var from := [t.cell.x, t.cell.y, t.level]
+		t.cell = Vector2i(last[0], last[1])
+		t.level = int(last[2])
+		var events: Array[Dictionary] = [{"type": "moved", "unit": t.id, "path": [from, last], "mode": "teleport", "cost": 0, "rule_ref": "systems: H0R_OS System Upgrade III"}]
+		events.append_array(Combat.refresh_engagement(state))
+		return events
+
+
+class BreakShackles:
+	extends TurnAction
+	## Quick action: a Systems save ends Celestial Shackles.
+
+	func type() -> String:
+		return "break_shackles"
+
+	func check(_state: GameState, u: Unit, _params: Dictionary) -> RuleResult:
+		return RuleResult.allow() if u.counters.has("shackled") else RuleResult.deny("You aren't shackled.", "systems: H0R_OS System Upgrade III")
+
+	func apply(state: GameState, u: Unit, _params: Dictionary) -> Array[Dictionary]:
+		var by := state.unit(String(u.counters["shackled"].get("by", "")))
+		var save := Combat.skill_check(state, u, "systems", "Break the shackles: Systems save", by.save_target if by != null else 10, 0, 0, [], true)
+		var events: Array[Dictionary] = [{"type": "skill_check", "unit": u.id, "check": save, "rule_ref": "systems: H0R_OS System Upgrade III"}]
+		if save["success"]:
+			u.counters.erase("shackled")
+			events.append({"type": "effect_ended", "unit": u.id, "effect": "Celestial Shackles", "reason": "saved"})
+		return events
+
+
+class DispelConstruct:
+	extends TurnAction
+	## A Systems check destroys a data construct next to you: a Dimensional Emblem as a quick
+	## action (params.emblem: zone id), an Ideal Image as a full action (params.target: its id;
+	## the check uses up your turn).
+
+	func type() -> String:
+		return "dispel_construct"
+
+	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		var ref := "systems: H0R_OS System Upgrade II/III"
+		if params.has("emblem"):
+			for z: Dictionary in Zones.of_kind(state, "emblem"):
+				if z["id"] == params["emblem"] and state.map.grid.distance(u.cell, Vector2i(int(z["center"][0]), int(z["center"][1]))) <= 1:
+					return RuleResult.allow()
+			return RuleResult.deny("Choose an emblem next to you.", ref)
+		var t := state.unit(String(params.get("target", "")))
+		if t == null or t.destroyed or not String(t.name).begins_with("Construct Other: Ideal Image") or Sight.unit_distance(state, u, t) > 1:
+			return RuleResult.deny("Choose an Ideal Image construct next to you.", ref)
+		if int(u.turn.get("quick", 0)) > 0 or u.turn.get("full", false):
+			return RuleResult.deny("Dispelling an Ideal Image is a full action.", ref)
+		return RuleResult.allow()
+
+	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+		var check := Combat.skill_check(state, u, "systems", "Dispel the construct: Systems check")
+		var events: Array[Dictionary] = [{"type": "skill_check", "unit": u.id, "check": check, "rule_ref": "systems: H0R_OS System Upgrade II/III"}]
+		if not params.has("emblem"):
+			u.turn["quick"] = 2
+			u.turn["full"] = true
+		if check["success"]:
+			if params.has("emblem"):
+				events.append_array(Zones.remove(state, String(params["emblem"]), "dispelled"))
+			else:
+				var t := state.unit(String(params["target"]))
+				t.destroyed = true
+				events.append({"type": "unit_destroyed", "unit": t.id, "reason": "dispelled"})
+		return events
+
+
 class Drag:
 	extends TurnAction
 	## Start dragging (or towing on a cable) a character, wreck or object, or lift one of your
