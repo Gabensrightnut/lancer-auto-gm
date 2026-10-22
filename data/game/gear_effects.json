@@ -314,6 +314,11 @@
       {
         "kind": "wide_arc"
       }
+    ],
+    "1": [
+      {
+        "kind": "backswing"
+      }
     ]
   },
   "t_gunslinger": {
@@ -350,12 +355,22 @@
       {
         "kind": "knife_juggler"
       }
+    ],
+    "1": [
+      {
+        "kind": "lunge"
+      }
     ]
   },
   "t_infiltrator": {
     "2": [
       {
         "kind": "ambush"
+      }
+    ],
+    "1": [
+      {
+        "kind": "prowl"
       }
     ]
   },
@@ -617,5 +632,27 @@
       "stat": "heat_cap",
       "value": 2
     }
-  ]
+  ],
+  "t_bonded": {
+    "1": [
+      {
+        "kind": "bonded"
+      }
+    ]
+  },
+  "t_walking_armory": {
+    "1": [
+      {
+        "kind": "ammo_case",
+        "charges": 6
+      }
+    ]
+  },
+  "t_exemplar": {
+    "1": [
+      {
+        "kind": "exemplar"
+      }
+    ]
+  }
 }

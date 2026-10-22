@@ -38,8 +38,29 @@ extends RefCounted
 ##   ambush                  starting its turn Hidden, the first attack that hits: Hull save or
 ##                           Slowed, Impaired and no reactions (Infiltrator 2)
 ##   snow_crash              a tech hit consuming Lock On also deals 2 heat (Hacker 1)
+##   bonded                  +1 Accuracy on mech checks and saves next to the bondmate
+##                           (pilot "bondmate": unit id); +2 if both have it (Bonded 1)
+##   backswing               1/round, a hit with a Heavy+ melee weapon grants a free half-damage
+##                           attack on another character (action "backswing") (Executioner 1)
+##   ammo_case {charges}     1/turn, a Main ranged attack may use params.ammo thumper|shock|mag
+##                           (Walking Armory 1)
+##   exemplar                the first attack on its turn on a hostile within 3 marks it (unless
+##                           params.no_mark); allies who miss the mark may reroll (Valiant Aid
+##                           reaction) (Exemplar 1)
+##   covering_fire           the Covering Fire quick action and its reaction attack (Heavy Gunner 1)
+##   lunge                   1/round, before an Auxiliary melee attack (params.lunge): fly up to 3
+##                           spaces straight at the target, ignoring engagement (Hunter 1)
+##   prowl                   on its own turn: Hidden isn't lost to line of sight or leaving cover,
+##                           Hide in plain sight, pass through enemies (Infiltrator 1)
 
 const REF := "talents"
+## Walking Armory ammunition: damage type and added tag.
+const AMMO := {
+	"thumper": {"type": "Explosive", "tag": {"id": "tg_knockback", "val": 1}},
+	"shock": {"type": "Energy"},
+	"mag": {"type": "Kinetic", "tag": {"id": "tg_arcing"}},
+}
+const RANGED_TYPES := ["CQB", "Rifle", "Launcher", "Cannon", "Nexus"]
 
 
 static func _first(u: Unit, key: String) -> bool:
@@ -322,6 +343,12 @@ static func on_hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 	if lock_on and w.get("type", "") == "Launcher" and Effects.has(attacker, "seismic_deluge") and _round_ok(state, attacker, "seismic_deluge"):
 		_use_round(state, attacker, "seismic_deluge")
 		events.append_array(Combat.add_status(state, target, "Prone", attacker.id))
+	if kind == Attacks.KIND_MELEE and w.get("size", "") in ["Heavy", "Superheavy"] and Effects.has(attacker, "backswing") \
+			and _round_ok(state, attacker, "backswing") and state.active_unit == attacker.id and not opts.get("backswing", false):
+		# Executioner Backswing Cut: a free follow-up attack is available (action "backswing").
+		attacker.turn["backswing"] = {"weapon": String(w.get("key", "")), "not": target.id}
+		events.append({"type": "follow_up_available", "unit": attacker.id, "action": "backswing", "weapon": w.get("key", ""),
+			"text": "Backswing Cut: a free melee attack with the same weapon on a different character, for half damage.", "rule_ref": REF})
 	if attacker.turn.get("ambush", false):
 		attacker.turn.erase("ambush")
 		var save := Combat.skill_check(state, target, "hull", "Save vs Ambush", attacker.save_target, 0, 0, [], true)
@@ -332,8 +359,225 @@ static func on_hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 	return events
 
 
+## Bonded: Accuracy on a mech's skill checks and saves next to its bondmate (+1, +2 if both
+## have the talent and chose each other).
+static func bond_sources(state: GameState, u: Unit) -> Array:
+	if state == null or u.kind != Unit.KIND_MECH:
+		return []
+	var best := 0
+	for o: Unit in state.units.values():
+		if o == u or not Combat.is_present(o) or Sight.unit_distance(state, u, o) > 1:
+			continue
+		var n := 0
+		if Effects.has(u, "bonded") and String(u.counters.get("bondmate", "")) == o.id:
+			n += 1
+		if Effects.has(o, "bonded") and String(o.counters.get("bondmate", "")) == u.id:
+			n += 1
+		best = maxi(best, n)
+	if best == 0:
+		return []
+	return [{"label": "Bondmate", "kind": "accuracy", "type": "accuracy", "value": mini(2, best), "rule_ref": "talents: Bonded"}]
+
+
+## Walking Armory: can this attack use that ammo?
+static func check_ammo(u: Unit, w: Dictionary, ammo: String) -> RuleResult:
+	var ref := "talents: Walking Armory"
+	if not AMMO.has(ammo):
+		return RuleResult.deny("Ammo is thumper, shock or mag.", ref)
+	if not Effects.has(u, "ammo_case"):
+		return RuleResult.deny("Special ammunition needs the Walking Armory talent.", ref)
+	if String(w.get("size", "")) != "Main" or not RANGED_TYPES.has(String(w.get("type", ""))):
+		return RuleResult.deny("Special ammunition is for Main ranged weapons.", ref)
+	if u.turn.get("ammo_used", false):
+		return RuleResult.deny("Special ammunition only once per turn.", ref)
+	if ammo_left(u) <= 0:
+		return RuleResult.deny("The Ammo Case is empty.", ref)
+	return RuleResult.allow()
+
+
+static func ammo_left(u: Unit) -> int:
+	if not u.counters.has("ammo_case"):
+		u.counters["ammo_case"] = Effects.value(u, "ammo_case", "charges") + Effects.value(u, "limited_bonus")
+	return int(u.counters["ammo_case"])
+
+
+## Spends a charge; returns the event (empty if no ammo was used).
+static func spend_ammo(u: Unit, ammo: String) -> Dictionary:
+	if not AMMO.has(ammo) or not Effects.has(u, "ammo_case"):
+		return {}
+	u.counters["ammo_case"] = ammo_left(u) - 1
+	u.turn["ammo_used"] = true
+	return {"type": "effect_triggered", "unit": u.id, "effect": "Ammo Case: " + ammo.capitalize(), "target": u.id,
+		"charges": u.counters["ammo_case"], "rule_ref": "talents: Walking Armory"}
+
+
+## Shock ammunition: characters next to the chosen target take 1 AP energy, hit or miss.
+static func shock_ammo(state: GameState, u: Unit, ammo: String, target: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if ammo != "shock" or target == null:
+		return events
+	var ids: Array = state.units.keys()
+	ids.sort()
+	for id: String in ids:
+		var o := state.unit(id)
+		if o != target and o != u and Combat.is_present(o) and o.kind != Unit.KIND_DEPLOYABLE and Sight.unit_distance(state, o, target) <= 1:
+			events.append_array(Combat.deal_damage(state, o, [{"type": "Energy", "amount": 1}], {"ap": true, "source": u.id}))
+	return events
+
+
+## Exemplar's Mark (Honorable Challenge): after the first attack on its turn against a hostile
+## within Range 3, hit or miss. One mark per character; it lasts until the start of the
+## Exemplar's next turn.
+static func exemplar_mark(state: GameState, attacker: Unit, target: Unit, opts: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if not Effects.has(attacker, "exemplar") or state.active_unit != attacker.id or attacker.turn.get("exemplar_attacked", false):
+		return events
+	if target.side == attacker.side or target.kind == Unit.KIND_DEPLOYABLE or opts.get("reaction", false):
+		return events
+	attacker.turn["exemplar_attacked"] = true
+	if opts.get("no_mark", false) or Sight.unit_distance(state, attacker, target) > 3 or not Combat.is_present(target):
+		return events
+	target.counters["exemplar_mark"] = attacker.id  # replaces any other mark
+	events.append({"type": "effect_triggered", "unit": attacker.id, "effect": "Exemplar's Mark", "target": target.id,
+		"text": "Marked until the start of its next turn: allies who miss it may reroll (Valiant Aid).", "rule_ref": "talents: Exemplar"})
+	return events
+
+
+## Valiant Aid (1/round reaction): an ally attacked the Exemplar's mark and missed. Returns the
+## Exemplar who lets them reroll, or null.
+static func valiant_aid(state: GameState, attacker: Unit, target: Unit) -> Unit:
+	var ex := state.unit(String(target.counters.get("exemplar_mark", "")))
+	if ex == null or ex == attacker or ex.side != attacker.side or not Effects.has(ex, "exemplar") or not _round_ok(state, ex, "valiant_aid"):
+		return null
+	if not Reactions.can_react(ex, "valiant_aid", state).ok:
+		return null
+	var d := Reactions.offer(state, ex, "valiant_aid", {"attacker": attacker.id, "target": target.id, "suggested": {"take": true}}, {"take": true})
+	if not d.get("take", false):
+		return null
+	_use_round(state, ex, "valiant_aid")
+	Reactions._mark_used(ex, "valiant_aid", state)
+	return ex
+
+
+## Heavy Gunner Covering Fire: a character within 10, in line of sight and in Range of one of
+## your Heavy ranged weapons.
+static func check_covering_fire(state: GameState, u: Unit, t: Unit) -> RuleResult:
+	var ref := "talents: Heavy Gunner"
+	if t == null or not Combat.is_present(t) or t.kind == Unit.KIND_DEPLOYABLE or t == u:
+		return RuleResult.deny("Choose a character (params.target).", ref)
+	if Sight.unit_distance(state, u, t) > 10 or not Sight.unit_line_of_sight(state, u, t):
+		return RuleResult.deny("It must be within 10 spaces and in line of sight.", ref)
+	if _heavy_ranged(state, u, t).is_empty():
+		return RuleResult.deny("It must be in Range of one of your Heavy ranged weapons.", ref)
+	return RuleResult.allow()
+
+
+static func _heavy_ranged(state: GameState, u: Unit, t: Unit) -> Dictionary:
+	for w: Dictionary in u.loadout.get("weapons", []):
+		if String(w.get("size", "")) == "Heavy" and String(w.get("type", "")) != "Melee" and Attacks.preview(state, u, w, t, {"reaction": true})["ok"]:
+			return w
+	return {}
+
+
+## Impaired until the start of your next turn; one target at a time.
+static func covering_fire(state: GameState, u: Unit, t: Unit) -> Array[Dictionary]:
+	for o: Unit in state.units.values():
+		if String(o.counters.get("covering_fire", "")) == u.id:
+			o.counters.erase("covering_fire")
+			o.counters.erase("cf_moved")
+	t.counters["covering_fire"] = u.id
+	t.counters["cf_moved"] = 0
+	var events: Array[Dictionary] = [{"type": "effect_triggered", "unit": u.id, "effect": "Covering Fire", "target": t.id,
+		"text": "Impaired until the start of your next turn; if it moves more than 1 space it shakes that off, but you may shoot it (half damage).", "rule_ref": "talents: Heavy Gunner"}]
+	events.append_array(Combat.add_status(state, t, "Impaired", u.id, "", u.id))
+	return events
+
+
+## The covered character moved: past 1 space it clears Impaired and the gunner may attack it
+## as a reaction with a Heavy ranged weapon for half damage, heat and burn; then it ends.
+## PROVISIONAL: the attack comes after the move that took it past 1 space.
+static func covered_moved(state: GameState, t: Unit, spaces: int) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var g := state.unit(String(t.counters.get("covering_fire", "")))
+	if g == null:
+		return events
+	t.counters["cf_moved"] = int(t.counters.get("cf_moved", 0)) + spaces
+	if int(t.counters["cf_moved"]) <= 1:
+		return events
+	t.counters.erase("covering_fire")
+	t.counters.erase("cf_moved")
+	if t.has_status("Impaired") and String(t.statuses["Impaired"].get("source", "")) == g.id:
+		events.append_array(Combat.remove_status(t, "Impaired", "moved out of the covering fire"))
+	if not Combat.is_present(g) or not Combat.is_present(t) or not _round_ok(state, g, "covering_fire_attack") or not Reactions.can_react(g, "covering_fire_attack", state).ok:
+		return events
+	var w := _heavy_ranged(state, g, t)
+	if w.is_empty():
+		return events
+	var d := Reactions.offer(state, g, "covering_fire_attack", {"target": t.id, "weapon": w.get("key", ""), "suggested": {"take": true}}, {"take": true})
+	if not d.get("take", false):
+		return events
+	_use_round(state, g, "covering_fire_attack")
+	Reactions._mark_used(g, "covering_fire_attack", state)
+	events.append_array(Attacks.attack(state, g, w, t, {"reaction": true, "half_damage": true}))
+	return events
+
+
+## Covering Fire ends at once if its target damages the gunner.
+static func damaged_by(target: Unit, source: Unit) -> void:
+	if source != null and String(source.counters.get("covering_fire", "")) == target.id:
+		source.counters.erase("covering_fire")
+		source.counters.erase("cf_moved")
+
+
+## Infiltrator Prowl is active (its own turn).
+static func prowling(state: GameState, u: Unit) -> bool:
+	return state != null and u != null and state.active_unit == u.id and Effects.has(u, "prowl")
+
+
+static func check_lunge(state: GameState, u: Unit, w: Dictionary, t: Unit) -> RuleResult:
+	var ref := "talents: Hunter"
+	if not Effects.has(u, "lunge"):
+		return RuleResult.deny("Lunge needs the Hunter talent.", ref)
+	if String(w.get("size", "")) != "Auxiliary" or String(w.get("type", "")) != "Melee":
+		return RuleResult.deny("Lunge is for Auxiliary melee weapons.", ref)
+	if not _round_ok(state, u, "lunge"):
+		return RuleResult.deny("Lunge only once per round.", ref)
+	if t == null or not Combat.is_present(t):
+		return RuleResult.deny("Choose the target first.", ref)
+	if u.has_status("Immobilized"):
+		return RuleResult.deny("You can't move while Immobilized.", "statuses: Immobilized")
+	return RuleResult.allow()
+
+
+## Up to 3 spaces straight toward the target. PROVISIONAL: along the ground path that gets
+## closest (flight over obstacles isn't modelled).
+static func lunge_path(state: GameState, u: Unit, t: Unit) -> Array:
+	return Movement.pull_path_to(state, u, Sight.body_of(state, t), 1, 3)
+
+
+## The lunge: no engagement stop and no reactions (so not involuntary movement either).
+static func lunge(state: GameState, u: Unit, t: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	_use_round(state, u, "lunge")
+	var path := lunge_path(state, u, t)
+	if path.size() < 2:
+		return events
+	var last: Array = path.back()
+	u.cell = Vector2i(last[0], last[1])
+	u.level = int(last[2])
+	events.append({"type": "moved", "unit": u.id, "path": path, "mode": "fly", "cost": 0, "rule_ref": "talents: Hunter"})
+	events.append_array(Combat.refresh_engagement(state))
+	return events
+
+
 ## Start of a turn: chaff, ambush.
 static func turn_started(state: GameState, u: Unit) -> void:
+	for o: Unit in state.units.values():
+		if String(o.counters.get("exemplar_mark", "")) == u.id:
+			o.counters.erase("exemplar_mark")  # until the start of the Exemplar's next turn
+		if String(o.counters.get("covering_fire", "")) == u.id:
+			o.counters.erase("covering_fire")
+			o.counters.erase("cf_moved")
 	if Effects.has(u, "chaff"):
 		u.counters["chaff"] = true
 	if Effects.has(u, "ambush") and u.has_status("Hidden"):

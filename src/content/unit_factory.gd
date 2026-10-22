@@ -329,6 +329,8 @@ static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dic
 	gear_ids.append_array(pilot.get("core_bonuses", []))
 	_add_gear_effects(u, gear_ids, pilot.get("talents", {}))
 	_core_bonus_choices(u, pilot)
+	if pilot.has("bondmate"):
+		u.counters["bondmate"] = String(pilot["bondmate"])  # Bonded: the bondmate's unit id
 	TalentRules.adjust_weapons(u)
 	AISystems.detect(db, u)
 	u.loadout["core_bonus_ids"] = (pilot.get("core_bonuses", []) as Array).duplicate()

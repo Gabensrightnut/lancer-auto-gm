@@ -94,6 +94,7 @@ static func _do_move(state: GameState, u: Unit, plan: Dictionary, mode: String, 
 		events.append_array(Combat.fall_unit(state, u))
 	events.append_array(Effects.moved(state, u, mode))
 	events.append_array(Environments.moved(state, u, path))
+	events.append_array(TalentRules.covered_moved(state, u, maxi(0, path.size() - 1)))
 	if u.counters.has("riding"):
 		events.append_array(Riders.drop(state, u, false, "climbed down"))  # riders climb down by moving away
 	events.append_array(Zones.leave_hologram(state, u, from, from_level))

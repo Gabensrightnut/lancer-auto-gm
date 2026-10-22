@@ -692,9 +692,25 @@ Whenever Lancer Tactics handles a rule differently from the tabletop book, it's 
 and you pick which one the game uses. The book version is used until you decide. Your choice
 becomes a named option, so the other version stays available.
 
+Sources: the Lancer Tactics developers' public FAQ and comments on itch.io
+([FAQ](https://itch.io/post/15524940), [activation](https://itch.io/post/15782614),
+[Aux fire](https://itch.io/post/15791508)) and devlogs
+([NPC Rebake](https://wick.itch.io/lancer-tactics/devlog/937132/npc-rebake-rests-repairs-community-maps),
+[talents](https://wick.itch.io/lancer-tactics/devlog/960548/keeping-the-fire-lit-more-talents)).
+Lancer Tactics says it keeps "extremely close" to the book, so the list is short. Rows with
+an option name can already be switched in the game's table rules (`state.rulings`,
+`Rulings.catalog()` entries with `variant: "lancer_tactics"`); the book is the default.
+
 | Rule | Book | Lancer Tactics | Why LT might do it | Your pick |
 |---|---|---|---|---|
-| (none found yet) | | | | |
+| Firing two weapons (option `lt_split_barrage`) | Two weapons only as a Barrage, a full action with both shots together; Skirmish (one weapon) once per turn (Core p.60, p.64) | Two "action points" instead of quick/full actions; each mount costs 1, so two weapons are two separate shots and you can move between them | One simple action currency is easier to show on a video-game action bar, and moving between shots gives more positional play | |
+| Repeating a Quick Tech option (option `lt_repeat_quick_tech`) | Quick Tech can be taken twice, but each time a different option (Core p.69) | The same option can be used twice (e.g. two Invades) | Falls out of the action-point system; fewer "why is this greyed out?" moments | |
+| When Brace is offered (option `lt_brace_prompt`) | Brace whenever an attack hits and deals damage (Core p.73) | Only offered when the hit would structure or stress you, or deal more than half your HP | Stops a pop-up after every hit; Brace is mostly worth it on big hits anyway | |
+| Firing only the Aux weapon of a mount | A Skirmish's main attack can be an Auxiliary weapon and deals bonus damage as usual; only the extra Aux shot gets none (Core p.64, p.67) | Firing just the Aux on a mount that also has a Main counts as firing the mount, with no Aux bonus damage | Follows from attacking "per mount" instead of "per weapon" | |
+| Flying | Flyers choose their altitude freely as they move and must move at least 1 space each turn or fall (Core p.63) | Flying is an on/off state that puts you 3 spaces above the surface | Much simpler camera, targeting and pathing in 3D | |
+| NPCs | The core book's NPC classes, tiers and templates (Veteran, Elite, Ultra...) | Uses "NPC Rebake" (a community revision by Kai): no extra attacks from tier, reworked Veteran/Ultra options | Better balance for automated enemies; LT notes it is a deliberate divergence | |
+| Pilots fighting on foot | Pilots can leave or eject from their mech and act on foot (Core p.71) | No pilot combat | Scope: LT is about mech battles | |
+| Talents that need a table call | Leader's "commands", Skirmisher 2 (works off Skirmish) and Bonded's bondmate are played as written | Being redesigned or possibly skipped, because LT has no Skirmish action or open-ended commands | Open-ended talent text doesn't fit an automated game | |
 
 ## Build plan: parallel sessions
 

@@ -104,7 +104,7 @@ static func skill_check(state: GameState, u: Unit, skill: String, label: String,
 	var all_sources := sources.duplicate()
 	var diff := difficulty
 	var bonus_acc := 0
-	for src: Dictionary in Effects.accuracy_sources(u, ["save" if is_save else "check"], skill):
+	for src: Dictionary in Effects.accuracy_sources(u, ["save" if is_save else "check"], skill) + TalentRules.bond_sources(state, u):
 		all_sources.append(src)
 		if src["kind"] == "accuracy":
 			bonus_acc += int(src["value"])
@@ -149,6 +149,7 @@ static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dict
 	if target.destroyed:
 		return events
 	var source: String = opts.get("source", "")
+	TalentRules.damaged_by(target, state.unit(source))  # Heavy Gunner: Covering Fire ends
 	var shredded := target.has_status("Shredded")
 	# "Can't be reduced in any way" (Monarch Seeking Payload, Pegasus Omnigun): no Armor,
 	# Resistance or other reduction; "bypasses Immunity" (Omnigun) skips Immunity too.
@@ -763,8 +764,8 @@ static func can_hide(state: GameState, u: Unit) -> RuleResult:
 			return RuleResult.deny("Inside a Lotus Projector field you can't Hide.", "systems: Lotus Projector")
 	if u.has_status("Engaged"):
 		return RuleResult.deny("You can't Hide while Engaged.", "actions: Hide")
-	if u.has_status("Invisible"):
-		return RuleResult.allow()
+	if u.has_status("Invisible") or TalentRules.prowling(state, u):
+		return RuleResult.allow()  # Infiltrator Prowl: Hide even in plain sight on its turn
 	var me := Sight.body_of(state, u)
 	if Sight.fully_in_soft_cover(state, me):
 		return RuleResult.allow()
@@ -782,8 +783,8 @@ static func can_hide(state: GameState, u: Unit) -> RuleResult:
 static func refresh_hidden(state: GameState) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	for u: Unit in state.units.values():
-		if not u.has_status("Hidden") or u.has_status("Invisible"):
-			continue
+		if not u.has_status("Hidden") or u.has_status("Invisible") or TalentRules.prowling(state, u):
+			continue  # Infiltrator Prowl: checked again when its turn ends
 		var me := Sight.body_of(state, u)
 		if Sight.fully_in_soft_cover(state, me):
 			continue
