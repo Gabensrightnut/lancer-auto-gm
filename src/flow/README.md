@@ -21,6 +21,14 @@ the hub shows the story's `SessionZeroScreen` over the town before anything else
 board fills only once it's applied (`GameFlow.finish_session_zero`), so its choices shape the
 first jobs. `campaign.options.session_zero_pending` keeps it waiting if the player quits first.
 
+Enemy commanders and parley in story battles (Core p.60): the host sends every batch of rules
+events to the story (`GameFlow.story_battle_events`, StoryEngine `battle_events`); when the
+commander opens a parley, or the squad presses "Call for terms" (refused with the book's reason
+while the fight is in question), the story's `DialogueView` shows over the battle and the AI
+waits. A choice that ends the fight (`battle_end_requested`, from any seat) becomes the GM's
+`gm_end_mission` (`BattleSession.end_by_parley`). Friends online see the conversation through
+their StoryClient. Bark speaker names come from `line.who` (so the commander's taunts are named).
+
 Codex (the story's `CodexPanel`, the rules reference): a main menu button, and in battle the
 pause menu ("Codex: look up <term>") or the rebindable Codex key (F1), opened on whatever the
 player last pointed at: a mech's frame, else the last action hovered on the action bar. After leveling up, talent, license and core bonus picks are made in the pilot builder

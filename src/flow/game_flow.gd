@@ -184,6 +184,27 @@ static func join_story(client: NetClient, db: ContentDB, first_payload: Dictiona
 	return story_client
 
 
+## A story battle's rules events for the story (StoryEngine "battle_events": the enemy
+## commander keeps count and may open a parley). Friends online get any story events.
+## Returns the story events.
+static func story_battle_events(campaign: Campaign, events: Array) -> Array:
+	if story == null or _story_campaign != campaign.id:
+		return []
+	var r := story_engine.submit(story, campaign, {"type": "battle_events", "seat": "gm", "params": {"events": events}})
+	var out: Array = r.get("events", []) if r.get("ok", false) else []
+	if not out.is_empty() and story_session != null:
+		story_session._send(out)
+	return out
+
+
+## Copies every script variable of `src` onto `dst` (same class), keeping `dst` the object
+## other code holds (a friend's StoryClient mirror into the objects the story UI shows).
+static func copy_into(dst: Object, src: Object) -> void:
+	for prop: Dictionary in src.get_property_list():
+		if int(prop["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE:
+			dst.set(prop["name"], src.get(prop["name"]))
+
+
 ## Leaving an online story game (either side).
 static func leave_story_online() -> void:
 	story_client = null

@@ -32,6 +32,14 @@ var bubbles: SpeechBubbles
 ## hovered (an action on the bar, or a mech's frame).
 var codex: CodexPanel
 var _hover_term := ""
+## Story campaigns: the enemy commander's parley (Core p.60) as a conversation over the battle,
+## and the squad's "Call for terms". The engine is the host's StoryHostEngine or a friend's
+## StoryClient; `dlg_story`/`dlg_campaign` are the objects the dialogue shows.
+var dialogue: DialogueView
+var terms_button: Button
+var story_engine: StoryEngine
+var dlg_story: StoryState
+var dlg_campaign: Campaign
 ## The campaign's story (host), for the tutorial's lessons and which tips were shown. A friend
 ## in someone else's game gets a fresh one (tips only; the host keeps the campaign).
 var story: StoryState
@@ -84,6 +92,7 @@ func _ready() -> void:
 		story = StoryState.new(0)
 	tutorial.bind(campaign)
 	session.events_seen.connect(_on_events_seen)
+	_setup_story_battle()
 	var speed := MenuSession.settings().animation_speed
 	session.ai_interval = {"cinematic": 0.9, "normal": 0.45, "fast": 0.1}.get(speed, 0.45)
 	if not session.view.is_empty():
@@ -131,7 +140,7 @@ func _stage_twist() -> void:
 
 func _process(delta: float) -> void:
 	# The in-battle menu really pauses the AI when everyone in the game is at this screen.
-	session.busy = _draining or player.playing or turn.busy or narration.visible or (menu_layer.visible and _can_pause())
+	session.busy = _draining or player.playing or turn.busy or narration.visible or (dialogue != null and dialogue.visible) or (menu_layer.visible and _can_pause())
 	session.poll(delta)
 	if _ended or not _loaded:
 		return
@@ -206,9 +215,97 @@ func _barks(events: Array) -> void:
 			seat_of[id] = seat
 	for e: Dictionary in events:
 		for line: Dictionary in Squadmate.barks_for(st, c, e, unit_pilot, seat_of):
-			var who := str(c.pilots.get(str(line["pilot"]), {}).get("callsign", ""))
+			var who := str(line.get("who", c.pilots.get(str(line.get("pilot", "")), {}).get("callsign", "")))
 			bubbles.say(str(line["unit"]), who, str(line["text"]))
 			combat_log.add_line("[color=#9fc3e8]%s:[/color] %s" % [who, line["text"]])
+
+
+# --- Story campaigns: the enemy commander and parley -------------------------------------
+
+func _setup_story_battle() -> void:
+	if session.is_host and campaign != null and GameFlow.is_story(campaign) and not story.seats.is_empty():
+		var sess := GameFlow.open_story_session(campaign, content, session.local_humans())
+		story_engine = StoryHostEngine.new(content, sess)
+		dlg_story = story
+		dlg_campaign = campaign
+		session.host_events.connect(_on_host_events)
+		sess.updated.connect(_on_story_update)
+	elif not session.is_host and GameFlow.story_client != null and GameFlow.story_client.story != null:
+		story_engine = GameFlow.story_client
+		dlg_story = GameFlow.story_client.story
+		dlg_campaign = GameFlow.story_client.campaign
+		GameFlow.story_client.mirror_changed.connect(_on_story_mirror)
+		GameFlow.story_client.refused.connect(_on_story_refused)
+	if story_engine == null:
+		return
+	dialogue = DialogueView.new()
+	ui.add_child(dialogue)
+	ui.move_child(dialogue, codex.get_index())  # under the codex, over the board and HUD
+	dialogue.bind(story_engine, dlg_story, dlg_campaign, _story_seat())
+	dialogue.story_events.connect(_on_dialogue_events)
+	terms_button = Button.new()
+	terms_button.theme = MenuTheme.theme()
+	terms_button.text = "Call for terms"
+	terms_button.tooltip_text = "Call on the enemy commander to stand down. Only once the fight's outcome is clear: the GM ends a fight early only then (Core p.60)."
+	terms_button.position = Vector2(150, 16)
+	terms_button.pressed.connect(_call_for_terms)
+	ui.add_child(terms_button)
+
+
+func _story_seat() -> String:
+	if not session.is_host:
+		return session.seat
+	var humans := session.local_humans()
+	return str(humans[0]) if not humans.is_empty() else session.seat
+
+
+## Host: each batch of rules events goes to the story (the commander may open a parley).
+func _on_host_events(events: Array) -> void:
+	GameFlow.story_battle_events(dlg_campaign, events)  # its story events reach _on_story_update
+
+
+## Host: everything the story reports, from any seat (a friend's parley choice too).
+func _on_story_update(_view: Dictionary, events: Array) -> void:
+	_story_events(events)
+
+
+## A friend: a new view of the host's story.
+func _on_story_mirror(s: StoryState, c: Campaign, events: Array) -> void:
+	GameFlow.copy_into(dlg_story, s)
+	GameFlow.copy_into(dlg_campaign, c)
+	_story_events(events)
+
+
+func _on_story_refused(reason: String, _ref: String) -> void:
+	show_banner(reason)
+	combat_log.add_line("[color=#ff8a7a]%s[/color]" % reason)
+
+
+func _on_dialogue_events(events: Array) -> void:
+	if session.is_host:
+		return  # the session's update brings them (with everyone else's)
+	_story_events(events)
+
+
+func _story_events(events: Array) -> void:
+	for e: Dictionary in events:
+		match str(e.get("type", "")):
+			"rival_defiant":
+				combat_log.add_line("[color=#ff8a7a]%s[/color]" % e.get("text", ""))
+			"battle_end_requested":
+				session.end_by_parley(e)
+	if dialogue != null:
+		dialogue.refresh()
+
+
+## "Call for terms": the engine says no, with the book's reason, while the fight's in question.
+func _call_for_terms() -> void:
+	var r := story_engine.submit(dlg_story, dlg_campaign, {"type": "parley", "seat": _story_seat(), "params": {}})
+	if not r.get("ok", false):
+		_on_story_refused(str(r.get("reason", "")), str(r.get("rule_ref", "")))
+		return
+	if dialogue != null:
+		dialogue.refresh()
 
 
 func _load(v: Dictionary) -> void:

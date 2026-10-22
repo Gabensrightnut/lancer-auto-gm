@@ -266,8 +266,8 @@ func _send_position() -> void:
 ## A new view of the host's story: copied into the objects the hub's panels already hold.
 func _on_mirror(s: StoryState, c: Campaign, events: Array) -> void:
 	var where := JSON.stringify([hub.story.hub.get("name", ""), hub.story.hub.get("seed", "")])
-	copy_into(hub.story, s)
-	copy_into(hub.campaign, c)
+	GameFlow.copy_into(hub.story, s)
+	GameFlow.copy_into(hub.campaign, c)
 	if where != JSON.stringify([hub.story.hub.get("name", ""), hub.story.hub.get("seed", "")]):
 		hub.rebuild()
 	hub._handle(events)
@@ -295,14 +295,6 @@ func _on_host_lobby(data: Dictionary) -> void:
 func _on_connection_lost(_retrying: bool) -> void:
 	if hub != null:
 		hub.hud.toast("Lost the connection to the host. Rejoin from Join online.", StoryStyle.RED)
-
-
-## Copies every script variable of `src` onto `dst` (same class), keeping `dst` the object
-## other code holds.
-static func copy_into(dst: Object, src: Object) -> void:
-	for prop: Dictionary in src.get_property_list():
-		if int(prop["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE:
-			dst.set(prop["name"], src.get(prop["name"]))
 
 
 # --- Menu ------------------------------------------------------------------------------------
