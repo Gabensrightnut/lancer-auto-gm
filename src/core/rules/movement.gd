@@ -199,7 +199,8 @@ static func _blocked_by_unit(body: Sight.Body, others: Array[Dictionary], ending
 ## Movement budget left for a standard move or Boost this turn.
 static func budget(u: Unit, mode: String) -> int:
 	if mode == MODE_BOOST:
-		return u.speed + Effects.value(u, "boost_bonus")  # e.g. Integrated Nerveweave: +2
+		# e.g. Integrated Nerveweave: +2; Ace 2's 1d6 extra spaces while flying
+		return u.speed + Effects.value(u, "boost_bonus") + int(u.turn.get("ace_extra", 0))
 	if mode == MODE_BONUS:
 		return int(u.turn.get("bonus_move", 0))
 	return maxi(0, u.speed - int(u.turn.get("move_spent", 0)))

@@ -130,6 +130,8 @@ static func skill_check(state: GameState, u: Unit, skill: String, label: String,
 	if u.kind == Unit.KIND_PILOT:
 		bonus = u.grit  # unmounted characters add GRIT to attacks and saves (Core p.74)
 	var record := state.dice.check(bonus, acc, diff, target, all_sources)
+	if u.kind == Unit.KIND_MECH:
+		record = TalentRules.nhp_reroll(state, u, record, func() -> Dictionary: return state.dice.check(bonus, acc, diff, target, all_sources))
 	record["bonus_sources"] = [{"label": "Grit" if u.kind == Unit.KIND_PILOT else skill.capitalize(), "value": bonus}]
 	record["bonuses"] = record["bonus_sources"]
 	record["target_label"] = "Save Target" if target != CHECK_TARGET else "Check (10+)"
