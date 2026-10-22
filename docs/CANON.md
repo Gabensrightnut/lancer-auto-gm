@@ -35,3 +35,13 @@ book in a way that changes the setting; parked.
 | Paid passage vs free company rides | Not canon (not stated) | Parked. |
 | Fight-for-it deals paid in scrap/spare mechs/money | Not canon | Parked. Jobs paying out Reserves is canon. |
 | Food and water as a survival need | Not canon | Parked. |
+
+## When canon allows more than one answer
+
+Sometimes the book allows several readings or choices (e.g. keep your mech and take it with
+you, or reprint one wherever you go: both are canon, Core p.31, p.82). Research each canon
+option, and support all of them as player choices instead of picking one.
+
+| Question | Canon options | How the game handles it |
+|---|---|---|
+| Carry your mech or reprint it? | Both: printers are everywhere and Full Repair prints any licensed mech; nothing forbids keeping one (p.31, p.82) | Your mech travels with the squad by default; reprint at a printer when destroyed or to change builds |
