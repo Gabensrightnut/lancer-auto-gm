@@ -656,6 +656,21 @@ func _battle_stage(tag: String) -> void:
 				guard += 1
 				await get_tree().process_frame
 			await get_tree().create_timer(0.45 if tag == "eject" else 0.4).timeout
+		"barriers":
+			# Vision and barrier zones, a Blinded mech and a cascading NHP (look check).
+			var mc := me.cell
+			view.zones.set_zones([
+				{"id": "b1", "kind": "hardlight", "owner": "everest", "cells": _ring_cells(mc, 2)},
+				{"id": "b2", "kind": "blink", "owner": "goblin", "cells": _ring_cells(battle.state.unit("goblin").cell, 1)},
+				{"id": "b3", "kind": "flash", "owner": "everest", "cells": _ring_cells(mc + Vector2i(-4, 2), 1)},
+				{"id": "b4", "kind": "oasis", "owner": "everest", "cells": [[mc.x + 3, mc.y + 1], [mc.x + 3, mc.y + 2], [mc.x + 4, mc.y + 2], [mc.x + 4, mc.y + 3]]},
+			])
+			(view.units["minotaur"] as MechView).set_stat("statuses", {"Blinded": {}})
+			(view.units["blackbeard"] as MechView).set_stat("statuses", {"Cascading": {}})
+			view.tactical.look_at_point(view.units["everest"].global_position + Vector3(0, 0.5, 0), 15.0)
+			view.tactical.pitch = -48.0
+			view.tactical.snap()
+			await get_tree().create_timer(0.8).timeout
 		"barks":
 			var rng := RandomNumberGenerator.new()
 			rng.seed = 8
@@ -779,7 +794,7 @@ func lockout_samples() -> Array:
 func screenshot_stage(tag: String) -> void:
 	world_spec = ""
 	battle_systems = {}
-	if tag in ["barks", "eject", "dismount", "on_foot"]:
+	if tag in ["barks", "eject", "dismount", "on_foot", "barriers"]:
 		await _battle_stage(tag)
 		return
 	if tag.begins_with("fly"):
