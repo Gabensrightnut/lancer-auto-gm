@@ -212,6 +212,17 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				events.append_array(Zones.add(state, {"kind": "interdiction", "owner": u.id, "anchor": u.id, "radius": 3, "cells": [], "center": [u.cell.x, u.cell.y],
 					"label": "Interdiction Field", "rule_ref": "systems: Interdiction Field"}))
 				events.append_array(Combat.add_status(state, u, "Slowed", "Interdiction Field"))
+			"hand_over":
+				events.append_array(AISystems.hand_over(state, u, String(a["name"])))
+			"sekhmet":
+				events.append_array(AISystems.sekhmet(state, u))
+			"sekhmet_off":
+				events.append_array(AISystems.sekhmet_off(state, u))
+			"simulacrum":
+				events.append_array(AISystems.simulacrum(state, u, params))
+			"duat":
+				events.append_array(Combat.apply_heat(state, target, 2, u.id))
+				events.append_array(AISystems.duat(state, u, target))
 			"uncle_attack":
 				# UNCLE: a free attack at +2 Difficulty with its weapon; that weapon then can't be
 				# used again until the start of your next turn.
@@ -425,6 +436,17 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 				any = any or (m.counters.get("owner", "") == u.id and m.name == String(op.get("deployable", "")) and not m.destroyed and m.counters.get("armed", false))
 			if not any:
 				return RuleResult.deny("No armed %s to detonate." % op.get("deployable", ""), "tags: Mine")
+		if op.get("op", "") in ["hand_over", "sekhmet"]:
+			if not AISystems.has_ai(u) or AISystems.controlled(u):
+				return RuleResult.deny("Only a mech with the AI tag, not already under its AI's control.", AISystems.REF)
+		if op.get("op", "") == "sekhmet_off":
+			var tb := AISystems.check_take_back(state, u)
+			if not tb.ok:
+				return tb
+		if op.get("op", "") == "simulacrum":
+			var aim: Variant = TurnAction.cell_param(params, "aim")
+			if aim == null or not state.map.has_cell(aim) or Sight.distance(state, Sight.body_of(state, u), Sight.make_body(state, aim, state.map.ground_height(aim), 0.5)) > 50:
+				return RuleResult.deny("Choose a center within range 50 (params.aim).", "systems: ATHENA-Class NHP")
 		if op.get("op", "") == "uncle_attack":
 			var uw := Weapons.find(u, String(a["source_key"]).trim_prefix("mod:"))
 			if (u.turn.get("fired", []) as Array).has(String(uw.get("key", ""))):
@@ -504,7 +526,7 @@ const BASIC := [
 	["shut_down", "Shut Down", "other"], ["boot_up", "Boot Up", "other"], ["eject", "Eject", "other"],
 	["dismount", "Dismount", "other"], ["mount", "Mount", "other"], ["self_destruct", "Self-Destruct", "other"],
 	["end_grapple", "Let Go", "other"], ["break_free", "Break Free", "other"], ["grapple_contest", "Grapple Contest", "other"],
-	["pull_stake", "Pull Out Stake", "other"], ["use_object", "Use Object", "other"],
+	["pull_stake", "Pull Out Stake", "other"], ["use_object", "Use Object", "other"], ["ai_control", "Hand Over to AI", "other"],
 ]
 ## Actions whose own check needs no target, so the bar can show exactly whether they work.
 const NO_TARGET := ["stand_up", "bonus_move", "disengage", "hide", "overcharge", "shut_down", "boot_up",

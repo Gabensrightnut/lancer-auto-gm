@@ -748,5 +748,80 @@
         }
       ]
     }
+  ],
+  "ms_comp_con_class_assistant_unit:Engage COMP/CON": [
+    {
+      "op": "hand_over"
+    }
+  ],
+  "ms_sekhmet_class_nhp:SEKHMET Protocol": [
+    {
+      "op": "sekhmet"
+    }
+  ],
+  "ms_sekhmet_class_nhp:Take Back Control": [
+    {
+      "op": "sekhmet_off"
+    }
+  ],
+  "ms_tlaloc_class_nhp:TLALOC Protocol": [
+    {
+      "op": "status",
+      "who": "self",
+      "status": "Immobilized",
+      "duration": "start_next_turn"
+    },
+    {
+      "op": "self_effects",
+      "duration": "start_next_turn",
+      "effects": [
+        {
+          "kind": "tlaloc"
+        }
+      ]
+    }
+  ],
+  "ms_athena_class_nhp:Simulacrum": [
+    {
+      "op": "simulacrum"
+    }
+  ],
+  "ms_osiris_class_nhp:Hurl Into the Duat": {
+    "frequency": "1/round",
+    "ops": [
+      {
+        "op": "duat",
+        "tech_attack": true
+      }
+    ]
+  },
+  "ms_scylla_class_nhp:Unleash SCYLLA": [
+    {
+      "op": "self_effects",
+      "duration": "start_next_turn",
+      "effects": [
+        {
+          "kind": "scylla"
+        }
+      ]
+    }
+  ],
+  "ms_scylla_class_nhp:Unleash SCYLLA Reaction": [],
+  "ms_noah_class_nhp:Diluvian Ark": [
+    {
+      "op": "status",
+      "who": "self",
+      "status": "Slowed",
+      "duration": "end_next_turn"
+    },
+    {
+      "op": "self_effects",
+      "duration": "end_next_turn",
+      "effects": [
+        {
+          "kind": "noah"
+        }
+      ]
+    }
   ]
 }

@@ -185,6 +185,7 @@ class ShutDown:
 
 	func apply(state: GameState, u: Unit, _params: Dictionary) -> Array[Dictionary]:
 		var events := Combat.add_status(state, u, "Shut Down", u.id)
+		events.append_array(AISystems.shut_down(state, u))  # stabilizes a cascading NHP (Core p.107)
 		events.append_array(Combat.clear_heat(u, "Shut Down"))
 		events.append_array(Combat.remove_status(u, "Exposed", "Shut Down"))
 		# Statuses caused by tech actions end (Lock On, Fragment Signal's Impaired/Slowed).

@@ -23,5 +23,9 @@
   "t_drone_commander:1": "The Shepherd Drone protocol is resolved at the table.",
   "t_skirmisher:1": "Forcing another character to make a save also ends the chaff; drop it yourself when that happens.",
   "wm_shock_wreath": "A character already burning can only draw line of sight to adjacent spaces until the end of its next turn; the GM keeps to that.",
-  "wm_phase_ready_mod": "You must know roughly where the target is; check that with the GM before attacking through walls."
+  "wm_phase_ready_mod": "You must know roughly where the target is; check that with the GM before attacking through walls.",
+  "ms_sekhmet_class_nhp": "While SEKHMET drives, it moves toward the closest visible character and attacks it in melee; whoever controls the mech keeps to that.",
+  "ms_comp_con_class_assistant_unit": "The COMP/CON follows simple orders you give at the start of your turn; whoever controls the mech keeps to them.",
+  "ms_scylla_class_nhp": "The second trigger (a hostile attacking or using an object you chose) is the table's.",
+  "ms_osiris_class_nhp": "The First Gate (you control the target's next standard move) is played out at the table."
 }

@@ -66,7 +66,11 @@ const REF := "data/game: effects"
 static func all(u: Unit) -> Array:
 	if u == null:
 		return []
-	return (u.loadout.get("effects", []) as Array) + (u.counters.get("active_effects", []) as Array)
+	var list: Array = (u.loadout.get("effects", []) as Array) + (u.counters.get("active_effects", []) as Array)
+	if u.counters.get("ai_control", false):
+		# An AI in control doesn't benefit from the pilot's talents or other features (Core p.107).
+		list = list.filter(func(e: Dictionary) -> bool: return not AISystems.pilot_feature(e))
+	return list
 
 
 static func of(u: Unit, kind: String) -> Array:
@@ -337,6 +341,7 @@ static func turn_ending(state: GameState, u: Unit) -> Array[Dictionary]:
 			"target": u.id, "chambers": u.counters["chambers"], "rule_ref": "frames: Raleigh core system"})
 	events.append_array(GearSystems.impaled_turn_end(state, u))
 	events.append_array(GearSystems.horus_turn_ending(state, u))
+	events.append_array(AISystems.turn_ending(state, u))
 	events.append_array(GearSystems.ha_turn_ending(state, u))
 	events.append_array(GearSystems.clamp_turn_end(state, u))
 	if has(u, "reload_if_idle") and not u.turn.get("attacked", false):

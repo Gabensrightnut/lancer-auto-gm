@@ -328,6 +328,14 @@ static func turn_started(state: GameState, u: Unit) -> Array[Dictionary]:
 
 static func turn_ended(state: GameState, u: Unit) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
+	for z: Dictionary in of_kind(state, "athena"):
+		var o := state.unit(String(z.get("owner", "")))
+		if o != null and o.side != u.side and Combat.is_present(u) and contains(state, z, u):
+			# ATHENA: hostiles that end their turn inside are Locked On and lose Invisible/Hidden.
+			events.append_array(Combat.add_status(state, u, "Lock On", o.id))
+			for st in ["Invisible", "Hidden"]:
+				events.append_array(Combat.remove_status(u, st, "ATHENA"))
+	AISystems.athena_reveal(state)
 	for z: Dictionary in of_kind(state, "swarm_body"):
 		if z.get("owner", "") == u.id:
 			if z.get("at", []) == [u.cell.x, u.cell.y, u.level]:

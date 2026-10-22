@@ -179,6 +179,17 @@ static func _fire(state: GameState, u: Unit, w: Dictionary, a: Dictionary, aux: 
 	if not pre_events.is_empty():
 		pre_events.append_array(Attacks.attack(state, u, w, target, opts))
 		return pre_events
+	if Effects.has(u, "tlaloc"):
+		# TLALOC: reroll a missed attack once against a new target within Range.
+		var ev := Attacks.attack(state, u, w, target, opts)
+		if not CloseCombat._hit(ev):
+			var other := AISystems.tlaloc_retarget(state, u, w, target, [target.id])
+			if other != null:
+				var o2 := opts.duplicate()
+				o2["skip_spend"] = true
+				ev.append({"type": "attack_retargeted", "attacker": u.id, "from": target.id, "to": other.id, "rule_ref": "systems: TLALOC-Class NHP"})
+				ev.append_array(Attacks.attack(state, u, w, other, o2))
+		return ev
 	if int(WeaponRules.rules(w).get("chain", 0)) > 0 and a.has("chain"):
 		# Arc Projector: on a hit, another target within range 3 of the last, 1 heat each, no
 		# bonus damage, nobody twice.

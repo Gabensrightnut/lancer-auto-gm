@@ -276,7 +276,7 @@ static func _on_structure_or_stress(state: GameState, u: Unit, structure: bool) 
 
 static func structure_check(state: GameState, u: Unit) -> Array[Dictionary]:
 	var r := _damage_check_roll(state, u.max_structure - u.structure)
-	var events: Array[Dictionary] = []
+	var events: Array[Dictionary] = AISystems.cascade_check(state, u)
 	var lowest: int = r["lowest"]
 	var outcome := ""
 	if r["ones"] >= 2:
@@ -461,7 +461,7 @@ static func _danger_zone(u: Unit) -> Array[Dictionary]:
 
 static func stress_check(state: GameState, u: Unit) -> Array[Dictionary]:
 	var r := _damage_check_roll(state, u.max_stress - u.stress)
-	var events: Array[Dictionary] = []
+	var events: Array[Dictionary] = AISystems.cascade_check(state, u)
 	if Effects.has(u, "reactor_stabilizer") and int(r["lowest"]) < 5:
 		# Reactor Stabilizer: may reroll, keeping the second result (rerolled unless the first
 		# was already the best outcome).
@@ -731,6 +731,10 @@ static func refresh_engagement(state: GameState) -> Array[Dictionary]:
 ## Could `u` HIDE right now? Not Engaged, and every enemy either has no line of sight or
 ## the unit is entirely inside soft cover; INVISIBLE can always hide (actions: Hide).
 static func can_hide(state: GameState, u: Unit) -> RuleResult:
+	for z: Dictionary in Zones.of_kind(state, "athena"):
+		var o := state.unit(String(z.get("owner", "")))
+		if o != null and o.side != u.side and Zones.contains(state, z, u):
+			return RuleResult.deny("Inside an ATHENA model you can't Hide.", "systems: ATHENA-Class NHP")
 	if not (u.counters.get("tracked_by", []) as Array).is_empty():
 		return RuleResult.deny("A tracking bug is on you: you can't Hide.", "systems: Tracking Bug")
 	for o: Unit in state.units.values():

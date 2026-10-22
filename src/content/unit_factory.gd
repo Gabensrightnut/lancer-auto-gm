@@ -296,6 +296,7 @@ static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dic
 	gear_ids.append_array(pilot.get("core_bonuses", []))
 	_add_gear_effects(u, gear_ids, pilot.get("talents", {}))
 	TalentRules.adjust_weapons(u)
+	AISystems.detect(db, u)
 	u.loadout["abilities"] = _abilities(db, u, frame, loadout.get("systems", []), pilot.get("talents", {}))
 	if (frame_effects_data().get(frame_id, {}) as Dictionary).get("orochi_choice", false):
 		# Hydra: one OROCHI drone accompanies it; Full Deployment brings all four.
@@ -393,12 +394,15 @@ static func _add_source(out: Array, src: Dictionary, key: String, name: String, 
 			continue
 		var aname := String(a.get("name", name) if a.get("name") != null else name)
 		var ops: Variant = a.get("ops") if a.has("ops") else data.get("%s:%s" % [data_id, aname])
+		var freq := String(a.get("frequency", tag_freq))
 		if ops is Dictionary:
-			# {"activation": ..., "ops": [...]}: lancer-data gives no activation (Thermal Grenade).
+			# {"activation": ..., "frequency": ..., "ops": [...]}: what lancer-data leaves out
+			# (Thermal Grenade's activation, Hurl Into the Duat's 1/round).
 			act = String(ops.get("activation", act))
+			freq = String(ops.get("frequency", freq))
 			ops = ops.get("ops", [])
 		out.append({"key": "%s/a%d" % [key, n], "name": aname, "source_key": key, "source_name": name,
-			"kind": "action", "activation": act, "frequency": a.get("frequency", tag_freq),
+			"kind": "action", "activation": act, "frequency": freq,
 			"trigger": a.get("trigger", ""), "detail": a.get("detail", ""), "range": a.get("range", []),
 			"requires_core_active": a.get("requires_core_active", false),
 			"ops": ops if ops is Array else [], "automated": ops is Array})

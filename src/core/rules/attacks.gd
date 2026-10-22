@@ -46,6 +46,8 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 		return fail.call("You can't attack yourself.", REF_SKIRMISH)
 	if Effects.has(attacker, "no_attacks"):
 		return fail.call("You can't make attacks of any kind right now (Retractable Profile).", "systems: Retractable Profile")
+	if Effects.has(attacker, "melee_only") and not Weapons.is_melee(w):
+		return fail.call("SEKHMET can't make ranged attacks.", "systems: SEKHMET-Class NHP")
 	if GearSystems.in_stasis(target):
 		return fail.call("In stasis: it can't be targeted.", "systems: Stasis Generator")
 	var area_origin: Variant = opts.get("area_origin")
@@ -173,7 +175,7 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 	if kind == KIND_RANGED and attacker.has_status("Engaged") and not WeaponRules.rules(w).get("ignore_engaged", false) and not Effects.has(attacker, "ignore_engaged"):
 		sources.append(_src("Engaged", "difficulty", "statuses: Engaged"))
 		diff += 1
-	if TalentRules.ignores_cover(state, attacker, w, target):
+	if TalentRules.ignores_cover(state, attacker, w, target) or AISystems.exposed_to(state, attacker, target):
 		cover = cover.duplicate()
 		cover["cover"] = "none"  # Vanguard See-Through Seeker
 		cover["difficulty"] = 0
@@ -278,8 +280,19 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		if not opts.get("skip_spend", false):
 			events.append_array(_spend_weapon(state, attacker, w))
 		return events
+	events.append_array(AISystems.harmed_by(state, target, attacker))  # attacking a Fourth Gate ally ends it
 	events.append_array(GearSystems.sentinel_fire(state, attacker))
 	if not Combat.is_present(attacker):
+		return events
+	var ark := AISystems.ark(state, attacker, target, w)
+	events.append_array(ark["events"])
+	if ark["miss"]:
+		events.append({"type": "attack_rolled", "attacker": attacker.id, "target": target.id, "weapon": w.get("key", ""), "weapon_name": w.get("name", ""),
+			"kind": kind, "check": {}, "result": "miss", "cover": "none", "cover_cells": [], "invisible_miss": false, "lock_on_consumed": false,
+			"ark": true, "rule_ref": "systems: NOAH-Class NHP"})
+		if not opts.get("skip_spend", false):
+			events.append_array(_spend_weapon(state, attacker, w))
+		events.append_array(AISystems.ark_backlash(state, attacker, target, w))
 		return events
 	if attacker.counters.has("shrike_code"):
 		events.append_array(Combat.apply_heat(state, attacker, 2, "Shrike Code"))  # 2 heat whenever it attacks
@@ -440,6 +453,10 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 	if attacker.has_status("Hidden"):
 		events.append_array(Combat.remove_status(attacker, "Hidden", "attacked"))
 		events.append_array(Combat.refresh_engagement(state))
+	if result == "miss":
+		events.append_array(AISystems.ark_backlash(state, attacker, target, w))
+	if not opts.get("reaction", false):
+		events.append_array(AISystems.scylla(state, attacker, target))
 	Effects.attacked(state, attacker, String(opts.get("action", "attack")))
 	return events
 
@@ -538,7 +555,7 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 	if overkill_heat > 0 and not shared.get("overkill_paid", false):
 		shared["overkill_paid"] = true
 		events.append_array(Combat.apply_heat(state, attacker, overkill_heat, "Overkill"))
-	events.append_array(_apply(state, attacker, target, parts, ap, opts.has("area_origin"), pv.get("seeking_payload", false) or Weapons.has_tag(w, "tg_irreducible"), opts.get("resist_all", false)))
+	events.append_array(_apply(state, attacker, target, parts, ap, opts.has("area_origin"), pv.get("seeking_payload", false) or Weapons.has_tag(w, "tg_irreducible"), opts.get("resist_all", false), opts.get("half_damage", false)))
 	if chambers >= 4 and Combat.is_present(target):
 		events.append_array(Combat.add_status(state, target, "Shredded", attacker.id, target.id))
 	events.append_array(WeaponRules.on_hit(state, attacker, w, target, crit))
@@ -634,7 +651,7 @@ static func avenger_silos(state: GameState, attacker: Unit, target: Unit) -> Arr
 ## Applies a hit's damage parts, letting the target Brace if its reaction policy says so.
 ## `unreducible`: the damage can't be reduced in any way (Monarch Seeking Payload).
 ## `resist_all`: Resistance to all of it from another rule (Saladin Defensive Pulse).
-static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array, ap: bool, area: bool = false, unreducible: bool = false, resist_all: bool = false) -> Array[Dictionary]:
+static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array, ap: bool, area: bool = false, unreducible: bool = false, resist_all: bool = false, half: bool = false) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	var sim := TraitReactions.before_damage(state, attacker, target) if not parts.is_empty() else {"events": [], "resist_all": false, "teleport": {}}
 	events.append_array(sim["events"])
@@ -647,6 +664,13 @@ static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array,
 	if brace:
 		events.append_array(Reactions.brace(state, target, attacker.id))
 	var aegis := brace and Effects.has(target, "flash_aegis")
+	if half:
+		var halved_parts: Array = []
+		for p: Dictionary in parts:
+			var c := p.duplicate()
+			c["amount"] = int(c.get("amount", 0)) - int(c.get("amount", 0)) / 2
+			halved_parts.append(c)
+		parts = halved_parts  # SCYLLA reactions: half damage, heat and burn
 	# HyperDense Armor: half damage, heat and burn to characters beyond its range.
 	var dist := Sight.unit_distance(state, attacker, target)
 	for e: Dictionary in Effects.of(attacker, "half_damage_beyond"):

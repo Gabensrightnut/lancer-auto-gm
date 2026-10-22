@@ -3,6 +3,37 @@ extends RefCounted
 ## Actions that gear gives to characters other than its owner.
 
 
+class AIControl:
+	extends TurnAction
+	## Protocol: hand the controls to your AI, or take them back at the start of a later turn
+	## (Core p.107). params: {"take_back": bool}
+
+	func type() -> String:
+		return "ai_control"
+
+	func kinds() -> Array:
+		return [Unit.KIND_MECH]
+
+	func cost() -> String:
+		return TurnRules.FREE
+
+	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		if u.turn.get("acted", false) or u.turn.get("moved", false):
+			return RuleResult.deny("A protocol: only at the start of your turn.", "tags: Protocol")
+		if params.get("take_back", false):
+			return AISystems.check_take_back(state, u)
+		if not AISystems.has_ai(u):
+			return RuleResult.deny("This mech has no AI system.", AISystems.REF)
+		if AISystems.controlled(u):
+			return RuleResult.deny("The AI already has control.", AISystems.REF)
+		return RuleResult.allow()
+
+	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+		if params.get("take_back", false):
+			return AISystems.take_back(state, u, "pilot")
+		return AISystems.hand_over(state, u, String(u.loadout["ai"]["source"]))
+
+
 class PullStake:
 	extends TurnAction
 	## Full action: an impaled character repeats the Hull save to remove a Charged Stake.
