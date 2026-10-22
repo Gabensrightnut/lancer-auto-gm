@@ -51,6 +51,10 @@ class LockOn:
 	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
 		var target := state.unit(String(params["target"]))
 		var events := Combat.add_status(state, target, "Lock On", u.id)
+		if Effects.has(u, "lock_on_shreds") and u.counters.get("lock_on_shreds_round", -1) != state.round_number:
+			# Prophetic Scanners: 1/round, Lock On also Shreds until the end of the target's next turn.
+			u.counters["lock_on_shreds_round"] = state.round_number
+			events.append_array(Combat.add_status(state, target, "Shredded", u.id, target.id))
 		events.append({"type": "tech_action", "unit": u.id, "target": target.id, "action": "lock_on", "rule_ref": "actions: Lock On"})
 		return events
 

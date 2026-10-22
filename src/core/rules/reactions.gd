@@ -13,8 +13,8 @@ extends RefCounted
 ## - "never", or "on_structure" for Brace (only when the hit would take the last HP).
 ##
 ## Each reaction can be used again from the start of your next turn, and only one reaction
-## per turn (Core p.73). PROVISIONAL (docs/RULES_TODO.md "NPCs and Brace", "Reaction
-## decisions"): NPCs have no Brace; GM/AI seats answer with suggested_answer().
+## per turn (Core p.73). Whether NPCs Brace is the table's "npc_brace" ruling; AI seats
+## answer prompts with suggested_answer().
 
 const REF_BRACE := "actions: Brace"
 const REF_OVERWATCH := "actions: Overwatch"
@@ -79,7 +79,8 @@ static func suggested_answer(state: GameState) -> Dictionary:
 static func can_react(u: Unit, reaction: String, state: GameState = null) -> RuleResult:
 	if not Combat.is_present(u):
 		return RuleResult.deny("Not on the field.", "")
-	if state != null and String(u.counters.get("reaction_turn", "")) == _turn_key(state):
+	if state != null and String(u.counters.get("reaction_turn", "")) == _turn_key(state) \
+			and int(u.counters.get("reaction_turn_count", 1)) >= maxi(1, Effects.value(u, "reactions_per_turn")):
 		return RuleResult.deny("Only one reaction per turn (yours or anyone else's).", "Core p.73 Reactions")
 	if state != null and Movement.above_ceiling(state, u):
 		return RuleResult.deny("More than 10 spaces above the battlefield you can't take reactions.", "Core p.63 Flight")
@@ -94,8 +95,10 @@ static func can_react(u: Unit, reaction: String, state: GameState = null) -> Rul
 	if u.counters.has("prepared"):
 		return RuleResult.deny("Holding a prepared action: no other reactions until it triggers.", "actions: Prepare")
 	if reaction == "brace" and u.kind == Unit.KIND_NPC:
-		return RuleResult.deny("NPCs don't Brace.", REF_BRACE)
-	if (u.counters.get("reactions", []) as Array).has(reaction):
+		if state == null or Rulings.ask(state, "npc_brace") != "yes":
+			return RuleResult.deny("NPCs don't Brace (table ruling).", REF_BRACE)
+	var allowed := 1 + (Effects.value(u, "overwatch_extra") if reaction == "overwatch" else 0)
+	if (u.counters.get("reactions", []) as Array).count(reaction) >= allowed:
 		return RuleResult.deny("You've already used that reaction; it comes back at the start of your next turn.", "Core p.73 Reactions")
 	return RuleResult.allow()
 
@@ -109,7 +112,9 @@ static func _mark_used(u: Unit, reaction: String, state: GameState = null) -> vo
 	used.append(reaction)
 	u.counters["reactions"] = used
 	if state != null:
-		u.counters["reaction_turn"] = _turn_key(state)
+		var key := _turn_key(state)
+		u.counters["reaction_turn_count"] = (int(u.counters.get("reaction_turn_count", 0)) + 1) if u.counters.get("reaction_turn", "") == key else 1
+		u.counters["reaction_turn"] = key
 	Effects.reacted(u)
 
 
@@ -131,9 +136,22 @@ static func overwatch_weapons(state: GameState, u: Unit, mover: Unit) -> Array[S
 	var out: Array[String] = []
 	var dist := Sight.unit_distance(state, u, mover)
 	for w: Dictionary in u.loadout.get("weapons", []):
-		if Weapons.threat(w) < dist or Weapons.has_tag(w, "tg_ordnance") or w.get("size", "") == "Superheavy" or Weapons.area(w) != "":
+		if Weapons.threat_for(u, w) < dist or Weapons.has_tag(w, "tg_ordnance") or w.get("size", "") == "Superheavy" or Weapons.area(w) != "":
 			continue
 		if Attacks.preview(state, u, w, mover)["ok"]:
+			out.append(String(w["key"]))
+	return out
+
+
+## Area weapons that could Overwatch `mover` (if the table allows it): in THREAT, not
+## Ordnance or Superheavy, and the template can be aimed at the mover.
+static func _area_overwatch_weapons(state: GameState, u: Unit, mover: Unit) -> Array[String]:
+	var out: Array[String] = []
+	var dist := Sight.range_distance(state, Sight.body_of(state, u), Sight.body_of(state, mover))
+	for w: Dictionary in u.loadout.get("weapons", []):
+		if Weapons.area(w) == "" or Weapons.threat_for(u, w) < dist or Weapons.has_tag(w, "tg_ordnance") or w.get("size", "") == "Superheavy":
+			continue
+		if Attacks.weapon_ready(u, w).ok and Areas.plan(state, u, w, mover.cell, mover.level)["ok"]:
 			out.append(String(w["key"]))
 	return out
 
@@ -150,7 +168,14 @@ static func overwatch(state: GameState, mover: Unit) -> Array[Dictionary]:
 		var h := state.unit(id)
 		if not can_react(h, "overwatch", state).ok or not Combat.is_present(mover) or mover.destroyed:
 			continue
+		var body_h := Sight.body_of(state, h)
+		var body_m := Sight.body_of(state, mover)
+		if Sight.distance(state, body_h, body_m) != state.map.grid.footprint_distance(body_h.cells, body_m.cells):
+			Rulings.ask(state, "distance_3d")
 		var weapons := overwatch_weapons(state, h, mover)
+		var area := _area_overwatch_weapons(state, h, mover)
+		if not area.is_empty() and Rulings.ask(state, "overwatch_area_weapons") == "yes":
+			weapons.append_array(area)
 		if weapons.is_empty():
 			continue
 		var d := offer(state, h, "overwatch", {"mover": mover.id, "weapons": weapons}, {"take": true, "weapon": weapons[0]})
@@ -161,7 +186,17 @@ static func overwatch(state: GameState, mover: Unit) -> Array[Dictionary]:
 			key = weapons[0]
 		_mark_used(h, "overwatch", state)
 		events.append({"type": "reaction", "unit": h.id, "reaction": "overwatch", "trigger": mover.id, "weapon": key, "rule_ref": REF_OVERWATCH})
-		events.append_array(Attacks.attack(state, h, Weapons.find(h, key), mover, {"reaction": true}))
+		var w := Weapons.find(h, key)
+		if Weapons.area(w) != "":
+			events.append_array(Areas.attack(state, h, w, {"aim": [mover.cell.x, mover.cell.y], "aim_level": mover.level, "reaction": true}))
+		else:
+			var res := Attacks.attack(state, h, w, mover, {"reaction": true})
+			events.append_array(res)
+			var hit := res.any(func(x: Dictionary) -> bool: return x["type"] == "attack_rolled" and x["result"] != "miss")
+			for e: Dictionary in Effects.of(h, "overwatch_hit_status"):
+				if hit and Combat.is_present(mover):
+					# Tortuga core: characters hit by Overwatch are Immobilized until the end of their next turn.
+					events.append_array(Combat.add_status(state, mover, String(e["status"]), h.id, mover.id))
 	return events
 
 

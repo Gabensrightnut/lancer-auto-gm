@@ -50,6 +50,14 @@ static func threat(w: Dictionary) -> int:
 	return maxi(1, maxi(range_value(w, "Threat"), tag_value(w, "tg_threat")))
 
 
+## THREAT for this unit: some effects raise ranged weapons' THREAT (Tortuga core: at least 3).
+static func threat_for(u: Unit, w: Dictionary) -> int:
+	var t := threat(w)
+	if not is_melee(w):
+		t = maxi(t, Effects.value(u, "min_threat"))
+	return t
+
+
 ## The area pattern ("Blast", "Burst", "Cone", "Line") or "" for single-target weapons.
 static func area(w: Dictionary) -> String:
 	for r: Dictionary in w.get("range", []):
@@ -70,4 +78,7 @@ static func state_of(u: Unit, w: Dictionary) -> Dictionary:
 			# +1 use of Limited gear per 2 Engineering (Core p.34).
 			uses = tag_value(w, "tg_limited") + u.engineering / 2
 		all[key] = {"loaded": true, "uses": uses, "destroyed": false}
+		if has_tag(w, "tg_recharge"):
+			all[key]["recharge"] = tag_value(w, "tg_recharge")
+			all[key]["charged"] = true
 	return all[key]

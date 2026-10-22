@@ -28,6 +28,7 @@ func _init() -> void:
 		PilotActions.Eject.new(), PilotActions.Dismount.new(), PilotActions.Mount.new(),
 		PilotActions.Fight.new(), PilotActions.SelfDestruct.new(), PilotActions.Prepare.new(),
 		PilotActions.DropPrepared.new(), SystemActions.CorePower.new(), MoveActions.BonusMove.new(),
+		Rulings.SetRuling.new(), CloseCombat.GrappleContest.new(), AbilityActions.Activate.new(),
 	]:
 		register(h)
 
@@ -48,6 +49,7 @@ func action_types() -> Array:
 
 func validate(state: GameState, action: Dictionary) -> RuleResult:
 	TurnRules._state_ref = weakref(state)
+	Combat.state_for_presence = weakref(state)
 	var handler: ActionHandler = _handlers.get(action.get("type", ""))
 	if handler == null:
 		return RuleResult.deny("Unknown action '%s'." % action.get("type", ""), "")
@@ -79,6 +81,23 @@ func submit(state: GameState, action: Dictionary) -> Dictionary:
 
 func _answer(state: GameState, action: Dictionary) -> Dictionary:
 	var p := state.pending
+	if p.has("ruling"):
+		# Paused for a table ruling: only set_ruling for that question goes through.
+		if action.get("type", "") != "set_ruling" or action.get("params", {}).get("id", "") != p["ruling"]:
+			var wait := RuleResult.deny("Waiting for the table to decide: %s" % p["context"]["question"], String(p["context"]["rule_ref"]))
+			return {"result": wait, "events": [] as Array[Dictionary]}
+		var r := validate_ruling(state, action)
+		if not r.ok:
+			return {"result": r, "events": [] as Array[Dictionary]}
+		var made: Array[Dictionary] = _handlers["set_ruling"].resolve(state, action)
+		var paused: Dictionary = p["action"]
+		var earlier: Dictionary = p.get("decisions", {})
+		state.pending = {}
+		var out := _run(state, paused, earlier, RuleResult.allow())
+		var events: Array[Dictionary] = made.duplicate()
+		events.append_array(out["events"])
+		out["events"] = events
+		return out
 	var who := state.unit(p["unit"])
 	var name := who.name if who != null and who.name != "" else String(p["unit"])
 	if action.get("type", "") != "react" or action.get("actor", "") != p["unit"]:
@@ -93,6 +112,10 @@ func _answer(state: GameState, action: Dictionary) -> Dictionary:
 	var original: Dictionary = p["action"]
 	state.pending = {}
 	return _run(state, original, decisions, RuleResult.allow())
+
+
+func validate_ruling(state: GameState, action: Dictionary) -> RuleResult:
+	return _handlers["set_ruling"].validate(state, action)
 
 
 func _run(state: GameState, action: Dictionary, decisions: Dictionary, result: RuleResult) -> Dictionary:
@@ -110,6 +133,11 @@ func _run(state: GameState, action: Dictionary, decisions: Dictionary, result: R
 	pending["decisions"] = decisions
 	pending["snapshot"] = snap
 	state.pending = pending
+	if asked.has("ruling"):
+		var question: Array[Dictionary] = [{"type": "ruling_needed", "id": asked["ruling"],
+			"question": asked["context"]["question"], "options": asked["context"]["options"],
+			"rule_ref": asked["context"]["rule_ref"], "trigger_action": action.get("type", "")}]
+		return {"result": result, "events": question}
 	var offered: Array[Dictionary] = [{"type": "reaction_offered", "id": asked["id"], "unit": asked["unit"],
 		"reaction": asked["reaction"], "context": asked["context"], "trigger_action": action.get("type", ""),
 		"rule_ref": "actions: " + String(asked["reaction"]).capitalize()}]

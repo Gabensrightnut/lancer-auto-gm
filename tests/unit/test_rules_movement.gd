@@ -189,6 +189,7 @@ func test_walkers_cannot_fly() -> void:
 
 func test_uneven_ground_for_big_mechs_is_a_ruling() -> void:
 	var s := F.state()
+	s.rulings.clear()
 	s.map.set_column(Vector2i(3, 0), 1)
 	var e := RulesEngine.new()
 	var u := _one(s, e, Vector2i(0, 0), 2.0)
@@ -197,6 +198,8 @@ func test_uneven_ground_for_big_mechs_is_a_ruling() -> void:
 	expect_eq(r.grey_area, Movement.RULING_UNEVEN, "the table has to rule")
 	expect(out["events"].is_empty(), "nothing happens until it does")
 	s.rulings[Movement.RULING_UNEVEN] = {"choice": "allow"}
+	expect_eq((F.act(e, s, "move", "p1", {"to": [2, 0], "level": 1})["result"] as RuleResult).grey_area, "climb_cost", "then how climbing costs")
+	s.rulings["climb_cost"] = {"choice": "step_plus_climb"}
 	expect(F.ok(F.act(e, s, "move", "p1", {"to": [2, 0], "level": 1})))
 	expect_eq(u.level, 1)
 

@@ -125,7 +125,16 @@ cover, line of sight, attack/area/tech previews with hit chance).
 | `effect_triggered` | `unit`, `effect` (trait name), `target` |
 | `status_blocked` / `no_effect` / `knockback_blocked` | `unit`/`target`, `reason` (immunity, Heavy Frame, Archaic...) |
 | `tech_action` / `action_skipped` | `unit`, `target`, `action` (`lock_on`, `bolster`, `invade` on an ally) / `reason` |
-| `deployed` | `unit`, `object` (not emitted yet) |
+| `deployed` | `unit` (owner), `object` {`id`, `kind` (drone/deployable/mine...), `name`, `cells` [[x, y, level]], `height`, `hp`} |
+| `recalled` | `unit` (owner), `object` (id) |
+| `mine_triggered` | `mine`, `unit` (who set it off), `text` |
+| `activated` | `unit`, `ability`, `name`, `source`, `activation`, `automated`, `detail` |
+| `manual_effect` | `unit`, `source`, `text`: not automated, the table applies it |
+| `recharge_roll` | `unit`, `roll`, `ready` (sources ready again) |
+| `effect_ended` | `unit`, `effect` (a timed effect ran out) |
+| `revived` | `unit`, `by` |
+| `ruling_needed` | `id`, `question`, `options` {id: text}, `rule_ref`, `trigger_action`: the engine is paused; the host answers `{"type": "set_ruling", "params": {"id", "choice"}}` |
+| `ruling_made` | `id`, `choice`, `text` |
 
 ## Commands
 

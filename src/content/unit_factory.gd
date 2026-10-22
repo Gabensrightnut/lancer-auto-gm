@@ -32,6 +32,7 @@ const MOUNT_SLOTS := {
 const NPC_TEMPLATES := "res://data/game/npc_templates.json"
 const FRAME_EFFECTS := "res://data/game/frame_effects.json"
 const GEAR_EFFECTS := "res://data/game/gear_effects.json"
+const ACTIVATION_EFFECTS := "res://data/game/activation_effects.json"
 ## lancer-data core_system active_bonuses ids -> the roll type they give Accuracy on.
 const BONUS_ROLLS := {"attack": "attack", "check": "check", "save": "save", "tech_attack": "tech_attack"}
 
@@ -274,7 +275,89 @@ static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dic
 		gear_ids.append(s["id"])
 	gear_ids.append_array(pilot.get("core_bonuses", []))
 	_add_gear_effects(u, gear_ids, pilot.get("talents", {}))
+	u.loadout["abilities"] = _abilities(db, u, frame, loadout.get("systems", []), pilot.get("talents", {}))
 	return u
+
+
+static var _activation_data: Dictionary = {}
+
+
+static func activation_data() -> Dictionary:
+	if _activation_data.is_empty():
+		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(ACTIVATION_EFFECTS))
+		_activation_data = d if d is Dictionary else {}
+	return _activation_data
+
+
+## Activated abilities from lancer-data (see Abilities): system and weapon actions and
+## deployables, core system actions, unautomated trait actions, talent actions.
+static func _abilities(db: ContentDB, u: Unit, frame: Dictionary, system_ids: Array, talents: Dictionary) -> Array:
+	var out: Array = []
+	var i := 0
+	for sid: String in system_ids:
+		var s := db.system(sid)
+		if not s.is_empty():
+			_add_source(out, s, "s%d" % i, s.get("name", sid), sid)
+			i += 1
+	for w: Dictionary in u.loadout.get("weapons", []):
+		var raw := db.weapon(String(w.get("id", "")))
+		if not raw.is_empty():
+			_add_source(out, raw, "w:" + String(w["key"]), raw.get("name", ""), String(raw.get("id", "")), true)
+	var core: Dictionary = frame.get("core_system", {})
+	var core_src := {"actions": [], "deployables": core.get("deployables", [])}
+	for a: Dictionary in core.get("passive_actions", []):
+		core_src["actions"].append(a)
+	for a: Dictionary in core.get("active_actions", []):
+		var c := a.duplicate(true)
+		c["requires_core_active"] = true
+		core_src["actions"].append(c)
+	_add_source(out, core_src, "core", String(core.get("name", "Core")), String(frame.get("id", "")))
+	var automated: Dictionary = {}
+	for t: Dictionary in u.loadout.get("traits", []):
+		automated[t["name"]] = t.get("automated", false)
+	for t: Dictionary in frame.get("traits", []):
+		if not automated.get(t.get("name", ""), false):
+			_add_source(out, t, "trait:" + String(t.get("name", "")), String(t.get("name", "")), String(frame.get("id", "")))
+	for tid: String in talents:
+		var tal := db.get_entry("talents", tid)
+		for r in range(mini(int(talents[tid]), (tal.get("ranks", []) as Array).size())):
+			var rank: Dictionary = tal["ranks"][r]
+			_add_source(out, rank, "talent:%s:%d" % [tid, r + 1], "%s %d" % [tal.get("name", tid), r + 1], tid)
+	return out
+
+
+static func _add_source(out: Array, src: Dictionary, key: String, name: String, data_id: String, weapon: bool = false) -> void:
+	var data := activation_data()
+	var tag_freq := ""
+	for tag: Dictionary in src.get("tags", []):
+		if tag.get("id", "") == "tg_round":
+			tag_freq = "%s/round" % str(tag.get("val", 1))
+		elif tag.get("id", "") == "tg_turn":
+			tag_freq = "%s/turn" % str(tag.get("val", 1))
+	var n := 0
+	for a: Dictionary in src.get("actions", []):
+		var act := String(a.get("activation", ""))
+		if weapon and act == "":
+			continue
+		var aname := String(a.get("name", name))
+		var ops: Variant = data.get("%s:%s" % [data_id, aname])
+		out.append({"key": "%s/a%d" % [key, n], "name": aname, "source_key": key, "source_name": name,
+			"kind": "action", "activation": act, "frequency": a.get("frequency", tag_freq),
+			"trigger": a.get("trigger", ""), "detail": a.get("detail", ""), "range": a.get("range", []),
+			"requires_core_active": a.get("requires_core_active", false),
+			"ops": ops if ops is Array else [], "automated": ops is Array})
+		n += 1
+	var m := 0
+	for d: Dictionary in src.get("deployables", []):
+		var dkey := "%s/d%d" % [key, m]
+		out.append({"key": dkey, "name": "Deploy " + String(d.get("name", "")), "source_key": key, "source_name": name,
+			"kind": "deploy", "activation": String(d.get("activation", "Quick")) if String(d.get("activation", "Quick")) != "None" else "Quick",
+			"frequency": "", "detail": d.get("detail", ""), "range": d.get("range", []), "deployable": d.duplicate(true),
+			"instances": int(d.get("instances", 1)), "ops": [], "automated": true})
+		if d.has("recall"):
+			out.append({"key": "%s/r%d" % [key, m], "name": "Recall " + String(d.get("name", "")), "source_key": key, "source_name": name,
+				"kind": "recall", "activation": String(d["recall"]), "frequency": "", "recalls": dkey, "detail": "", "ops": [], "automated": true})
+		m += 1
 
 
 static var _gear_data: Dictionary = {}
@@ -352,13 +435,16 @@ static func _frame_effects(u: Unit, frame: Dictionary) -> void:
 	var enc_core: Variant = data.get("core", "manual")
 	if enc_core is Array:
 		core_effects.append_array((enc_core as Array).duplicate(true))
+	var core_ops: Array = (data.get("core_ops", []) as Array).duplicate(true)
+	if not core_ops.is_empty():
+		enc_core = core_effects
 	for e: Dictionary in core_effects:
 		e["label"] = core_name
 		e["rule_ref"] = "frames: %s core system" % frame.get("name", "")
 	u.loadout["effects"] = effects
 	u.loadout["traits"] = traits
 	u.loadout["core"] = {"name": core_name, "power": core.get("active_name", ""), "activation": core.get("activation", "Quick"),
-		"text": core.get("active_effect", ""), "effects": core_effects, "automated": enc_core is Array}
+		"text": core.get("active_effect", ""), "effects": core_effects, "ops": core_ops, "automated": enc_core is Array}
 	# One Core Power per mission, recovered by a Full Repair (Core p.32, 82).
 	u.counters["core_power"] = 1
 
@@ -424,7 +510,14 @@ static func build_npc(id: String, template: Dictionary, tier: int = 1) -> Unit:
 		i += 1
 	var effects: Array = []
 	var traits: Array = []
+	var abilities: Array = []
+	var fi := 0
 	for f: Dictionary in template.get("features", []):
+		if f.has("activation"):
+			abilities.append({"key": "f%d/a0" % fi, "name": f.get("name", ""), "source_key": "f%d" % fi, "source_name": f.get("name", ""),
+				"kind": "action", "activation": f["activation"], "frequency": f.get("frequency", ""), "detail": f.get("text", ""),
+				"ops": [], "automated": false})
+		fi += 1
 		var enc: Variant = f.get("effects", "manual")
 		traits.append({"name": f.get("name", ""), "text": f.get("text", ""), "automated": enc is Array})
 		if enc is Array:
@@ -433,7 +526,7 @@ static func build_npc(id: String, template: Dictionary, tier: int = 1) -> Unit:
 				copy["label"] = f.get("name", "")
 				copy["rule_ref"] = "data/game/npc_templates.json (placeholder)"
 				effects.append(copy)
-	u.loadout = {"weapons": weapons, "systems": [], "effects": effects, "traits": traits, "tier": tier,
+	u.loadout = {"weapons": weapons, "systems": [], "effects": effects, "traits": traits, "abilities": abilities, "tier": tier,
 		"role": template.get("role", ""), "placeholder": template.get("placeholder", false)}
 	return u
 

@@ -60,7 +60,7 @@
     "weapons": [
       {"name": "Mortar", "type": "Launcher", "size": "Heavy",
        "damage": [{"type": "Explosive", "val": ["1d6+1", "1d6+2", "2d6+1"]}],
-       "range": [{"type": "Blast", "val": 1}, {"type": "Range", "val": 15}], "tags": [{"id": "tg_arcing"}]}
+       "range": [{"type": "Blast", "val": 1}, {"type": "Range", "val": 15}], "tags": [{"id": "tg_arcing"}, {"id": "tg_recharge", "val": 5}]}
     ],
     "features": [{"name": "Dug In", "text": "Placeholder trait: Resistance to Explosive damage.",
       "effects": [{"kind": "resist", "damage": ["Explosive"]}]}]
@@ -109,7 +109,7 @@
     "features": [
       {"name": "Shield Projector", "text": "Placeholder trait: adjacent allied characters can use it as hard cover.",
        "effects": [{"kind": "guardian"}]},
-      {"name": "Field Patch", "text": "Placeholder action: restore HP to an adjacent ally (not automated yet).", "effects": "manual"}
+      {"name": "Field Patch", "text": "Placeholder action: restore HP to an adjacent ally (not automated yet).", "effects": "manual", "activation": "Quick", "frequency": "1/round"}
     ]
   }
 }
