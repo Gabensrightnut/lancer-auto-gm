@@ -29,7 +29,7 @@ func _init() -> void:
 		PilotActions.Fight.new(), PilotActions.SelfDestruct.new(), PilotActions.Prepare.new(),
 		PilotActions.DropPrepared.new(), SystemActions.CorePower.new(), MoveActions.BonusMove.new(),
 		Rulings.SetRuling.new(), CloseCombat.GrappleContest.new(), AbilityActions.Activate.new(),
-		RestActions.Rest.new(), GearActions.PullStake.new(), GearActions.UseObject.new(),
+		RestActions.Rest.new(), GearActions.PullStake.new(), GearActions.UseObject.new(), GearActions.ShakeOff.new(),
 	]:
 		register(h)
 

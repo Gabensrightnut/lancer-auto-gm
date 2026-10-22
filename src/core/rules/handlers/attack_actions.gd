@@ -12,7 +12,7 @@ const IMPROVISED := {"key": "improvised", "name": "Improvised Attack", "type": "
 static func _check_attack(state: GameState, u: Unit, a: Variant, ref: String) -> RuleResult:
 	if not a is Dictionary:
 		return RuleResult.deny("Each attack needs a weapon and a target.", ref)
-	var w := Weapons.find(u, String(a.get("weapon", "")))
+	var w := WeaponRules.variant(Weapons.find(u, String(a.get("weapon", ""))), a)
 	if w.is_empty():
 		return RuleResult.deny("No such weapon on this mech.", ref)
 	if w.get("no_attack", false):
@@ -78,7 +78,37 @@ static func _check_aux(state: GameState, u: Unit, aux: Array, fired: Array[Dicti
 
 
 static func _run(state: GameState, u: Unit, a: Dictionary, aux: bool) -> Array[Dictionary]:
-	var w := Weapons.find(u, String(a["weapon"]))
+	var w := WeaponRules.variant(Weapons.find(u, String(a["weapon"])), a)
+	var events := _fire(state, u, w, a, aux)
+	if WeaponRules.rules(w).get("backblast", false) and a.has("target") and state.unit(String(a["target"])) != null:
+		events.append_array(AttackActions.backblast(state, u, state.unit(String(a["target"]))))
+	return events
+
+
+## Tachyon Lance backblast: a cone 3 behind you; Engineering save or 4 burn and 2 heat; soft
+## cover in it until the start of your next turn.
+static func backblast(state: GameState, u: Unit, target: Unit) -> Array[Dictionary]:
+	var aim := u.cell * 2 - target.cell
+	var cells: Array = []
+	for c in Areas.template(state.map.grid, "Cone", 3, state.map.grid.footprint(u.cell, u.size), aim):
+		if state.map.has_cell(c):
+			cells.append([c.x, c.y])
+	var events: Array[Dictionary] = Zones.add(state, {"kind": "smoke", "owner": u.id, "label": "Backblast", "center": [u.cell.x, u.cell.y], "cells": cells,
+		"expires": {"unit": u.id, "when": "start", "count": 1}, "rule_ref": "weapons: Tachyon Lance"})
+	var ids: Array = state.units.keys()
+	ids.sort()
+	for id: String in ids:
+		var o := state.unit(id)
+		if o == u or not Combat.is_present(o) or o.kind == Unit.KIND_DEPLOYABLE or not cells.has([o.cell.x, o.cell.y]):
+			continue
+		var save := Combat.skill_check(state, o, "engineering", "Save vs backblast", u.save_target, 0, 0, [], true)
+		events.append({"type": "skill_check", "unit": o.id, "check": save})
+		if not save["success"]:
+			events.append_array(Combat.deal_damage(state, o, [{"type": "Burn", "amount": 4}, {"type": "Heat", "amount": 2}], {"source": u.id}))
+	return events
+
+
+static func _fire(state: GameState, u: Unit, w: Dictionary, a: Dictionary, aux: bool) -> Array[Dictionary]:
 	if Weapons.area(w) != "" and a.has("aims") and int(WeaponRules.rules(w).get("blasts", 1)) > 1:
 		# Pinaka: up to two blast areas from one attack, damage rolled once.
 		var events: Array[Dictionary] = []
@@ -118,6 +148,25 @@ static func _run(state: GameState, u: Unit, a: Dictionary, aux: bool) -> Array[D
 	if not p["ok"]:
 		# An earlier attack in the same action changed things (target destroyed, pushed away).
 		return [{"type": "attack_skipped", "attacker": u.id, "weapon": a["weapon"], "target": a["target"], "reason": p["reason"], "rule_ref": p["rule_ref"]}] as Array[Dictionary]
+	if int(WeaponRules.rules(w).get("chain", 0)) > 0 and a.has("chain"):
+		# Arc Projector: on a hit, another target within range 3 of the last, 1 heat each, no
+		# bonus damage, nobody twice.
+		var events: Array[Dictionary] = Attacks.attack(state, u, w, target, opts)
+		var last := target
+		var hit := CloseCombat._hit(events)
+		for id: Variant in a["chain"]:
+			var nxt := state.unit(String(id))
+			if not hit or nxt == null or nxt == target or not Combat.is_present(nxt) or Sight.unit_distance(state, last, nxt) > int(WeaponRules.rules(w)["chain"]):
+				break
+			events.append_array(Combat.apply_heat(state, u, 1, String(w.get("name", ""))))
+			var o2 := opts.duplicate()
+			o2["skip_spend"] = true
+			o2["no_bonus_damage"] = true
+			var more := Attacks.attack(state, u, w, nxt, o2)
+			events.append_array(more)
+			hit = CloseCombat._hit(more)
+			last = nxt
+		return events
 	if WeaponRules.rules(w).get("line_attack", false):
 		# Impact Lance: also attacks every character on the line to the target, 1 heat each
 		# past the first.
@@ -130,6 +179,23 @@ static func _run(state: GameState, u: Unit, a: Dictionary, aux: bool) -> Array[D
 		events.append_array(Attacks.attack(state, u, w, target, opts))
 		if not extra.is_empty():
 			events.append_array(Combat.apply_heat(state, u, extra.size(), "Impact Lance"))
+		return events
+	if int(WeaponRules.rules(w).get("splash", 0)) > 0:
+		# Annihilator: on a hit, a secondary attack on everyone within burst 1 of the target
+		# (no bonus damage, no heat, no further secondary attacks).
+		var events: Array[Dictionary] = Attacks.attack(state, u, w, target, opts)
+		if CloseCombat._hit(events):
+			var ids: Array = state.units.keys()
+			ids.sort()
+			for id: String in ids:
+				var o := state.unit(id)
+				if o == u or o == target or not Combat.is_present(o) or o.kind == Unit.KIND_DEPLOYABLE or Sight.unit_distance(state, o, target) > int(WeaponRules.rules(w)["splash"]):
+					continue
+				var o2 := opts.duplicate()
+				o2["skip_spend"] = true
+				o2["no_bonus_damage"] = true
+				o2["area_origin"] = Sight.body_of(state, target)
+				events.append_array(Attacks.attack(state, u, w, o, o2))
 		return events
 	return Attacks.attack(state, u, w, target, opts)
 
@@ -217,7 +283,7 @@ class Improvised:
 		return TurnRules.FULL
 
 	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
-		var p := Attacks.preview(state, u, AttackActions.IMPROVISED, state.unit(String(params.get("target", ""))), {"improvised": true})
+		var p := Attacks.preview(state, u, TalentRules.improvised(u, AttackActions.IMPROVISED), state.unit(String(params.get("target", ""))), {"improvised": true})
 		if not p["ok"]:
 			return RuleResult.deny(p["reason"], p["rule_ref"])
 		return RuleResult.allow()
@@ -225,4 +291,4 @@ class Improvised:
 	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
 		var opts := params.duplicate()
 		opts["improvised"] = true
-		return Attacks.attack(state, u, AttackActions.IMPROVISED, state.unit(String(params["target"])), opts)
+		return Attacks.attack(state, u, TalentRules.improvised(u, AttackActions.IMPROVISED), state.unit(String(params["target"])), opts)

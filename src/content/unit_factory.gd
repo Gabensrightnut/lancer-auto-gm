@@ -291,6 +291,7 @@ static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dic
 		gear_ids.append(s["id"])
 	gear_ids.append_array(pilot.get("core_bonuses", []))
 	_add_gear_effects(u, gear_ids, pilot.get("talents", {}))
+	TalentRules.adjust_weapons(u)
 	u.loadout["abilities"] = _abilities(db, u, frame, loadout.get("systems", []), pilot.get("talents", {}))
 	if (frame_effects_data().get(frame_id, {}) as Dictionary).get("orochi_choice", false):
 		# Hydra: one OROCHI drone accompanies it; Full Deployment brings all four.
@@ -400,6 +401,9 @@ static func _add_source(out: Array, src: Dictionary, key: String, name: String, 
 		var over: Variant = data.get("deploy:%s:%s" % [data_id, raw.get("name", "")])
 		if over is Dictionary:
 			d.merge(over, true)
+			if over.get("skip", false):
+				m += 1
+				continue  # used through an action instead (Clamp Bombs)
 		var dkey := "%s/d%d" % [key, m]
 		out.append({"key": dkey, "name": "Deploy " + String(d.get("name", "")), "source_key": key, "source_name": name,
 			"kind": "deploy", "activation": String(d.get("activation", "Quick")) if String(d.get("activation", "Quick")) != "None" else "Quick",
@@ -551,6 +555,8 @@ static func weapon_profile(w: Dictionary, key: String, mount: int) -> Dictionary
 	var r: Variant = weapon_effects_data().get(String(w.get("id", "")))
 	if r is Dictionary:
 		out["rules"] = (r as Dictionary).duplicate(true)
+		if r.get("no_attack", false):
+			out["no_attack"] = true  # fired only through its own rule (Autogun)
 	if key != "" and w.has("profiles") and (w["profiles"] as Array).size() > 1:
 		var all: Array = []
 		for i in range((w["profiles"] as Array).size()):

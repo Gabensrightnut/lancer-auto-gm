@@ -46,13 +46,17 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 		return fail.call("You can't attack yourself.", REF_SKIRMISH)
 	if Effects.has(attacker, "no_attacks"):
 		return fail.call("You can't make attacks of any kind right now (Retractable Profile).", "systems: Retractable Profile")
+	if GearSystems.in_stasis(target):
+		return fail.call("In stasis: it can't be targeted.", "systems: Stasis Generator")
 	var area_origin: Variant = opts.get("area_origin")
 	if Weapons.area(w) != "" and area_origin == null:
 		return fail.call("%s is an area weapon (%s): aim it at a space instead of a target." % [w.get("name", ""), Weapons.area(w)], Areas.REF)
-	if target.has_status("Hidden") and target.side != attacker.side and area_origin == null:
+	if target.has_status("Hidden") and target.side != attacker.side and area_origin == null and not GearSystems.sees_through(state, attacker, target):
 		return fail.call("Hidden characters can't be targeted by attacks.", "statuses: Hidden")
 	if not Combat.is_present(target):
 		return fail.call("No valid target.", REF_SKIRMISH)
+	if w.get("no_attack", false) and not opts.get("fired_by_rule", false):
+		return fail.call("%s can't make normal attacks; it's fired through its own rule." % w.get("name", ""), "weapons: " + String(w.get("name", "")))
 	if not opts.get("skip_spend", false):
 		var ready := weapon_ready(attacker, w, opts.get("improvised", false))
 		if not ready.ok:
@@ -72,6 +76,10 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 			out["thrown"] = true
 	out["kind"] = kind
 	out["reach"] = reach
+	if Weapons.is_melee(w) and Effects.has(attacker, "no_melee"):
+		return fail.call("With Siege Stabilizers extended you can't make melee attacks.", "systems: Siege Stabilizers")
+	if not Weapons.is_melee(w) and dist <= Effects.value(attacker, "min_attack_range") and Effects.value(attacker, "min_attack_range") > 0:
+		return fail.call("With Siege Stabilizers extended you can't attack within range %d." % Effects.value(attacker, "min_attack_range"), "systems: Siege Stabilizers")
 	var in_reach := Sight.within(state, a_body, t_body, reach)
 	if area_origin == null and in_reach["grey_area"] != "":
 		out["grey_area"] = in_reach["grey_area"]
@@ -127,12 +135,22 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 			continue
 		sources.append(_src(String(e.get("label", "")), "difficulty", Effects.REF, int(e.get("value", 1))))
 		diff += int(e.get("value", 1))
+	for src: Dictionary in TalentRules.sources(state, attacker, w, target, kind, opts):
+		sources.append(src)
+		if src["kind"] == "accuracy":
+			acc += int(src["value"])
+		else:
+			diff += int(src["value"])
 	for src: Dictionary in GearSystems.attack_sources(attacker, kind):
 		sources.append(src)
 		if src["kind"] == "accuracy":
 			acc += int(src["value"])
 		else:
 			diff += int(src["value"])
+	var enc := GearSystems.enclave_difficulty(state, attacker, target)
+	if enc > 0:
+		sources.append(_src("Enclave dome", "difficulty", "systems: Enclave-Pattern Support Shield", enc))
+		diff += enc
 	var shield := GearSystems.shield_difficulty(attacker, target)
 	if shield > 0:
 		sources.append(_src("Projected Shield", "difficulty", "systems: Type-3 Projected Shield", shield))
@@ -145,9 +163,13 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 		else:
 			diff += int(src["value"])
 	var ranged_like := kind == KIND_RANGED or out.has("thrown")
-	if kind == KIND_RANGED and attacker.has_status("Engaged") and not WeaponRules.rules(w).get("ignore_engaged", false):
+	if kind == KIND_RANGED and attacker.has_status("Engaged") and not WeaponRules.rules(w).get("ignore_engaged", false) and not Effects.has(attacker, "ignore_engaged"):
 		sources.append(_src("Engaged", "difficulty", "statuses: Engaged"))
 		diff += 1
+	if TalentRules.ignores_cover(state, attacker, w, target):
+		cover = cover.duplicate()
+		cover["cover"] = "none"  # Vanguard See-Through Seeker
+		cover["difficulty"] = 0
 	if cover.get("cover", "none") == "soft" and target.counters.has("marked_by"):
 		cover = cover.duplicate()
 		cover["cover"] = "none"  # Markerlight: no soft cover while Locked On
@@ -162,6 +184,8 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 		out["cover"] = cover
 	elif ranged_like:
 		out["cover"] = cover
+	if WeaponRules.rules(w).get("ignore_difficulty", false):
+		diff = 0  # Shatterhead: the final roll is never affected by Difficulty
 	out["accuracy"] = acc
 	out["difficulty"] = diff
 	out["sources"] = sources
@@ -238,6 +262,9 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		if not opts.get("skip_spend", false):
 			events.append_array(_spend_weapon(state, attacker, w))
 		return events
+	events.append_array(GearSystems.sentinel_fire(state, attacker))
+	if not Combat.is_present(attacker):
+		return events
 	if attacker.counters.has("shrike_code"):
 		events.append_array(Combat.apply_heat(state, attacker, 2, "Shrike Code"))  # 2 heat whenever it attacks
 	var invisible: bool = target.has_status("Invisible") or afterimage or opts.get("target_invisible", false) or Zones.hidden_by_smoke(state, target, attacker) \
@@ -260,9 +287,22 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 	events.append_array(pre["events"])
 	if pre["cancel"]:
 		return events
+	var blink := GearSystems.blinkfield(state, attacker, target)
+	events.append_array(blink["events"])
+	if blink["resist"]:
+		pre["resist_all"] = true
 	for src: Dictionary in pre["sources"]:
 		(p["sources"] as Array).append(src)
 		p["difficulty"] = int(p["difficulty"]) + int(src["value"])
+	var tb := TalentRules.before_roll(state, attacker, w, target, kind, opts)
+	events.append_array(tb["events"])
+	var dz_first: bool = state.active_unit == attacker.id and attacker.has_status("Danger Zone") and not attacker.turn.get("dz_used", false)
+	if state.active_unit == attacker.id:
+		attacker.turn["dz_used"] = true  # only the first attack roll on its turn
+	var zero_in: bool = opts.get("zero_in", false) and Effects.has(attacker, "zero_in") and w.get("type", "") == "Rifle" \
+		and TalentRules._steadying(attacker) and TalentRules._round_ok(state, attacker, "zero_in")
+	if zero_in:
+		TalentRules._use_round(state, attacker, "zero_in")
 	var check := {}
 	var result := "miss"
 	var roland: bool = attacker.counters.get("roland", false) and Weapons.has_tag(w, "tg_loading")
@@ -277,8 +317,16 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		chambers = int(attacker.counters.get("chambers", 0))
 		attacker.counters["chambers"] = 0
 		attacker.turn["fired_mjolnir"] = true
+	if tb["auto_miss"]:
+		invisible_miss = true  # Skirmisher Weave: no roll, it just misses
 	if not invisible_miss:
 		check = state.dice.check(p["bonus"], p["accuracy"], p["difficulty"], p["target_number"], p["sources"])
+		if TalentRules.particularize(state, attacker, p["lock_on"]):
+			# Spotter Particularize: roll twice, keep the better.
+			var again := state.dice.check(p["bonus"], p["accuracy"], p["difficulty"], p["target_number"], p["sources"])
+			if int(again["total"]) > int(check["total"]):
+				check = again
+		TalentRules.used_sources(state, attacker, p["sources"])
 		check["bonus_sources"] = p["bonus_sources"]
 		check["bonuses"] = p["bonus_sources"]
 		check["defense"] = p["defense_name"]
@@ -300,6 +348,12 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 			# Gorgon Metastatic Paralysis: a 1-2 misses and Stuns the attacker.
 			result = "miss"
 			check["paralysis"] = true
+	var ip_events: Array[Dictionary] = []
+	if kind == KIND_RANGED and result != "miss":
+		var ip := GearSystems.interdiction_point(state, attacker, target, int(check.get("total", 0)))
+		ip_events = ip["events"]
+		if ip["missed"]:
+			result = "miss"  # Stasis Bolt: the attack automatically misses
 	events.append({"type": "attack_rolled", "attacker": attacker.id, "target": target.id,
 		"weapon": w.get("key", ""), "weapon_name": w.get("name", ""), "kind": kind, "check": check,
 		"result": result, "cover": p["cover"].get("cover", "none") if p["cover"] is Dictionary else "none",
@@ -307,10 +361,12 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		"lock_on_consumed": p["lock_on"], "rule_ref": p["rule_ref"]})
 	if not invisible_miss:
 		GearSystems.attack_rolled(attacker, kind, result != "miss")
+		TalentRules.after_roll(state, attacker, w, target, kind, result, p["lock_on"])
 	if result == "hit" and GearSystems.markerlight_crit(state, attacker, target):
 		result = "crit"  # Markerlight: a weak spot
 		events[events.size() - 1]["result"] = "crit"
 		events[events.size() - 1]["markerlight"] = true
+	events.append_array(ip_events)
 	if result != "miss":
 		var par := TraitReactions.parry(state, attacker, w, target)
 		events.append_array(par["events"])
@@ -331,6 +387,10 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		hit_opts["chambers"] = chambers
 		hit_opts["resist_all"] = pre["resist_all"]
 		hit_opts["roland"] = roland
+		hit_opts["d20"] = int(check.get("d20", 0))
+		hit_opts["dz_heat"] = dz_first and Effects.has(attacker, "dz_heat")
+		hit_opts["dz_fusion"] = dz_first and Effects.has(attacker, "dz_fusion") and kind != KIND_TECH
+		hit_opts["zero_in"] = zero_in
 		events.append_array(_hit(state, attacker, w, target, result == "crit", hit_opts))
 		if result == "crit" and kind == KIND_RANGED:
 			events.append_array(avenger_silos(state, attacker, target))
@@ -400,10 +460,17 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 		events.append({"type": "no_effect", "target": target.id, "reason": "Archaic weapons can't harm mechs.", "rule_ref": "tags: Archaic"})
 	# Pegasus "By the Way, I Know Everything": average damage instead of rolling, decided first.
 	var average: bool = opts.get("average_damage", false) and Effects.has(attacker, "average_damage_option")
+	var maximum := TalentRules.max_damage(attacker, crit, int(opts.get("d20", 0)))  # Brutal: Predator
 	for i in range(damage.size()):
 		var d: Dictionary = damage[i]
 		var dtype := Weapons.swapped_type(attacker, String(d.get("type", "Kinetic")))
+		if opts.get("dz_fusion", false) and dtype in ["Kinetic", "Explosive"]:
+			dtype = "Energy"  # Nuclear Cavalier Fusion Hemorrhage
+		if dtype == "Variable" and String(opts.get("damage_type", "")) in ["Kinetic", "Explosive", "Energy"]:
+			dtype = String(opts["damage_type"])  # you set its damage type (tags: Set Damage Type)
 		var r := average_roll(str(d.get("val", "0"))) if average else _shared_roll(state, shared, i, str(d.get("val", "0")), crit, Weapons.has_tag(w, "tg_overkill"))
+		if maximum:
+			r = max_roll(str(d.get("val", "0")))
 		overkill_heat += int(r["overkill_heat"])
 		events.append({"type": "damage_rolled", "attacker": attacker.id, "target": target.id, "damage_type": dtype, "roll": r, "crit": crit, "rule_ref": REF_CRIT if crit else Combat.REF_HARM})
 		parts.append({"type": dtype, "amount": int(r["total"])})
@@ -432,7 +499,7 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 		var b := BonusDamage.roll(state, attacker, w, target, {"kind": pv.get("kind", ""), "crit": crit,
 			"cover": (cover as Dictionary).get("cover", "none") if cover is Dictionary else "none",
 			"distance": int(pv.get("distance", 0)), "targets": int(opts.get("area_targets", 1)), "shared": shared,
-			"momentum": opts.get("momentum", false)})
+			"momentum": opts.get("momentum", false), "dz_fusion": opts.get("dz_fusion", false), "zero_in": opts.get("zero_in", false), "max": maximum})
 		events.append_array(b["events"])
 		parts.append_array(b["parts"])
 	var burn := Weapons.tag_value(w, "tg_burn")
@@ -448,6 +515,8 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 	if chambers >= 4 and Combat.is_present(target):
 		events.append_array(Combat.add_status(state, target, "Shredded", attacker.id, target.id))
 	events.append_array(WeaponRules.on_hit(state, attacker, w, target, crit))
+	var pvk := String(pv.get("kind", ""))
+	events.append_array(TalentRules.on_hit(state, attacker, w, target, crit, pvk, pv.get("lock_on", false), opts))
 	if roland and Combat.is_present(target):
 		var save := Combat.skill_check(state, target, "hull", "Save vs Roland Chamber", attacker.save_target, 0, 0, GearSystems.prone_save_sources(target), true)
 		events.append({"type": "skill_check", "unit": target.id, "check": save, "rule_ref": "systems: Roland Chamber"})
@@ -456,11 +525,28 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 	var kb := Weapons.tag_value(w, "tg_knockback")
 	if Weapons.is_melee(w):
 		kb = maxi(kb, Effects.value(attacker, "melee_knockback"))  # Ramjet
+	if crit:
+		kb = maxi(kb, Effects.value(attacker, "crit_knockback"))  # Brutal: Cull the Herd
 	var want: Variant = opts.get("knockback", false)
 	if kb > 0 and not target.destroyed and want != null and (want is int or bool(want)):
 		var spaces: int = mini(kb, int(want)) if want is int else kb
 		events.append_array(knock_back(state, target, opts.get("knockback_from", attacker.cell), spaces, attacker))
 	return events
+
+
+## Maximum damage for a dice expression (Brutal: Predator).
+static func max_roll(expr: String) -> Dictionary:
+	var total := 0
+	var clean := expr.replace(" ", "").to_lower()
+	for term in clean.replace("-", "+-").split("+", false):
+		var sign := -1 if term.begins_with("-") else 1
+		var t := term.trim_prefix("-")
+		if "d" in t:
+			var nd := t.split("d")
+			total += sign * (int(nd[0]) if nd[0] != "" else 1) * int(nd[1])
+		else:
+			total += sign * int(t)
+	return {"expr": expr, "dice": [], "kept": [], "bonus": 0, "total": maxi(0, total), "crit": true, "overkill_heat": 0, "maximum": true}
 
 
 ## Average damage for a dice expression: each die counts as (sides + 1) / 2 rounded up, so
@@ -648,6 +734,9 @@ static func roll_damage(state: GameState, expr: String, crit: bool, overkill: bo
 
 ## Knockback / pushes: involuntary straight-line movement (glossary: Involuntary Movement).
 static func knock_back(state: GameState, target: Unit, origin: Vector2i, spaces: int, by: Unit = null) -> Array[Dictionary]:
+	var anchor := GearSystems.flash_anchor(state, target, "knockback")
+	if anchor["prevented"]:
+		return anchor["events"]
 	if Effects.has(target, "immovable"):
 		return [{"type": "knockback_blocked", "unit": target.id, "reason": "Immune to involuntary movement.", "rule_ref": Effects.REF}] as Array[Dictionary]
 	if by != null and by.size < target.size and Effects.has(target, "heavy_frame"):
@@ -677,6 +766,9 @@ static func pull(state: GameState, target: Unit, by: Unit) -> Array[Dictionary]:
 
 ## Involuntary movement toward `goal` until within `reach` (0: onto it) or no closer.
 static func pull_to(state: GameState, target: Unit, goal: Sight.Body, reach: int, max_steps: int = 100) -> Array[Dictionary]:
+	var anchor := GearSystems.flash_anchor(state, target, "pull")
+	if anchor["prevented"]:
+		return anchor["events"]
 	if Effects.has(target, "immovable"):
 		return [{"type": "knockback_blocked", "unit": target.id, "reason": "Immune to involuntary movement.", "rule_ref": Effects.REF}] as Array[Dictionary]
 	var path := Movement.pull_path_to(state, target, goal, reach, max_steps)
@@ -732,6 +824,9 @@ static func tech_preview(state: GameState, attacker: Unit, target: Unit, opts: D
 			continue
 		sources.append(_src(String(e.get("label", "")), "difficulty", Effects.REF, int(e.get("value", 1))))
 		out["difficulty"] = int(out["difficulty"]) + int(e.get("value", 1))
+	if Effects.has(attacker, "adjacent_tech_accuracy") and Sight.unit_distance(state, attacker, target) <= 1:
+		sources.append(_src("Scanner Swarm", "accuracy", "systems: Scanner Swarm"))
+		out["accuracy"] = int(out["accuracy"]) + 1
 	for src: Dictionary in Effects.accuracy_sources(attacker, ["attack", "tech_attack"]):
 		sources.append(src)
 		var key := "accuracy" if src["kind"] == "accuracy" else "difficulty"
@@ -750,6 +845,8 @@ static func tech_target_check(state: GameState, user: Unit, target: Unit, action
 		return RuleResult.deny("No valid target.", "actions: Quick Tech")
 	if Effects.has(target, "aegis"):
 		return RuleResult.deny("Inside the Trueblack Aegis it's immune to all tech actions.", "frames: Napoleon core system")
+	if GearSystems.in_stasis(target):
+		return RuleResult.deny("In stasis: it can't be targeted.", "systems: Stasis Generator")
 	if GearSystems.iceout(state, target) or GearSystems.iceout(state, user):
 		return RuleResult.deny("Inside an ICEOUT field: immune to tech actions, and none can be taken.", "systems: ICEOUT Drone")
 	if target.has_status("Hidden") and target.side != user.side:
@@ -784,6 +881,7 @@ static func tech_attack(state: GameState, attacker: Unit, target: Unit, label: S
 	events.append_array(pre["events"])
 	if pre["cancel"]:
 		return {"events": events, "hit": false}
+	events.append_array(GearSystems.sentinel_fire(state, attacker))
 	if attacker.counters.has("shrike_code"):
 		events.append_array(Combat.apply_heat(state, attacker, 2, "Shrike Code"))
 	if p.has("black_ice"):
@@ -805,6 +903,10 @@ static func tech_attack(state: GameState, attacker: Unit, target: Unit, label: S
 		events.append_array(Combat.remove_status(attacker, "Hidden", "attacked"))
 		events.append_array(Combat.refresh_engagement(state))
 	Effects.attacked(state, attacker, "tech")
+	if hit and p["lock_on"] and Effects.has(attacker, "snow_crash"):
+		events.append_array(Combat.apply_heat(state, target, 2, attacker.id))  # Hacker SNOW_CRASH
 	if hit:
 		events.append_array(TraitReactions.tech_hit(state, attacker, target))
+	else:
+		events.append_array(GearSystems.scorpion(state, attacker, target))
 	return {"events": events, "hit": hit}

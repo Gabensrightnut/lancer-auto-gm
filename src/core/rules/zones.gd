@@ -38,10 +38,11 @@ static func add(state: GameState, z: Dictionary) -> Array[Dictionary]:
 static func remove(state: GameState, id: String, why: String) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	for z: Dictionary in state.zones:
-		if z["id"] == id and z.get("kind", "") == "cloak":
+		if z["id"] == id and z.get("kind", "") in ["cloak", "interdiction"]:
 			var o := state.unit(String(z.get("owner", "")))
-			if o != null and o.has_status("Slowed") and o.statuses["Slowed"].get("source", "") == "LB/OC Cloaking Field":
-				events.append_array(Combat.remove_status(o, "Slowed", "cloaking field ended"))
+			var src := "LB/OC Cloaking Field" if z["kind"] == "cloak" else "Interdiction Field"
+			if o != null and o.has_status("Slowed") and o.statuses["Slowed"].get("source", "") == src:
+				events.append_array(Combat.remove_status(o, "Slowed", "field ended"))
 	state.zones = state.zones.filter(func(z: Dictionary) -> bool: return z["id"] != id)
 	events.append({"type": "zone_removed", "id": id, "reason": why})
 	return events
@@ -54,9 +55,22 @@ static func _has_cell(z: Dictionary, c: Vector2i) -> bool:
 	return false
 
 
+## Zones with an "anchor" (a drone or mech) and "radius" follow it (Hive Drone, Swarm Body).
+static func _cell_in(state: GameState, z: Dictionary, c: Vector2i) -> bool:
+	if z.has("anchor"):
+		var a := state.unit(String(z["anchor"]))
+		if a == null or not Combat.is_present(a):
+			return false
+		for f in state.map.grid.footprint(a.cell, a.size):
+			if state.map.grid.distance(f, c) <= int(z.get("radius", 1)):
+				return true
+		return false
+	return _has_cell(z, c)
+
+
 static func contains(state: GameState, z: Dictionary, u: Unit) -> bool:
 	for c in state.map.grid.footprint(u.cell, u.size):
-		if _has_cell(z, c):
+		if _cell_in(state, z, c):
 			return true
 	return false
 
@@ -143,8 +157,12 @@ static func hidden_by_smoke(state: GameState, target: Unit, attacker: Unit) -> b
 	return false
 
 
-## Soft cover from a cloud (the Genghis ignores its own) or smoke.
+## Soft cover from a cloud (the Genghis ignores its own), smoke or an allied hive swarm.
 static func soft_cover(state: GameState, target: Unit, attacker: Unit) -> bool:
+	for z: Dictionary in of_kind(state, "hive"):
+		var o := state.unit(String(z.get("owner", "")))
+		if o != null and o.side == target.side and contains(state, z, target):
+			return true
 	for z: Dictionary in of_kind(state, "smoke"):
 		if contains(state, z, target):
 			return true
@@ -163,12 +181,12 @@ static func check_path(state: GameState, mover: Unit, path: Array) -> Array[Dict
 		return events
 	for z: Dictionary in state.zones.duplicate():
 		match String(z.get("kind", "")):
-			"mag_field", "smoke_cloud", "caltrops":
+			"mag_field", "smoke_cloud", "caltrops", "hive", "swarm_body", "tempest", "interdiction":
 				var entered := false
 				for i in range(1, path.size()):
 					var c := Vector2i(int(path[i][0]), int(path[i][1]))
 					for f in state.map.grid.footprint(c, mover.size):
-						entered = entered or _has_cell(z, f)
+						entered = entered or _cell_in(state, z, f)
 				if entered:
 					events.append_array(_enter(state, z, mover))
 			"javelin":
@@ -224,12 +242,56 @@ static func _enter(state: GameState, z: Dictionary, u: Unit) -> Array[Dictionary
 			events.append_array(Combat.add_status(state, u, "Immobilized", String(z["id"])))
 		"caltrops":
 			events.append_array(_caltrops(state, z, u))
+		"hive", "swarm_body", "tempest", "interdiction":
+			events.append_array(_horus_zone(state, z, u, owner))
 		"smoke_cloud":
 			if z.get("phase", "") != "smoke" or u.id == z.get("owner", ""):
 				return events
 			events.append({"type": "zone_triggered", "zone": z["id"], "unit": u.id, "rule_ref": REF_CLOUD})
 			events.append_array(Combat.deal_damage(state, u, [{"type": "Burn", "amount": 2}], {"source": String(z.get("owner", ""))}))
 			events.append_array(Combat.apply_heat(state, u, 2, String(z.get("owner", ""))))
+	return events
+
+
+## HORUS areas a character starts its turn in or enters (first time in a round).
+static func _horus_zone(state: GameState, z: Dictionary, u: Unit, owner: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if owner == null or u.kind == Unit.KIND_DEPLOYABLE:
+		return events
+	var hostile := u.side != owner.side
+	var ref := String(z.get("rule_ref", ""))
+	match String(z["kind"]):
+		"hive":
+			# Greywash swarm: hostiles take 1 AP kinetic; several hive drones don't stack.
+			if not hostile or int(u.counters.get("hive_round", -1)) == state.round_number:
+				return events
+			u.counters["hive_round"] = state.round_number
+			events.append({"type": "zone_triggered", "zone": z["id"], "unit": u.id, "rule_ref": ref})
+			events.append_array(Combat.deal_damage(state, u, [{"type": "Kinetic", "amount": 1}], {"ap": true, "source": owner.id}))
+		"swarm_body":
+			if not hostile or state.active_unit != u.id:
+				return events  # on their own turn
+			if z.get("at", []) != [owner.cell.x, owner.cell.y, owner.level]:
+				return remove(state, String(z["id"]), "the swarm's owner moved")
+			var save := Combat.skill_check(state, u, "systems", "Save vs Swarm Body", owner.save_target, 0, 0, [], true)
+			events.append({"type": "skill_check", "unit": u.id, "check": save, "rule_ref": ref})
+			if not save["success"]:
+				events.append_array(Combat.deal_damage(state, u, [{"type": "Kinetic", "amount": mini(9, 3 * (1 + int(z.get("still", 0))))}], {"source": owner.id}))
+		"tempest":
+			var drone := state.unit(String(z["anchor"]))
+			var save := Combat.skill_check(state, u, "hull", "Save vs Tempest Drone", owner.save_target, 0, 0, GearSystems.prone_save_sources(u), true)
+			events.append({"type": "skill_check", "unit": u.id, "check": save, "rule_ref": ref})
+			if not save["success"]:
+				events.append_array(Combat.deal_damage(state, u, [{"type": "Energy", "amount": 4}], {"source": owner.id}))
+				if Combat.is_present(u) and drone != null:
+					events.append_array(Attacks.knock_back(state, u, drone.cell, 3, drone))
+		"interdiction":
+			if not hostile:
+				return events
+			var save := Combat.skill_check(state, u, "systems", "Save vs Interdiction Field", owner.save_target, 0, 0, [], true)
+			events.append({"type": "skill_check", "unit": u.id, "check": save, "rule_ref": ref})
+			if not save["success"]:
+				events.append_array(Combat.add_status(state, u, "Slowed", owner.id, u.id))
 	return events
 
 
@@ -266,6 +328,12 @@ static func turn_started(state: GameState, u: Unit) -> Array[Dictionary]:
 
 static func turn_ended(state: GameState, u: Unit) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
+	for z: Dictionary in of_kind(state, "swarm_body"):
+		if z.get("owner", "") == u.id:
+			if z.get("at", []) == [u.cell.x, u.cell.y, u.level]:
+				z["still"] = mini(2, int(z.get("still", -1)) + 1)  # +3 damage per turn stationary, up to 9
+			else:
+				events.append_array(remove(state, String(z["id"]), "the swarm's owner moved"))
 	for z: Dictionary in of_kind(state, "caltrops"):
 		if Combat.is_present(u) and contains(state, z, u):
 			events.append_array(_caltrops(state, z, u))

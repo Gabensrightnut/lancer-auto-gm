@@ -218,6 +218,8 @@ static func moved(state: GameState, u: Unit, mode: String) -> Array[Dictionary]:
 		events.append_array(_drop_still_status(u, e))
 	if has(u, "afterimage") and (mode == "walk" or mode == "boost"):
 		u.counters["afterimage"] = true
+	if mode == "boost" and has(u, "ram_momentum"):
+		u.counters["ram_momentum"] = true  # Juggernaut: the next Ram gains +1 Accuracy and 2 more knockback
 	if mode == "boost":
 		for e: Dictionary in of(u, "bonus_damage"):
 			if e.get("when", "") == "after_boost":
@@ -302,6 +304,9 @@ static func turn_started(state: GameState, u: Unit) -> Array[Dictionary]:
 		if e.get("when", "") == "own_turn":
 			events.append_array(Combat.add_status(state, u, String(e["status"]), String(e.get("label", "trait"))))
 	events.append_array(FrameSystems.turn_started(state, u))
+	events.append_array(GearSystems.horus_turn_started(state, u))
+	TalentRules.turn_started(state, u)
+	events.append_array(GearSystems.ha_turn_started(state, u))
 	return events
 
 
@@ -331,6 +336,9 @@ static func turn_ending(state: GameState, u: Unit) -> Array[Dictionary]:
 		events.append({"type": "effect_triggered", "unit": u.id, "effect": of(u, "mjolnir_chambers")[0].get("label", ""),
 			"target": u.id, "chambers": u.counters["chambers"], "rule_ref": "frames: Raleigh core system"})
 	events.append_array(GearSystems.impaled_turn_end(state, u))
+	events.append_array(GearSystems.horus_turn_ending(state, u))
+	events.append_array(GearSystems.ha_turn_ending(state, u))
+	events.append_array(GearSystems.clamp_turn_end(state, u))
 	if has(u, "reload_if_idle") and not u.turn.get("attacked", false):
 		GearSystems.reloaded(u)
 		for w: Dictionary in u.loadout.get("weapons", []):

@@ -31,6 +31,10 @@ static func add_status(state: GameState, u: Unit, status: String, source: String
 	var events: Array[Dictionary] = []
 	if status == "Prone" and u.flying:
 		return events  # Flying characters have IMMUNITY to PRONE (glossary: Flight/Hover).
+	if status == "Prone" and not u.has_status("Prone"):
+		var fa := GearSystems.flash_anchor(state, u, "prone")
+		if fa["prevented"]:
+			return fa["events"]
 	if Effects.immune_to_status(u, status):
 		return [{"type": "status_blocked", "unit": u.id, "status": status, "reason": "Immune.", "rule_ref": "glossary: Immunity"}] as Array[Dictionary]
 	var entry := {"source": source}
@@ -246,6 +250,7 @@ static func lose_hp(state: GameState, u: Unit, amount: int, source: String) -> A
 			break
 		u.structure -= 1
 		events.append({"type": "structure_lost", "unit": u.id, "structure": u.structure, "rule_ref": "Core p.80 Structure"})
+		events.append_array(GearSystems.batteries_blow(state, u))
 		events.append_array(_on_structure_or_stress(state, u, true))
 		if u.structure <= 0:
 			events.append_array(destroy(state, u, "Reached 0 Structure."))
@@ -394,6 +399,7 @@ static func apply_heat(state: GameState, u: Unit, amount: int, source: String, r
 	events.append({"type": "heat_changed", "unit": u.id, "amount": amount, "total": u.heat, "source": source})
 	if u.heat > u.heat_cap:
 		events.append_array(FrameSystems.vent_heat(state, u))  # Sherman Vent Heat
+		GearSystems.spoil_cooler(u)
 	var goblin := FrameSystems.symbiont_of(state, u)
 	if goblin != null and not goblin.destroyed:
 		events.append_array(apply_heat(state, goblin, amount, source))  # the Goblin takes its host's heat
@@ -413,6 +419,7 @@ static func apply_heat(state: GameState, u: Unit, amount: int, source: String, r
 		u.heat = 0
 		u.stress -= 1
 		events.append({"type": "stress_lost", "unit": u.id, "stress": u.stress, "rule_ref": "Core p.81 Overheating"})
+		events.append_array(GearSystems.vents(state, u))  # Explosive Vents: took stress
 		events.append_array(_on_structure_or_stress(state, u, false))
 		events.append({"type": "heat_changed", "unit": u.id, "amount": 0, "total": 0, "source": "overheat"})
 		if u.stress <= 0:
@@ -455,6 +462,11 @@ static func _danger_zone(u: Unit) -> Array[Dictionary]:
 static func stress_check(state: GameState, u: Unit) -> Array[Dictionary]:
 	var r := _damage_check_roll(state, u.max_stress - u.stress)
 	var events: Array[Dictionary] = []
+	if Effects.has(u, "reactor_stabilizer") and int(r["lowest"]) < 5:
+		# Reactor Stabilizer: may reroll, keeping the second result (rerolled unless the first
+		# was already the best outcome).
+		events.append({"type": "effect_triggered", "unit": u.id, "effect": "Reactor Stabilizer", "target": u.id, "first": r, "rule_ref": "systems: Reactor Stabilizer"})
+		r = _damage_check_roll(state, u.max_stress - u.stress)
 	var lowest: int = r["lowest"]
 	var outcome := ""
 	if r["ones"] >= 2:
@@ -674,6 +686,8 @@ static func _is_character(u: Unit) -> bool:
 
 ## On the battlefield: not destroyed, and not a pilot riding inside a mech.
 static func is_present(u: Unit) -> bool:
+	if u != null and u.counters.has("folded"):
+		return false  # Fold Space: off the battlefield until the start of its next turn
 	if u == null or u.destroyed:
 		return false
 	var inside := String(u.counters.get("mounted_in", ""))
