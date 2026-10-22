@@ -1,0 +1,392 @@
+# Lancer Auto-GM: Design Notes
+
+Status: foundation built (grid, state, dice, rules engine skeleton, data loader, tests).
+Parallel work on rules engine, 3D visuals, and online/launcher in progress.
+Code layout and contracts: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Core decisions
+
+- **Type:** procedural Game Master + rules engine. No AI/LLM: the GM is ordinary game code
+  driven by rule sets, tables and parameters (section 9), so no API key or ongoing cost.
+  The engine is authoritative for all rules (dice, HP, heat, structure, stress, actions,
+  statuses); the GM builds missions, runs enemies and events, and everything it does goes
+  through the same rules engine as the players.
+- **Engine:** Godot 4 (free, open-source, MIT license), desktop game, exported as a Windows
+  .exe. Code in typed GDScript. Not a browser game.
+  - Chosen over Unity and Unreal because Godot's scenes and scripts are plain text, so I can
+    build, run and test the whole project from here (headless test runs, screenshot captures
+    to check visuals) with fewer mistakes. No account, license, fees or royalties; ~100MB install.
+  - Unity (runner-up): strong tools and built-in relay networking, but needs its editor and a
+    Unity account, and its scene files are awkward to edit outside the editor.
+  - Unreal: best raw graphics, but most content is binary files I can't edit, it's a 100GB+
+    install, and it takes a 5% royalty above $1M revenue.
+  - Graphics are not the bottleneck: Godot 4's renderer does real-time lighting, shadows,
+    PBR materials, glow and GPU particles, plenty for mechs on a battlefield.
+- **Art style:** full 3D with real lighting, shadows and materials (PBR). No pixel art.
+- **Reference game: Lancer Tactics.** It's the closest thing to a real Lancer video game, so the
+  overall look, UI and how systems are shown are based on it, and it's the tiebreaker whenever
+  a visual or system is unclear. Studied from its public trailers, screenshots, store page and
+  devlogs; nothing is stolen outright: no models, art, audio or code taken from it.
+  On rules, the book is the default, but every place Lancer Tactics does it differently is
+  reported to you with both versions and the likely reason, and you choose (see "Rule
+  differences: Lancer Tactics vs. the book" below).
+- **Players:** online multiplayer (one host, others join remotely), plus hot-seat at one table.
+- **Scope:** full campaign play: missions, combat, downtime, licenses, leveling, campaign arc.
+
+## 1. Animations and visual feedback
+
+Every effect gets an animation, a combat-log line, and floating text (damage, MISS,
++heat), so you can always tell what happened.
+
+| Event | Visual |
+|---|---|
+| Melee attack | Lunge in, swing-arc trail, impact sparks; knockback slide on hit, deflect flash on miss |
+| Ranged kinetic | Muzzle flash, tracers, impact puffs; misses fly past the target |
+| Energy weapons | Charge-up glow, beam, heat shimmer |
+| Explosive / launchers | Arcing projectile, blast-radius warning ring, explosion and debris |
+| Area attacks (blast, burst, cone, line) | Template preview on the grid before you confirm, then the effect fills the area |
+| Tech attack / hacking | Data-link beam of glyphs from hacker to target; target mech gets glitch, scanline and color-split effects |
+| You get hacked | Your HUD panel glitches and shows the attacking mech's ID, with the link beam pointing back to it |
+| Statuses (Jammed, Lock On, Impaired, Slowed, Immobilized, Shredded, Stunned, etc.) | Icon ring above the mech plus a lasting effect on the model (lock-on reticle, sparking for Shredded, frozen pose for Stunned) |
+| Defense (Brace, shields, overshield, evasion) | Energy shell, overshield shimmer, dodge sidestep, sparks off armor |
+| Heat | Heat bar; mech glows orange to white as heat rises; vent steam on Stabilize/vent |
+| Overheating | Heat-stress check card, reactor warning pulse, meltdown sequence if it goes critical |
+| Structure damage | Armor plates blown off, sparking, structure check card |
+| Smoke grenades / mines | Thrown arc, smoke spreads over tiles; the cover/line-of-sight effect the rules give it is shown |
+| Hard light walls / deployables | Wireframe builds into a solid wall; cover indicator shown |
+| Movement | Movement arrow and cover highlights while planning (see Turn overlays), then walk, hover or boost trail; engagement indicators |
+| Destruction / eject | Mech collapses into a wreck that stays as terrain; pilot ejects on foot |
+
+### Roll visuals
+
+Every roll is shown step by step on screen, then logged:
+
+1. **Base roll:** the d20 rolls and lands on its number.
+2. **Accuracy and Difficulty:** Lancer's version of advantage/disadvantage. Each source is
+   listed with what caused it (e.g. "Lock On", "Soft cover", "Impaired").
+   - **Accuracy:** blue **+** with a blue d6 per point.
+   - **Difficulty:** red **−** with a red d6 per point.
+   - They cancel one for one (the rules), shown by matching blue and red pairs fading out
+     together. Whatever is left is rolled, and only the highest d6 counts: added if blue,
+     subtracted if red.
+3. **Flat bonuses:** Grit, Tech Attack, etc. added as their own labeled numbers.
+4. **Result:** total vs. the target number (Evasion, E-Defense, save target...), then HIT /
+   MISS / CRIT with the matching attack animation.
+- **Display format:** the base roll first, then each modifier right after it, colored:
+  `6` **`+4`** (blue, Accuracy d6) `+2 Grit` `= 12 vs Evasion 8: HIT`, or with Difficulty
+  `6` **`−3`** (red) `+2 Grit` `= 5: MISS`. (Accuracy and Difficulty cancel first, so only one color of d6 is ever left.)
+  Blue = anything that helps the roll, red = anything that hurts it.
+- Damage rolls work the same way (dice, bonuses, Armor reducing it, resistances halving it).
+- Speed setting: full animation, quick, or instant (log only) for when you know the game.
+
+### Turn overlays (only on the active player's screen)
+
+These are planning aids drawn only for the player whose turn it is. Other players don't see
+them, and they disappear when the turn moves on.
+
+- **Movement arrow:** when you plan a move, an arrow runs from your mech along the exact path
+  to the destination, bending around obstacles. It shows move cost so far and spaces left,
+  and changes color when the path would provoke from an Engaged enemy, needs a Boost, or goes
+  through difficult/dangerous terrain. Nothing moves until you confirm.
+- **Cover highlights while moving:** terrain glows by cover type: one color for **hard cover**,
+  another for **soft cover** (e.g. smoke). The hovered destination also shows which enemies
+  you'd have cover from there, and which kind.
+- **Cover highlights while attacking:** when you pick a target, the game shows the cover that
+  target has *against you* (hard, soft, or none) and outlines the terrain giving it, with the
+  effect on your roll (e.g. +1 or +2 Difficulty) shown in the roll breakdown.
+- Cover is always worked out by the rules engine, from your actual position, so what's
+  highlighted is exactly what the rules will apply.
+
+## 2. 3D models: all made in house
+
+- **No assets ripped from Lancer Tactics or any other game.** Everything is built
+  procedurally in our own code, so nothing in it is someone else's art.
+- 3D scene in Godot with switchable camera modes, changeable
+  any time in game:
+  - **Tactical (default):** angled, rotatable overhead view of the whole board.
+  - **First person:** cockpit view from your mech's eye level, with a HUD (heat, HP,
+    structure, selected weapon, range). Attacks, hacks and effects play out from inside the
+    cockpit. A minimap shows the grid so moves and ranges stay readable.
+  - Camera mode only changes the view, never what you know or what's legal: everything
+    visible on the tactical board is still available (minimap, unit list).
+  - **Your whole turn works in first person.** It's still the same turn-based TTRPG, just
+    played from the cockpit: the grid is projected onto the ground in front of you, you
+    look at a space and click to plan your move (path and move cost shown), look at an
+    enemy to target it (range, line of sight, cover and hit chance on the HUD), and pick
+    actions from a cockpit action panel (Quick/Full actions, Overcharge, Brace, tech, etc.).
+    Nothing happens in real time; nothing resolves until you confirm.
+  - Other players can use different cameras at the same time.
+- **Every model matches what's actually equipped.** Mechs are assembled from the pilot's
+  real loadout data, not a fixed model per frame:
+  - Each frame's mounts (from `lancer-data`) have attachment points on its model; whatever
+    weapon is in a mount is drawn there, in hand or on the shoulder/arm as appropriate.
+  - Weapons from other manufacturers keep their own design. An IPS-N weapon on a GMS frame
+    looks like the IPS-N weapon, mounted on the GMS frame.
+  - Each weapon gets its own model, generated from its data: size (Auxiliary, Main, Heavy,
+    Superheavy), type (rifle, cannon, launcher, melee, CQB, nexus...), damage type, and
+    manufacturer style, with hand-made overrides for signature weapons. Two different rifles
+    look different.
+  - Visible systems show up too: drones, shield generators, deployables, mods (e.g. a
+    weapon mod changes the weapon's look).
+  - Changing the loadout rebuilds the model. Attack animations come from the weapon actually
+    used (a cannon fires shells, a nexus releases a drone swarm).
+  - The rules engine checks the loadout is legal (mount sizes, system points, licenses)
+    before a mech can deploy, with the reason shown if not.
+- **Full scene rendering in every view:** terrain, buildings, cover, deployables, smoke,
+  other mechs and effects are all rendered in 3D around you. In first person you see your
+  own mech's arms and weapons in the cockpit view, matching your loadout.
+- Mechs built from parts (torso, legs, arms, shoulder mounts, weapons), so each frame has
+  its own silhouette. Parts are modeled in house with scripted Blender (free) and exported as
+  glTF, or generated in Godot directly; no third-party models. Manufacturer color schemes for GMS, IPS-N, SSC,
+  HORUS and Harrison Armory.
+- Mech size matches the rules (Size 1/2, 1, 2, 3); pilots on foot are smaller models.
+- Weapon models: one per weapon, as described above.
+
+## 3. Grid: hex or square, switchable
+
+- A grid layer handles neighbors, distance, line of sight, area templates, and footprints
+  for big mechs. Rules and enemy-tactics code never assume a grid shape.
+- Pick hex or square when setting up a mission, and switch between missions.
+- Square-grid diagonal movement follows the core book rule (to confirm against the book).
+- Grid spaces line up 1:1 with a tabletop board so measurements match play on paper.
+
+### Elevation and flying (3D grid)
+
+The board is a stacked 3D grid, like blocks: every hex/square column has height levels, so
+terrain can be terraced, mechs can climb up and down it, and flyers can move through the air.
+
+- **Terrain heights:** buildings, cliffs, ledges and rubble are built from stacked levels.
+  A mech's height in levels equals its Size, as in the rules.
+- **Size and footprint:** a mech takes up as much space as its Size says, across the ground
+  and upward, and the engine checks the whole footprint, not just one space:
+  - **Standing room:** a mech can only stop where its entire footprint has ground to stand on.
+    A Size 3 can't stand on a hilltop or pillar that's only 1 space wide; a Size 1 can.
+  - **Clearance:** a tall mech can't fit under a low bridge or overhang, or through a gap
+    narrower than its footprint.
+  - **The movement arrow shows it:** spaces your mech can't fit on are greyed out for your
+    Size, and the destination preview shows your full footprint, not just one tile.
+  - **Size applies to every use of terrain**, wherever the book ties something to Size:
+    - **Cover:** whether a wall or rock covers you depends on how big it is compared to you.
+      A low wall can cover a Size 1/2 or 1 but not a Size 3 standing behind it.
+    - **Line of sight:** big mechs can see, and be seen, over small terrain; small mechs can be
+      completely blocked by it.
+    - **Hiding:** you need terrain big enough to actually hide your mech.
+    - **Climbing and moving over terrain:** what counts as a small step vs. a climb depends on
+      your Size.
+    - **Ram, Grapple, knockback and shoving into terrain:** the Size limits in the book apply.
+    - **Destroying or using terrain as a weapon:** follows the book's rules, including Size.
+    - The cover highlights (Turn overlays) are worked out for *your* Size and the target's, so a
+      wall can light up as cover for a small mech and show nothing for a big one.
+  - The exact Size rules for each of these, footprint shapes per Size on hex vs. square
+    grids, and whether a big mech can stand
+    across uneven ground, come from the book (to confirm). If the book doesn't say, it's a
+    "Ruling" grey area for the table to decide, as in section 7.
+- **Sky layers ("sky floors"):** when a flying mech plans a move, a see-through grid layer
+  appears at each altitude so you can pick a space in the air. Scroll or press keys to raise or
+  lower the layer. Flyers show a drop line and shadow to the ground so their height is always
+  readable, plus an altitude number.
+- **Movement arrow in 3D:** the movement arrow climbs, drops and flies along the real path,
+  showing the extra cost of climbing and where a fall would happen.
+- **Only the book's rules and modifiers, always shown:** elevation and flying apply exactly the
+  rules the book has and nothing invented. From what I remember (to confirm against the book):
+  - Climbing and moving up terrain cost extra movement; flying lets you move in any
+    direction but you must keep moving each turn or fall.
+  - Falling deals damage based on distance fallen.
+  - Height matters through line of sight and cover: being above or below terrain changes
+    what blocks your view and whether a target has cover.
+  - I don't believe core Lancer has a general "high ground = Accuracy" rule. If the book
+    has one, it goes in; if not, only gear and talents that give elevation bonuses apply.
+- **Every modifier is shown:** whatever elevation, flying or falling does to a roll or move
+  appears in the roll display (blue +/red −) and the movement arrow, each labeled with its
+  source and rule reference.
+- Works the same on hex and square grids.
+
+## 4. Online play without port forwarding
+
+- The host's PC runs the authoritative game (rules engine + GM). Other players connect
+  to it; nobody opens ports.
+- **Chosen: peer-to-peer (WebRTC).** Options that were considered:
+  - **Peer-to-peer (WebRTC):** players connect directly through NAT. Godot has a WebRTC API;
+    on desktop it uses the official `webrtc-native` extension. Needs a small matchmaking
+    (signaling) service to exchange connection info, plus STUN, and a relay (TURN) only on
+    strict networks. Which signaling service to use is decided at the networking stage.
+  - **Tunnel:** the launcher starts a free tunnel (e.g. Cloudflare quick tunnel) and shows a
+    join link.
+  - **Hosted relay:** a small server we deploy on a free host. Most reliable, but needs an account and upkeep.
+- Join by room code / link. Reconnect after a dropped connection without losing the game.
+
+## 5. Launcher and auto-update (GitHub)
+
+- Code lives in a GitHub repo (account: Gabensrightnut). Releases are built by GitHub Actions.
+- Launcher checks the latest GitHub Release, downloads it, checks the file hash, swaps in the
+  new version, then starts the game. Keeps the previous version to roll back to.
+- Everyone in a session must be on the same version; the host rejects mismatched clients
+  with a "please update" message.
+- Game and launcher both ship as Windows .exe files (Godot export), so friends install nothing else.
+- Saves and campaigns are stored outside the game folder so updates never touch them.
+
+## 6. Per-player visibility (hidden information)
+
+**Principle: only what the rules hide is hidden. No fog of war.** The whole battlefield is
+visible to everyone like a tabletop board, except the specific things the rules keep secret.
+That gives a "kinda like fog of war" feel without adding rules that aren't in the game.
+
+- **What the rules keep secret** (each revealed only the way the book says):
+  - **Hidden units:** a unit that takes the **Hide** action and becomes **Hidden** vanishes
+    from enemy boards; enemies see a "last known position" marker only if the rules give
+    them that knowledge. Allies still see it. Smoke and cover matter because they let you
+    Hide, not because they black out the map.
+  - **Enemy details:** you see the mech or NPC on the field (silhouette, size), but HP,
+    armor, heat, systems, templates and exact stats stay "??" until revealed by **Scan**,
+    by seeing them use something (a weapon fired is now known), or by the GM.
+  - **GM secrets:** hidden reinforcements, traps, and secret sitrep objectives stay off
+    player boards until the GM or the rules reveal them.
+- **Line-of-sight overlay (display aid, not a rule change):** when you pick an attack, spaces
+  and units you have no line of sight to are dimmed and marked "no LOS", and cover is shown.
+  Nothing is hidden by it; it just shows what the rules already say you can and can't target.
+- **Filtered on the host, not hidden on screen.** The host builds a separate view for each
+  player and sends only that, so secrets never reach other players' computers and can't be
+  dug out of game files or network traffic.
+- **GM view:** the procedural GM (and an optional human GM seat) sees everything.
+- **Hot-seat at one screen:** a "Pass to Player 2" screen between turns, since what's
+  secret can differ between players (e.g. one is Hidden from an enemy-controlled seat).
+- **Squad intel sharing (the book default; players share freely at the table):**
+  - Scan results, revealed enemy stats, and enemy weapons seen in use go into a shared squad
+    intel panel everyone on the team reads.
+  - Lock On and other statuses an ally applies show for everyone.
+  - Pings ("target", "danger", "moving here") and squad text chat. Voice chat as a later option.
+  - **The rules can cut comms:** I believe **Jammed** says you can't use comms to talk to
+    other characters (to confirm against the book). While it lasts, that mech can't send or
+    receive pings/chat/intel, shown with a "COMMS DOWN" indicator and the glitch effect.
+- **To verify against the core book:** smoke giving soft cover vs. hiding you, exactly what
+  enemies know about a Hidden unit, and the Jammed wording. The engine will follow the book.
+
+## 7. Rules sanity checker
+
+- Every action goes through the rules engine first. If it's illegal, it's blocked with the
+  reason and a rule reference (book section/page), never silently allowed.
+- Every rule check is written with its source citation, so the code can be audited against
+  the book ("sanity checker" report).
+- **Grey areas:** where the book is genuinely unclear, the engine allows the reasonable
+  readings, labels the action "Ruling", shows the relevant rule text, and lets the table decide
+  (host or a vote; a human GM seat if there is one). Rulings are logged and reused so the same call is made every time.
+- **House rules:** none in the first version; the game plays strictly by the book so you
+  learn the real rules. The engine leaves room for optional toggles to be added later.
+- Automated tests: a scenario suite that plays out rule situations (heat, structure,
+  overcharge, cover, Hidden, statuses...) and checks the outcome.
+
+## 8. Learning to play (first-time players)
+
+The goal of version one is learning the real game, so it plays strictly by the book and
+teaches as you go.
+
+- **Tutorial missions:** a short guided first mission that introduces one thing at a time:
+  moving and turns, basic attacks, cover, heat, damage and structure, tech actions, then a
+  full fight. Then pilot and mech creation with the GM walking you through each choice.
+- **Teaching prompts:** written explanations pop up when a rule comes into play for the
+  first time ("you're Engaged, so moving away will provoke"), each citing the rulebook
+  section. A searchable in-game rules reference answers questions any time.
+- **Explain everything:** hovering any action, status, tag or weapon shows what it does and
+  where it's from in the book. Blocked actions say why ("can't Boost: you've already used your
+  move") instead of just failing.
+- **Show the math:** every roll shows its breakdown (d20 + Grit + accuracy/difficulty vs.
+  Evasion) so you learn how the numbers work.
+- **Teaching hints toggle:** on for new players, off once you know the game.
+
+## 9. Procedural GM (no AI)
+
+The GM is built from rule sets, random tables and tunable parameters, so every game plays
+differently without an AI. Each game has a **seed**: share it to replay the same setup.
+
+- **Mission generator:** picks a sitrep (from `lancer-data`: control points, escort, holdout,
+  extraction, etc.), map, environment and hazards (`environments.json`), objectives, and
+  complications from weighted tables. Maps are generated from terrain kits (urban, desert,
+  forest, station interior...) with rules for cover density, elevation and choke points.
+- **Encounter builder:** builds enemy forces using the core book's encounter guidance for
+  your squad's size and License Level: NPC classes, templates (Elite, Veteran, Ultra...),
+  roles mixed so fights vary (artillery-heavy, swarm of grunts, one Ultra boss...).
+- **Enemy tactics:** each NPC role (Striker, Artillery, Controller, Defender, Support) has its
+  own behavior rules: targeting priorities, keeping range, using cover, focusing fire,
+  protecting allies, retreating when damaged. Scored by a utility system, with randomness so
+  enemies aren't predictable. Enemies only act on what *they* could know (they can't target
+  someone Hidden).
+- **GM personality / difficulty dials:** aggression, caution, focus fire vs. spread damage,
+  reinforcement rate, how often complications happen, overall difficulty. Presets (e.g.
+  "Ruthless", "Cautious", "Chaotic", "Teaching") plus custom sliders.
+- **Events and reinforcements:** triggered by round number, objectives or player actions,
+  from weighted tables (reinforcements arrive, weather turns, a building collapses, a third
+  party shows up).
+- **Narration:** written text from templates and tables (mission briefings, enemy barks,
+  outcome reports, downtime results), filled in with names, places and factions from the
+  campaign. Variety comes from many variants per situation, not an AI.
+- **Campaign generator:** factions, planets, contacts, reserves (`reserves.json`), mission
+  chains and consequences, so what you do in one mission changes the next.
+- **Downtime:** the book's downtime actions (`downtime_actions.json`) with outcomes rolled per
+  the rules.
+- **All of it is data:** tables, behaviors and presets live in editable data files, so new
+  content and variety can be added without changing code.
+
+## Rule differences: Lancer Tactics vs. the book
+
+Whenever Lancer Tactics handles a rule differently from the tabletop book, it's listed here
+and you pick which one the game uses. The book version is used until you decide. Your choice
+becomes a named option, so the other version stays available.
+
+| Rule | Book | Lancer Tactics | Why LT might do it | Your pick |
+|---|---|---|---|---|
+| (none found yet) | | | | |
+
+## Build plan: parallel sessions
+
+Keep usage efficient on the 5-hour and weekly limits: **at most 3 sessions working at once**,
+each with a narrow, self-contained brief, and a new piece only starts once one finishes.
+
+1. **Foundation (this session, first, not parallel):** repo, folder layout, the shared
+   interfaces everything else codes against: game-state format, action/event messages,
+   grid layer (hex + square), loading the `lancer-data` content.
+2. **Then up to 3 at once, each in its own worktree/branch:**
+   - **Rules engine + sanity checker:** actions, combat, heat/structure, statuses,
+     Hidden/visibility, rule citations, scenario tests.
+   - **3D renderer + animations:** in-house procedural mechs, camera, grid rendering,
+     the animation catalogue in section 1.
+   - **Networking + launcher:** WebRTC peer-to-peer, per-player filtered views, room
+     codes, GitHub Release auto-updater, .exe packaging.
+3. **After the engine lands:** procedural GM (mission generation, enemy tactics, events),
+   then campaign layer
+   (missions, downtime, licenses, leveling). This session merges branches and runs the
+   full checks.
+
+## Publishing (if you ever release it)
+
+- **Engine cost: $0.** Godot is MIT-licensed: no fees, no royalties, no splash screen, no
+  account. Just include Godot's license notice in the credits.
+- **Free places to publish:** GitHub Releases (already the update channel) and itch.io.
+  Steam charges a $100 fee per game, so it's not free.
+- **Our own code and models:** all made in house, so they're yours to publish.
+- **The Lancer IP is the real question, not the engine.** Lancer belongs to Massif Press.
+  Before publishing, check Massif's third-party license / community content guidelines for
+  what's allowed (name, logo, rules text, game data, free vs. paid). A full digital adaptation
+  may need their permission, especially if you charge for it. Personal play with friends is a
+  different situation from public release.
+
+## Content sources
+
+- **Player content:** Massif Press `lancer-data` (official JSON): frames, weapons, systems,
+  talents, core bonuses, statuses, downtime, sitreps, glossary rule text. In
+  `data/lancer-data/` (v4.0.12, GPL-3.0).
+- **NPCs:** not in `lancer-data`. Look for official NPC data first, otherwise from your books.
+- **Rules text and campaign books:** from you where needed.
+- Check Massif's third-party content guidelines before sharing the game outside your group.
+
+## Open items
+
+- [ ] NPC book / NPC data
+- [ ] Campaign books you want to run
+- [x] Godot 4.7.2 installed at `A:\godot`
+- [ ] Godot export templates (1.3 GB, needed to build the .exe) and Blender
+- [x] Repo visibility: **public**. Only our own code and Massif's published data go in it;
+      rulebook text stays local and is never committed.
+- [x] Online connection method: **peer-to-peer (WebRTC)**. Note: some strict networks may
+      need a TURN relay as a fallback.
+- [x] GitHub repo: https://github.com/Gabensrightnut/lancer-auto-gm (public)
+- [x] Project license: **GPL-3.0-or-later** (matches Massif's data license)
