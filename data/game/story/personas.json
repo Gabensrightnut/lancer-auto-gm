@@ -1,5 +1,5 @@
 {
-  "_note": "Our own data: how AI squadmates choose in conversations (DESIGN.md section 10, 'AI squadmates pick in character'). likes = weight per choice tag; caution = how much a RISKY/HEROIC check puts them off; leave = how keen they are to end a conversation. why = the line shown in the log for the tag that decided it. Choice tags used by scenes: aggressive, diplomatic, cautious, greedy, honest, deceptive, kind, curious, practical, bold, leave. downtime = the downtime actions this persona prefers, in order (the first one possible is taken).",
+  "_note": "Our own data: how AI squadmates choose in conversations (DESIGN.md section 10, 'AI squadmates pick in character'). likes = weight per choice tag; caution = how much a RISKY/HEROIC check puts them off; leave = how keen they are to end a conversation. why = the line shown in the log for the tag that decided it. Choice tags used by scenes: aggressive, diplomatic, cautious, greedy, honest, deceptive, kind, curious, practical, bold, leave. downtime = the downtime actions this persona prefers, in order (the first one possible is taken). from_triggers / from_background = which persona a squadmate's triggers and background suggest (Squadmate.suggest); roles = the team role each persona plays when the frame is Balanced (the Everest), and stance = the AI battle orders for that role; frame mechtype roles (lancer-data frames.json) win when the frame has one. history = how a squadmate's memories shift what they like.",
   "personas": {
     "steady": {
       "name": "Steady",
@@ -131,6 +131,143 @@
         "dt_scrounge_and_barter",
         "dt_get_a_damn_drink"
       ]
+    },
+    "grim": {
+      "name": "Grim",
+      "likes": {
+        "practical": 2,
+        "cautious": 1.5,
+        "honest": 1,
+        "kind": -0.5,
+        "curious": -1
+      },
+      "caution": 1.2,
+      "leave": -0.5,
+      "why": {
+        "practical": "{callsign} has seen how this ends. Keep it simple.",
+        "cautious": "{callsign} has buried enough friends."
+      },
+      "why_default": "{callsign} doesn't waste words.",
+      "downtime": [
+        "dt_get_focused",
+        "dt_buy_some_time",
+        "dt_gather_information"
+      ]
+    },
+    "joker": {
+      "name": "Joker",
+      "likes": {
+        "bold": 1.5,
+        "curious": 1.5,
+        "deceptive": 1,
+        "diplomatic": 0.5,
+        "cautious": -1
+      },
+      "caution": 0.5,
+      "leave": -2,
+      "why": {
+        "bold": "{callsign} grins. 'What's the worst that could happen?'",
+        "curious": "{callsign} just wants to see what happens.",
+        "deceptive": "{callsign} can't resist a good bluff."
+      },
+      "why_default": "{callsign} picks the fun option.",
+      "downtime": [
+        "dt_get_a_damn_drink",
+        "dt_get_creative",
+        "dt_scrounge_and_barter"
+      ]
+    }
+  },
+  "from_triggers": {
+    "sk_apply_fists_to_faces": "bold",
+    "sk_assault": "bold",
+    "sk_blow_something_up": "joker",
+    "sk_threaten": "mercenary",
+    "sk_take_control": "bold",
+    "sk_charm": "kind",
+    "sk_lead_or_inspire": "kind",
+    "sk_patch": "kind",
+    "sk_read_a_situation": "steady",
+    "sk_stay_cool": "steady",
+    "sk_pull_rank": "steady",
+    "sk_spot": "steady",
+    "sk_survive": "grim",
+    "sk_take_someone_out": "grim",
+    "sk_hack_or_fix": "curious",
+    "sk_invent_or_create": "curious",
+    "sk_investigate": "curious",
+    "sk_act_unseen_or_unheard": "sly",
+    "sk_word_on_the_street": "sly",
+    "sk_get_a_hold_of_something": "mercenary",
+    "sk_get_somewhere_quickly": "joker",
+    "sk_show_off": "joker"
+  },
+  "from_background": {
+    "pbg_celebrity": "joker",
+    "pbg_colonist": "steady",
+    "pbg_criminal": "sly",
+    "pbg_far_field_team": "curious",
+    "pbg_hacker": "sly",
+    "pbg_mechanic": "curious",
+    "pbg_medic": "kind",
+    "pbg_mercenary": "mercenary",
+    "pbg_nhp_specialist": "curious",
+    "pbg_noble": "steady",
+    "pbg_outlaw": "sly",
+    "pbg_penal_colonist": "grim",
+    "pbg_priest": "kind",
+    "pbg_scientist": "curious",
+    "pbg_soldier": "steady",
+    "pbg_spaceborn": "steady",
+    "pbg_spec_ops": "grim",
+    "pbg_super_soldier": "bold",
+    "pbg_starship_pilot": "joker",
+    "pbg_worker": "steady"
+  },
+  "roles": {
+    "steady": "Defender",
+    "bold": "Striker",
+    "kind": "Support",
+    "mercenary": "Striker",
+    "curious": "Controller",
+    "sly": "Controller",
+    "grim": "Artillery",
+    "joker": "Striker"
+  },
+  "stance": {
+    "Striker": "aggressive",
+    "Defender": "defensive",
+    "Support": "support",
+    "Controller": "hold",
+    "Artillery": "hold",
+    "Balanced": "follow"
+  },
+  "history": {
+    "wounded": {
+      "min": 3,
+      "likes": {
+        "cautious": 1,
+        "aggressive": -0.5
+      }
+    },
+    "lost_friend": {
+      "likes": {
+        "kind": 0.5,
+        "aggressive": 0.5,
+        "leave": -0.5
+      }
+    },
+    "mvp": {
+      "min": 2,
+      "likes": {
+        "bold": 0.5
+      }
+    },
+    "wrecked": {
+      "min": 2,
+      "likes": {
+        "cautious": 0.5
+      }
     }
   }
 }

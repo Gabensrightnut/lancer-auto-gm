@@ -192,7 +192,10 @@
    "line": [
     "Questions?",
     "Anything you need to know?",
-    "Well?"
+    "Well?",
+    "What else do you need from me?",
+    "Ask now. You won't get the chance out there.",
+    "Anything unclear?"
    ],
    "choices": [
     {
@@ -211,6 +214,7 @@
     },
     {
      "id": "enemy",
+     "once": true,
      "text": [
       "What are we up against?",
       "Who's waiting for us out there?"
@@ -233,6 +237,7 @@
     },
     {
      "id": "pay",
+     "once": true,
      "text": [
       "What's in it for us?",
       "And the squad gets what, exactly?"

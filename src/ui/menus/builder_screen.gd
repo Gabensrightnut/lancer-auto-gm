@@ -1,11 +1,17 @@
 extends Control
-## Pilot and mech builder. Left: the pilot (License Level, points, skills, talents, licenses,
-## core bonuses, mech skills). Middle: the mech (frame, preview area, stats, mounts, systems).
+## Pilot and mech builder. Left: the pilot (portrait with the look creator, License Level,
+## points, skills, talents, licenses, core bonuses, mech skills). Middle: the mech (frame, the
+## 3D preview with paint, stats, mounts, systems, and what the game handles vs. the table).
 ## Right: the picker for whatever slot is being changed; choices that would make the build
 ## illegal are shown greyed out with the reason. All rules live in BuilderModel.
 
-## The visuals work puts the 3D mech preview in this node (a Control, filled by its owner).
+## Holds the 3D mech preview (MechPreview: turntable and paint customizer).
 var preview_area: PanelContainer
+var preview: MechPreview
+var creator: PilotCreator
+var _preview_sig := ""
+## Show every automation row, not just the ones the table handles.
+var _all_automation := false
 var model: BuilderModel
 var pilot_box: VBoxContainer
 var mech_box: VBoxContainer
@@ -87,6 +93,17 @@ func _ready() -> void:
 	status_box.add_theme_constant_override("separation", 14)
 	col.add_child(status_box)
 	_refresh()
+	if "stage:automation" in OS.get_cmdline_user_args():
+		_scroll_to_end.call_deferred(mech_scroll)  # screenshots
+	if MenuSession.open_creator or "stage:creator" in OS.get_cmdline_user_args():
+		MenuSession.open_creator = false
+		_open_creator.call_deferred()
+
+
+func _scroll_to_end(scroll: ScrollContainer) -> void:
+	for i in range(5):
+		await get_tree().process_frame
+	scroll.scroll_vertical = int(scroll.get_v_scroll_bar().max_value)
 
 
 func _refresh() -> void:
@@ -101,6 +118,16 @@ func _refresh() -> void:
 func _refresh_pilot() -> void:
 	_clear(pilot_box, 1)
 	var p := model.pilot
+	var who := HBoxContainer.new()
+	who.add_theme_constant_override("separation", 12)
+	var face := PortraitArt.new()
+	face.custom_minimum_size = Vector2(96, 116)
+	face.set_look(p["portrait"] if p.get("portrait") is Dictionary and not (p["portrait"] as Dictionary).is_empty() else Portrait.look_for_pilot(p))
+	who.add_child(face)
+	var who_col := VBoxContainer.new()
+	who_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	who_col.add_theme_constant_override("separation", 8)
+	who.add_child(who_col)
 	var names := HBoxContainer.new()
 	names.add_theme_constant_override("separation", 8)
 	var callsign := LineEdit.new()
@@ -116,7 +143,14 @@ func _refresh_pilot() -> void:
 	full.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	full.text_changed.connect(func(t: String) -> void: p["name"] = t)
 	names.add_child(full)
-	pilot_box.add_child(names)
+	who_col.add_child(names)
+	var look := Button.new()
+	look.text = "Edit look (portrait and token)"
+	look.icon = MenuTheme.icon_texture("pilot", 20, MenuTheme.TEXT)
+	look.tooltip_text = "Face, hair, clothes and colors, and the figure your pilot is on foot. Cosmetic only."
+	look.pressed.connect(_open_creator)
+	who_col.add_child(look)
+	pilot_box.add_child(who)
 	var ll := HBoxContainer.new()
 	ll.add_theme_constant_override("separation", 10)
 	# License Level isn't picked here: it goes up by one after every mission (Core p.18).
@@ -274,6 +308,8 @@ func _core_bonus_list() -> Control:
 # --- Mech --------------------------------------------------------------------------------
 
 func _refresh_mech() -> void:
+	if preview != null and preview.get_parent() != null:
+		preview.get_parent().remove_child(preview)  # kept across refreshes (its 3D studio is costly)
 	_clear(mech_box)
 	var m := model.mech()
 	if m.is_empty():
@@ -304,13 +340,7 @@ func _refresh_mech() -> void:
 	preview_area.custom_minimum_size = Vector2(0, 300)
 	var ps := MenuTheme.box(Color("08090c"), accent.darkened(0.3), 1, 0)
 	preview_area.add_theme_stylebox_override("panel", ps)
-	var pv := VBoxContainer.new()
-	pv.alignment = BoxContainer.ALIGNMENT_CENTER
-	pv.add_child(_centered(MenuTheme.icon(MenuTheme.maker_icon(source), 120, accent.darkened(0.2))))
-	var tag := MenuTheme.label("3D MECH PREVIEW", 15, MenuTheme.MUTED)
-	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	pv.add_child(tag)
-	preview_area.add_child(pv)
+	preview_area.add_child(_mech_preview(m))
 	mech_box.add_child(preview_area)
 
 	var u := UnitFactory.build_mech(model.db, "preview", str(m["frame"]), m.get("loadout", {}), model.pilot)
@@ -352,6 +382,108 @@ func _refresh_mech() -> void:
 		rm.pressed.connect(func() -> void: model.remove_system(i))
 		h.add_child(rm)
 		mech_box.add_child(h)
+	mech_box.add_child(_automation_panel())
+
+
+## The turntable with the paint customizer, rebuilt only when the frame or loadout changes.
+func _mech_preview(m: Dictionary) -> MechPreview:
+	if preview == null:
+		preview = MechPreview.new()
+		preview.show_paint_controls = true
+		preview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		preview.paint_changed.connect(func(paint: Dictionary) -> void: model.mech()["paint"] = paint)
+	var sig := JSON.stringify([m.get("id", ""), m["frame"], m.get("loadout", {})])
+	if sig != _preview_sig:
+		_preview_sig = sig
+		preview.set_mech(model.db, str(m["frame"]), m.get("loadout", {}), m.get("paint", {}))
+	return preview
+
+
+## What the game does for this mech and pilot, and what to handle at the table
+## (BuilderModel.automation, from the rules engine's report).
+func _automation_panel() -> Control:
+	var entries := model.automation()
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 8)
+	head.add_child(MenuTheme.heading("What the game handles", 18))
+	var counts := {"automated": 0, "partial": 0, "manual": 0}
+	for e: Dictionary in entries:
+		var st := str(e.get("status", "manual"))
+		counts[st] = int(counts.get(st, 0)) + 1
+	head.add_child(MenuTheme.chip("%d automatic" % counts["automated"], MenuTheme.GOOD))
+	if int(counts["partial"]) > 0:
+		head.add_child(MenuTheme.chip("%d partly" % counts["partial"], MenuTheme.WARN))
+	if int(counts["manual"]) > 0:
+		head.add_child(MenuTheme.chip("%d at the table" % counts["manual"], MenuTheme.BAD))
+	var grow := Control.new()
+	grow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(grow)
+	var all := CheckBox.new()
+	all.text = "Show all"
+	all.button_pressed = _all_automation
+	all.toggled.connect(func(on: bool) -> void:
+		_all_automation = on
+		_refresh_mech())
+	head.add_child(all)
+	box.add_child(head)
+	box.add_child(MenuTheme.label("Automatic rules are done for you in battle. Anything marked partly or at the table, you and the GM resolve together when it comes up.", 14, MenuTheme.MUTED, true))
+	var auto_names := PackedStringArray()
+	for e: Dictionary in entries:
+		if str(e.get("status", "manual")) == "automated" and not _all_automation:
+			auto_names.append(str(e.get("name", "")))
+			continue
+		box.add_child(_automation_row(e))
+	if not auto_names.is_empty():
+		box.add_child(MenuTheme.label("Automatic: " + ", ".join(auto_names) + ".", 14, MenuTheme.GOOD.lightened(0.2), true))
+	return box
+
+
+func _automation_row(e: Dictionary) -> Control:
+	var status := str(e.get("status", "manual"))
+	var color: Color = {"automated": MenuTheme.GOOD, "partial": MenuTheme.WARN}.get(status, MenuTheme.BAD)
+	var p := PanelContainer.new()
+	var st := MenuTheme.box(MenuTheme.PANEL_2, MenuTheme.LINE, 1, 0)
+	st.border_width_left = 4
+	st.border_color = color
+	p.add_theme_stylebox_override("panel", st)
+	p.tooltip_text = str(e.get("text", ""))
+	p.mouse_filter = Control.MOUSE_FILTER_PASS
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 2)
+	p.add_child(v)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 8)
+	h.add_child(MenuTheme.chip({"automated": "Automatic", "partial": "Partly automatic"}.get(status, "At the table"), color))
+	var kinds := {"trait": "Frame trait", "core": "Core system", "system": "System", "weapon": "Weapon", "talent": "Talent"}
+	var kind: String = kinds.get(str(e.get("kind", "")), str(e.get("kind", "")).capitalize())
+	h.add_child(MenuTheme.label("%s  ·  %s" % [e.get("name", ""), kind], 16))
+	v.add_child(h)
+	var guidance := str(e.get("guidance", ""))
+	if guidance != "":
+		v.add_child(MenuTheme.label(guidance, 14, MenuTheme.MUTED, true))
+	return p
+
+
+## The pilot look creator (portrait and on-foot token), full screen over the builder.
+func _open_creator() -> void:
+	if creator != null:
+		return
+	creator = PilotCreator.new()
+	add_child(creator)
+	creator.open(model.pilot["portrait"] if model.pilot.get("portrait") is Dictionary else {})
+	creator.confirmed.connect(func(portrait: Dictionary) -> void:
+		model.pilot["portrait"] = portrait
+		_close_creator()
+		_refresh())
+	creator.cancelled.connect(_close_creator)
+
+
+func _close_creator() -> void:
+	if creator != null:
+		creator.queue_free()
+		creator = null
 
 
 func _mount_panel(mt: Dictionary, accent: Color) -> Control:
@@ -543,7 +675,11 @@ func _done() -> void:
 	var c := MenuSession.campaign
 	if c != null and c.pilots.has(model.pilot["id"]):
 		c.pilots[model.pilot["id"]] = model.pilot
-		MenuSession.store.save_campaign(c)
+		if GameFlow.is_story(c):
+			# Story campaigns: level-up picks made here stop waiting; a friend's build goes to the host.
+			GameFlow.builder_done(c, model, MenuSession.store)
+		else:
+			MenuSession.store.save_campaign(c)
 	if MenuSession.lobby != null and MenuSession.lobby.is_host:
 		MenuSession.lobby.assign_pilot(MenuSession.lobby.seats()[0], MenuSession.lobby.assignment[MenuSession.lobby.seats()[0]])
 	MenuSession.go(self, MenuSession.back_to)

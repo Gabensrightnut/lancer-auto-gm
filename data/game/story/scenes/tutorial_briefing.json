@@ -52,6 +52,7 @@
     },
     {
      "id": "ll",
+     "once": true,
      "text": "What's a License Level?",
      "tags": [
       "curious"
@@ -70,6 +71,7 @@
     },
     {
      "id": "everest",
+     "once": true,
      "text": "Why the Everest?",
      "tags": [
       "curious"
@@ -88,6 +90,7 @@
     },
     {
      "id": "enemy",
+     "once": true,
      "text": "What are we up against?",
      "tags": [
       "curious",
@@ -107,6 +110,7 @@
     },
     {
      "id": "die",
+     "once": true,
      "text": "Can we get hurt out there?",
      "tags": [
       "cautious"

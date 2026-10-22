@@ -41,8 +41,8 @@ var over := false
 var outcome := ""
 var outcome_reason := ""
 var awaiting_handoff := false
-## Damage dealt in this battle (host), for the story's debrief ("who did the most damage").
-var damage_events: Array = []
+## Every event of this battle (host), for the story's debrief (CampaignLoop.finish_mission).
+var battle_events: Array = []
 
 var _ai_wait := 0.0
 var _local_humans: Array = []
@@ -228,9 +228,7 @@ func _seen(events: Array) -> void:
 
 
 func _on_resolved(_seat: String, _action: Dictionary, _result: RuleResult, events: Array) -> void:
-	for e: Dictionary in events:
-		if str(e.get("type", "")) == "damage_dealt":
-			damage_events.append(e)
+	battle_events.append_array(events)
 
 
 func _sync_mirror() -> void:

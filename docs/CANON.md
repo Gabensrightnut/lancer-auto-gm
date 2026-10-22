@@ -67,6 +67,11 @@ book in a way that changes the setting; parked.
 | Teamwork helpers opt in, give +1 and share the consequences | Canon | Core p.45 ("If people want to help... everyone helping suffers any complications") |
 | Multiplayer: the speaking pilot's player chooses, or a squad vote; AI squadmates choose in character; clients never see NPC secrets or hidden twists | Consistent | DESIGN.md section 10; secrets stay on the host (CLAUDE.md) |
 | Debrief recounts the fight (rounds, enemies down, mechs wrecked and reprinted at the full repair, who fell) | Canon / Consistent | Debrief: talk about the mission (p.44); wrecked mechs reprinted (p.31, p.82); pilot death (p.49, p.83) |
+| AI squadmates with personas from their triggers and background, team roles from the frame (lancer-data mechtype) | Consistent | Triggers and backgrounds describe the pilot (p.20-27); frame roles are Massif's data; AI squadmates are DESIGN.md section 10 |
+| Squadmate memory (wounds, wrecks, fallen friends, choices) coloring banter, barks, dialogue and downtime picks | Consistent | Freeform downtime roleplay and bonds between pilots (p.50); flavor only, never a roll |
+| Background-only dialogue options (once per person) and jobs made personal by a pilot's background | Consistent | Backgrounds are prompts for play (p.20-24); stakes tied to backgrounds (p.43); background +1 Accuracy still applies to checks (p.20) |
+| Arc shapes: betrayal (the patron was wrong), manhunt, gold rush | Consistent | Goal table kinds (p.42); goals and sides can change (p.42-43) |
+| Twists: sabotage, surrender offered, allies pinned down, leaked plan, prize in the wreckage, turncoat | Consistent | p.43 (goals change mid-mission); p.60 (surrender and retreat are valid ends to a fight) |
 
 ## When canon allows more than one answer
 

@@ -191,3 +191,24 @@ func test_manufacturer_core_bonuses_need_three_more_ranks_each() -> void:
 	expect(why.contains("6 IPS-N license ranks"), why)
 	expect_eq(b.set_license("mf_drake", 3), "", "ranks can be spread over any IPS-N licenses")
 	expect_eq(b.toggle_core_bonus(ipsn[1]), "", "6 ranks: 2nd IPS-N bonus")
+
+
+func test_automation_report_for_the_build() -> void:
+	var b := _builder()
+	var report := b.automation()
+	expect(not report.is_empty(), "the Everest's traits and core system are listed")
+	var kinds := report.map(func(e: Dictionary) -> String: return str(e["kind"]))
+	expect(kinds.has("trait") and kinds.has("core"), str(kinds))
+	for e: Dictionary in report:
+		expect(e["status"] in ["automated", "partial", "manual"], str(e))
+		expect(str(e["name"]) != "")
+		if e["status"] != "automated":
+			expect(str(e["guidance"]) != "", "what to do at the table: %s" % str(e))
+
+
+func test_new_pilots_get_a_look_and_picks_left_count_down() -> void:
+	var b := _builder(1)
+	expect(b.pilot.get("portrait") is Dictionary and not (b.pilot["portrait"] as Dictionary).is_empty(), "a starting portrait for the look creator")
+	expect_eq(b.picks_left(), {"talent": 4, "license": 1, "core_bonus": 0}, "LL1, nothing spent: 3 + 1 talent ranks and 1 license rank")
+	expect_eq(b.set_license("mf_blackbeard", 1), "")
+	expect_eq(b.picks_left()["license"], 0, "spent in the builder")

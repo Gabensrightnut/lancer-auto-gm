@@ -60,6 +60,10 @@ func new_pilot(pilot_name: String, callsign: String) -> Dictionary:
 		"mechs": [{"id": mech_id, "name": callsign + "'s Everest", "frame": STARTER_FRAME, "loadout": loadout}],
 		"active_mech": mech_id,
 	}
+	# A starting look (PortraitSpec v2; the builder's look creator changes it).
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(p["id"])
+	p["portrait"] = PortraitSpec.randomize(rng)
 	pilots[p["id"]] = p
 	return p
 

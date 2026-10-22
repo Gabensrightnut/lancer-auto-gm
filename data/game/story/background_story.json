@@ -1,0 +1,1112 @@
+{
+  "_note": "Our own writing. Pilot backgrounds (lancer-data backgrounds.json, Core p.20-24) open their own dialogue options with the people who'd care (roles), and make some jobs personal: the book ties a mission's stakes to the pilots' backgrounds (Core p.43). Options join a role's 'menu' node (src/story/background_story.gd) and work once per person. Checks still get the background's +1 Accuracy where its tags fit (Core p.20).",
+  "backgrounds": {
+    "pbg_celebrity": {
+      "options": [
+        {
+          "roles": [
+            "bartender",
+            "local"
+          ],
+          "text": "Don't you recognize me? Let me sign something.",
+          "tags": [
+            "bold",
+            "diplomatic"
+          ],
+          "check": {
+            "skills": [
+              "sk_show_off",
+              "sk_charm"
+            ],
+            "tags": [
+              "fame",
+              "crowds"
+            ],
+            "consequence": "Nobody's heard of you out here.",
+            "success_effects": [
+              {
+                "reserve": "reserve_reputation",
+                "source": "Your old fame"
+              },
+              {
+                "set_flag": "bg_used:bg_celebrity_0:{npc_id}"
+              }
+            ],
+            "fail_effects": [
+              {
+                "set_flag": "bg_used:bg_celebrity_0:{npc_id}"
+              }
+            ],
+            "goal": "bg_used:bg_celebrity_0:{npc_id}"
+          },
+          "id": "bg_celebrity_0",
+          "condition": [
+            {
+              "background": "pbg_celebrity"
+            },
+            {
+              "not": {
+                "flag": "bg_used:bg_celebrity_0:{npc_id}"
+              }
+            }
+          ],
+          "badge": "Background"
+        }
+      ],
+      "personal": {
+        "templates": [
+          "escort_vip",
+          "cover_evacuation"
+        ],
+        "line": "Half the people watching the feeds know {callsign}'s face. They'll be watching this one."
+      }
+    },
+    "pbg_colonist": {
+      "options": [
+        {
+          "roles": [
+            "local"
+          ],
+          "text": "I grew up on a colony like this. What do you actually need?",
+          "tags": [
+            "kind",
+            "honest"
+          ],
+          "effects": [
+            {
+              "standing": "$hub.faction",
+              "add": 1
+            },
+            {
+              "set_flag": "colonist_trust:{npc_id}"
+            },
+            {
+              "set_flag": "bg_used:bg_colonist_0:{npc_id}"
+            }
+          ],
+          "id": "bg_colonist_0",
+          "condition": [
+            {
+              "background": "pbg_colonist"
+            },
+            {
+              "not": {
+                "flag": "bg_used:bg_colonist_0:{npc_id}"
+              }
+            }
+          ],
+          "badge": "Background"
+        }
+      ],
+      "personal": {
+        "templates": [
+          "clear_raiders",
+          "rescue",
+          "hold_the_line"
+        ],
+        "line": "{callsign} grew up somewhere just like this. They know what losing it would mean."
+      }
+    },
+    "pbg_criminal": {
+      "options": [
+        {
+          "roles": [
+            "fixer"
+          ],
+          "text": "I know how this works. Cut the act and give me the real price.",
+          "tags": [
+            "deceptive",
+            "practical"
+          ],
+          "check": {
+            "skills": [
+              "sk_word_on_the_street",
+              "sk_threaten"
+            ],
+            "tags": [
+              "crime",
+              "black_market"
+            ],
+            "consequence": "They take offense.",
+            "success_effects": [
+              {
+                "reserve": "reserve_access",
+                "name": "A way in, from {npc}",
+                "source": "$npc.name"
+              },
+              {
+                "set_flag": "bg_used:bg_criminal_0:{npc_id}"
+              }
+            ],
+            "fail_effects": [
+              {
+                "standing": "$npc.faction",
+                "add": -1
+              },
+              {
+                "set_flag": "bg_used:bg_criminal_0:{npc_id}"
+              }
+            ],
+            "goal": "bg_used:bg_criminal_0:{npc_id}"
+          },
+          "id": "bg_criminal_0",
+          "condition": [
+            {
+              "background": "pbg_criminal"
+            },
+            {
+              "not": {
+                "flag": "bg_used:bg_criminal_0:{npc_id}"
+              }
+            }
+          ],
+          "badge": "Background"
+        }
+      ],
+      "personal": {
+        "templates": [
+          "smuggle_cargo",
+          "stolen_goods",
+          "extract_person"
+        ],
+        "line": "{callsign} knows the people on the other side of this. Some of them by name."
+      }
+    },
+    "pbg_far_field_team": {
+      "options": [
+        {
+          "roles": [
+            "local",
+            "faction_agent"
+          ],
+          "text": "I've surveyed worlds like this. Tell me about the ground out there.",
+          "tags": [
+            "curious"
+          ],
+          "effects": [
+            {
+              "reserve": "reserve_knowledge",
+              "name": "Survey notes on the region",
+              "source": "$npc.name"
+            },
+            {
+              "set_flag": "bg_used:bg_far_field_team_0:{npc_id}"
+            }
+          ],
+          "id": "bg_far_field_team_0",
+          "condition": [
+            {
+              "background": "pbg_far_field_team"
+            },
+            {
+              "not": {
+                "flag": "bg_used:bg_far_field_team_0:{npc_id}"
+              }
+            },
+            {
+              "not": {
+                "flag": "survey_notes:{npc_id}"
+              }
+            }
+          ],
+          "badge": "Background"
+        }
+      ],
+      "personal": {
+        "templates": [
+          "explore_derelict",
+          "answer_sos"
+        ],
+        "line": "{callsign} has walked into the unknown before. This feels familiar, and not in a good way."
+      }
+    },
+    "pbg_hacker": {
+      "options": [
+        {
+          "roles": [
+            "fixer",
+            "company_rep"
+          ],
+          "text": "Your network security is a joke. Want me to show you?",
+          "tags": [
+            "bold",
+            "deceptive"
+          ],
+          "check": {
+            "skills": [
+              "sk_hack_or_fix",
+              "sk_act_unseen_or_unheard"
+            ],
+            "tags": [
+              "computers"
+            ],
+            "consequence": "They call security instead.",
+            "success_effects": [
+              {
+                "reserve": "reserve_blackmail",
+                "name": "Something from {npc}'s files",
+                "source": "$npc.name"
+              },
+              {
+                "set_flag": "bg_used:bg_hacker_0:{npc_id}"
+              }
+            ],
+            "fail_effects": [
+              {
+                "standing": "$npc.faction",
+                "add": -1
+              },
+              {
+                "set_flag": "bg_used:bg_hacker_0:{npc_id}"
+              }
+            ],
+            "risky": true,
+            "goal": "bg_used:bg_hacker_0:{npc_id}"
+          },
+          "id": "bg_hacker_0",
+          "condition": [
+            {
+              "background": "pbg_hacker"
+            },
+            {
+              "not": {
+                "flag": "bg_used:bg_hacker_0:{npc_id}"
+              }
+            }
+          ],
+          "badge": "Background"
+        }
+      ],
+      "personal": {
+        "templates": [
+          "data_heist",
+          "investigate_tip"
+        ],
+        "line": "{callsign} has been inside systems like this. They know what's hidden in them."
+      }
+    },
+    "pbg_mechanic": {
+      "options": [
+        {
+          "roles": [
+            "mechanic",
+            "quartermaster"
+          ],
+          "text": "Your printer's misaligned. I can hear it from here. Let me fix it.",
+          "tags": [
+            "practical",
+            "kind"
+          ],
+          "effects": [
+            {
+              "standing": "$npc.faction",
+              "add": 1
+            },
+            {
+              "set_flag": "fixed_printer:{npc_id}"
+            },
+            {
+              "set_flag": "bg_used:bg_mechanic_0:{npc_id}"
+            }
+          ],
+          "id": "bg_mechanic_0",
+          "condition": [
+            {
+              "background": "pbg_mechanic"
+            },
+            {
+              "not": {
+                "flag": "bg_used:bg_mechanic_0:{npc_id}"
+              }
+            },
+            {
+              "not": {
+                "flag": "fixed_printer:{npc_id}"
+              }
+            }
+          ],
+          "badge": "Background"
+        }
+      ],
+      "personal": {
+        "templates": [
+          "secure_site",
+          "destroy_infrastructure"
+        ],
+        "line": "{callsign} knows exactly how this machinery fails. That might matter today."
+      }
+    },
+    "pbg_medic": {
+      "options": [
+        {
+          "roles": [
+            "local",
+            "bartender"
+          ],
+          "text": "Who here needs a doctor? I'll take a look.",
+          "tags": [
+            "kind"
+          ],
+          "effects": [
+            {
+              "standing": "$hub.faction",
+              "add": 1
+            },
+            {
+              "set_flag": "clinic_day:{hub_faction}"
+            },
+            {
+              "set_flag": "bg_used:bg_medic_0:{npc_id}"
+            }
+          ],
+          "id": "bg_medic_0",
+          "condition": [
+            {
+              "background": "pbg_medic"
+            },
+            {
+              "not": {
+                "flag": "bg_used:bg_medic_0:{npc_id}"
+              }
+            },
+            {
+              "not": {
+                "flag": "clinic_day:{hub_faction}"
+              }
+            }
+          ],
+          "badge": "Background"
+        }
+      ],
+      "personal": {
+        "templates": [
+          "rescue",
+          "cover_evacuation"
+        ],
+        "line": "There will be wounded. {callsign} has treated worse, but never in a cockpit."
+      }
+    },
+    "pbg_mercenary": {
+      "options": [
+        {
+          "roles": [
+            "faction_agent",
+            "company_rep"
+          ],
+          "text": "I've worked contracts like this. What's the real rate?",
+          "tags": [
+            "greedy",
+            "practical"
+          ],
+          "check": {
+            "skills": [
+              "sk_threaten",
+              "sk_get_a_hold_of_something",
+              "sk_charm"
+            ],
+            "tags": [
+              "mercenaries"
+            ],
+            "consequence": "They think you're greedy.",
+            "success_effects": [
+              {
+                "reserve": "reserve_backing",
+                "name": "Better contract terms with {npc_faction}",
+                "source": "$npc.name"
+              },
+              {
+                "set_flag": "bg_used:bg_mercenary_0:{npc_id}"
+              }
+            ],
+            "fail_effects": [
+              {
+                "standing": "$npc.faction",
+                "add": -1
+              },
+              {
+                "set_flag": "bg_used:bg_mercenary_0:{npc_id}"
+              }
+            ],
+            "goal": "bg_used:bg_mercenary_0:{npc_id}"
+          },
+          "id": "bg_mercenary_0",
+          "condition": [
+            {
+              "background": "pbg_mercenary"
+            },
+            {
+              "not": {
+                "flag": "bg_used:bg_mercenary_0:{npc_id}"
+              }
+            }
+          ],
+          "badge": "Background"
+        }
+      ],
+      "personal": {
+        "templates": [
+          "hunt_rivals",
+          "raid_depot"
+        ],
+        "line": "{callsign} may know the mercenaries on the other side. Old company, old debts."
+      }
+    },
+    "pbg_nhp_specialist": {
+      "options": [
+        {
+          "roles": [
+            "company_rep",
+            "mechanic",
+            "fixer"
+          ],
+          "text": "Is there an NHP running things here? I'd like to talk to it.",
+          "tags": [
+            "curious",
+            "kind"
+          ],
+          "effects": [
+            {
+              "set_flag": "nhp_contact:{hub}"
+            },
+            {
+              "reserve": "reserve_nhp_assistant",
+              "name": "Advice from the base NHP",
+              "source": "$npc.name"
+            },
+            {
+              "set_flag": "bg_used:bg_nhp_specialist_0:{npc_id}"
+            }
+          ],
+          "id": "bg_nhp_specialist_0",
+          "condition": [
+            {
+              "background": "pbg_nhp_specialist"
+            },
+            {
+              "not": {
+                "flag": "bg_used:bg_nhp_specialist_0:{npc_id}"
+              }
+            },
+            {
+              "not": {
+                "flag": "nhp_contact:{hub}"
+              }
+            }
+          ],
+          "badge": "Background"
+        }
+      ],
+      "personal": {
+        "templates": [
+          "data_heist",
+          "explore_derelict"
+        ],
+        "line": "{callsign} suspects an NHP is involved. They'd know the signs."
+      }
+    },
+    "pbg_noble": {
+      "options": [
+        {
+          "roles": [
+            "faction_agent",
+            "company_rep"
+          ],
+          "text": "My house and yours have dealt before. Shall we speak as equals?",
+          "tags": [
+            "diplomatic",
+            "bold"
+          ],
+          "check": {
+            "skills": [
+              "sk_pull_rank",
+              "sk_charm"
+            ],
+            "tags": [
+              "nobles",
+              "etiquette",
+              "politics"
+            ],
+            "consequence": "They don't care whose child you are.",
+            "success_effects": [
+              {
+                "standing": "$npc.faction",
+                "add": 1
+              },
+              {
+                "reserve": "reserve_backing",
+                "name": "A noble's word with {npc_faction}",
+                "source": "$npc.name"
+              },
+              {
+                "set_flag": "bg_used:bg_noble_0:{npc_id}"
+              }
+            ],
+            "fail_effects": [
+              {
+                "set_flag": "bg_used:bg_noble_0:{npc_id}"
+              }
+            ],
+            "goal": "bg_used:bg_noble_0:{npc_id}"
+          },
+          "id": "bg_noble_0",
+          "condition": [
+            {
+              "background": "pbg_noble"
+            },
+            {
+              "not": {
+                "flag": "bg_used:bg_noble_0:{npc_id}"
+              }
+            }
+          ],
+          "badge": "Background"
+        }
+      ],
+      "personal": {
+        "templates": [
+          "champion_duel",
+          "escort_vip"
+        ],
+        "line": "{callsign}'s name carries weight here. So does failure."
+      }
+    },
+    "pbg_outlaw": {
+      "options": [
+        {
+          "roles": [
+            "fixer",
+            "bartender"
+          ],
+          "text": "I've had a price on my head before. Who's hunting whom around here?",
+          "tags": [
+            "curious",
+            "deceptive"
+          ],
+          "effects": [
+            {
+              "reserve": "reserve_tracking",
+              "name": "Who's hunting whom near {hub}",
+              "source": "$npc.name"
+            },
+            {
+              "set_flag": "bg_used:bg_outlaw_0:{npc_id}"
+            }
+          ],
+          "id": "bg_outlaw_0",
+          "condition": [
+            {
+              "background": "pbg_outlaw"
+            },
+            {
+              "not": {
+                "flag": "bg_used:bg_outlaw_0:{npc_id}"
+              }
+            },
+            {
+              "not": {
+                "flag": "outlaw_talk:{npc_id}"
+              }
+            }
+          ],
+          "badge": "Background"
+        }
+      ],
+      "personal": {
+        "templates": [
+          "hunt_rivals",
+          "train_job"
+        ],
+        "line": "{callsign} has been on the other side of a job like this."
+      }
+    },
+    "pbg_penal_colonist": {
+      "options": [
+        {
+          "roles": [
+            "local"
+          ],
+          "text": "I know what it's like to have no say. Who's squeezing you?",
+          "tags": [
+            "honest",
+            "kind"
+          ],
+          "effects": [
+            {
+              "standing": "$hub.faction",
+              "add": 1
+            },
+            {
+              "hook": "$npc.want_hook",
+              "fallback": "clear_raiders",
+              "patron": "$npc"
+            },
+            {
+              "set_flag": "bg_used:bg_penal_colonist_0:{npc_id}"
+            }
+          ],
+          "id": "bg_penal_colonist_0",
+          "condition": [
+            {
+              "background": "pbg_penal_colonist"
+            },
+            {
+              "not": {
+                "flag": "bg_used:bg_penal_colonist_0:{npc_id}"
+              }
+            },
+            {
+              "not": {
+                "flag": "asked_need:{npc_id}"
+              }
+            }
+          ],
+          "badge": "Background"
+        }
+      ],
+      "personal": {
+        "templates": [
+          "extract_person",
+          "hold_the_line"
+        ],
+        "line": "{callsign} remembers being locked in. They won't leave anyone behind a fence."
+      }
+    },
+    "pbg_priest": {
+      "options": [
+        {
+          "roles": [
+            "local",
+            "bartender"
+          ],
+          "text": "You look like you're carrying something heavy. Want to talk?",
+          "tags": [
+            "kind"
+          ],
+          "effects": [
+            {
+              "standing": "$hub.faction",
+              "add": 1
+            },
+            {
+              "set_flag": "bg_used:bg_priest_0:{npc_id}"
+            }
+          ],
+          "id": "bg_priest_0",
+          "condition": [
+            {
+              "background": "pbg_priest"
+            },
+            {
+              "not": {
+                "flag": "bg_used:bg_priest_0:{npc_id}"
+              }
+            },
+            {
+              "not": {
+                "flag": "confession:{npc_id}"
+              }
+            }
+          ],
+          "badge": "Background"
+        }
+      ],
+      "personal": {
+        "templates": [
+          "shrine_guard",
+          "cover_evacuation"
+        ],
+        "line": "For {callsign}, protecting these people is more than a contract."
+      }
+    },
+    "pbg_scientist": {
+      "options": [
+        {
+          "roles": [
+            "company_rep",
+            "local",
+            "mechanic"
+          ],
+          "text": "I'd like to see your research data. Purely academic interest.",
+          "tags": [
+            "curious"
+          ],
+          "check": {
+            "skills": [
+              "sk_investigate",
+              "sk_invent_or_create"
+            ],
+            "tags": [
+              "science",
+              "research"
+            ],
+            "consequence": "They don't trust your motives.",
+            "success_effects": [
+              {
+                "reserve": "reserve_knowledge",
+                "name": "Research notes from {npc}",
+                "source": "$npc.name"
+              },
+              {
+                "set_flag": "bg_used:bg_scientist_0:{npc_id}"
+              }
+            ],
+            "fail_effects": [
+              {
+                "set_flag": "bg_used:bg_scientist_0:{npc_id}"
+              }
+            ],
+            "goal": "bg_used:bg_scientist_0:{npc_id}"
+          },
+          "id": "bg_scientist_0",
+          "condition": [
+            {
+              "background": "pbg_scientist"
+            },
+            {
+              "not": {
+                "flag": "bg_used:bg_scientist_0:{npc_id}"
+              }
+            }
+          ],
+          "badge": "Background"
+        }
+      ],
+      "personal": {
+        "templates": [
+          "explore_derelict",
+          "recover_cargo"
+        ],
+        "line": "{callsign} wants to know what's really out there, almost more than they want to survive it."
+      }
+    },
+    "pbg_soldier": {
+      "options": [
+        {
+          "roles": [
+            "faction_agent",
+            "quartermaster",
+            "instructor"
+          ],
+          "text": "I've worn a uniform. Give it to me straight.",
+          "tags": [
+            "honest",
+            "practical"
+          ],
+          "effects": [
+            {
+              "standing": "$npc.faction",
+              "add": 1
+            },
+            {
+              "set_flag": "bg_used:bg_soldier_0:{npc_id}"
+            }
+          ],
+          "id": "bg_soldier_0",
+          "condition": [
+            {
+              "background": "pbg_soldier"
+            },
+            {
+              "not": {
+                "flag": "bg_used:bg_soldier_0:{npc_id}"
+              }
+            }
+          ],
+          "badge": "Background"
+        }
+      ],
+      "personal": {
+        "templates": [
+          "hold_the_line",
+          "secure_site",
+          "raid_depot"
+        ],
+        "line": "{callsign} has held lines like this before. Not all of them held."
+      }
+    },
+    "pbg_spaceborn": {
+      "options": [
+        {
+          "roles": [
+            "quartermaster",
+            "mechanic"
+          ],
+          "text": "Your seals are cheap. In the void that gets people killed. Here's how to fix them.",
+          "tags": [
+            "practical",
+            "kind"
+          ],
+          "effects": [
+            {
+              "standing": "$npc.faction",
+              "add": 1
+            },
+            {
+              "set_flag": "bg_used:bg_spaceborn_0:{npc_id}"
+            }
+          ],
+          "id": "bg_spaceborn_0",
+          "condition": [
+            {
+              "background": "pbg_spaceborn"
+            },
+            {
+              "not": {
+                "flag": "bg_used:bg_spaceborn_0:{npc_id}"
+              }
+            },
+            {
+              "not": {
+                "flag": "seals:{npc_id}"
+              }
+            }
+          ],
+          "badge": "Background"
+        }
+      ],
+      "personal": {
+        "templates": [
+          "smuggle_cargo",
+          "escort_convoy"
+        ],
+        "line": "{callsign} grew up where one mistake means vacuum. They don't make mistakes."
+      }
+    },
+    "pbg_spec_ops": {
+      "options": [
+        {
+          "roles": [
+            "fixer",
+            "faction_agent"
+          ],
+          "text": "I know a dead drop when I see one. Who are you passing messages for?",
+          "tags": [
+            "curious",
+            "cautious"
+          ],
+          "check": {
+            "skills": [
+              "sk_spot",
+              "sk_read_a_situation",
+              "sk_act_unseen_or_unheard"
+            ],
+            "tags": [
+              "stealth",
+              "military"
+            ],
+            "consequence": "They clam up.",
+            "success_effects": [
+              {
+                "reserve": "reserve_blackmail",
+                "name": "{npc}'s secret channel",
+                "source": "$npc.name"
+              },
+              {
+                "set_flag": "bg_used:bg_spec_ops_0:{npc_id}"
+              }
+            ],
+            "fail_effects": [
+              {
+                "set_flag": "bg_used:bg_spec_ops_0:{npc_id}"
+              }
+            ],
+            "goal": "bg_used:bg_spec_ops_0:{npc_id}"
+          },
+          "id": "bg_spec_ops_0",
+          "condition": [
+            {
+              "background": "pbg_spec_ops"
+            },
+            {
+              "not": {
+                "flag": "bg_used:bg_spec_ops_0:{npc_id}"
+              }
+            }
+          ],
+          "badge": "Background"
+        }
+      ],
+      "personal": {
+        "templates": [
+          "extract_person",
+          "create_diversion"
+        ],
+        "line": "{callsign} has done this quietly before. Quiet is better."
+      }
+    },
+    "pbg_super_soldier": {
+      "options": [
+        {
+          "roles": [
+            "instructor",
+            "bartender",
+            "local"
+          ],
+          "text": "Want to see what they made me into? Arm-wrestle me.",
+          "tags": [
+            "bold"
+          ],
+          "check": {
+            "skills": [
+              "sk_apply_fists_to_faces",
+              "sk_show_off"
+            ],
+            "tags": [
+              "military",
+              "combat"
+            ],
+            "consequence": "You win, and scare everyone.",
+            "success_effects": [
+              {
+                "reserve": "reserve_reputation",
+                "source": "The arm-wrestling match"
+              },
+              {
+                "set_flag": "bg_used:bg_super_soldier_0:{npc_id}"
+              }
+            ],
+            "fail_effects": [
+              {
+                "standing": "$hub.faction",
+                "add": -1,
+                "risky_too": true
+              },
+              {
+                "set_flag": "bg_used:bg_super_soldier_0:{npc_id}"
+              }
+            ],
+            "risky": true,
+            "goal": "bg_used:bg_super_soldier_0:{npc_id}"
+          },
+          "id": "bg_super_soldier_0",
+          "condition": [
+            {
+              "background": "pbg_super_soldier"
+            },
+            {
+              "not": {
+                "flag": "bg_used:bg_super_soldier_0:{npc_id}"
+              }
+            }
+          ],
+          "badge": "Background"
+        }
+      ],
+      "personal": {
+        "templates": [
+          "hunt_rivals",
+          "hold_the_line"
+        ],
+        "line": "{callsign} was built for fights like this. They hate that it's true."
+      }
+    },
+    "pbg_starship_pilot": {
+      "options": [
+        {
+          "roles": [
+            "fixer",
+            "quartermaster"
+          ],
+          "text": "Got a ship that needs flying? I could get your cargo somewhere fast.",
+          "tags": [
+            "bold",
+            "practical"
+          ],
+          "effects": [
+            {
+              "reserve": "reserve_vehicle",
+              "name": "A borrowed hauler",
+              "source": "$npc.name"
+            },
+            {
+              "set_flag": "flew_for:{npc_id}"
+            },
+            {
+              "set_flag": "bg_used:bg_starship_pilot_0:{npc_id}"
+            }
+          ],
+          "id": "bg_starship_pilot_0",
+          "condition": [
+            {
+              "background": "pbg_starship_pilot"
+            },
+            {
+              "not": {
+                "flag": "bg_used:bg_starship_pilot_0:{npc_id}"
+              }
+            },
+            {
+              "not": {
+                "flag": "flew_for:{npc_id}"
+              }
+            }
+          ],
+          "badge": "Background"
+        }
+      ],
+      "personal": {
+        "templates": [
+          "escort_convoy",
+          "train_job",
+          "smuggle_cargo"
+        ],
+        "line": "{callsign} knows these routes. Every shortcut, every ambush point."
+      }
+    },
+    "pbg_worker": {
+      "options": [
+        {
+          "roles": [
+            "local",
+            "mechanic"
+          ],
+          "text": "Who runs the shifts here? Workers talk to workers.",
+          "tags": [
+            "honest",
+            "practical"
+          ],
+          "effects": [
+            {
+              "standing": "$hub.faction",
+              "add": 1
+            },
+            {
+              "reserve": "reserve_knowledge",
+              "name": "What the workers know",
+              "source": "$npc.name"
+            },
+            {
+              "set_flag": "bg_used:bg_worker_0:{npc_id}"
+            }
+          ],
+          "id": "bg_worker_0",
+          "condition": [
+            {
+              "background": "pbg_worker"
+            },
+            {
+              "not": {
+                "flag": "bg_used:bg_worker_0:{npc_id}"
+              }
+            },
+            {
+              "not": {
+                "flag": "shift_talk:{npc_id}"
+              }
+            }
+          ],
+          "badge": "Background"
+        }
+      ],
+      "personal": {
+        "templates": [
+          "secure_site",
+          "cover_evacuation",
+          "hold_the_line"
+        ],
+        "line": "These are working people. {callsign} was one of them."
+      }
+    }
+  },
+  "personal_chance": 0.6
+}
