@@ -85,11 +85,19 @@ func _update_help() -> void:
 
 
 ## Where the demo roster stands on each biome's board (added to ROSTER positions).
-const BIOME_OFFSET := {"urban_ruins": Vector2.ZERO, "grassy_hills": Vector2(6.0, 6.5)}
+const BIOME_OFFSET := {"urban_ruins": Vector2.ZERO, "grassy_hills": Vector2(6.0, 6.5), "alien_wilds": Vector2(4.0, 7.0)}
+const BIOMES := ["urban_ruins", "grassy_hills", "alien_wilds"]
 
 
 func _build_board() -> void:
-	var map := DemoMap.build(shape) if biome == "urban_ruins" else DemoMap.build_hills(shape)
+	var map: BattleMap
+	match biome:
+		"grassy_hills":
+			map = DemoMap.build_hills(shape)
+		"alien_wilds":
+			map = DemoMap.build_alien(shape)
+		_:
+			map = DemoMap.build(shape)
 	view.set_map(map, biome)
 	var off: Vector2 = BIOME_OFFSET[biome]
 	view.clear_units()
@@ -135,7 +143,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		shape = GridLayout.Shape.SQUARE if shape == GridLayout.Shape.HEX else GridLayout.Shape.HEX
 		_build_board()
 	elif event.is_action_pressed("toggle_biome") and not _running:
-		biome = "grassy_hills" if biome == "urban_ruins" else "urban_ruins"
+		biome = BIOMES[(BIOMES.find(biome) + 1) % BIOMES.size()]
 		_build_board()
 	elif event.is_action_pressed("toggle_grid_lines"):
 		view.terrain.set_grid_visible(not view.terrain.grid_lines.visible)
@@ -403,7 +411,7 @@ func _focus_for(key: String) -> void:
 func screenshot_setup(args: PackedStringArray) -> Array:
 	var tags: Array = Array(args)
 	if tags.is_empty() or tags[0] == "all":
-		tags = ["board", "square", "move", "sky", "los", "roll", "kinetic", "beam", "missile", "melee", "tech", "deploy", "heat", "vent", "destroy", "cockpit", "hud", "hills", "hills_close", "hills_nogrid", "hills_square"]
+		tags = ["board", "square", "move", "sky", "los", "roll", "kinetic", "beam", "missile", "melee", "tech", "deploy", "heat", "vent", "destroy", "cockpit", "hud", "hills", "hills_close", "hills_nogrid", "hills_square", "alien", "alien_close", "alien_vista"]
 	return tags
 
 
@@ -419,7 +427,7 @@ func screenshot_stage(tag: String) -> void:
 		c.queue_free()
 	player.lasting.clear()
 	shape = GridLayout.Shape.SQUARE if tag in ["square", "hills_square"] else GridLayout.Shape.HEX
-	biome = "grassy_hills" if tag.begins_with("hills") else "urban_ruins"
+	biome = "grassy_hills" if tag.begins_with("hills") else ("alien_wilds" if tag.begins_with("alien") else "urban_ruins")
 	_build_board()
 	resources.visible = tag == "hud"
 	action_bar.visible = tag == "hud"
@@ -487,6 +495,22 @@ func screenshot_stage(tag: String) -> void:
 		"hills", "hills_square":
 			view.tactical.look_at_point(Vector3(15.0, 1.0, 13.5), 30.0)
 			view.tactical.pitch = -46
+			view.tactical.snap()
+		"alien":
+			view.tactical.look_at_point(Vector3(15.0, 1.0, 12.0), 30.0)
+			view.tactical.pitch = -30
+			view.tactical.yaw = 0
+			view.tactical.snap()
+		"alien_close":
+			view.tactical.look_at_point(Vector3(11.0, 1.5, 14.0), 12.0)
+			view.tactical.pitch = -22
+			view.tactical.yaw = 25
+			view.tactical.snap()
+		"alien_vista":
+			view.terrain.set_grid_visible(false)
+			view.tactical.look_at_point(Vector3(13.0, 4.0, 12.0), 16.0)
+			view.tactical.pitch = -4
+			view.tactical.yaw = 37
 			view.tactical.snap()
 		"hills_close":
 			view.tactical.look_at_point(Vector3(13.0, 1.2, 14.0), 11.0)

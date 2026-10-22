@@ -107,3 +107,29 @@ static func fbm(x: float, z: float) -> float:
 		z = z * 2.03 + 1.7
 		a *= 0.5
 	return v / 0.9375
+
+
+## An alien wilds board: basalt mesas in sharp terraces, crystal outcrops (raised columns,
+## tagged "crystal"), ash flats (difficult) and a toxic sea in one corner (dangerous).
+static func build_alien(shape: GridLayout.Shape, size: int = HILLS_SIZE) -> BattleMap:
+	var map := BattleMap.flat(shape, size, size)
+	for cell in map.cells():
+		var p := map.grid.to_world(cell)
+		var x := p.x
+		var z := p.z
+		var n := fbm(x * 0.06 + 13.0, z * 0.06 + 2.0)
+		var h := n * 7.0 - 2.2
+		h += 2.0 * exp(-pow((x - size * 0.2) / 5.0, 2.0) - pow((z - 6.0) / 5.0, 2.0))
+		var sea := fbm(x * 0.08 + 50.0, z * 0.08) + smoothstep(14.0, 26.0, x) * 0.25 - smoothstep(4.0, 14.0, z) * -0.1
+		var ground := clampi(floori(h), 0, 4)
+		var tags := PackedStringArray()
+		if sea > 0.78 and x > size * 0.5:
+			ground = 0
+			tags = PackedStringArray(["dangerous", "toxic"])
+		elif fbm(x * 0.45 + 70.0, z * 0.45) > 0.76 and ground < 4:
+			ground += 1 + int(fbm(x, z) * 10.0) % 2
+			tags = PackedStringArray(["crystal"])
+		elif fbm(x * 0.2 + 5.0, z * 0.2 + 40.0) > 0.68:
+			tags = PackedStringArray(["difficult"])
+		map.set_column(cell, ground, tags)
+	return map

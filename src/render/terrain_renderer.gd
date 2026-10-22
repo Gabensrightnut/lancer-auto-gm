@@ -9,7 +9,8 @@ extends Node3D
 
 const TERRAIN_SHADER := preload("res://src/render/shaders/terrain.gdshader")
 const HILLS_SHADER := preload("res://src/render/shaders/terrain_hills.gdshader")
-const KITS := ["urban_ruins", "grassy_hills"]
+const ALIEN_SHADER := preload("res://src/render/shaders/terrain_alien.gdshader")
+const KITS := ["urban_ruins", "grassy_hills", "alien_wilds"]
 ## How far the board slab extends below level 0.
 const BASE_DEPTH := 0.6
 ## Surface kinds, stored in vertex color red for the terrain shader.
@@ -38,7 +39,7 @@ func build(battle_map: BattleMap, kit_name: String = "urban_ruins") -> void:
 		c.queue_free()
 	_shape = MeshKit.cell_shape(map.grid)
 	material = ShaderMaterial.new()
-	material.shader = HILLS_SHADER if kit == "grassy_hills" else TERRAIN_SHADER
+	material.shader = {"grassy_hills": HILLS_SHADER, "alien_wilds": ALIEN_SHADER}.get(kit, TERRAIN_SHADER)
 	_build_blocks()
 	_build_grid_lines()
 	_props = Node3D.new()
@@ -46,6 +47,8 @@ func build(battle_map: BattleMap, kit_name: String = "urban_ruins") -> void:
 	add_child(_props)
 	if kit == "grassy_hills":
 		HillsDressing.build(self, _props)
+	elif kit == "alien_wilds":
+		AlienDressing.build(self, _props)
 	else:
 		_build_props()
 		_build_backdrop()
@@ -84,7 +87,7 @@ func _solid(cell: Vector2i, level: int) -> bool:
 
 func _kind(cell: Vector2i) -> int:
 	var col := map.column(cell)
-	if kit == "grassy_hills":
+	if kit == "grassy_hills" or kit == "alien_wilds":
 		return hills_kind(cell)
 	if col.has_tag(BattleMap.TAG_DANGEROUS):
 		return KIND_HAZARD
@@ -95,14 +98,14 @@ func _kind(cell: Vector2i) -> int:
 	return KIND_STREET
 
 
-## Grassy hills: water tag = riverbed, rock tag or a lone raised column = bare rock.
+## Natural kits: water/toxic tag = liquid bed, rock/crystal tag = bare rock or crystal.
 func hills_kind(cell: Vector2i) -> int:
 	var col := map.column(cell)
-	if col.has_tag("water"):
+	if col.has_tag("water") or col.has_tag("toxic"):
 		return KIND_RIVERBED
 	if col.has_tag(BattleMap.TAG_DANGEROUS):
 		return KIND_HAZARD
-	if col.has_tag("rock"):
+	if col.has_tag("rock") or col.has_tag("crystal"):
 		return KIND_ROCK
 	if col.has_tag(BattleMap.TAG_DIFFICULT):
 		return KIND_ROUGH

@@ -32,24 +32,29 @@ static func _bounds(t: TerrainRenderer) -> Rect2:
 
 
 static func _water(t: TerrainRenderer, root: Node3D) -> void:
+	liquid(t, root, "water", WATER_SHADER, WATER_DEPTH)
+
+
+## Liquid surface over every cell with `tag`, `depth` above the cell floor.
+static func liquid(t: TerrainRenderer, root: Node3D, tag: String, shader: Shader, depth: float) -> void:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var any := false
 	for c in t.map.cells():
-		if not t.map.column(c).has_tag("water"):
+		if not t.map.column(c).has_tag(tag):
 			continue
 		any = true
-		var pts := t.cell_corners(c, t.top_y(c) + WATER_DEPTH, -0.02)
-		var center := t.map.grid.to_world(c) + Vector3.UP * (t.top_y(c) + WATER_DEPTH)
+		var pts := t.cell_corners(c, t.top_y(c) + depth, -0.02)
+		var center := t.map.grid.to_world(c) + Vector3.UP * (t.top_y(c) + depth)
 		for i in range(pts.size()):
 			MeshKit.add_tri(st, center, pts[i], pts[(i + 1) % pts.size()], Vector3.UP)
 	if not any:
 		return
 	var mi := MeshInstance3D.new()
-	mi.name = "Water"
+	mi.name = "Liquid_" + tag
 	mi.mesh = st.commit()
 	var m := ShaderMaterial.new()
-	m.shader = WATER_SHADER
+	m.shader = shader
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(mi)
@@ -154,11 +159,12 @@ static func _land_height(x: float, z: float, bounds: Rect2) -> float:
 	return -0.75 + smoothstep(0.5, 18.0, d) * (2.0 + 9.0 * n) + 0.3 * DemoMap.fbm(x * 0.4, z * 0.4)
 
 
-static func _landscape(t: TerrainRenderer, root: Node3D, bounds: Rect2) -> void:
+static func _landscape(t: TerrainRenderer, root: Node3D, bounds: Rect2, height_fn: Callable = Callable(), ext: float = 45.0) -> void:
+	if not height_fn.is_valid():
+		height_fn = _land_height
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var step := 1.5
-	var ext := 45.0
 	var x0 := bounds.position.x - ext
 	var z0 := bounds.position.y - ext
 	var nx := int((bounds.size.x + 2.0 * ext) / step)
@@ -166,7 +172,7 @@ static func _landscape(t: TerrainRenderer, root: Node3D, bounds: Rect2) -> void:
 	var hgt := func(i: int, j: int) -> Vector3:
 		var x := x0 + i * step
 		var z := z0 + j * step
-		return Vector3(x, _land_height(x, z, bounds), z)
+		return Vector3(x, height_fn.call(x, z, bounds), z)
 	for j in range(nz):
 		for i in range(nx):
 			var a: Vector3 = hgt.call(i, j)

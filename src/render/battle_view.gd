@@ -18,6 +18,8 @@ var cockpit_target := ""
 var sun: DirectionalLight3D
 var world_env: WorldEnvironment
 var _units_root: Node3D
+var _procedural_sky: ProceduralSkyMaterial
+const ALIEN_SKY := preload("res://src/render/shaders/sky_alien.gdshader")
 
 
 func _init() -> void:
@@ -128,8 +130,37 @@ func set_map(battle_map: BattleMap, kit: String = "urban_ruins") -> void:
 ## Lighting, sky and fog per biome.
 func apply_biome(kit: String) -> void:
 	var env := world_env.environment
-	var sm := env.sky.sky_material as ProceduralSkyMaterial
+	if _procedural_sky == null:
+		_procedural_sky = env.sky.sky_material as ProceduralSkyMaterial
+	var sm := _procedural_sky
+	env.sky.sky_material = sm
+	env.volumetric_fog_enabled = false
+	env.fog_enabled = true
 	match kit:
+		"alien_wilds":
+			var alien := ShaderMaterial.new()
+			alien.shader = ALIEN_SKY
+			env.sky.sky_material = alien
+			env.ambient_light_energy = 0.45
+			env.adjustment_saturation = 1.05
+			env.fog_enabled = true
+			env.fog_light_color = Color(0.32, 0.2, 0.38)
+			env.fog_density = 0.0025
+			env.fog_aerial_perspective = 0.5
+			env.fog_sky_affect = 0.0
+			# Volumetric fog catches the low sun: god rays through spires and crystals.
+			env.volumetric_fog_enabled = true
+			env.volumetric_fog_density = 0.005
+			env.volumetric_fog_albedo = Color(0.55, 0.45, 0.65)
+			env.volumetric_fog_emission = Color(0.0, 0.0, 0.0)
+			env.volumetric_fog_anisotropy = 0.6
+			env.volumetric_fog_length = 80.0
+			env.glow_intensity = 1.0
+			env.glow_bloom = 0.08
+			sun.light_color = Color(0.85, 0.75, 1.0)
+			sun.light_energy = 1.6
+			sun.light_volumetric_fog_energy = 2.5
+			sun.rotation_degrees = Vector3(-20, 145, 0)
 		"grassy_hills":
 			sm.sky_top_color = Color(0.22, 0.42, 0.75)
 			sm.sky_horizon_color = Color(0.72, 0.8, 0.88)
@@ -142,6 +173,8 @@ func apply_biome(kit: String) -> void:
 			sun.light_color = Color(1.0, 0.93, 0.8)
 			sun.light_energy = 2.3
 			sun.rotation_degrees = Vector3(-38, -55, 0)
+			env.glow_intensity = 0.7
+			env.glow_bloom = 0.04
 		_:
 			sm.sky_top_color = Color(0.28, 0.37, 0.5)
 			sm.sky_horizon_color = Color(0.78, 0.66, 0.55)
@@ -154,6 +187,8 @@ func apply_biome(kit: String) -> void:
 			sun.light_color = Color(1.0, 0.88, 0.74)
 			sun.light_energy = 2.2
 			sun.rotation_degrees = Vector3(-42, -38, 0)
+			env.glow_intensity = 0.7
+			env.glow_bloom = 0.04
 
 
 ## World position of a cell's floor at a level.
