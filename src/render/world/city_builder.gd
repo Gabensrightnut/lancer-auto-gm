@@ -174,6 +174,8 @@ func build(root: Node3D) -> void:
 ## ends for "eaves_up"), chrome (a rounded bright band) or none.
 func _roof_edge(st: SurfaceTool, c: Vector2i, i: int, a: Vector3, b: Vector3, top: float, out: Vector3, vcol: Color, cu: Color) -> void:
 	var edge := str(arch.get("roof_edge", "parapet"))
+	if arch.has("house_edge") and t.map.column(c).has_tag("house"):
+		edge = str(arch["house_edge"])  # village houses: eaves, not a keep's battlements
 	if edge == "none" or _broken_parapet(c, i):
 		return
 	match edge:

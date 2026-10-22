@@ -34,6 +34,9 @@ uniform vec3 rim_color : source_color = vec3(1.0, 0.96, 0.88);
 uniform float rim_strength = 0.45;
 uniform float rim_glow = 0.0;
 uniform float backdrop_fade = 0.5;
+// Roads (kind 14): 0 packed dirt with ruts, 1 cobbles / stone flags, 2 asphalt with lane
+// markings and crosswalks, 3 clean panels with a lit guide line.
+uniform int road_style = 2;
 // Station and ship surfaces.
 uniform vec3 metal_a : source_color = vec3(0.36, 0.38, 0.4);
 uniform vec3 metal_b : source_color = vec3(0.22, 0.23, 0.25);
@@ -317,6 +320,65 @@ void fragment() {
 			col *= 1.0 - 0.25 * (1.0 - smoothstep(0.0, 0.3, vcol.a));
 			relief = n3 * 0.5 - seam;
 			rough = 0.95;
+		} else if (kind == 14) {
+			// Road. vcol.g: 0.15 runs along x, 0.5 along z, 0.85 a crossing. UV: offset from the cell center.
+			vec2 loc = UV;
+			bool along_z = vcol.g > 0.3 && vcol.g < 0.7;
+			bool crossing = vcol.g > 0.7;
+			float across = along_z ? loc.x : loc.y;   // distance from the lane's middle
+			float along = along_z ? wpos.z : wpos.x;
+			if (road_style == 0) {
+				col = mix(soil * 1.1, soil * 0.8, n2) * (0.85 + 0.25 * n3);
+				float rut = smoothstep(0.06, 0.0, abs(abs(across) - 0.22)) * (crossing ? 0.0 : 1.0);
+				col *= 1.0 - 0.3 * rut;
+				relief = n3 * 0.5 - rut;
+				rough = 0.95;
+			} else if (road_style == 1) {
+				float cb = cracks(p * 5.0);
+				col = mix(rock_b, rock_a, 0.4 + 0.4 * hash(floor(p * 5.0))) * (0.85 + 0.2 * n3);
+				col *= 1.0 - 0.5 * smoothstep(0.08, 0.0, cb);
+				relief = smoothstep(0.0, 0.2, cb);
+				rough = 0.85;
+			} else if (road_style == 3) {
+				vec2 g = abs(fract(p * vec2(1.0, 2.0)) - 0.5);
+				float seam = smoothstep(0.47, 0.49, max(g.x, g.y));
+				col = vec3(0.78, 0.8, 0.83) * (0.95 + 0.08 * n3) * (1.0 - 0.25 * seam);
+				float guide = smoothstep(0.03, 0.0, abs(across)) * (crossing ? 0.0 : 1.0);
+				emit = strip_light * guide * 1.2;
+				rough = 0.35;
+				relief = -seam;
+			} else {
+				col = vec3(0.075, 0.075, 0.08) * (0.8 + 0.45 * n3) * (0.9 + 0.2 * n2);
+				col = mix(col, vec3(0.11, 0.11, 0.115), smoothstep(0.6, 0.75, fbm3(p * 0.8 + 4.0)) * 0.6);  // patches
+				float wet_r = smoothstep(0.6, 0.66, fbm3(p * 0.6 + 21.0)) * wetness;
+				rough = mix(0.8, 0.05, wet_r);
+				col *= 1.0 - 0.35 * wet_r;
+				if (!crossing) {
+					// Dashed lane line along the middle of the lane, solid edge lines.
+					float dash = step(0.5, fract(along * 0.9));
+					float lane = smoothstep(0.035, 0.015, abs(across)) * dash;
+					float edge = smoothstep(0.03, 0.012, abs(abs(across) - 0.44));
+					col = mix(col, vec3(0.85, 0.82, 0.7), lane * 0.9);
+					col = mix(col, vec3(0.75, 0.75, 0.72), edge * 0.6);
+				} else {
+					// Crosswalk: zebra stripes near the edges of the crossing.
+					float zx = step(0.5, fract(wpos.x * 3.5)) * step(0.3, abs(loc.y)) * step(abs(loc.y), 0.48);
+					float zz = step(0.5, fract(wpos.z * 3.5)) * step(0.3, abs(loc.x)) * step(abs(loc.x), 0.48);
+					col = mix(col, vec3(0.86, 0.86, 0.84), clamp(zx + zz, 0.0, 1.0) * 0.85);
+				}
+				relief = n3 * 0.2;
+			}
+		} else if (kind == 15) {
+			// Farm field: crop rows (green or ripe), or tilled dry earth. vcol.g: < 0.5 green.
+			bool dry_f = vcol.g > 0.7;
+			float row_dir = fract(vcol.g * 7.0) > 0.5 ? wpos.x : wpos.z;
+			float rows = 0.5 + 0.5 * sin(row_dir * 18.0);
+			vec3 crop = mix(top_a * 1.15, top_dry * 1.05, smoothstep(0.35, 0.45, fract(vcol.g * 3.0)));
+			vec3 earth = soil * (0.75 + 0.3 * n3);
+			col = dry_f ? mix(earth * 0.8, earth * 1.15, rows) : mix(earth, crop * (0.8 + 0.4 * n3), smoothstep(0.3, 0.7, rows));
+			relief = rows * 0.8;
+			rough = 0.95;
+			bump = 1.4;
 		} else if (kind == 10 || kind == 12) {
 			// Bulkhead tops and raised decks: plates (bulkheads darker, with conduit).
 			float m;
