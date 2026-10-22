@@ -90,7 +90,8 @@ static func unit_line_of_sight(state: GameState, a: Unit, b: Unit) -> bool:
 ## Cover `target` has against a ranged attack from `attacker`.
 ## Returns {los: bool, cover: "none"/"soft"/"hard", difficulty: int,
 ## cover_cells: [[x, y], ...] (terrain giving hard cover), reason: String, rule_ref: String}.
-static func cover(state: GameState, attacker: Body, target: Body) -> Dictionary:
+## `guardians`: bodies of allied characters the target may use as hard cover (Guardian).
+static func cover(state: GameState, attacker: Body, target: Body, guardians: Array[Body] = []) -> Dictionary:
 	var skip := _skip_cells(attacker, target)
 	var eyes := _points(state, attacker, true)
 	var top_eye: Vector3 = eyes[eyes.size() - 1]
@@ -114,9 +115,18 @@ static func cover(state: GameState, attacker: Body, target: Body) -> Dictionary:
 			los = true
 			if clear:
 				all_soft = false
+			# A Guardian ally between attacker and target covers this point (not terrain).
+			for g in guardians:
+				if _passes_body(state, p, top_eye, g):
+					cover_cells[g.cells[0]] = true
+					if mids.has(p):
+						covered_mids += 1
+					break
 			continue
 		# Blocked from every eye: is it terrain right next to the target that blocks it?
 		var r := _trace(state, p, top_eye, skip)
+		if not r["blocked"]:
+			continue
 		var block: Array[Vector2i] = [r["first_block"]]
 		if r["blocked"] and state.map.grid.footprint_distance(target.cells, block) <= 1:
 			cover_cells[block[0]] = true
@@ -130,7 +140,7 @@ static func cover(state: GameState, attacker: Body, target: Body) -> Dictionary:
 	if covered_mids > 0 and covered_mids * 2 >= mids.size():
 		out["cover"] = "hard"
 		out["difficulty"] = HARD_COVER_DIFFICULTY
-		out["reason"] = "Hard cover: terrain next to the target hides at least half of it."
+		out["reason"] = "Hard cover: terrain (or a Guardian ally) next to the target hides at least half of it."
 		for c: Vector2i in cover_cells:
 			(out["cover_cells"] as Array).append([c.x, c.y])
 	elif all_soft or _in_soft_cover(state, target):
@@ -141,7 +151,7 @@ static func cover(state: GameState, attacker: Body, target: Body) -> Dictionary:
 
 
 static func unit_cover(state: GameState, attacker: Unit, target: Unit) -> Dictionary:
-	return cover(state, body_of(state, attacker), body_of(state, target))
+	return cover(state, body_of(state, attacker), body_of(state, target), Effects.guardians(state, target))
 
 
 ## Cover a unit would have at a hypothetical position against every hostile unit.
@@ -150,7 +160,7 @@ static func cover_at(state: GameState, u: Unit, anchor: Vector2i, level: int) ->
 	var me := make_body(state, anchor, level, u.size)
 	var out := {}
 	for other: Unit in state.units.values():
-		if other.side == u.side or other.destroyed or other.kind == Unit.KIND_DEPLOYABLE:
+		if other.side == u.side or not Combat.is_present(other) or other.kind == Unit.KIND_DEPLOYABLE:
 			continue
 		out[other.id] = cover(state, body_of(state, other), me)
 	return out
@@ -169,6 +179,16 @@ static func _in_soft_cover(state: GameState, b: Body) -> bool:
 	for c in b.cells:
 		var col := state.map.column(c)
 		if col != null and col.has_tag(TAG_SOFT_COVER):
+			return true
+	return false
+
+
+static func _passes_body(state: GameState, p0: Vector3, p1: Vector3, b: Body) -> bool:
+	var n := maxi(1, ceili(p0.distance_to(p1) / STEP))
+	for i in range(1, n):
+		var p := p0.lerp(p1, float(i) / n)
+		var lvl := floori(p.y / GridLayout.LEVEL_HEIGHT + 0.0001)
+		if lvl >= b.level and lvl < b.level + b.height and b.cells.has(state.map.grid.from_world(p)):
 			return true
 	return false
 

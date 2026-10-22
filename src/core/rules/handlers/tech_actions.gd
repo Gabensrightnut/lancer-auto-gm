@@ -80,3 +80,74 @@ class Invade:
 			events.append_array(Combat.add_status(state, target, "Impaired", "Fragment Signal", target.id))
 			events.append_array(Combat.add_status(state, target, "Slowed", "Fragment Signal", target.id))
 		return events
+
+
+class Bolster:
+	extends QuickTech
+	## A character within SENSORS gets +2 Accuracy on its next skill check or save until the
+	## end of its next turn; only one Bolster at a time (actions: Bolster).
+
+	func type() -> String:
+		return "bolster"
+
+	func check_tech(state: GameState, u: Unit, target: Unit) -> RuleResult:
+		if u.has_status("Jammed"):
+			return RuleResult.deny("Jammed: you can't take tech actions.", "statuses: Jammed")
+		if target == null or not Combat.is_present(target):
+			return RuleResult.deny("Choose a character.", "actions: Bolster")
+		if target.has_status("Jammed"):
+			return RuleResult.deny("Jammed characters can't benefit from tech actions.", "statuses: Jammed")
+		if target.has_status("Shut Down"):
+			return RuleResult.deny("Shut Down mechs are immune to tech actions.", "statuses: Shut Down")
+		if Sight.unit_distance(state, u, target) > u.sensors:
+			return RuleResult.deny("Out of Sensors range (%d)." % u.sensors, "actions: Bolster")
+		return RuleResult.allow()
+
+	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+		var target := state.unit(String(params["target"]))
+		target.statuses.erase("Bolstered")
+		var events := Combat.add_status(state, target, "Bolstered", u.id, target.id)
+		events.append({"type": "tech_action", "unit": u.id, "target": target.id, "action": "bolster", "rule_ref": "actions: Bolster"})
+		return events
+
+
+class FullTech:
+	extends TurnAction
+	## Full action: two Quick Tech options, the same one twice allowed (actions: Full Tech).
+	## params: {"options": [{"type": "scan", "target": id}, {"type": "invade", "target": id}]}
+
+	func type() -> String:
+		return "full_tech"
+
+	func cost() -> String:
+		return TurnRules.FULL
+
+	func _option(o: Variant) -> QuickTech:
+		if not o is Dictionary:
+			return null
+		var h: Variant = RulesEngine.registry.get(String(o.get("type", "")))
+		return h as QuickTech if h is QuickTech else null
+
+	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		var options: Array = params.get("options", [])
+		if options.size() != 2:
+			return RuleResult.deny("Full Tech takes two Quick Tech options.", "actions: Full Tech")
+		for o: Variant in options:
+			var h := _option(o)
+			if h == null:
+				return RuleResult.deny("Not a Quick Tech option.", "actions: Full Tech")
+			var r := h.check_tech(state, u, state.unit(String(o.get("target", ""))))
+			if not r.ok:
+				return r
+		return RuleResult.allow()
+
+	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+		var events: Array[Dictionary] = []
+		for o: Dictionary in params["options"]:
+			var h := _option(o)
+			var r := h.check_tech(state, u, state.unit(String(o.get("target", ""))))
+			if not r.ok:
+				events.append({"type": "action_skipped", "unit": u.id, "action": o["type"], "reason": r.reason, "rule_ref": r.rule_ref})
+				continue
+			events.append_array(h.apply(state, u, o))
+		return events

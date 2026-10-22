@@ -29,10 +29,20 @@ for the user to decide. Code that depends on a row here is marked `PROVISIONAL`.
 | Damage past 0 HP | Lost; HP resets to full after marking 1 structure | `combat.gd` |
 | Unforced checks and saves | Succeed on 10+ (Direct Hit Hull check, meltdown/burn/dangerous Engineering checks, flyers' Agility save) | `combat.gd` |
 | Falling distance | The whole fall happens at the end of the current turn | `combat.gd` |
-| Reactor meltdown | The mech is destroyed; the explosion (as in Self Destruct: Burst 2, 4d6 explosive) isn't applied yet; no Engineering retry yet | `combat.gd` |
+| Reactor meltdown | Explodes like Self Destruct (Burst 2, 4d6 explosive, Agility save for half vs the mech's Save Target, half rounds up); no Engineering retry yet | `combat.gd`, `pilots.gd` |
 | Dangerous terrain damage type | Kinetic unless the column is also tagged `dangerous_energy` / `dangerous_explosive` / `dangerous_burn` | `combat.gd` |
 | Reactions | Each reaction once per round, refreshed at the start of the unit's turn | `reactions.gd` |
-| Brace timing | Taken automatically by the unit's `set_brace_policy` (`on_structure`: when the hit would take its last HP) until the engine can pause for the defender | `attacks.gd`, `reactions.gd` |
+| Reaction decisions | Player units are asked (engine pauses); GM units decide automatically until the GM AI exists: take Overwatch, take prepared actions, Brace only under an explicit `on_structure` policy | `reactions.gd` |
+| NPCs and Brace | NPCs can't Brace (lancer-data has NPC versions of Overwatch, Ram, Grapple, Stabilize, Improvised Attack but not of Brace) | `reactions.gd` |
+| Overwatch weapons | Any weapon whose THREAT reaches the mover, except Ordnance, Superheavy and area weapons; Engaged/cover modifiers apply as usual | `reactions.gd` |
+| Area templates | Line and Cone start at the user's footprint space nearest the aim and take cover/LOS from the user; Cone width grows evenly from 1 to X; templates are flat and catch characters whose footprint is in them within X levels of the origin; characters out of LOS of the origin aren't hit (unless Arcing/Seeking); damage is rolled once and a crit on any target rolls the extra dice once; Line/Cone "Range" variants not supported | `areas.gd` |
+| Grapple | Same-Size grapples immobilize nobody (the start-of-turn contested Hull check isn't automated); Break Free needs a higher Hull total (ties hold); the smaller character is dragged by the same step and the grapple ends if it can't follow; only two-character grapples | `close_combat.gd` |
+| Jump | Horizontal: straight line up to half Speed at the jumper's height (crosses pits and lower ground, not taller terrain), lands on the highest ground at or below; vertical: 1 space over, up max(1, Size) levels; Slowed and Prone characters can't jump; replaces the standard move | `close_combat.gd` |
+| Prepare | Only movement triggers so far (a character moves adjacent / within a range); the prepared action targets "trigger" | `pilot_actions.gd`, `reactions.gd` |
+| Pilots | Base stats from rules.json; no heat cap (heat becomes energy damage); the pilot of a destroyed mech climbs out into a free adjacent space; Eject lands in any free space within 6 (no path check); mechs and pilots hand the rest of the turn to each other on Eject/Dismount/Mount | `pilots.gd`, `pilot_actions.gd` |
+| Self Destruct timing | "Within the following two rounds" read as your next turn (delay 1) or the one after (delay 2), chosen when you start it | `pilot_actions.gd` |
+| Core Power | One per mission, spent on activation; a Protocol core is free and only at the start of your turn; Reaction/passive cores aren't activated through the engine yet | `system_actions.gd` |
+| Frame trait readings | Tortuga Sentinel counts Overwatch as a reaction attack; Blast Plating resists all damage types from area attacks; Vlad's core resistance applies to attackers within range 3 of the Vlad; Shrike Armor damage happens before the attack roll | `data/game/frame_effects.json` |
 | Search ties | A tie keeps the target Hidden | `system_actions.gd` |
 | "Variable" damage type | Treated as Kinetic until damage-type choice exists | `combat.gd` |
 | Reliable on a miss | Uses the weapon's first damage type | `attacks.gd` |
@@ -41,17 +51,16 @@ for the user to decide. Code that depends on a row here is marked `PROVISIONAL`.
 | License ranks | One license rank per License Level (ranks add up to at most LL); each license rank 1-3. Items unlock at their lancer-data `license_level` (frames at 2); talent gear needs its talent rank; gear with no license or talent (integrated weapons) can't be installed | `unit_factory.gd` |
 | Superheavy mounting | A Superheavy weapon needs a Heavy mount plus one other mount left empty | `unit_factory.gd` |
 | High ground | No general bonus assumed | rules engine |
-| Square grid range/area templates (blast, burst, cone, line) | Not implemented yet: area weapons are refused with a reason | `attacks.gd` |
 
 ## Not implemented yet
 
-Area attacks (Blast, Burst, Cone, Line), Overwatch and other reactions besides Brace (the
-movement preview only warns which enemies could react), Ram, Grapple, Jump, Full Tech,
-Bolster, Prepare, Eject, Self Destruct, Mount/Dismount, pilots on foot, deployables and
-drones, system activations, NPC features/tiers/templates and multiple activations, Recharge,
-choosing a weapon profile, mod and frame trait/core system effects, talents (beyond unlocking talent gear),
-teleport, zero-g, lifting and dragging, bonus damage, overshield sources, Scan's other two
-options (hidden information, public records).
+Deployables and drones, system activations (Quick/Full Activation of systems), NPC multiple
+activations and templates (Elite, Ultra...), Recharge, choosing a weapon profile, mod effects,
+frame traits and core systems marked "manual" in `data/game/frame_effects.json` (about half:
+anything needing bonus damage, deployables, extra reactions, teleport, choices), talents
+(beyond unlocking talent gear), Jockey, pilot armor and gear, teleport, zero-g, lifting and
+dragging, bonus damage, overshield sources, Scan's other two options, the same-Size grapple
+contest, Engineering retries against a meltdown, Full Repair and resting.
 
 ## Confirmed (from lancer-data rule text)
 

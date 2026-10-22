@@ -31,6 +31,9 @@ const MOUNT_SLOTS := {
 	"Aux/Aux": ["Auxiliary", "Auxiliary"],
 }
 const NPC_TEMPLATES := "res://data/game/npc_templates.json"
+const FRAME_EFFECTS := "res://data/game/frame_effects.json"
+## lancer-data core_system active_bonuses ids -> the roll type they give Accuracy on.
+const BONUS_ROLLS := {"attack": "attack", "check": "check", "save": "save", "tech_attack": "tech_attack"}
 
 
 static func grit(ll: int) -> int:
@@ -265,7 +268,59 @@ static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dic
 			systems.append({"key": "s%d" % n, "id": sid, "name": s.get("name", sid), "tags": (s.get("tags", []) as Array).duplicate(true)})
 			n += 1
 	u.loadout = {"frame": frame_id, "mounts": mounts, "weapons": weapons, "systems": systems}
+	_frame_effects(u, frame)
 	return u
+
+
+static var _frame_data: Dictionary = {}
+
+
+static func frame_effects_data() -> Dictionary:
+	if _frame_data.is_empty():
+		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(FRAME_EFFECTS))
+		_frame_data = d if d is Dictionary else {}
+	return _frame_data
+
+
+## Traits (always on) and the core system (switched on with the "core_power" action), from
+## data/game/frame_effects.json plus lancer-data's own core active_bonuses. Each trait and
+## the core say whether the engine automates them; "manual" ones keep their text for the UI.
+static func _frame_effects(u: Unit, frame: Dictionary) -> void:
+	var data: Dictionary = frame_effects_data().get(frame.get("id", ""), {})
+	var trait_data: Dictionary = data.get("traits", {})
+	var effects: Array = []
+	var traits: Array = []
+	for t: Dictionary in frame.get("traits", []):
+		var name := String(t.get("name", ""))
+		var enc: Variant = trait_data.get(name, "manual")
+		var automated := enc is Array
+		traits.append({"name": name, "text": t.get("description", ""), "automated": automated})
+		if automated:
+			for e: Dictionary in enc:
+				var copy := e.duplicate(true)
+				copy["label"] = name
+				copy["rule_ref"] = "frames: %s, %s" % [frame.get("name", ""), name]
+				effects.append(copy)
+				if copy["kind"] == "hover":
+					u.flight = "hover"
+	var core: Dictionary = frame.get("core_system", {})
+	var core_name := String(core.get("name", ""))
+	var core_effects: Array = []
+	for b: Dictionary in core.get("active_bonuses", []):
+		if BONUS_ROLLS.has(b.get("id", "")) and b.has("accuracy"):
+			core_effects.append({"kind": "accuracy", "on": BONUS_ROLLS[b["id"]], "value": int(b["accuracy"])})
+	var enc_core: Variant = data.get("core", "manual")
+	if enc_core is Array:
+		core_effects.append_array((enc_core as Array).duplicate(true))
+	for e: Dictionary in core_effects:
+		e["label"] = core_name
+		e["rule_ref"] = "frames: %s core system" % frame.get("name", "")
+	u.loadout["effects"] = effects
+	u.loadout["traits"] = traits
+	u.loadout["core"] = {"name": core_name, "power": core.get("active_name", ""), "activation": core.get("activation", "Quick"),
+		"text": core.get("active_effect", ""), "effects": core_effects, "automated": enc_core is Array}
+	# PROVISIONAL (RULES_TODO "Core power"): 1 Core Power per mission, used up on activation.
+	u.counters["core_power"] = 1
 
 
 ## The fields of a lancer-data weapon the rules use. Weapons with several profiles use the
@@ -288,21 +343,28 @@ static func npc_templates(path: String = NPC_TEMPLATES) -> Dictionary:
 	return data if data is Dictionary else {}
 
 
-## An NPC from a template: plain stats plus weapons with their own attack bonus.
-static func build_npc(id: String, template: Dictionary) -> Unit:
+## An NPC from a template: plain stats plus weapons with their own attack bonus. Tiered
+## templates ("tiers": {stat: [t1, t2, t3]}) take the values for `tier` (1-3), including
+## weapon damage given as [t1, t2, t3]. Feature effects go into loadout["effects"].
+static func build_npc(id: String, template: Dictionary, tier: int = 1) -> Unit:
 	var u := Unit.new()
 	u.id = id
 	u.kind = Unit.KIND_NPC
 	u.side = "enemies"
 	u.name = String(template.get("name", id))
 	u.content_id = String(template.get("id", ""))
+	tier = clampi(tier, 1, 3)
+	var stats := template.duplicate(true)
+	var tiers: Dictionary = template.get("tiers", {})
+	for key: String in tiers:
+		stats[key] = tiers[key][tier - 1]
 	for key in ["size", "armor", "evasion", "edef", "speed", "sensors", "save_target",
 			"tech_attack", "hull", "agility", "systems", "engineering", "flight"]:
-		if template.has(key):
-			u.set(key, Unit._coerce(u.get(key), template[key]))
-	u.max_hp = int(template.get("hp", 10))
+		if stats.has(key):
+			u.set(key, Unit._coerce(u.get(key), stats[key]))
+	u.max_hp = int(stats.get("hp", 10))
 	u.hp = u.max_hp
-	u.heat_cap = int(template.get("heat_cap", 0))
+	u.heat_cap = int(stats.get("heat_cap", 0))
 	u.max_structure = int(template.get("structure", 1))
 	u.structure = u.max_structure
 	u.max_stress = int(template.get("stress", 1))
@@ -314,8 +376,47 @@ static func build_npc(id: String, template: Dictionary) -> Unit:
 		var p := w.duplicate(true)
 		p["key"] = "w%d" % i
 		p["mount"] = -1
-		p["attack_bonus"] = int(w.get("attack_bonus", 0))
+		p["attack_bonus"] = int(w.get("attack_bonus", stats.get("attack_bonus", 0)))
+		for d: Dictionary in p.get("damage", []):
+			if d.get("val") is Array:
+				d["val"] = d["val"][tier - 1]
 		weapons.append(p)
 		i += 1
-	u.loadout = {"weapons": weapons, "systems": []}
+	var effects: Array = []
+	var traits: Array = []
+	for f: Dictionary in template.get("features", []):
+		var enc: Variant = f.get("effects", "manual")
+		traits.append({"name": f.get("name", ""), "text": f.get("text", ""), "automated": enc is Array})
+		if enc is Array:
+			for e: Dictionary in enc:
+				var copy := e.duplicate(true)
+				copy["label"] = f.get("name", "")
+				copy["rule_ref"] = "data/game/npc_templates.json (placeholder)"
+				effects.append(copy)
+	u.loadout = {"weapons": weapons, "systems": [], "effects": effects, "traits": traits, "tier": tier,
+		"role": template.get("role", ""), "placeholder": template.get("placeholder", false)}
 	return u
+
+
+## A pilot on foot from rules.json base stats and pilot gear weapons (pilot_gear.json).
+## pilot: {"name", "ll", "weapons": ["pg_light_a_c", ...]}
+static func build_pilot(db: ContentDB, id: String, pilot: Dictionary, side: String = "players", controller: String = "gm") -> Unit:
+	var r := db.rules
+	var base := {"hp": r.get("base_pilot_hp", 6), "evasion": r.get("base_pilot_evasion", 10),
+		"edef": r.get("base_pilot_edef", 10), "speed": r.get("base_pilot_speed", 4),
+		"sensors": r.get("base_pilot_sensors", 5), "save_target": r.get("base_pilot_save_target", 10)}
+	var p := Pilots.make_pilot(id, String(pilot.get("name", id)), side, controller, grit(int(pilot.get("ll", 0))), base)
+	var weapons: Array = []
+	var i := 0
+	for gid: String in pilot.get("weapons", []):
+		var g := db.get_entry("pilot_gear", gid)
+		if g.is_empty():
+			continue
+		var prof := weapon_profile(g, "p%d" % i, -1)
+		# Pilot gear has no weapon type; a weapon with only a Threat is melee.
+		prof["type"] = "Melee" if Weapons.range_value(prof, "Range") == 0 else "Ranged"
+		prof["size"] = "Pilot"
+		weapons.append(prof)
+		i += 1
+	p.loadout = {"weapons": weapons, "systems": []}
+	return p

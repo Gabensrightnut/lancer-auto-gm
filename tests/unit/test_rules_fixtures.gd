@@ -7,11 +7,20 @@ extends RefCounted
 class LoadedDice:
 	extends Dice
 	var queue: Array[int] = []
+	var used := 0
 
 	func die(sides: int) -> int:
-		if not queue.is_empty():
-			return queue.pop_front()
+		if used < queue.size():
+			used += 1
+			return queue[used - 1]
 		return super(sides)
+
+	## The engine rewinds dice when it pauses for a reaction (RulesEngine._snapshot).
+	func checkpoint() -> int:
+		return used
+
+	func rewind(to: int) -> void:
+		used = to
 
 
 static func state(shape: GridLayout.Shape = GridLayout.Shape.SQUARE, w: int = 12, h: int = 12) -> GameState:
@@ -22,7 +31,9 @@ static func state(shape: GridLayout.Shape = GridLayout.Shape.SQUARE, w: int = 12
 
 
 static func load_dice(s: GameState, values: Array) -> void:
-	(s.dice as LoadedDice).queue.assign(values)
+	var d := s.dice as LoadedDice
+	d.queue.assign(values)
+	d.used = 0
 
 
 static func weapon(key: String, name: String, size: String = "Main", type: String = "Rifle", damage: String = "1d6", rng: int = 10, tags: Array = [], damage_type: String = "Kinetic") -> Dictionary:
