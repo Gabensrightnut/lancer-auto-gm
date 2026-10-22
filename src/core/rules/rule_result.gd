@@ -10,6 +10,9 @@ var rule_ref: String = ""
 ## Set when the book is unclear: an id for the ruling, and the readings to choose from.
 var grey_area: String = ""
 var options: Array = []
+## Every problem found, for checks that collect several (e.g. loadout legality):
+## [{"reason": String, "rule_ref": String}].
+var details: Array = []
 
 
 static func allow() -> RuleResult:
@@ -34,4 +37,4 @@ static func ruling_needed(ruling_id: String, why: String, ref: String, choices: 
 
 
 func to_dict() -> Dictionary:
-	return {"ok": ok, "reason": reason, "rule_ref": rule_ref, "grey_area": grey_area, "options": options}
+	return {"ok": ok, "reason": reason, "rule_ref": rule_ref, "grey_area": grey_area, "options": options, "details": details}

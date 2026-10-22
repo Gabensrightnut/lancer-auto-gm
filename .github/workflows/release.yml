@@ -1,0 +1,95 @@
+# Builds the Windows game and launcher and publishes a GitHub Release when a version tag is
+# pushed:   git tag v0.1.0 && git push origin v0.1.0
+# The launcher looks for exactly these release files:
+#   LancerAutoGM-windows-<version>.zip   the game (exe + WebRTC add-on dll)
+#   LancerLauncher.exe                   the launcher (friends download this once)
+#   SHA256SUMS.txt                       checksums the launcher verifies downloads against
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  GODOT_VERSION: "4.7.2"
+
+jobs:
+  windows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version from tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.]+)?$ ]]; then
+            echo "Tag $GITHUB_REF_NAME is not like v1.2.3"; exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Cache Godot and export templates
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable
+          key: godot-${{ env.GODOT_VERSION }}-linux-templates
+
+      - name: Install Godot and export templates
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          mkdir -p ~/godot /tmp/dl
+          curl -fsSL -o /tmp/dl/godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q /tmp/dl/godot.zip -d /tmp/dl
+          mv "/tmp/dl/Godot_v${GODOT_VERSION}-stable_linux.x86_64" ~/godot/godot
+          chmod +x ~/godot/godot
+          curl -fsSL -o /tmp/dl/templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          tpl=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          mkdir -p "$tpl"
+          # Only the Windows templates are needed.
+          unzip -q -j /tmp/dl/templates.tpz 'templates/windows_*x86_64*' 'templates/version.txt' -d "$tpl"
+          rm -rf /tmp/dl
+
+      - name: Fetch WebRTC add-on
+        run: bash addons/fetch_webrtc_native.sh
+
+      - name: Stamp version into both projects
+        run: |
+          # The game reports this version to other players and refuses mismatches.
+          sed -i "/^\[application\]/a config/version=\"$VERSION\"" project.godot launcher/project.godot
+
+      - name: Import and test
+        run: |
+          ~/godot/godot --headless --path . --import || true
+          ~/godot/godot --headless --path launcher --import || true
+          ~/godot/godot --headless --path . -s res://tests/run_tests.gd
+
+      - name: Export
+        run: |
+          mkdir -p build/game build/launcher
+          ~/godot/godot --headless --path . --export-release "Windows Desktop" "$PWD/build/game/LancerAutoGM.exe"
+          ~/godot/godot --headless --path launcher --export-release "Windows Desktop" "$PWD/build/launcher/LancerLauncher.exe"
+          test -f build/game/LancerAutoGM.exe
+          test -f build/launcher/LancerLauncher.exe
+          ls -la build/game build/launcher
+
+      - name: Package with checksums
+        run: |
+          cd build
+          (cd game && zip -q -r "../LancerAutoGM-windows-${VERSION}.zip" .)
+          cp launcher/LancerLauncher.exe .
+          sha256sum "LancerAutoGM-windows-${VERSION}.zip" LancerLauncher.exe > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "build/LancerAutoGM-windows-${VERSION}.zip" build/LancerLauncher.exe build/SHA256SUMS.txt \
+            --title "Lancer Auto-GM ${VERSION}" --generate-notes

@@ -30,8 +30,41 @@ Code layout and contracts: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   On rules, the book is the default, but every place Lancer Tactics does it differently is
   reported to you with both versions and the likely reason, and you choose (see "Rule
   differences: Lancer Tactics vs. the book" below).
-- **Players:** online multiplayer (one host, others join remotely), plus hot-seat at one table.
+- **Players:** online multiplayer (one host, others join remotely), hot-seat at one table, or
+  solo: one person runs a full squad with AI squadmates flying any pilots they don't control.
 - **Scope:** full campaign play: missions, combat, downtime, licenses, leveling, campaign arc.
+
+## Play feel: player-driven, not an auto battler
+Inspiration: Baldur's Gate 3's pacing and agency (feel only; nothing taken from it). What
+you've seen so far are automated tests and scripted demos running at test speed; the real
+game waits for people.
+
+- **Every human makes their own choices.** Nothing a human controls ever acts on its own.
+  The game waits on your turn as long as you need; AI only plays seats set to AI (enemies,
+  and squadmates you hand over).
+- **Turn order the Lancer way, shown like BG3:** a portrait bar across the top shows every
+  unit, who has acted this round, and whose side picks next. Lancer has players and enemies
+  alternate, and the players decide among themselves which of them goes next (anyone
+  clicks "I'll go"; in solo you pick).
+- **Your turn:** the camera moves to your mech, the action bar and resources come up
+  (section 1), you plan freely (movement arrow, targets, previews), and nothing happens until
+  you confirm each action. End turn is a button you press.
+- **Watching other turns:** enemy and ally turns play at a readable pace. The camera
+  follows each action, there's a short pause before attacks resolve, and the roll is shown.
+  Speed setting (cinematic / normal / fast) and a "skip to my turn" option; never faster
+  than you can follow unless you choose it.
+- **Scenes, not just fights (like BG3's exploration vs. combat):**
+  - **Exploration and story scenes:** walk your pilot or mech around a location in real time,
+    talk to people (dialogue scenes, section 10), inspect things, find intel and supplies.
+  - **Skill checks shown big:** a d20 roll pops up center screen with your skill trigger
+    bonus and Accuracy/Difficulty (blue/red) against the target, BG3-style, with outcomes
+    that branch the scene.
+  - **Combat starts from the scene:** ambushes, failed sneaking, or a dialogue choice drop
+    everyone into turn-based combat on the same map. Surprise follows the book.
+  - **Downtime between missions** as its own scene (section 10).
+- **Multiplayer:** in exploration everyone moves freely; in combat each player acts on their
+  own pilot's turn while others watch (and can ping and chat); dialogue choices go to the
+  speaking pilot's player or a vote.
 
 ## 1. Animations and visual feedback
 
@@ -56,6 +89,62 @@ Every effect gets an animation, a combat-log line, and floating text (damage, MI
 | Hard light walls / deployables | Wireframe builds into a solid wall; cover indicator shown |
 | Movement | Movement arrow and cover highlights while planning (see Turn overlays), then walk, hover or boost trail; engagement indicators |
 | Destruction / eject | Mech collapses into a wreck that stays as terrain; pilot ejects on foot |
+
+### Resource HUD and action buttons
+- **Always-visible resources** for the active mech/pilot, shown as current / total:
+  HP, Overshield, Heat (with the Danger Zone threshold marked), Structure, Reactor Stress,
+  Repairs, Burn, core power (available/used), and the turn's action economy: Quick and Full
+  actions left, Move, Reaction (1/round), Overcharge (next heat cost: 1, 1d3, 1d6, 1d6+4).
+- **Limited uses:** weapons and systems with Limited X, Loading, 1/round, 1/scene or
+  1/mission show charges left on their button.
+- **Action buttons:** every available action is a button showing:
+  - an icon for what it costs: Quick, Full, Free, Reaction, Protocol, Move; plus heat cost,
+    charges, or Overcharge as extra icons with numbers;
+  - its name and a short description from the book data (hover/hold for the full text and
+    rule reference);
+  - greyed out with the reason when it can't be used ("Already used your Quick actions",
+    "Jammed: can't take tech actions").
+- **Action bar, BG3-style:** one bar along the bottom center holding every attack, ability,
+  dash/Boost, tech action, system, weapon, reaction, protocol and core power: anything that
+  isn't a basic move. Basic movement stays click-to-move on the board.
+  - Grouped into tabs or sections (Weapons, Quick, Full, Tech, Systems, Reactions/Protocols,
+    Core) so it stays tidy; a small resource cluster sits beside it (HP, heat, structure,
+    stress, actions left).
+  - Icon buttons with cost badges (Quick/Full/Free/Reaction icons, heat, charges); hover for
+    the description card described above; number-key shortcuts.
+  - **Size:** big enough to read and click comfortably, never a skinny strip, never so big it
+    hides the battlefield. Start around 9% of screen height on 1080p, with a bar-size slider
+    in settings so we can tune it together; it scales with resolution.
+  - Players can rearrange buttons; the layout is saved per pilot.
+  - **Cooldowns shown WoW-style:** an unusable button greys out with a dark radial sweep and
+    the reason on it. Like a clock hand, the grey slice shrinks as the wait runs down,
+    un-greying the button bit by bit (it animates smoothly to the new size each time a turn
+    or round passes) until it's fully lit and usable. Waits with no fixed length (Recharge,
+    Loading) stay fully grey with their label until they're ready. Lancer doesn't have many plain cooldowns, so the overlay shows what
+    actually applies:
+    - a **number of turns/rounds** when the wait is fixed (e.g. an effect lasting "until the
+      end of your next turn", 1/round abilities until the next round);
+    - **Recharge X+** (NPC abilities that come back on a d6 roll) shows the die and target
+      number, and lights back up when the roll succeeds;
+    - **Loading** weapons show "Reload" until reloaded;
+    - **1/scene, 1/mission, Limited X** show the uses left, or "used this scene";
+    - **status lockouts** (Jammed, Shut Down...) show the status icon and how long it lasts.
+- **Hover cards say what will happen to you, in plain words,** worked out by the rules
+  engine from your current state, not just the item's text:
+  - costs and results as a number followed by the official icon, e.g. **+2 [heat icon]**,
+    **1d6+2 [energy icon]**, **3 [burn icon]**, **Range 10 [range icon]**;
+  - warnings when it crosses a line: *"This will overheat you (8/8 → 10): you'll take
+    stress damage and roll an overheating check"*, *"This puts you in the Danger Zone"*,
+    *"Last charge"*, *"You're Engaged: +1 Difficulty"*, *"Moving away provokes from 2 enemies"*;
+  - expected outcome vs. the hovered target: hit chance, cover, likely damage after Armor.
+- **Official icons everywhere:** damage types (kinetic, energy, explosive, heat, burn,
+  variable), ranges and areas (range, threat, blast, burst, cone, line), action types
+  (quick, full, free, reaction, protocol, overcharge, tech), statuses and conditions,
+  manufacturers, size, structure, stress, repairs. They're Massif's own icons from COMP/CON
+  (GPL-3.0) in `assets/icons/lancer/`, so they look exactly like the book.
+- **Cost preview:** hovering a button shows what it will spend on the resource bars (e.g. the
+  heat bar previews +2), and warns if it would push you into the Danger Zone or overheat.
+- Enemies show only what the view rules allow (section 6): unscanned enemies show "??".
 
 ### Roll visuals
 
@@ -135,10 +224,18 @@ them, and they disappear when the turn moves on.
 - **Full scene rendering in every view:** terrain, buildings, cover, deployables, smoke,
   other mechs and effects are all rendered in 3D around you. In first person you see your
   own mech's arms and weapons in the cockpit view, matching your loadout.
-- Mechs built from parts (torso, legs, arms, shoulder mounts, weapons), so each frame has
-  its own silhouette. Parts are modeled in house with scripted Blender (free) and exported as
-  glTF, or generated in Godot directly; no third-party models. Manufacturer color schemes for GMS, IPS-N, SSC,
-  HORUS and Harrison Armory.
+- **Mechs look as close as possible to their official art** (your choice): each frame is
+  modeled individually to match its book / Lancer Tactics look: same silhouette, armor
+  shapes, proportions, head, and signature details, with smooth curved surfaces, panel lines
+  and bevels, not blocks. Reference: the official frame art linked in `frames.json`
+  (`image_url`), viewed for reference only; those images are never put in the game or repo.
+- Modeled in Blender by script (free, open source), exported as glTF, one model per frame,
+  with mount points where weapons attach. Weapons and systems still come from the real
+  loadout (above) and match their official art too.
+- Manufacturer paint schemes for GMS, IPS-N, SSC, HORUS and Harrison Armory as defaults;
+  the mech customizer repaints them.
+- **Publishing note:** matching Massif's designs this closely is fine for you and friends;
+  a public release would need Massif's permission (see Publishing).
 - Mech size matches the rules (Size 1/2, 1, 2, 3); pilots on foot are smaller models.
 - Weapon models: one per weapon, as described above.
 
@@ -149,6 +246,42 @@ them, and they disappear when the turn moves on.
 - Pick hex or square when setting up a mission, and switch between missions.
 - Square-grid diagonal movement follows the core book rule (to confirm against the book).
 - Grid spaces line up 1:1 with a tabletop board so measurements match play on paper.
+
+### Living, themed battlefields
+- **Bigger maps:** sized for real Lancer fights with room to maneuver and flank (roughly
+  20x20 to 40x40 spaces depending on mission type and squad size), not small test boards.
+- **Biomes drive both look and terrain:** grassy hills, desert, snow/tundra, urban ruins,
+  industrial yard, forest, swamp, volcanic, space station, moon base... Each biome has its own
+  height shapes (rolling hills vs. mesas vs. city blocks) and its own materials.
+- **Blocks look like real ground, not flat colors:** e.g. grassy hills = grass tops with
+  variation, brown dirt and rock on the cliff sides, stone strata on tall columns; textured
+  PBR materials with blending, edge wear, and per-tile variation so it doesn't tile visibly.
+- **Life and detail:** trees, bushes, rocks, crates, wrecks, buildings, fences, wind in grass
+  and trees, water, dust, birds, smoke from fires, lighting and weather per biome
+  (time of day, fog, rain, snow).
+- **What you see is what the rules use:** anything that looks like cover, an obstacle, or
+  difficult/dangerous terrain IS that in the rules (it's built from the same map data).
+  Purely decorative details stay small and flat so they never look like cover they aren't.
+  Destructible terrain visibly breaks when destroyed.
+- The grid stays readable on top of everything (toggle-able grid lines, clear tile edges).
+
+### World art direction: beautiful but dangerous
+The feel to aim for (examples are inspiration only; nothing taken from them): the vast alien
+vistas of Halo, the lived-in worlds of Star Wars, the grim scale of Warhammer 40k.
+
+- **Vibrant cities:** dense towers, neon and holo signs, skybridges, traffic in the sky,
+  plazas and alleys to fight through; also ruined cities, half-collapsed and burning.
+- **Rolling hills and wilds:** lush grass under big skies, forests, rivers, cliffs, farmland
+  (like the Lancer Tactics countryside, but in full 3D).
+- **Alien worlds that are beautiful but scary:** strange colored skies, giant moons and
+  ringed planets overhead, bioluminescent plants, crystal fields, colossal ancient
+  structures, toxic seas, storms on the horizon, things moving in the distance.
+- **Backgrounds beyond the board:** every map sits inside a full horizon (skybox, distant
+  mountains/cities/megastructures, weather, lighting) so the battle feels like part of a
+  huge world, not a tile on a void.
+- **Lighting sets the mood:** golden-hour hills, neon night cities, eerie alien twilight,
+  stormy war zones; fog, god rays, glow.
+- Everything is ours: procedural/shader art, our own models, or CC0 assets with credit.
 
 ### Elevation and flying (3D grid)
 
@@ -233,12 +366,16 @@ That gives a "kinda like fog of war" feel without adding rules that aren't in th
 
 - **What the rules keep secret** (each revealed only the way the book says):
   - **Hidden units:** a unit that takes the **Hide** action and becomes **Hidden** vanishes
-    from enemy boards; enemies see a "last known position" marker only if the rules give
-    them that knowledge. Allies still see it. Smoke and cover matter because they let you
+    from enemy boards; enemies only know its approximate location (book: Hidden), shown as
+    a fuzzy area, not an exact space. Allies still see it. Smoke and cover matter because they let you
     Hide, not because they black out the map.
   - **Enemy details:** you see the mech or NPC on the field (silhouette, size), but HP,
     armor, heat, systems, templates and exact stats stay "??" until revealed by **Scan**,
     by seeing them use something (a weapon fired is now known), or by the GM.
+  - **Stat-revealing abilities:** players never see enemy stats by default. Only abilities
+    that say they reveal information (Scan, and any frame, system or talent whose text
+    grants it) reveal anything, and only exactly what that text says, shared with the
+    squad as the book allows.
   - **GM secrets:** hidden reinforcements, traps, and secret sitrep objectives stay off
     player boards until the GM or the rules reveal them.
 - **Line-of-sight overlay (display aid, not a rule change):** when you pick an attack, spaces
@@ -247,7 +384,8 @@ That gives a "kinda like fog of war" feel without adding rules that aren't in th
 - **Filtered on the host, not hidden on screen.** The host builds a separate view for each
   player and sends only that, so secrets never reach other players' computers and can't be
   dug out of game files or network traffic.
-- **GM view:** the procedural GM (and an optional human GM seat) sees everything.
+- **GM view:** the procedural GM (and an optional human GM seat) sees everything a tabletop
+  GM would: all units, all stats, hidden positions, secret objectives, reinforcements.
 - **Hot-seat at one screen:** a "Pass to Player 2" screen between turns, since what's
   secret can differ between players (e.g. one is Hidden from an enemy-controlled seat).
 - **Squad intel sharing (the book default; players share freely at the table):**
@@ -326,6 +464,148 @@ differently without an AI. Each game has a **seed**: share it to replay the same
 - **All of it is data:** tables, behaviors and presets live in editable data files, so new
   content and variety can be added without changing code.
 
+## 10. Around combat: the rest of the game
+
+### Enemy (NPC) data
+- Massif's public data has no NPC stats. They were in `lancer-data` until January 2020, when
+  Massif removed them on purpose ("remove npc content"), so we don't use those old files.
+- **Plan:** load the official NPC content from your own copy (as a content pack if you have
+  one for COMP/CON, otherwise entered from your book) through the content-pack loader below. It lives on
+  your PC in `/local/` and never goes into the public repo. Each player who hosts needs their
+  own copy.
+- **Until then:** a few clearly-labeled placeholder enemies written by us (generic grunt,
+  artillery, striker, controller) so the game is playable and testable. They're replaced
+  once real NPC data is loaded.
+
+### Content packs
+- Load Lancer Content Packs (`.lcp`, the format COMP/CON uses): official supplements Massif
+  publishes (Long Rim, Wallflower, Karrakin Trade Baronies, Dustgrave, etc.), the NPC pack,
+  and community packs. Each pack can be turned on per campaign; everyone in a game must have
+  the same packs (checked when joining, like the version check).
+
+### Mech and pilot builder
+- Build pilots (background, skill triggers, talents, licenses, core bonuses, pilot gear) and
+  mechs (frame, weapons in mounts, mods, systems), with the rules checker live: illegal
+  choices are blocked with the reason (mount size, SP, license level).
+- **COMP/CON import/export:** bring in pilots built in COMP/CON, and export back.
+- The 3D mech preview updates as you change the loadout.
+- **License Level accuracy:** a pilot can only field what their License Level and licenses
+  allow (frame and gear unlocked by license rank, LL-based stats like Grit, core bonuses and
+  talent ranks by level), checked by the rules engine. The mech on the battlefield always
+  shows exactly that frame and the weapons and systems actually equipped, never cosmetic
+  stand-ins. Enemies and AI squadmates follow the same rules for their tier/level.
+
+### Effects system (talents, traits, core powers, systems)
+- Hundreds of unique effects. Built as a data-driven effects system where possible (bonuses,
+  triggers, reactions, deployables), with hand-written code only for truly unique ones.
+- Order: core book frames first (their traits and core powers), then the gear they start
+  with, then talents, then everything else. Each effect gets a scenario test.
+- Anything not implemented yet is marked in the builder so nobody picks it by surprise.
+
+### Narrative and campaign flow
+- The full loop: **briefing → mission → debrief → downtime → level up → next mission.**
+- Skill checks with skill triggers and their consequences, reserves, downtime actions
+  (from the book) rolled per the rules, and procedural GM narration (section 9).
+- Mission failure, retreat and pilot death have real consequences, as the book describes.
+
+### Solo play and AI squadmates
+- **Play a full 4-pilot campaign alone.** For each pilot you choose who controls it: you, or
+  an AI squadmate. Control all four yourself, one and let the AI fly the rest, or anything
+  in between.
+- **Switch any time:** take over an AI pilot mid-mission or hand yours to the AI. When a
+  friend joins online, they can take over an AI pilot (drop-in); when they leave, the AI picks
+  it back up.
+- **Fill empty multiplayer slots (optional):** a host setting, off by default. When on, any
+  seat with no player gets an AI pilot, so a 2-person online game can still run a full squad.
+  The host can choose per seat: AI, left empty, or reserved for a friend who joins later.
+- **AI squadmates** use the same tactics system as enemies (section 9), on your side: they
+  follow the book's rules through the same rules engine, and only know what your squad knows
+  (no peeking at hidden enemies or unscanned stats).
+- **Orders:** give squadmates a stance (aggressive, defensive, support, hold position, follow
+  me) and focus targets; they explain their move in the log ("Moving to hard cover, heat is high").
+- **Between missions:** for AI pilots you either make their builds and level-up choices
+  yourself, or let the AI pick (by role: e.g. "keep this pilot a support build").
+
+### Dialogue scenes
+- **Pop-up conversations in and out of battle,** like Lancer Tactics: character portrait
+  cards on each side and a speech bubble from whoever's talking, over the live 3D scene.
+  Click or press a key to advance; a log keeps every line.
+- **Portraits are made in house** (no pixel art): a portrait builder for pilots and NPCs,
+  matching each character's look, plus expressions (neutral, angry, worried...).
+- **Choices: 4 to 6 options** when a decision matters, each leading the story a different way
+  (e.g. negotiate, threaten, stall, attack, ask for terms, stay silent).
+- **Options follow the story:** only choices that make sense given what has happened are
+  offered: earlier decisions, who's alive, faction standing, mission state, relationships.
+  A skill trigger a pilot has can unlock a matching option, still within the 4-6 cap.
+- **Choices have consequences** recorded in the campaign (story flags): they change later
+  dialogue, missions offered, enemies, allies and reserves.
+- **Multiplayer:** the player whose pilot is speaking chooses, or the squad votes (host
+  setting). AI squadmates pick in character when the conversation is theirs.
+- Dialogue is written as data (scenes, lines, choices, conditions, effects) so the procedural
+  GM (section 9) can assemble scenes from it and new story content can be added without code.
+
+### Progression
+- License level up after missions, unlocking manufacturer gear by license rank, talent ranks,
+  core bonuses, pilot rank; the builder enforces it.
+
+### Menus and lobby
+- Main menu, create/join game (room code), seat and pilot select, mission select, campaign
+  list, settings.
+
+### Saves
+- Campaign saves, autosave between turns, resume a mission when everyone reconnects. Saves
+  live outside the game folder so updates never touch them.
+
+### Undo and action log
+- Anything planned can be changed freely until you press confirm; after that it's locked.
+- A full action log of the battle (who did what, every roll), and a replay from the seed.
+
+### Accessibility and settings
+- Colorblind-safe modes (important: the roll display uses blue vs. red, so they also differ by
+  symbol and shape, + vs. −), UI scale, text size, rebindable keys, graphics quality presets
+  for weaker PCs, animation speed.
+
+### Audio
+- No audio made by us. Use free sound effects and music that are licensed for reuse
+  (CC0 / public domain), credited in-game, or ship without sound until good ones are chosen.
+
+### Customization
+Modeled on Lancer Tactics' character creator (reference only; all parts made in house, no
+pixel art).
+
+- **Pilot creator:** a big portrait preview, a grid of options for the selected part, and a
+  list of parts down the side: body, face, face detail, body detail, eyes, nose, mouth,
+  ears, hair, beard, mustache, eyebrows, inner outfit, outer outfit, glasses, scarves, hats,
+  jewelry, other.
+  - Each part has **primary and secondary colors** picked from a palette grid, plus saved
+    palette presets.
+  - **Expressions:** each pilot gets a set of facial expressions (smiling, angry, worried,
+    shouting...) used automatically in dialogue scenes.
+  - **Randomize all**, with a **lock pin** on any part to keep it when randomizing.
+  - **Token tab:** the pilot's on-foot model on the battlefield, customized to match.
+  - Save and load looks; Confirm / Cancel / Reset to default.
+- **Mech customizer:** paint the actual equipped mech in a 3D preview with **primary,
+  secondary and glow** colors (glow = lights, visors, energy parts), palette presets,
+  decals and markings, randomize, reset to default. Purely cosmetic: weapons and systems
+  shown are always the real loadout.
+- Portraits and mechs are built from parts in our own art style (3D-rendered busts or
+  illustrated parts, decided when the art work starts). Many parts are needed for "wild"
+  variety, so this grows over time.
+- Callsigns and names shown to everyone; looks sync in multiplayer.
+
+### Human GM seat
+- Optional: a person can run the game instead of the procedural GM: sees everything, spawns
+  units, edits the map, triggers events, makes rulings. The procedural GM can still run the
+  enemies while the human GM handles story.
+
+### Milestones
+1. **First playable:** one full mission start to finish, hot-seat, core frames vs.
+   placeholder enemies, book rules, 3D board with overlays and roll display.
+2. **Online:** the same mission with friends over the internet, launcher updating it.
+3. **Builder:** mech/pilot builder with COMP/CON import; content packs (real NPC data).
+4. **Campaign:** the full narrative loop, progression, saves, procedural missions.
+5. **Polish:** effects coverage, animations, audio, accessibility, customization, human GM.
+
 ## Rule differences: Lancer Tactics vs. the book
 
 Whenever Lancer Tactics handles a rule differently from the tabletop book, it's listed here
@@ -362,7 +642,8 @@ each with a narrow, self-contained brief, and a new piece only starts once one f
   account. Just include Godot's license notice in the credits.
 - **Free places to publish:** GitHub Releases (already the update channel) and itch.io.
   Steam charges a $100 fee per game, so it's not free.
-- **Our own code and models:** all made in house, so they're yours to publish.
+- **Our own code and models:** all made in house. The mech models are faithful recreations of
+  Massif's frame designs, so publishing them needs Massif's permission even though we built them.
 - **The Lancer IP is the real question, not the engine.** Lancer belongs to Massif Press.
   Before publishing, check Massif's third-party license / community content guidelines for
   what's allowed (name, logo, rules text, game data, free vs. paid). A full digital adaptation
@@ -374,7 +655,8 @@ each with a narrow, self-contained brief, and a new piece only starts once one f
 - **Player content:** Massif Press `lancer-data` (official JSON): frames, weapons, systems,
   talents, core bonuses, statuses, downtime, sitreps, glossary rule text. In
   `data/lancer-data/` (v4.0.12, GPL-3.0).
-- **NPCs:** not in `lancer-data`. Look for official NPC data first, otherwise from your books.
+- **NPCs:** not public (removed from `lancer-data` by Massif in 2020). Loaded from your own
+  copy of the official NPC content pack; see section 10.
 - **Rules text and campaign books:** from you where needed.
 - Check Massif's third-party content guidelines before sharing the game outside your group.
 

@@ -43,13 +43,34 @@ var save_target: int = 10
 var tech_attack: int = 0
 var grit: int = 0
 var repairs: int = 0
+## Mech skills (HASE), added to checks and saves.
+var hull: int = 0
+var agility: int = 0
+var systems: int = 0
+var engineering: int = 0
+## Damage types this unit resists ("Kinetic", "Energy", "Explosive", "Burn", "Heat" or "All").
+var resistances: Array = []
+## "" (walks), "flight" or "hover" (glossary: Flight/Hover).
+var flight: String = ""
+var burn: int = 0
+## Times overcharged since the last Full Repair (actions: Overcharge).
+var overcharge_count: int = 0
+var destroyed: bool = false
 
 ## Status name (as in lancer-data statuses.json) -> extra data (source, duration...).
 var statuses: Dictionary = {}
 
-## Equipped gear. Mechs: {"mounts": [{"mount": "Main", "weapons": ["mw_assault_rifle"],
-## "mod": ""}], "systems": ["ms_..."]}. NPCs: {"features": ["npcf_..."]}.
+## Equipped gear, as built by UnitFactory. Mechs: {"frame": id, "mounts": [{"mount": "Main",
+## "weapons": ["mw_assault_rifle"], "mod": ""}], "weapons": [weapon profiles, see Weapons],
+## "systems": [{"key", "id", "name", "tags"}]}. NPCs: {"weapons": [...], "systems": []}.
 var loadout: Dictionary = {}
+
+## Rules-engine bookkeeping for the current turn (actions taken, movement spent). Reset at
+## the start of each of this unit's turns. See src/core/rules/turn_rules.gd.
+var turn: Dictionary = {}
+## Rules-engine bookkeeping that lasts longer than a turn (weapon loading and uses, reactions
+## this round, falling, reactor meltdown countdown...).
+var counters: Dictionary = {}
 
 
 func has_status(status: String) -> bool:
@@ -65,8 +86,11 @@ func to_dict() -> Dictionary:
 		"max_structure": max_structure, "stress": stress, "max_stress": max_stress,
 		"evasion": evasion, "edef": edef, "speed": speed, "sensors": sensors,
 		"save_target": save_target, "tech_attack": tech_attack, "grit": grit,
-		"repairs": repairs, "statuses": statuses.duplicate(true),
-		"loadout": loadout.duplicate(true),
+		"repairs": repairs, "hull": hull, "agility": agility, "systems": systems,
+		"engineering": engineering, "resistances": resistances.duplicate(), "flight": flight,
+		"burn": burn, "overcharge_count": overcharge_count, "destroyed": destroyed,
+		"statuses": statuses.duplicate(true), "loadout": loadout.duplicate(true),
+		"turn": turn.duplicate(true), "counters": counters.duplicate(true),
 	}
 
 
@@ -76,8 +100,10 @@ static func from_dict(d: Dictionary) -> Unit:
 		match key:
 			"cell":
 				u.cell = Vector2i(int(d[key][0]), int(d[key][1]))
-			"statuses", "loadout":
+			"statuses", "loadout", "turn", "counters":
 				u.set(key, (d[key] as Dictionary).duplicate(true))
+			"resistances":
+				u.resistances = (d[key] as Array).duplicate()
 			_:
 				if key in u:
 					u.set(key, _coerce(u.get(key), d[key]))

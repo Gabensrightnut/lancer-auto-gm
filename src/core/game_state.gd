@@ -16,6 +16,13 @@ var phase: String = PHASE_SETUP
 var active_unit: String = ""
 ## Units that have already acted this round.
 var acted: PackedStringArray = PackedStringArray()
+## Side that picks the next unit to act; sides alternate (src/core/rules/turn_rules.gd).
+var turn_side: String = ""
+## Side that acts first each round.
+var first_side: String = ""
+## side -> {unit_id: true}: enemies whose full stats that side has learned (Scan...).
+## ViewFilter reads it.
+var intel: Dictionary = {}
 ## Player seats: seat id -> {"name": String, "side": String}.
 var seats: Dictionary = {}
 ## Rulings made on grey areas this campaign: ruling id -> {choice, rule_ref, note}.
@@ -57,7 +64,8 @@ func to_dict() -> Dictionary:
 	return {
 		"seed": str(game_seed), "map": map.to_dict(), "units": unit_dicts,
 		"round": round_number, "phase": phase, "active_unit": active_unit,
-		"acted": Array(acted), "seats": seats.duplicate(true),
+		"acted": Array(acted), "turn_side": turn_side, "first_side": first_side,
+		"intel": intel.duplicate(true), "seats": seats.duplicate(true),
 		"rulings": rulings.duplicate(true), "dice_state": str(dice.get_state()),
 	}
 
@@ -72,6 +80,9 @@ static func from_dict(d: Dictionary) -> GameState:
 	s.phase = d.get("phase", PHASE_SETUP)
 	s.active_unit = d.get("active_unit", "")
 	s.acted = PackedStringArray(d.get("acted", []))
+	s.turn_side = d.get("turn_side", "")
+	s.first_side = d.get("first_side", "")
+	s.intel = (d.get("intel", {}) as Dictionary).duplicate(true)
 	s.seats = (d.get("seats", {}) as Dictionary).duplicate(true)
 	s.rulings = (d.get("rulings", {}) as Dictionary).duplicate(true)
 	if d.has("dice_state"):
