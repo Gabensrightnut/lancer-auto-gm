@@ -413,11 +413,34 @@ func test_exploring_areas_join_up() -> void:
 			var e: Array = a["entries"][edge]
 			var col := m.column(Vector2i(e[0], e[1]))
 			expect(col.has_tag("road") and m.ground_height(Vector2i(e[0], e[1])) == 0, "%s: a road out at ground level" % edge)
-		var rough := 0
+		var blocked_seam := 0
 		for c in m.cells():
 			if c.x < TerrainGen.AREA_EDGE or c.y < TerrainGen.AREA_EDGE or c.x >= 50 - TerrainGen.AREA_EDGE or c.y >= 50 - TerrainGen.AREA_EDGE:
-				rough += 1 if m.ground_height(c) != 0 or m.column(c).has_tag(BattleMap.TAG_IMPASSABLE) else 0
-		expect_eq(rough, 0, "the seam along the edges is level and open")
+				blocked_seam += 1 if m.ground_height(c) > 1 or m.column(c).has_tag(BattleMap.TAG_IMPASSABLE) else 0
+		expect_eq(blocked_seam, 0, "the seam along the edges is low, open ground")
+
+
+func test_neighbouring_areas_share_their_edge() -> void:
+	# "A mile down the road": the area east of this one continues the same ground across the
+	# edge they share, and each area holds what its place on the region map holds.
+	var region := {"seed": 77, "landscape": "grassy_hills", "culture": "old_west", "weather": ""}
+	var here := MissionGenerator.area(1, {"region": region, "at": [0, 0], "place": "outskirts", "shape": "square", "size": 40})
+	var east := MissionGenerator.area(2, {"region": region, "at": [1, 0], "place": "wilds", "shape": "square", "size": 40})
+	var a: BattleMap = here["map"]
+	var b: BattleMap = east["map"]
+	var differ := 0
+	for r in range(TerrainGen.AREA_EDGE, 40 - TerrainGen.AREA_EDGE):
+		var ca := a.column(Vector2i(39, r))
+		var cb := b.column(Vector2i(0, r))
+		if ca.ground != cb.ground or ca.has_tag("woods") != cb.has_tag("woods") or ca.has_tag("road") != cb.has_tag("road"):
+			differ += 1
+	expect_eq(differ, 0, "the shared edge matches row for row")
+	var houses := func(m: BattleMap) -> int:
+		var n := 0
+		for c in m.cells():
+			n += 1 if m.column(c).has_tag("house") or m.column(c).has_tag("building") else 0
+		return n
+	expect(houses.call(a) > 0 and houses.call(b) == 0, "a village at the outskirts, open country in the wilds")
 
 
 func test_no_rock_against_buildings() -> void:

@@ -121,8 +121,9 @@ static func kit(landscape: String, culture: String) -> String:
 
 
 static func generate(rng: RandomNumberGenerator, w: int, h: int, shape: GridLayout.Shape, blocked: Dictionary, landscape: String, culture: String,
-		hub: Dictionary = {}, area: bool = false) -> BattleMap:
+		hub: Dictionary = {}, area: bool = false, edges: Dictionary = {}) -> BattleMap:
 	var g := TerrainGen.new()
+	g.edges = edges
 	g.rng = rng
 	g.w = w
 	g.h = h
@@ -1341,6 +1342,10 @@ func _ground_at(c: int, r: int) -> int:
 
 # --- Exploring areas ----------------------------------------------------------------------
 
+## An exploring area's edge profiles ({west, east, north, south}: [[ground, tags], ...] along
+## the edge), shared with the neighbouring areas (MissionGenerator.area).
+var edges: Dictionary = {}
+
 ## Width of the flat band along every edge of an exploring area, so neighbouring areas of a
 ## region meet on level ground.
 const AREA_EDGE := 2
@@ -1360,7 +1365,8 @@ func _area_ways() -> void:
 	_road(col, "road_z")
 
 
-## Level ground along the edges (roads kept), the seam to the next area.
+## The seam to the next area: the band along each edge takes that edge's shared profile (the
+## same on both sides of it), or level ground when there is none. Corners stay level.
 func _area_edges() -> void:
 	for r in range(h):
 		for c in range(w):
@@ -1370,13 +1376,27 @@ func _area_edges() -> void:
 			if not map.has_cell(cell):
 				continue
 			var col := map.column(cell)
-			if col.has_tag("road") and col.gap_top == 0:
-				col.ground = 0
-				continue
-			col.ground = 0
 			col.gap_bottom = 0
 			col.gap_top = 0
-			col.tags = PackedStringArray()
+			var west := c < AREA_EDGE
+			var east := c >= w - AREA_EDGE
+			var north := r < AREA_EDGE
+			var south := r >= h - AREA_EDGE
+			var prof: Array = []
+			var i := 0
+			if (west or east) and not (north or south):
+				prof = edges.get("west" if west else "east", [])
+				i = r
+			elif (north or south) and not (west or east):
+				prof = edges.get("north" if north else "south", [])
+				i = c
+			if i < prof.size():
+				col.ground = int(prof[i][0])
+				col.tags = PackedStringArray(prof[i][1])
+			else:
+				col.ground = 0
+				var on_road := ((west or east) and r == h / 2) or ((north or south) and c == w / 2)
+				col.tags = PackedStringArray(["road", "road_x" if (west or east) else "road_z"] if on_road else [])
 
 
 ## A road along a line of map cells: keeps the ground (it follows the land), bridges water.
