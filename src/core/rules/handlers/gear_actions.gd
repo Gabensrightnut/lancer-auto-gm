@@ -184,6 +184,46 @@ class ShakeOff:
 		return events
 
 
+class Drag:
+	extends TurnAction
+	## Start dragging (or towing on a cable) a character, wreck or object. params: {"target"}
+
+	func type() -> String:
+		return "drag"
+
+	func cost() -> String:
+		return TurnRules.FREE
+
+	func kinds() -> Array:
+		return [Unit.KIND_MECH, Unit.KIND_NPC, Unit.KIND_PILOT]
+
+	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		return Riders.check_drag(state, u, state.unit(String(params.get("target", ""))))
+
+	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+		return Riders.start_drag(state, u, state.unit(String(params["target"])))
+
+
+class LetGoDrag:
+	extends TurnAction
+	## Stop dragging.
+
+	func type() -> String:
+		return "release_drag"
+
+	func cost() -> String:
+		return TurnRules.FREE
+
+	func kinds() -> Array:
+		return [Unit.KIND_MECH, Unit.KIND_NPC, Unit.KIND_PILOT]
+
+	func check(_state: GameState, u: Unit, _params: Dictionary) -> RuleResult:
+		return RuleResult.allow() if u.counters.has("dragging") else RuleResult.deny("You aren't dragging anything.", Riders.REF_DRAG)
+
+	func apply(_state: GameState, u: Unit, _params: Dictionary) -> Array[Dictionary]:
+		return Riders.stop_drag(u, "let go")
+
+
 class FixHack:
 	extends TurnAction
 	## Hacker 2: undo an Invade. params: {"what": "life_support" | "hack_slash" (quick, Systems

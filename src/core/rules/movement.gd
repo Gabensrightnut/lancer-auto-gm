@@ -211,6 +211,8 @@ static func budget(u: Unit, mode: String) -> int:
 static func can_fly(u: Unit, mode: String) -> bool:
 	if u.flight != "" or Effects.has(u, "optional_flight"):
 		return true
+	if mode == MODE_MOVE and u.turn.get("swing_now", false):
+		return true  # Grapple Swing: this standard move flies in a straight line
 	return mode == MODE_BOOST and Effects.has(u, "boost_flight")
 
 

@@ -751,5 +751,16 @@
         "kind": "covering_fire_two"
       }
     ]
-  }
+  },
+  "ms_reinforced_cabling": [
+    {
+      "kind": "grapple_swing"
+    }
+  ],
+  "ms_cable_winch_system": [
+    {
+      "kind": "climb_normal",
+      "label": "Cable Winch: climbing on the cables"
+    }
+  ]
 }
