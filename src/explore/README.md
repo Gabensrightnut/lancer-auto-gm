@@ -31,3 +31,7 @@ hub.mission_requested.connect(func(_hook): var gen := CampaignLoop.build_mission
 
 Pilots in a mech battle (on foot or not) are the rules engine's pilot units; a hub fight with no
 mechs is a narrative skill check (Core p.48), handled by the dialogue.
+
+## First person
+
+`first_person.gd` (`FirstPerson`): V switches between the overhead view and your pilot's eyes. Mouse looks, WASD walks. The crosshair picks the person or building door you're looking at; E talks or goes in, C sneaks (lower camera, half speed, a stealth indicator saying who could see you), and while sneaking E lifts what someone carries or slips into a private room (picking the lock if it's locked) and R puts someone down or forces the door. With nothing in the crosshair, E takes a thing kept in the room you're in. All of it is TownLife actions through the StoryEngine. NPCs stand where their schedule puts them; people asleep or in private rooms aren't in the street.

@@ -55,6 +55,7 @@ var codex: CodexPanel
 var map: CampaignMap
 var gm_panel: GmPanel
 var market: MarketPanel
+var fp: FirstPerson
 
 
 func setup(e: StoryEngine, s: StoryState, c: Campaign, content: ContentDB, seat: String = "p1") -> void:
@@ -347,6 +348,11 @@ func _place_npcs() -> void:
 		if bool(npc.get("dead", false)):
 			continue
 		var kind := str(npc.get("spot", "plaza"))
+		var where := TownLife.where_npc(story, id)
+		var room_public := bool(TownLife.room_info(TownLife.spot_kind(story, str(where["spot"])), str(where["room"])).get("public", false))
+		if bool(where["asleep"]) or bool(where["out"]) or not room_public:
+			continue
+		kind = str(where["spot"])
 		var idx := int(per_spot.get(kind, 0))
 		per_spot[kind] = idx + 1
 		var p := HubLayout.npc_position(story.hub, kind, idx)
@@ -381,6 +387,7 @@ func _physics_process(delta: float) -> void:
 		return
 	var busy := dialogue.visible or downtime_screen.visible or hud.board_open() or level_panel.visible or gear_panel.visible or codex.visible or map.visible
 	var dir := Vector3.ZERO
+	var speed := WALK_SPEED * (0.5 if fp != null and fp.sneaking else 1.0)
 	if not busy:
 		var f := Vector3(-sin(_yaw), 0, -cos(_yaw))
 		var r := Vector3(cos(_yaw), 0, -sin(_yaw))
@@ -405,7 +412,7 @@ func _physics_process(delta: float) -> void:
 			_target = null
 		else:
 			dir = to
-	_move(me, dir.normalized() * WALK_SPEED * delta)
+	_move(me, dir.normalized() * speed * delta)
 	_follow_squad(delta)
 	_update_near()
 	_update_camera(delta)
@@ -487,11 +494,20 @@ func _update_near() -> void:
 		if best != "":
 			(npc_nodes[best] as PilotFigure).set_highlight(true)
 	var npc: Dictionary = story.npcs.get(_near_npc, {})
-	hud.set_prompt("" if npc.is_empty() or dialogue.visible else "[F]  Talk to %s, %s" % [npc["name"], npc["title"]])
+	hud.set_prompt("" if npc.is_empty() or dialogue.visible or (fp != null and fp.enabled) else "[F]  Talk to %s, %s" % [npc["name"], npc["title"]])
 
 
 func _update_camera(delta: float) -> void:
 	var me: PilotFigure = avatars.get(local_seat)
+	# First person on foot (V): the camera in your pilot's eyes, crosshair and prompts.
+	var face_talk := dialogue != null and dialogue.visible and StorySettings.dialogue_view() == "first"
+	if fp != null and fp.enabled and me != null and not face_talk:
+		fp.place_camera(_cam, me, _yaw, delta)
+		fp.pick(_cam, npc_nodes, story.hub.get("spots", []), story)
+		fp.show(story, story.pilot_of_seat(local_seat), "")
+		return
+	if me != null and not me.visible:
+		me.visible = true
 	# Face to face (first-person conversation): the camera holds on the person's face.
 	var npc_id := str(story.dialogue.get("ctx", {}).get("npc", "")) if dialogue != null and dialogue.visible else ""
 	if npc_id != "" and npc_nodes.has(npc_id) and me != null and StorySettings.dialogue_view() == "first" and str(story.dialogue.get("mode", "talk")) != "radio":
@@ -536,6 +552,65 @@ func _fade_occluders(focus: Vector3) -> void:
 				(m as GeometryInstance3D).transparency = 0.8 if hide else 0.0
 
 
+## Using what's under the crosshair in first person (E, or R for the rough way).
+func _fp_use(rough: bool) -> void:
+	var pid := story.pilot_of_seat(local_seat)
+	var t := fp.target
+	var a := {}
+	if t.get("kind", "") == "npc":
+		var id := str(t["id"])
+		var w := TownLife.where_npc(story, id)
+		engine.submit(story, campaign, {"type": "go", "seat": local_seat, "params": {"pilot": pid, "spot": w["spot"], "room": w["room"]}})
+		if not fp.sneaking and not rough:
+			talk_to(id)
+			return
+		if rough:
+			a = {"type": "take_out", "params": {"pilot": pid, "npc": id}}
+		else:
+			for it: Dictionary in (story.flags.get("_items", {}) as Dictionary).values():
+				if str(it["owner"]) == id and str(it["kept"]) == "person" and str(it["holder"]) == "":
+					a = {"type": "pickpocket", "params": {"pilot": pid, "npc": id, "item": it["id"]}}
+	elif t.get("kind", "") == "door":
+		var spot := str(t["spot"])
+		var kind := TownLife.spot_kind(story, spot)
+		var rooms: Dictionary = TownLife.data().get("rooms", {}).get(kind, {})
+		var pub := ""
+		var priv := ""
+		for r: String in rooms:
+			if bool(rooms[r].get("public", false)):
+				pub = r if pub == "" else pub
+			elif priv == "":
+				priv = r
+		if not fp.sneaking and not rough:
+			a = {"type": "go", "params": {"pilot": pid, "spot": spot, "room": pub}}
+		elif priv != "":
+			var locked := int(rooms[priv].get("lock", 0)) > 0 and not TownLife.is_open(story, spot, priv)
+			if rough and locked:
+				a = {"type": "break_in", "params": {"pilot": pid, "spot": spot, "room": priv}}
+			elif locked:
+				a = {"type": "pick_lock", "params": {"pilot": pid, "spot": spot, "room": priv}}
+			else:
+				a = {"type": "sneak", "params": {"pilot": pid, "spot": spot, "room": priv}}
+	else:
+		# Nothing in the crosshair: take something kept in the room you're in.
+		var at := TownLife.pilot_at(story, pid)
+		var here := TownLife.items_here(story, str(at["spot"]), str(at["room"]))
+		if not here.is_empty():
+			a = {"type": "take", "params": {"pilot": pid, "item": here[0]["id"]}}
+	if a.is_empty():
+		return
+	a["seat"] = local_seat
+	fp.used()
+	var r := engine.submit(story, campaign, a)
+	if not r["ok"]:
+		hud.toast(str(r["reason"]), StoryStyle.RED)
+		return
+	for e: Dictionary in r["events"]:
+		if e.has("text") and str(e.get("type", "")) != "dialogue_line":
+			hud.toast(str(e["text"]), StoryStyle.GOLD if str(e["type"]) in ["item_taken", "moved", "opened", "learned"] else StoryStyle.TEXT)
+	_handle(r["events"])
+
+
 func talk_to(npc_id: String) -> void:
 	var r := engine.submit(story, campaign, {"type": "talk", "seat": local_seat, "params": {"npc": npc_id}})
 	if not r["ok"]:
@@ -552,6 +627,9 @@ func talk_to(npc_id: String) -> void:
 
 
 func _unhandled_input(ev: InputEvent) -> void:
+	if fp != null and fp.enabled and ev is InputEventMouseMotion and not dialogue.visible:
+		_yaw = fp.look((ev as InputEventMouseMotion).relative, _yaw)
+		return
 	if ev is InputEventKey and ev.pressed and not ev.echo:
 		match (ev as InputEventKey).keycode:
 			KEY_F:
@@ -574,6 +652,18 @@ func _unhandled_input(ev: InputEvent) -> void:
 			KEY_M:
 				if not dialogue.visible and not map.visible:
 					open_map()
+			KEY_V:
+				if not dialogue.visible:
+					fp.set_enabled(not fp.enabled, _cam)
+			KEY_C:
+				if fp.enabled and not dialogue.visible:
+					fp.sneaking = not fp.sneaking
+			KEY_E:
+				if fp.enabled and not dialogue.visible:
+					_fp_use(false)
+			KEY_R:
+				if fp.enabled and not dialogue.visible:
+					_fp_use(true)
 			KEY_T:
 				if not dialogue.visible:
 					var wr := engine.submit(story, campaign, {"type": "wait", "seat": "gm", "params": {"periods": 1}})
@@ -654,6 +744,9 @@ func _build_ui() -> void:
 	tutorial_panel.bind(campaign)
 	tutorial_panel.codex_requested.connect(func(q: String) -> void: codex.open(q))
 	hud.codex_requested.connect(func() -> void: codex.open())
+	fp = FirstPerson.new()
+	add_child(fp)
+	fp.attach(ui)
 	map = CampaignMap.new()
 	ui.add_child(map)
 	map.bind(engine, story, campaign)
@@ -809,6 +902,9 @@ func screenshot_setup(args: Array) -> Array:
 		return ["codex"]
 	if args.has("map"):
 		return ["map"]
+	if args.has("first"):
+		StorySettings.persist = false
+		return ["fp_look", "fp_sneak"]
 	if args.has("modes"):
 		StorySettings.persist = false
 		return ["face", "radio", "jammed"]
@@ -865,6 +961,19 @@ func screenshot_stage(tag: String) -> void:
 			codex.open("engaged")
 		"map":
 			open_map()
+		"fp_look":
+			fp.set_enabled(true, _cam)
+			var bar_spot: Dictionary = {}
+			for sp: Dictionary in story.hub.get("spots", []):
+				if str(sp["kind"]) == "bar":
+					bar_spot = sp
+			var door := Vector2(float(bar_spot["door"][0]), float(bar_spot["door"][1]))
+			var stand := door.lerp(Vector2.ZERO, 2.6 / maxf(door.length(), 2.6))
+			me.position = Vector3(stand.x, 0, stand.y)
+			_yaw = atan2(-(door.x - stand.x), -(door.y - stand.y))
+			fp.pitch = deg_to_rad(-4)
+		"fp_sneak":
+			fp.sneaking = true
 		"face":
 			StorySettings.set_dialogue_view("first")
 			screenshot_stage("talk")
