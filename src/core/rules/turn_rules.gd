@@ -29,6 +29,8 @@ const REACTION := "reaction"
 static func takes_turns(u: Unit) -> bool:
 	if u.kind == Unit.KIND_PILOT and not u.destroyed and u.counters.has("mounted_in"):
 		return Combat.is_present(u)  # acts through its mech, unless the mech was destroyed
+	if u.counters.has("passenger_in") and not u.destroyed:
+		return true  # a passenger still takes its turns (to climb out)
 	if u.counters.has("folded") and not u.destroyed:
 		return true  # Fold Space: it comes back at the start of its next turn
 	var st := state_of(u)
@@ -118,9 +120,12 @@ static func begin_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 	events.append_array(Abilities.expire(state, u, "start"))
 	events.append_array(Abilities.recharge_roll(state, u))
 	u.counters.erase("no_holograms")  # Dusk Wing: new holograms again from the start of its turn
+	for ws: Variant in (u.counters.get("weapons", {}) as Dictionary).values():
+		(ws as Dictionary).erase("uncle_lock")
 	events.append_array(Effects.turn_started(state, u))
 	events.append_array(Zones.turn_started(state, u))
 	events.append_array(FrameSystems.host_turn_started(state, u))
+	events.append_array(CoreBonuses.turn_started(state, u))
 	return events
 
 

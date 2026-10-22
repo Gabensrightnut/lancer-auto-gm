@@ -576,6 +576,96 @@ func _battle_stage(tag: String) -> void:
 			t.hover_target("goblin")
 			view.tactical.frame_pair(view.units["everest"].global_position, view.units["goblin"].global_position, 7.0)
 			view.tactical.snap()
+		"fly_up", "fly_across", "fly_fall":
+			var line := view.map.grid.line(me.cell, battle.state.unit("goblin").cell)
+			var cam := view.get_viewport().get_camera_3d()
+			var ground := view.map.ground_height(me.cell)
+			view.tactical.look_at_point(view.units["everest"].global_position + Vector3(0, 1.0, -1.0), 10.0)
+			view.tactical.pitch = -32.0
+			view.tactical.yaw = 35.0
+			view.tactical.snap()
+			await get_tree().process_frame
+			if tag == "fly_up":
+				t.toggle_fly()
+				t.change_sky(1)
+				var c: Vector2i = line[mini(2, line.size() - 1)]
+				t.plan_move(c)
+			elif tag == "fly_across":
+				var c1: Vector2i = line[1]
+				await battle.submit({"type": "move", "actor": "everest", "params": {"to": [c1.x, c1.y], "fly": true, "level": view.map.ground_height(c1) + 2}})
+				t.fly = true
+				t.sky_level = battle.state.unit("everest").level
+				t.refresh()
+				var c2: Vector2i = line[mini(3, line.size() - 1)]
+				view.tactical.look_at_point(view.units["everest"].global_position + Vector3(0, 0.0, -1.0), 10.0)
+				view.tactical.snap()
+				await get_tree().process_frame
+				t.plan_move(c2)
+			else:
+				# Jump jets: a Boost that ends in the air falls at once (Core p.63).
+				var c3: Vector2i = line[2]
+				var seen := [false]
+				player.event_started.connect(func(ev: Dictionary) -> void:
+					if ev.get("type") == "moved" and ev.get("mode") == "fall":
+						seen[0] = true)
+				battle.submit({"type": "boost", "actor": "everest", "params": {"to": [c3.x, c3.y], "fly": true, "level": view.map.ground_height(c3) + 3}})
+				var guard := 0
+				while not seen[0] and guard < 600:
+					guard += 1
+					await get_tree().process_frame
+				await get_tree().create_timer(0.18).timeout
+				return
+			await get_tree().create_timer(0.4).timeout
+		"eject", "dismount", "on_foot":
+			# Pilots on foot through the rules engine: Eject (launched out), Dismount (climbs down).
+			var spot: Variant = Pilots.free_adjacent(battle.state, me, null)
+			var to: Vector2i = spot[0] if spot != null else me.cell
+			view.tactical.look_at_point(view.units["everest"].global_position + Vector3(0, 0.3, 0), 6.5 if tag == "dismount" else 11.0)
+			view.tactical.pitch = -30.0 if tag == "dismount" else -42.0
+			view.tactical.snap()
+			var seen := [false]
+			player.event_started.connect(func(ev: Dictionary) -> void:
+				if ev.get("type") == "pilot_left_mech":
+					seen[0] = true)
+			var act := {"type": "dismount" if tag == "dismount" else "eject", "actor": "everest", "params": {"to": [to.x, to.y]}}
+			if tag != "dismount":
+				# Eject's distance is a table ruling (grey area): use the suggested reading here,
+				# then the farthest landing space the engine accepts.
+				Rulings.apply_suggested(battle.state)
+				var best := -1
+				for c: Vector2i in view.map.grid.cells_within(me.cell, 6):
+					var p := {"type": "eject", "actor": "everest", "params": {"to": [c.x, c.y]}}
+					var d := view.map.grid.distance(me.cell, c)
+					if d > best and battle.engine.validate(battle.state, p).ok:
+						best = d
+						act = p
+			var r: RuleResult = battle.engine.validate(battle.state, act)
+			if not r.ok:
+				push_warning("%s refused: %s" % [act["type"], r.reason])
+			if tag == "on_foot":
+				await battle.submit(act)
+				var pv: MechView = view.units.get(battle.state.unit("everest").counters.get("pilot", ""))
+				if pv:
+					view.tactical.look_at_point(pv.global_position + Vector3(0, 0.2, 0), 4.0)
+					view.tactical.snap()
+				await get_tree().create_timer(0.5).timeout
+				return
+			battle.submit(act)
+			var guard := 0
+			while not seen[0] and guard < 600:
+				guard += 1
+				await get_tree().process_frame
+			await get_tree().create_timer(0.45 if tag == "eject" else 0.4).timeout
+		"barks":
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 8
+			battle.barks.say({"unit": "everest", "name": "Hawk", "face": {"portrait": PortraitSpec.randomize(rng), "expression": "determined"},
+				"text": "Moving up. Cover me, Blackbeard.", "duration": 30.0})
+			battle.barks.say({"unit": "blackbeard", "name": "Rook", "face": {"portrait": PortraitSpec.randomize(rng), "expression": "smiling"},
+				"text": "Always do.", "duration": 30.0})
+			battle.barks.say({"name": "Harrow Actual", "side": "enemies", "face": {"portrait": PortraitSpec.randomize(rng), "expression": "angry"},
+				"text": "All units, hold the ridge. Nobody gets past the river.", "duration": 30.0})
+			await get_tree().create_timer(0.6).timeout
 		"gear", "gear_aim", "gear_table":
 			# Zones on the board (real ones from the engine plus one of each other kind),
 			# then the step-by-step picker aiming a smoke grenade.
@@ -689,6 +779,14 @@ func lockout_samples() -> Array:
 func screenshot_stage(tag: String) -> void:
 	world_spec = ""
 	battle_systems = {}
+	if tag in ["barks", "eject", "dismount", "on_foot"]:
+		await _battle_stage(tag)
+		return
+	if tag.begins_with("fly"):
+		# Flying with the rules engine's real movement: a flight system, or jump jets for the fall.
+		battle_systems = {"everest": ["ms_rapid_burst_jump_jet_system"] if tag == "fly_fall" else ["ms_type_i_flight_system"]}
+		await _battle_stage(tag)
+		return
 	if tag.begins_with("gear"):
 		battle_systems = {"everest": ["ms_pattern_a_smoke_charges", "ms_javelin_rockets", "ms_caltrop_launcher", "ms_lb_oc_cloaking_field", "ms_comp_con_class_assistant_unit"]}
 		await _battle_stage(tag)

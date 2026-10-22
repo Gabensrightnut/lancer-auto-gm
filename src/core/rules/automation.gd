@@ -89,6 +89,11 @@ static func for_unit(db: ContentDB, u: Unit) -> Array:
 		if status == "automated" and note != "":
 			status = "partial"
 		out.append(entry("weapon", id, String(raw.get("name", id)), status, note, text))
+		if w.has("mod"):
+			var mid := String(w["mod"]["id"])
+			var mraw := db.get_entry("mods", mid)
+			var mnote := String(n.get(mid, ""))
+			out.append(entry("mod", mid, String(mraw.get("name", mid)), "partial" if mnote != "" else "automated", mnote, _strip(mraw.get("effect", ""))))
 	return out
 
 

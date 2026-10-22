@@ -194,9 +194,10 @@ static func leave_story_online() -> void:
 ## A new campaign opened the guided way (CampaignLoop.start_tutorial, DESIGN.md section 8):
 ## your pilot and an AI squadmate at a Union training base, briefing first. Teaching hints
 ## (first-time rule tips) start on or off as asked. Saved before it returns.
-static func start_tutorial(store: SaveStore, db: ContentDB, pilot_name: String = "", callsign: String = "", hints: bool = true, portrait: Dictionary = {}) -> Campaign:
+static func start_tutorial(store: SaveStore, db: ContentDB, pilot_name: String = "", callsign: String = "", hints: bool = true, portrait: Dictionary = {}, arcs: int = DEFAULT_ARCS) -> Campaign:
 	var c := Campaign.create("Tutorial", {"start_ll": 0, "gm_preset": "Teaching"})
 	c.options["story"] = true
+	c.options["campaign_arcs"] = arcs
 	c.options["teaching_hints"] = hints
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([c.id, "names"])
@@ -211,6 +212,82 @@ static func start_tutorial(store: SaveStore, db: ContentDB, pilot_name: String =
 	story_events = CampaignLoop.start_tutorial(c, story, story_engine)
 	save_story(c, store)
 	return c
+
+
+## How many stories (situations, story arcs) a campaign tells before it ends (Ending.due).
+const DEFAULT_ARCS := 3
+const ARC_CHOICES := {1: "Short: 1 story", 2: "2 stories", 3: "Standard: 3 stories", 5: "Long: 5 stories"}
+
+
+## A new story campaign (no tutorial): the squad at a town hub, briefing first. Seat p1 is
+## played here; the other pilots are AI squadmates with personas that fit them (friends can
+## take their seats online). `arcs` = campaign length. Session zero comes first (Core p.40-41,
+## the hub shows SessionZeroScreen): the job board fills only after it, so the table's choices
+## (focus, content left out) shape the first jobs. Saved before it returns.
+static func start_story_campaign(store: SaveStore, db: ContentDB, campaign_name: String, pilots: int, start_ll: int, preset: String, arcs: int = DEFAULT_ARCS) -> Campaign:
+	var c := Campaign.create(campaign_name, {"start_ll": start_ll, "gm_preset": preset})
+	c.options["story"] = true
+	c.options["campaign_arcs"] = arcs
+	c.options["teaching_hints"] = true
+	c.options["session_zero_pending"] = true
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([c.id, "names"])
+	var names := NameGen.new(rng)
+	for i in range(maxi(pilots, 1)):
+		c.new_pilot(names.pilot_name(), names.callsign())
+	open_story(c, db)
+	var ids := c.pilots.keys()
+	var events: Array = []
+	for i in range(ids.size()):
+		var p: Dictionary = c.pilots[ids[i]]
+		events.append_array(story_engine.submit(story, c, {"type": "set_seat", "seat": "gm", "params": {"seat": "p%d" % (i + 1), "pilot": p["id"],
+			"ai": i > 0, "persona": Squadmate.suggest(p)}})["events"])
+	events.append_array(story_engine.submit(story, c, {"type": "enter_hub", "seat": "gm", "params": {"kind": "town", "seed": _first_hub_seed(c), "no_jobs": true}})["events"])
+	story_events = events
+	save_story(c, store)
+	return c
+
+
+static func _first_hub_seed(c: Campaign) -> int:
+	return int(hash([c.id, "hub"])) % 100000
+
+
+## True while a new story campaign waits for its session zero.
+static func session_zero_pending(campaign: Campaign) -> bool:
+	return campaign != null and bool(campaign.options.get("session_zero_pending", false))
+
+
+## Session zero was applied (SessionZeroScreen.done): the first jobs go on the board now.
+## Returns their events. `engine` = the hub's engine (so friends online see the board too).
+static func finish_session_zero(campaign: Campaign, store: SaveStore, engine: StoryEngine = null) -> Array:
+	campaign.options.erase("session_zero_pending")
+	var e: StoryEngine = engine if engine != null else story_engine
+	var r := e.submit(story, campaign, {"type": "enter_hub", "seat": "gm", "params": {"kind": str(story.hub.get("kind", "town")), "seed": int(story.hub.get("seed", _first_hub_seed(campaign)))}})
+	save_story(campaign, store)
+	return r.get("events", [])
+
+
+## After a campaign ends: a new one with the same living pilots (CampaignLoop.sequel), saved
+## and opened. The old campaign stays in the save list with its ending.
+static func start_sequel(campaign: Campaign, store: SaveStore, db: ContentDB) -> Campaign:
+	open_story(campaign, db)
+	save_story(campaign, store)
+	var next := CampaignLoop.sequel(campaign, story, story_engine)
+	var c: Campaign = next["campaign"]
+	story = next["story"]
+	_story_campaign = c.id
+	story_session = null
+	story_host = null
+	story_events = next.get("events", [])
+	save_story(c, store)
+	return c
+
+
+## Retires the squad (StoryEngine end_campaign): {} if allowed now, else {reason, rule_ref}.
+static func retire_refusal(campaign: Campaign) -> Dictionary:
+	if story == null or _story_campaign != campaign.id:
+		return {"reason": "No story is open."}
+	return story_engine.validate(story, campaign, {"type": "end_campaign", "seat": "gm", "params": {}})
 
 
 ## Writes the story into the campaign and saves it.

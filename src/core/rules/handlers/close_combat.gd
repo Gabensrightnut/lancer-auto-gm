@@ -73,6 +73,7 @@ class Ram:
 		var t := state.unit(String(params["target"]))
 		var momentum: bool = u.counters.get("ram_momentum", false)
 		var events := Attacks.attack(state, u, CloseCombat.body_attack(u, "Ram"), t, {"improvised": true})
+		CoreBonuses.after_hit_ram_grapple(state, u, t, CloseCombat._hit(events))
 		for e: Dictionary in Effects.of(u, "ram_damage"):
 			if CloseCombat._hit(events) and Combat.is_present(t):
 				# Siege Ram: 2 kinetic on a hit; 10 AP against objects.
@@ -86,7 +87,8 @@ class Ram:
 			events.append_array(Combat.add_status(state, t, "Prone", u.id))
 			if params.get("knockback", false) or momentum:
 				# Juggernaut Momentum: knocked back 2 more spaces.
-				events.append_array(Attacks.knock_back(state, t, u.cell, (1 if params.get("knockback", false) else 0) + (2 if momentum else 0), u))
+				var extra := 1 if Effects.has(u, "titanomachy") and params.get("knockback", false) else 0  # Titanomachy Mesh
+				events.append_array(Attacks.knock_back(state, t, u.cell, (1 if params.get("knockback", false) else 0) + (2 if momentum else 0) + extra, u))
 		return events
 
 
@@ -117,6 +119,7 @@ class Grapple:
 	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
 		var t := state.unit(String(params["target"]))
 		var events := Attacks.attack(state, u, CloseCombat.grapple_attack(u), t, {"improvised": true})
+		CoreBonuses.after_hit_ram_grapple(state, u, t, CloseCombat._hit(events))
 		if not CloseCombat._hit(events) or not Combat.is_present(t) or t.counters.has("grapple"):
 			return events
 		if Sight.unit_distance(state, u, t) > 1:

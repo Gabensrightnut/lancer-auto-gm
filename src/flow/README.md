@@ -8,7 +8,22 @@ Story campaigns (`campaign.options.story`; the **Tutorial** on the main menu sta
 board) → boots on the ground → battle (`GameFlow.start_story_mission`, the battlefield from
 `CampaignLoop.build_mission`) → back to the hub for the story's debrief, level up and downtime
 (`CampaignLoop.finish_mission`, with every battle event). Continue on a story campaign opens
-the hub. After leveling up, talent, license and core bonus picks are made in the pilot builder
+the hub. New campaign offers "Story campaign" (the default: `GameFlow.start_story_campaign`,
+a town hub, seat p1 here and AI squadmates with personas in the rest) or "Missions only" (the
+lobby loop), and a campaign length (`options.campaign_arcs`, default 3 stories; the tutorial
+asks too). The hub Menu (or Esc) can retire the squad (`end_campaign`, between missions only;
+the button says why when it can't). When a campaign ends the story's EpilogueScreen shows (also
+when the campaign is opened again); "New campaign with the same pilots" saves and opens
+`GameFlow.start_sequel` (`CampaignLoop.sequel`), "Main menu" (`HubScene.menu_requested`) leaves.
+
+A new story campaign (not the tutorial or a sequel) starts with session zero (Core p.40-41):
+the hub shows the story's `SessionZeroScreen` over the town before anything else, and the job
+board fills only once it's applied (`GameFlow.finish_session_zero`), so its choices shape the
+first jobs. `campaign.options.session_zero_pending` keeps it waiting if the player quits first.
+
+Codex (the story's `CodexPanel`, the rules reference): a main menu button, and in battle the
+pause menu ("Codex: look up <term>") or the rebindable Codex key (F1), opened on whatever the
+player last pointed at: a mech's frame, else the last action hovered on the action bar. After leveling up, talent, license and core bonus picks are made in the pilot builder
 (hub Menu); closing it updates `story.pending_picks` (`GameFlow.builder_done`).
 
 Online story campaigns: the hub Menu's "Invite friends online" makes `GameFlow.story_host`, a

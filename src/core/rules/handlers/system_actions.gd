@@ -26,13 +26,15 @@ class Overcharge:
 		return RuleResult.allow()
 
 	func apply(state: GameState, u: Unit, _params: Dictionary) -> Array[Dictionary]:
-		var expr: String = SystemActions.OVERCHARGE_HEAT[mini(u.overcharge_count, 3)]
+		var expr: String = SystemActions.OVERCHARGE_HEAT[mini(u.overcharge_count, 2 if Effects.has(u, "overcharge_cap") else 3)]  # Heatfall: never past 1d6
 		var roll := state.dice.roll(expr)
 		u.overcharge_count += 1
 		u.turn["overcharged"] = true
 		u.turn["free_quick"] = int(u.turn.get("free_quick", 0)) + 1
 		var events: Array[Dictionary] = [{"type": "overcharged", "unit": u.id, "roll": roll, "count": u.overcharge_count, "rule_ref": TurnRules.REF_OVERCHARGE}]
 		events.append_array(Combat.apply_heat(state, u, int(roll["total"]), "Overcharge"))
+		if Effects.has(u, "overcharge_cover"):
+			events.append_array(Effects.activate(state, u, [{"kind": "soft_cover_aura", "self_only": true}], "Armory-Sculpted Chassis", "start_next_turn"))
 		return events
 
 
@@ -54,6 +56,10 @@ class Stabilize:
 		var main: String = params.get("main", "")
 		if main != "cool" and main != "repair":
 			return RuleResult.deny("Choose: cool (clear heat and Exposed) or repair (mark 1 Repair to restore all HP).", "actions: Stabilize")
+		if main == "repair" and u.counters.get("briareos_down", false):
+			return RuleResult.deny("At 0 Structure (Briareos Frame) the mech can't regain HP until you rest.", "Core p.127")
+		if params.get("adaptive", false) and (main != "cool" or not Effects.has(u, "adaptive_reactor") or u.repairs < 2 or u.stress >= u.max_stress):
+			return RuleResult.deny("Adaptive Reactor: cool, with 2 Repairs and stress damage to clear.", "Core p.225")
 		if main == "repair" and params.has("repair_from"):
 			# Lancaster Redundant Systems: adjacent characters may spend its Repairs.
 			var lan := state.unit(String(params["repair_from"]))
@@ -113,6 +119,10 @@ class Stabilize:
 				events.append_array(Combat.remove_status(u, params["condition"], "Stabilize"))
 			"clear_ally_condition":
 				events.append_array(Combat.remove_status(state.unit(params["ally"]), params["condition"], "Stabilize"))
+		if params.get("adaptive", false):
+			u.repairs -= 2
+			u.stress += 1  # Adaptive Reactor: clear 1 stress damage
+			events.append({"type": "repaired", "unit": u.id, "what": "stress", "stress": u.stress, "rule_ref": "Core p.225"})
 		events.append_array(FrameSystems.on_stabilize(state, u, params))
 		return events
 
@@ -185,6 +195,7 @@ class ShutDown:
 
 	func apply(state: GameState, u: Unit, _params: Dictionary) -> Array[Dictionary]:
 		var events := Combat.add_status(state, u, "Shut Down", u.id)
+		events.append_array(AISystems.shut_down(state, u))  # stabilizes a cascading NHP (Core p.107)
 		events.append_array(Combat.clear_heat(u, "Shut Down"))
 		events.append_array(Combat.remove_status(u, "Exposed", "Shut Down"))
 		# Statuses caused by tech actions end (Lock On, Fragment Signal's Impaired/Slowed).
@@ -317,6 +328,7 @@ class CorePower:
 			"rule_ref": "frames: core_system"}]
 		events.append_array(Effects.activate(state, u, core.get("effects", []), String(core.get("name", ""))))
 		events.append_array(FrameSystems.on_core(state, u, action.get("params", {})))
+		events.append_array(CoreBonuses.universal_compat(state, u))
 		var ops: Array = core.get("ops", [])
 		if not ops.is_empty():
 			var labelled: Array = []

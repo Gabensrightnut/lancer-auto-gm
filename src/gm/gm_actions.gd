@@ -4,7 +4,7 @@ extends RefCounted
 ## submit() like everything else. NetHost refuses actor-less actions from player seats.
 ##   gm_spawn        {"units": [Unit.to_dict(), ...], "reason": "reinforcements"}
 ##   gm_end_mission  {"outcome": "players" | "enemies" | "none", "reason": String, "scores": {}}
-##   gm_narrate      {"kind": "twist" | "arrival" | "narration", "text", "title", "question",
+##   gm_narrate      {"kind": "twist" | "arrival" | "environment" | "narration", "text", "title", "question",
 ##                    "id", "speaker", "seen_by": [side, ...], "rule_ref"} (GmTwist)
 ## Events: units_arrived {units, reason}, mission_ended {outcome, reason, scores},
 ## twist_revealed {twist: {id, reveal, question}, title, speaker, seen_by, rule_ref} and
@@ -93,8 +93,8 @@ class Narrate:
 		var p: Dictionary = action.get("params", {})
 		if state.phase == GameState.PHASE_ENDED:
 			return RuleResult.deny("The mission is over.", "")
-		if not str(p.get("kind", "")) in ["twist", "arrival", "narration"]:
-			return RuleResult.deny("Narration kind must be twist, arrival or narration.", "")
+		if not str(p.get("kind", "")) in ["twist", "arrival", "environment", "narration"]:
+			return RuleResult.deny("Narration kind must be twist, arrival, environment or narration.", "")
 		if str(p.get("text", "")).strip_edges() == "":
 			return RuleResult.deny("Narration needs some text.", "")
 		if p.has("seen_by") and not p["seen_by"] is Array:

@@ -21,6 +21,8 @@ var turn: PlayerTurn
 var banner: Label
 var reaction_prompt: ReactionPrompt
 var table_notice: TableNotice
+## Squadmate barks and NPC lines (speech bubbles with portraits).
+var barks: BattleBarks
 ## Staging/tests: answer reaction prompts automatically with the suggested answer.
 var auto_react := false
 ## Set by screenshot staging to pick units without clicks.
@@ -55,7 +57,11 @@ func setup(db: ContentDB, battle_view: BattleView, events: EventPlayer, layer: C
 	ui.add_child(reaction_prompt)
 	table_notice = TableNotice.new()
 	ui.add_child(table_notice)
+	barks = BattleBarks.new()
+	barks.view = view
+	ui.add_child(barks)
 	player.on_table_note = table_notice.show_note
+	player.on_map_changed = func() -> BattleMap: return state.map if state else null
 	player.camera = view.tactical
 	turn = PlayerTurn.new()
 	turn.bar = bar
@@ -98,6 +104,10 @@ func load_battle(map: BattleMap, roster: Dictionary, offset: Vector2) -> void:
 	for id: String in v["units"]:
 		var ud: Dictionary = v["units"][id]
 		if not ud.get("hidden", false):
+			var su := state.unit(id)
+			if su and su.kind == Unit.KIND_PILOT:
+				ud = ud.duplicate()
+				ud["mounted"] = su.counters.has("mounted_in")  # host knows; the view doesn't say
 			view.add_unit(ud)
 	for mv: MechView in view.units.values():
 		mv.face(Vector3(offset.x + 8, 0, offset.y + (6 if mv.unit["side"] == "players" else 11)))
@@ -107,14 +117,22 @@ func load_battle(map: BattleMap, roster: Dictionary, offset: Vector2) -> void:
 
 func _render_portraits() -> void:
 	for id: String in state.units:
+		if order_bar.portraits.has(id) or not view.units.has(id):
+			continue
 		var u := state.unit(id)
-		var model := MechBuilder.build(content.frame(u.content_id), (view.units[id] as MechView).unit.get("loadout", {}), content)
+		var model: MechModel
+		if u.kind == Unit.KIND_PILOT:
+			model = MechView.pilot_model({"id": id})
+		else:
+			model = MechBuilder.build(content.frame(u.content_id), (view.units[id] as MechView).unit.get("loadout", {}), content)
 		order_bar.portraits[id] = TurnOrderBar.render_portrait(self, model, model.height)
 
 
 func _update_order() -> void:
 	var units: Array = []
 	for u: Unit in state.units.values():
+		if u.kind == Unit.KIND_PILOT and u.counters.has("mounted_in"):
+			continue  # a pilot inside a mech acts through it
 		var e := {"id": u.id, "name": u.name, "side": u.side, "acted": state.acted.has(u.id) or u.destroyed,
 			"active": state.active_unit == u.id, "frame": u.content_id}
 		if u.side == "players" or _filter.knows_stats("players", u.id):
@@ -150,6 +168,8 @@ func sync_views() -> void:
 	# Zones (smoke, caltrops...): the seat's view once ViewFilter carries them; this demo is
 	# the host, so state.zones until then.
 	view.zones.set_zones(v.get("zones", state.zones))
+	view.refresh_map(state.map)  # destroyed terrain the events didn't already show
+	_render_portraits()  # pilots who just got out
 	_update_order()
 
 

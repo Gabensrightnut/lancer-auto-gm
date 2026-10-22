@@ -37,6 +37,9 @@ var rulings: Dictionary = {}
 var packs: Array = []
 ## Areas left on the field by frame systems (Mag Field, smoke clouds, holograms): see Zones.
 var zones: Array = []
+## Rules environments for the whole battle (lancer-data environments.json ids, e.g.
+## "env_particulatestorms"), set by the mission generator from the world's weather.
+var environments: Array = []
 var dice: Dice
 
 
@@ -77,7 +80,7 @@ func to_dict() -> Dictionary:
 		"acted": Array(acted), "turn_side": turn_side, "first_side": first_side,
 		"intel": intel.duplicate(true), "pending": pending.duplicate(true), "seats": seats.duplicate(true),
 		"rulings": rulings.duplicate(true), "packs": packs.duplicate(true), "dice_state": str(dice.get_state()),
-		"zones": zones.duplicate(true),
+		"zones": zones.duplicate(true), "environments": environments.duplicate(),
 	}
 
 
@@ -99,6 +102,7 @@ static func from_dict(d: Dictionary) -> GameState:
 	s.rulings = (d.get("rulings", {}) as Dictionary).duplicate(true)
 	s.packs = (d.get("packs", []) as Array).duplicate(true)
 	s.zones = (d.get("zones", []) as Array).duplicate(true)
+	s.environments = (d.get("environments", []) as Array).duplicate()
 	if d.has("dice_state"):
 		s.dice.set_state(String(d["dice_state"]).to_int())
 	return s

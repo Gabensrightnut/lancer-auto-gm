@@ -60,6 +60,7 @@ func _campaign_loop() -> void:
 		name_edit.text = "QA %s %d" % [mode, Time.get_unix_time_from_system()]
 		name_edit.text_changed.emit(name_edit.text)
 	await shot("new_campaign_form")
+	await click_text("Missions only")  # the lobby-to-battle loop (story campaigns open the hub)
 	if not await click_text("Create campaign"):
 		return
 	await wait_scene("LobbyScreen")
@@ -329,6 +330,7 @@ func _host_online() -> void:
 	await shot("main_menu")
 	await click_text("New campaign")
 	await wait(0.5)
+	await click_text("Missions only")
 	await click_text("Create campaign")
 	await wait_scene("LobbyScreen")
 	await wait(1.0)

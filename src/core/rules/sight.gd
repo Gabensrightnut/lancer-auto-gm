@@ -131,6 +131,8 @@ static func line_of_sight(state: GameState, from: Body, to: Body) -> bool:
 
 
 static func unit_line_of_sight(state: GameState, a: Unit, b: Unit) -> bool:
+	if Zones.blocks_sight(state, a, b):
+		return false  # Blinded, Flash Grenade, Hardlight shield, Blinkshield
 	return line_of_sight(state, body_of(state, a), body_of(state, b))
 
 

@@ -63,3 +63,26 @@ func test_lookups_keep_the_full_portrait() -> void:
 	var a := PortraitArt.look_for_pilot({"id": "p2"})
 	expect_eq(a, PortraitArt.look_for_pilot({"id": "p2"}), "no portrait: the same random one every time")
 	expect_eq(int(PortraitArt.look_for_npc({"id": "n1", "look": {"skin": "#a16a45"}})["version"]), 2, "flat NPC looks become v2")
+
+
+func test_barks_show_and_expire() -> void:
+	var b := BattleBarks.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1
+	var done: Array = []
+	b.finished.connect(func(x: Dictionary) -> void: done.append(x))
+	for i in range(4):
+		b.say({"name": "Hawk", "face": {"portrait": PortraitSpec.randomize(rng), "expression": "smiling"}, "text": "Line %d" % i, "duration": 1.0})
+	expect_eq(b._live.size(), BattleBarks.MAX_ON_SCREEN, "at most three at once; the oldest makes room")
+	expect_eq(done.size(), 1)
+	b._process(2.0)
+	expect_eq(b._live.size(), 0, "they fade out on their own")
+	b.free()
+
+
+func test_pilot_on_foot_model() -> void:
+	var m := MechView.pilot_model({"id": "p9"})
+	expect(is_equal_approx(m.height, MechView.PILOT_HEIGHT), "pilot tokens have a fixed readable height")
+	expect(m.meshes.size() > 5, "built from the token figure")
+	expect(m.eye != null and m.torso != null, "has the anchors effects use")
+	m.free()

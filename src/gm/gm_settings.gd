@@ -6,6 +6,7 @@ extends RefCounted
 const PRESETS_FILE := "res://data/game/gm/presets.json"
 const BEHAVIORS_FILE := "res://data/game/gm/behaviors.json"
 const MISSIONS_FILE := "res://data/game/gm/missions.json"
+const DIALS := ["aggression", "caution", "focus_fire", "reinforcements", "difficulty", "randomness", "environments"]
 
 var preset := "Standard"
 var aggression := 0.6
@@ -14,6 +15,9 @@ var focus_fire := 0.5
 var reinforcements := 0.15
 var difficulty := 1.0
 var randomness := 0.25
+## Chance that weather or a world that suggests a rules environment (a sandstorm, low gravity)
+## actually brings that environment's rules into the mission (MissionGenerator).
+var environments := 0.5
 ## Write a log line for every AI decision (always on for "Teaching").
 var explain := true
 
@@ -26,7 +30,7 @@ static func from_preset(name: String) -> GmSettings:
 		p = presets().get("Standard", {})
 		name = "Standard"
 	s.preset = name
-	for key in ["aggression", "caution", "focus_fire", "reinforcements", "difficulty", "randomness"]:
+	for key: String in DIALS:
 		if p.has(key):
 			s.set(key, float(p[key]))
 	s.explain = bool(p.get("explain", true))
@@ -43,12 +47,12 @@ static func presets() -> Dictionary:
 
 func to_dict() -> Dictionary:
 	return {"preset": preset, "aggression": aggression, "caution": caution, "focus_fire": focus_fire,
-		"reinforcements": reinforcements, "difficulty": difficulty, "randomness": randomness, "explain": explain}
+		"reinforcements": reinforcements, "difficulty": difficulty, "randomness": randomness, "environments": environments, "explain": explain}
 
 
 static func from_dict(d: Dictionary) -> GmSettings:
 	var s := from_preset(str(d.get("preset", "Standard")))
-	for key in ["aggression", "caution", "focus_fire", "reinforcements", "difficulty", "randomness"]:
+	for key: String in DIALS:
 		if d.has(key):
 			s.set(key, float(d[key]))
 	s.explain = bool(d.get("explain", s.explain))

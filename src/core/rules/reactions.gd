@@ -106,6 +106,8 @@ static func can_react(u: Unit, reaction: String, state: GameState = null) -> Rul
 		if state == null or Rulings.ask(state, "npc_brace") != "yes":
 			return RuleResult.deny("NPCs don't Brace (table ruling).", REF_BRACE)
 	var allowed := 1 + (Effects.value(u, "overwatch_extra") if reaction == "overwatch" else 0)
+	if reaction == "scylla":
+		allowed = 2  # SCYLLA: two special reactions
 	if reaction == "turret_attack" and state != null:
 		allowed = GearSystems.turret_count(state, u)  # once for each deployed turret drone
 	if (u.counters.get("reactions", []) as Array).count(reaction) >= allowed:

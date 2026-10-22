@@ -135,7 +135,7 @@ static func state_of(u: Unit, w: Dictionary) -> Dictionary:
 		var uses := -1
 		if has_tag(w, "tg_limited"):
 			# +1 use of Limited gear per 2 Engineering (Core p.34).
-			uses = tag_value(w, "tg_limited") + u.engineering / 2
+			uses = tag_value(w, "tg_limited") + u.engineering / 2 + Effects.value(u, "limited_bonus")  # Integrated Ammo Feeds
 		all[key] = {"loaded": true, "uses": uses, "destroyed": false}
 		if has_tag(w, "tg_recharge"):
 			all[key]["recharge"] = tag_value(w, "tg_recharge")

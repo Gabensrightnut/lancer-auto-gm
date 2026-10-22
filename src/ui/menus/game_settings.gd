@@ -20,6 +20,7 @@ const ACTIONS := {
 	"camera_pan_right": ["Camera: pan right", KEY_D],
 	"toggle_log": ["Show battle log", KEY_L],
 	"skip_to_my_turn": ["Skip to my turn", KEY_SPACE],
+	"codex": ["Codex: look up what's under the mouse", KEY_F1],
 }
 const COLORBLIND := ["off", "deuteranopia", "protanopia", "tritanopia"]
 ## Battlefield quality presets (WorldQuality.PRESETS), lowest first.

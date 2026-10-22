@@ -31,6 +31,10 @@ var _prompt_text: RichTextLabel
 var _hint: Label
 var _last_cell := Vector2i(99999, 99999)
 var _hover_unit := ""
+## Flight: on when the unit flies this move (T toggles); sky_level is the height to fly at
+## (R / F raise and lower it).
+var fly := false
+var sky_level := -1
 
 
 func setup(ui_layer: CanvasLayer) -> void:
@@ -80,6 +84,9 @@ func setup(ui_layer: CanvasLayer) -> void:
 
 func begin(uid: String) -> void:
 	unit_id = uid
+	var bu := state.unit(uid)
+	fly = bu != null and bu.flying
+	sky_level = bu.level if bu else -1
 	view.labels.active_unit = uid
 	active = true
 	mode = "idle"
@@ -110,6 +117,9 @@ func _set_hint() -> void:
 			_hint.text = _pick_hint()
 		_:
 			_hint.text = "Click the board to move  ·  pick an action below  ·  End Turn when done" if active else ""
+			if active and can_fly():
+				_hint.text += "
+" + ("FLYING at height %d  ·  R / F: up / down  ·  T: land" % sky_level if fly else "T: take off and fly")
 	# Under the turn-order bar's round banner, clear of hover cards; sized to its text so
 	# nameplates only fade right under it.
 	_hint.size = Vector2.ZERO
@@ -134,6 +144,12 @@ func _unhandled_input(event: InputEvent) -> void:
 					_pick_finish_step()
 			KEY_ESCAPE:
 				cancel()
+			KEY_T:
+				toggle_fly()
+			KEY_R:
+				change_sky(1)
+			KEY_F:
+				change_sky(-1)
 	elif event is InputEventMouseMotion:
 		hover_screen((event as InputEventMouseMotion).position)
 	elif event is InputEventMouseButton and event.pressed:
@@ -212,11 +228,52 @@ func click_screen(screen: Vector2) -> void:
 
 # --- planning --------------------------------------------------------------------------
 
-## Draws the rules engine's move preview to `cell` (no state change).
+## Can the unit fly for the current kind of move (a flight system, or Boost with jump jets)?
+func can_fly() -> bool:
+	var u := state.unit(unit_id)
+	return u != null and Movement.can_fly(u, "boost" if mode == "boost" else "move")
+
+
+func toggle_fly() -> void:
+	if not can_fly():
+		fly = false
+		return
+	fly = not fly
+	var u := state.unit(unit_id)
+	if fly and sky_level <= state.map.ground_height(u.cell):
+		sky_level = maxi(u.level, state.map.ground_height(u.cell)) + 1
+	_refresh_preview()
+
+
+func change_sky(d: int) -> void:
+	if not fly:
+		return
+	var u := state.unit(unit_id)
+	sky_level = clampi(sky_level + d, 0, state.map.ground_height(u.cell) + 12)
+	_refresh_preview()
+
+
+func _refresh_preview() -> void:
+	_set_hint()
+	if _last_cell.x < 99999 and pending.is_empty():
+		preview_move(_last_cell)
+
+
+## Draws the rules engine's move preview to `cell` (no state change). Flying moves go to
+## the chosen sky level; walking ones let the engine pick the height.
 func preview_move(cell: Vector2i) -> Dictionary:
 	var u := state.unit(unit_id)
-	var p := RulesQueries.preview_move(state, unit_id, cell, -1, "boost" if mode == "boost" else "move")
-	view.overlays.show_plan(move_overlay(p, u))
+	var flying := fly and can_fly()
+	var p := RulesQueries.preview_move(state, unit_id, cell, sky_level if flying else -1, "boost" if mode == "boost" else "move", flying)
+	var plan := move_overlay(p, u)
+	if flying:
+		plan["fly"] = true
+		var cells: Array = []
+		for c: Vector2i in state.map.grid.cells_within(u.cell, int(p.get("budget", u.speed)) + 1):
+			if state.map.has_cell(c):
+				cells.append([c.x, c.y])
+		plan["sky_layer"] = {"level": sky_level, "cells": cells}
+	view.overlays.show_plan(plan)
 	return p
 
 
@@ -262,7 +319,7 @@ func plan_move(cell: Vector2i) -> void:
 		warn += "\n[color=#ffc857]⚠ %s[/color]" % w.get("text", "")
 	var type := "boost" if boosting else "move"
 	_ask("%s here?  Cost [b]%d[/b] of %d movement.%s" % ["Boost" if boosting else "Move", int(p.get("cost", 0)), int(p.get("budget", 0)), warn],
-		{"type": type, "actor": unit_id, "params": {"to": [cell.x, cell.y]}})
+		{"type": type, "actor": unit_id, "params": {"to": [cell.x, cell.y], "fly": fly and can_fly(), "level": sky_level if fly and can_fly() else -1}})
 
 
 func _on_action(a: Dictionary) -> void:

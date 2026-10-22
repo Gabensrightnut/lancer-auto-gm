@@ -75,5 +75,17 @@
   },
   "mw_annihilator": {
     "splash": 1
+  },
+  "wm_thermal_charge": {
+    "mod_charge": {
+      "bonus": "1d6",
+      "type": "Explosive"
+    }
+  },
+  "wm_throughbolt_rounds": {
+    "throughbolt": true
+  },
+  "wm_phase_ready_mod": {
+    "phase_ready": true
   }
 }
