@@ -1,0 +1,34 @@
+extends TestCase
+## Locomotion: every core frame has a gait, stride scales with Size, feet plant on cells.
+
+
+func test_every_frame_has_a_gait() -> void:
+	var db := ContentDB.new()
+	db.load_all()
+	var known := ["biped", "digitigrade", "quadruped", "hexapod", "tracked", "hover", "winged"]
+	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/game/locomotion.json"))
+	for f: Dictionary in db.all("frames"):
+		expect((data["frames"] as Dictionary).has(f["id"]), "%s listed in locomotion.json" % f["id"])
+		expect(MechModel.gait_for(f["id"]) in known, "%s gait is known" % f["id"])
+
+
+func test_steps_per_cell_scale_with_size() -> void:
+	var m := MechModel.new()
+	var expected := {0.5: 4, 1.0: 2, 2.0: 1, 3.0: 1}
+	for s: float in expected:
+		m.size = s
+		expect_eq(m.steps_per_cell(), expected[s], "Size %s" % s)
+	m.free()
+
+
+func test_feet_planted_after_whole_cells() -> void:
+	var db := ContentDB.new()
+	db.load_all()
+	var m := MechBuilder.build(db.frame("mf_standard_pattern_i_everest"), {}, db)
+	m.walk_amount = 1.0
+	m.walk_phase = m.steps_per_cell() * PI * 3.0  # three cells walked
+	m._apply_walk()
+	for leg: Dictionary in m.legs:
+		var base: Vector3 = leg["base"]
+		expect(absf((leg["hip"] as Node3D).rotation_degrees.x - base.x) < 0.01, "hip back at rest on a cell")
+	m.free()

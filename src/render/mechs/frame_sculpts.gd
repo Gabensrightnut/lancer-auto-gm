@@ -186,69 +186,132 @@ func _eye(parent: Node3D, pos: Vector3) -> void:
 # a helmet with a single visor band and a short crest, armored gauntlets and sturdy boots.
 
 func _everest() -> void:
-	var W := MeshKit.paint(Color(0.80, 0.81, 0.82), 0.35, 0.38, 0.35)
-	var B := MeshKit.paint(Color(0.18, 0.25, 0.36), 0.45, 0.4, 0.3)
-	var D := MeshKit.paint(Color(0.15, 0.16, 0.17), 0.75, 0.5, 0.0)
-	var Y := MeshKit.paint(Color(0.92, 0.66, 0.16), 0.3, 0.45, 0.0)
-	var G := MeshKit.paint(Color(0.05, 0.05, 0.05), 0.2, 0.2, 0.0, Color(0.35, 0.85, 1.0))
-	var L := 0.46
-	m.pelvis = _p(body, "Pelvis", Vector3(0, L, 0))
-	m.pelvis.set_meta("rest_y", L)
-	_add(m.pelvis, SmoothKit.loft([{"y": -0.06, "w": 0.2, "d": 0.16, "n": 3}, {"y": 0.0, "w": 0.26, "d": 0.19, "n": 3}, {"y": 0.05, "w": 0.22, "d": 0.17, "n": 3}]), D)
-	_add(m.pelvis, SmoothKit.blob(Vector3(0.12, 0.1, 0.05), 0.5, 0.5), B, Vector3(0, -0.02, -0.1), Vector3(-10, 0, 0))
-	for s: float in [-1.0, 1.0]:
+	# GMS Everest, the LL0 starter. Built from reusable GmsParts so basic GMS variants can
+	# share it. Reference (user-provided fan illustration, described): a big rounded
+	# barrel/egg chest in dark teal with a G.M.S. stencil and logo, no head (a glowing green
+	# sensor cluster low on the chest), red spherical armored pods at shoulders, hips and
+	# knees, dark open-truss limbs over pistons, chunky boxy truss-paneled forearms and shins,
+	# big four-fingered hands with red plates, blocky segmented feet, a harness strap with
+	# shells across the chest, hoses under the torso, and a heavy, slightly hunched stance.
+	m.set_meta("custom_pose", true)
+	var TEAL := MeshKit.paint(Color(0.12, 0.26, 0.28), 0.4, 0.5, 0.25)
+	var TEAL2 := MeshKit.paint(Color(0.17, 0.33, 0.35), 0.4, 0.5, 0.15)
+	var RED := MeshKit.paint(Color(0.62, 0.1, 0.08), 0.35, 0.45, 0.1)
+	var FRAME := MeshKit.paint(Color(0.16, 0.17, 0.18), 0.75, 0.45, 0.0)
+	var STEEL := MeshKit.paint(Color(0.38, 0.4, 0.42), 0.85, 0.3, 0.0)
+	var DARK := MeshKit.paint(Color(0.07, 0.07, 0.08), 0.6, 0.5, 0.0)
+	var STRAP := MeshKit.paint(Color(0.2, 0.17, 0.13), 0.1, 0.8, 0.0)
+	var SHELL := MeshKit.paint(Color(0.62, 0.12, 0.08), 0.3, 0.5, 0.0)
+	var BRASS := MeshKit.paint(Color(0.7, 0.55, 0.25), 0.9, 0.35, 0.0)
+	var GREEN := MeshKit.paint(Color(0.05, 0.2, 0.05), 0.2, 0.2, 0.0, Color(0.35, 1.0, 0.35))
+	var hip_y := 0.36
+	var torso_origin := Vector3(0, hip_y + 0.04, 0)
+	var B := func(v: Vector3) -> Vector3: return v - torso_origin
+	# Pelvis: a dark block under the chest; hip pods carry the legs.
+	m.pelvis = _p(body, "Pelvis", Vector3(0, hip_y, 0))
+	m.pelvis.set_meta("rest_y", hip_y)
+	_add(m.pelvis, SmoothKit.rounded_box(Vector3(0.2, 0.08, 0.15), 0.025), FRAME)
+	_add(m.pelvis, SmoothKit.rounded_box(Vector3(0.12, 0.06, 0.05), 0.015), TEAL, Vector3(0, -0.01, -0.07))
+	for s: float in [1.0, -1.0]:
 		var side := "r" if s > 0 else "l"
-		var leg := _rig_leg(side, Vector3(s * 0.09, -0.02, 0), 0.21, 0.19)
-		_add(leg["hip"], SmoothKit.blob(Vector3(0.09, 0.09, 0.09), 1.0, 1.0), D)
-		_add(leg["hip"], _limb(0.2, 0.055, 0.045, 0.15), W, Vector3(0, -0.01, 0))
-		_add(leg["hip"], SmoothKit.blob(Vector3(0.09, 0.14, 0.05), 0.5, 0.6), B, Vector3(s * 0.01, -0.1, -0.045), Vector3(-4, 0, 0))
-		_add(leg["knee"], SmoothKit.blob(Vector3(0.09, 0.08, 0.08), 0.6, 0.6), D)
-		_add(leg["knee"], SmoothKit.blob(Vector3(0.08, 0.08, 0.05), 0.5, 0.5), Y, Vector3(0, 0.0, -0.05))
-		_add(leg["knee"], _limb(0.17, 0.05, 0.062, 0.25), W, Vector3(0, -0.02, 0.005))
-		_add(leg["knee"], SmoothKit.blob(Vector3(0.1, 0.13, 0.05), 0.5, 0.6), W, Vector3(0, -0.1, -0.055), Vector3(5, 0, 0))
-		_add(leg["ankle"], SmoothKit.blob(Vector3(0.12, 0.06, 0.2), 0.45, 0.5, 0.0), D, Vector3(0, -0.035, -0.03))
-		_add(leg["ankle"], SmoothKit.blob(Vector3(0.11, 0.05, 0.12), 0.5, 0.5, 0.0), W, Vector3(0, -0.01, -0.07))
-	m.torso = _p(m.pelvis, "Torso", Vector3(0, 0.04, 0))
+		var leg := _rig_leg(side, Vector3(s * 0.13, -0.01, 0), 0.15, 0.15)
+		var hip: Node3D = leg["hip"]
+		var knee: Node3D = leg["knee"]
+		var ankle: Node3D = leg["ankle"]
+		hip.rotation_degrees = Vector3(-14, 0, s * 4)
+		knee.rotation_degrees = Vector3(26, 0, 0)
+		ankle.rotation_degrees = Vector3(-12, 0, s * -4)
+		leg["base"] = Vector3(-14, 26, -12)
+		GmsParts.pod(hip, RED, DARK, Vector3(s * 0.015, 0, 0), 0.05, Vector3(s, 0, -0.4))
+		var thigh := _p(hip, "Thigh", Vector3(0, -0.04, 0))
+		GmsParts.truss(thigh, FRAME, STEEL, 0.1, 0.07, 0.07, 1)
+		GmsParts.pod(knee, RED, DARK, Vector3.ZERO, 0.05, Vector3(0, 0, -1))
+		var shin := _p(knee, "Shin", Vector3(0, -0.035, 0))
+		GmsParts.armored_box(shin, TEAL2, FRAME, 0.12, 0.09, 0.1, 0.9)
+		GmsParts.foot(ankle, TEAL2, DARK, 0.11)
+	# Torso: the big rounded barrel chest, leaning forward a little.
+	m.torso = _p(m.pelvis, "Torso", Vector3(0, 0.04, 0), Vector3(-8, 0, 0))
+	_add(m.torso, MeshKit.cylinder(0.07, 0.06, 14), FRAME, Vector3(0, 0.02, 0.0))
 	_add(m.torso, SmoothKit.loft([
-		{"y": 0.0, "w": 0.18, "d": 0.14, "n": 3.0},
-		{"y": 0.08, "w": 0.22, "d": 0.17, "n": 3.0},
-		{"y": 0.17, "w": 0.36, "d": 0.25, "n": 3.2, "z": -0.01},
-		{"y": 0.27, "w": 0.4, "d": 0.27, "n": 3.4, "z": -0.015},
-		{"y": 0.33, "w": 0.34, "d": 0.24, "n": 3.0},
-		{"y": 0.36, "w": 0.22, "d": 0.16, "n": 3.0},
-	], 28), W)
-	# Cockpit hatch and chest plates.
-	_add(m.torso, SmoothKit.blob(Vector3(0.22, 0.15, 0.08), 0.45, 0.5), B, Vector3(0, 0.25, -0.12), Vector3(-8, 0, 0))
-	_add(m.torso, SmoothKit.blob(Vector3(0.14, 0.035, 0.02), 0.3, 0.3), Y, Vector3(0, 0.2, -0.15), Vector3(-8, 0, 0))
-	_add(m.torso, SmoothKit.blob(Vector3(0.16, 0.08, 0.06), 0.5, 0.5), D, Vector3(0, 0.08, -0.08))
-	# Back pack with two thrusters.
-	_add(m.torso, SmoothKit.rounded_box(Vector3(0.24, 0.2, 0.1), 0.03), D, Vector3(0, 0.24, 0.14))
-	for s: float in [-1.0, 1.0]:
-		_add(m.torso, SmoothKit.lathe([Vector2(0.03, 0.0), Vector2(0.04, 0.03), Vector2(0.032, 0.07)], 14, false), D, Vector3(s * 0.07, 0.13, 0.18), Vector3(180, 0, 0))
-	# Head: helmet with visor band, crest and antenna.
-	m.head = _p(m.torso, "Head", Vector3(0, 0.37, -0.02))
-	_add(m.head, SmoothKit.blob(Vector3(0.06, 0.05, 0.06), 1.0, 1.0), D, Vector3(0, 0.0, 0))
-	_add(m.head, SmoothKit.blob(Vector3(0.11, 0.1, 0.12), 0.55, 0.6), W, Vector3(0, 0.05, 0))
-	_add(m.head, SmoothKit.blob(Vector3(0.1, 0.025, 0.04), 0.3, 0.6), G, Vector3(0, 0.055, -0.05))
-	_add(m.head, SmoothKit.blob(Vector3(0.015, 0.05, 0.1), 0.6, 0.6), B, Vector3(0, 0.1, 0.005))
-	_add(m.head, MeshKit.cylinder(0.004, 0.14, 5), D, Vector3(0.045, 0.14, 0.03), Vector3(0, 0, -8))
-	_eye(m.head, Vector3(0, 0.055, -0.07))
-	# Arms with round pauldrons and gauntlets.
-	for s: float in [-1.0, 1.0]:
-		var side := "r" if s > 0 else "l"
-		var arm := _rig_arm(side, Vector3(s * 0.24, 0.29, 0), 0.17, 0.16, 0.05, 0.05)
-		var pad := _p(m.torso, "Pad_" + side, Vector3(s * 0.25, 0.31, 0))
-		_add(pad, SmoothKit.blob(Vector3(0.15, 0.13, 0.16), 0.5, 0.55, 0.15), W, Vector3(s * 0.01, 0.0, 0), Vector3(0, 0, -s * 12))
-		_add(pad, SmoothKit.blob(Vector3(0.16, 0.03, 0.15), 0.4, 0.55, 0.0), B, Vector3(s * 0.015, -0.01, 0), Vector3(0, 0, -s * 12))
-		m.slots["shoulder_" + side] = _p(pad, "Slot_shoulder_" + side, Vector3(s * 0.02, 0.08, 0))
-		m.slots["back_" + side] = _p(m.torso, "Slot_back_" + side, Vector3(s * 0.08, 0.36, 0.14))
-		_add(arm["shoulder"], SmoothKit.blob(Vector3(0.07, 0.07, 0.07), 1.0, 1.0), D)
-		_add(arm["shoulder"], _limb(0.15, 0.04, 0.036, 0.1), D, Vector3(0, -0.01, 0))
-		_add(arm["shoulder"], SmoothKit.blob(Vector3(0.075, 0.11, 0.075), 0.6, 0.6), W, Vector3(0, -0.07, 0))
-		_add(arm["elbow"], SmoothKit.blob(Vector3(0.065, 0.065, 0.065), 1.0, 1.0), D)
-		_add(arm["elbow"], _limb(0.15, 0.045, 0.055, 0.2, 1.05), W, Vector3(0, -0.01, 0))
-		_add(arm["elbow"], SmoothKit.blob(Vector3(0.03, 0.1, 0.07), 0.5, 0.5), B, Vector3(s * 0.05, -0.09, 0))
-		_add(arm["hand"], SmoothKit.rounded_box(Vector3(0.06, 0.06, 0.06), 0.015), D)
+		{"y": 0.03, "w": 0.2, "d": 0.18, "n": 2.2},
+		{"y": 0.1, "w": 0.36, "d": 0.3, "n": 2.3},
+		{"y": 0.22, "w": 0.46, "d": 0.38, "n": 2.4},
+		{"y": 0.34, "w": 0.48, "d": 0.4, "n": 2.4},
+		{"y": 0.44, "w": 0.43, "d": 0.36, "n": 2.3},
+		{"y": 0.5, "w": 0.32, "d": 0.28, "n": 2.2},
+		{"y": 0.53, "w": 0.16, "d": 0.14, "n": 2.0},
+	], 32), TEAL)
+	# Armor seams: a horizontal belt and a vertical centre seam.
+	_add(m.torso, SmoothKit.loft([{"y": 0.15, "w": 0.415, "d": 0.345, "n": 2.35}, {"y": 0.17, "w": 0.43, "d": 0.355, "n": 2.35}], 32, false), DARK)
+	_add(m.torso, SmoothKit.blob(Vector3(0.012, 0.36, 0.4), 0.5, 0.9), DARK, Vector3(0, 0.3, -0.005), Vector3.ZERO, Vector3(1, 1, 0.97))
+	# Upper chest plate with the stencil and logo.
+	_add(m.torso, SmoothKit.blob(Vector3(0.36, 0.16, 0.1), 0.5, 0.7), TEAL2, Vector3(0, 0.36, -0.15), Vector3(-22, 0, 0))
+	var stencil := Label3D.new()
+	stencil.text = "G.M.S."
+	stencil.font_size = 64
+	stencil.pixel_size = 0.0009
+	stencil.modulate = Color(0.85, 0.85, 0.8, 0.9)
+	stencil.outline_size = 0
+	stencil.position = Vector3(-0.06, 0.39, -0.232)
+	stencil.rotation_degrees = Vector3(20, 180 + 12, 0)
+	stencil.double_sided = false
+	m.torso.add_child(stencil)
+	_add(m.torso, MeshKit.cylinder(0.022, 0.006, 16), RED, Vector3(0.11, 0.41, -0.195), Vector3(-70, 0, -12))
+	_add(m.torso, MeshKit.cylinder(0.012, 0.008, 16), DARK, Vector3(0.11, 0.41, -0.197), Vector3(-70, 0, -12))
+	# The "face": a recessed sensor cluster low in the chest centre.
+	m.head = _p(m.torso, "Head", Vector3(0, 0.17, -0.19))
+	_add(m.head, SmoothKit.blob(Vector3(0.11, 0.07, 0.04), 0.5, 0.6), DARK)
+	for p: Vector3 in [Vector3(0, 0.008, -0.018), Vector3(-0.025, -0.008, -0.014), Vector3(0.025, -0.008, -0.014), Vector3(0, -0.02, -0.012)]:
+		_add(m.head, MeshKit.sphere(0.011 if p.x == 0 and p.y > 0 else 0.007, 10), GREEN, p)
+	_add(m.head, SmoothKit.blob(Vector3(0.13, 0.025, 0.05), 0.4, 0.6), TEAL2, Vector3(0, 0.04, 0.005))
+	_eye(m.head, Vector3(0, 0.0, -0.03))
+	# Back: a reactor/exhaust block with two stacks (inferred: GMS utility style).
+	_add(m.torso, SmoothKit.rounded_box(Vector3(0.28, 0.26, 0.12), 0.04), FRAME, Vector3(0, 0.3, 0.2))
+	for s: float in [1.0, -1.0]:
+		_add(m.torso, MeshKit.cylinder(0.035, 0.12, 14), STEEL, Vector3(s * 0.08, 0.46, 0.22))
+		_add(m.torso, MeshKit.cylinder(0.026, 0.13, 14), DARK, Vector3(s * 0.08, 0.465, 0.22))
+		for k in range(3):
+			_add(m.torso, MeshKit.chamfer_box(Vector3(0.22, 0.012, 0.02), 0.003), STEEL, Vector3(0, 0.22 + k * 0.05, 0.265))
+	# Harness strap across the chest (right shoulder to left hip) with shells.
+	var strap_pts := SmoothKit.bezier(Vector3(0.2, 0.47, -0.08), Vector3(0.14, 0.38, -0.25), Vector3(-0.1, 0.17, -0.24), Vector3(-0.2, 0.08, -0.1), 18)
+	_add(m.torso, SmoothKit.tube(strap_pts, 0.012, 6), STRAP, Vector3.ZERO, Vector3.ZERO, Vector3(1, 1, 1))
+	for i in range(3, 15, 2):
+		var p: Vector3 = strap_pts[i]
+		var nxt: Vector3 = strap_pts[i + 1]
+		var shell := MeshKit.part(m.torso, MeshKit.cylinder(0.009, 0.035, 8), SHELL, p + Vector3(0, 0, -0.01))
+		shell.basis = basis_down((nxt - p).cross(Vector3.FORWARD))
+		MeshKit.part(shell, MeshKit.cylinder(0.0095, 0.008, 8), BRASS, Vector3(0, -0.016, 0))
+	# Hoses from under the chest to the hips.
+	for s: float in [1.0, -1.0]:
+		for k in range(2):
+			var a := Vector3(s * (0.06 + k * 0.04), 0.06, -0.06 + k * 0.08)
+			var b: Vector3 = B.call(Vector3(s * 0.13, hip_y + 0.0, -0.03 + k * 0.05))
+			_add(m.torso, SmoothKit.tube(SmoothKit.bezier(a, a + Vector3(s * 0.03, -0.06, 0), b + Vector3(0, 0.05, 0), b, 10), 0.01, 8), DARK)
+	# Shoulders: red pods; arms of truss uppers and boxy forearms; big hands.
+	var arm_r := _rig_arm("r", Vector3.ZERO, 0.17, 0.2, 0.0, 0.05)
+	var arm_l := _rig_arm("l", Vector3.ZERO, 0.17, 0.2, 0.0, 0.05)
+	# Right: shotgun resting on the shoulder. Left: hanging low with the knife.
+	var sh_r := Vector3(0.265, 0.79, 0.0)
+	var sh_l := Vector3(-0.265, 0.79, 0.0)
+	_pose_arm(arm_r, B.call(sh_r), B.call(Vector3(0.34, 0.62, -0.1)), B.call(Vector3(0.3, 0.77, -0.22)), Vector3(-0.08, 0.6, 0.8))
+	_pose_arm(arm_l, B.call(sh_l), B.call(Vector3(-0.34, 0.61, -0.03)), B.call(Vector3(-0.33, 0.41, -0.1)), Vector3(0.0, -0.25, -1))
+	for pair: Array in [[arm_r, 1.0], [arm_l, -1.0]]:
+		var arm: Dictionary = pair[0]
+		var s: float = pair[1]
+		var up: float = (arm["elbow"] as Node3D).position.length()
+		var fore: float = (arm["hand"] as Node3D).position.length()
+		var pad := _p(m.torso, "Pad_" + ("r" if s > 0 else "l"), (arm["shoulder"] as Node3D).position)
+		GmsParts.pod(pad, RED, DARK, Vector3(s * 0.005, 0.0, 0), 0.07, Vector3(s, 0.3, -0.3))
+		m.slots["shoulder_" + ("r" if s > 0 else "l")] = _p(pad, "Slot_shoulder", Vector3(s * 0.01, 0.08, 0.02))
+		m.slots["back_" + ("r" if s > 0 else "l")] = _p(m.torso, "Slot_back", Vector3(s * 0.1, 0.5, 0.24))
+		var upper := _p(arm["shoulder"], "Upper", Vector3(0, -0.05, 0))
+		GmsParts.truss(upper, FRAME, STEEL, up - 0.08, 0.06, 0.06, 1)
+		GmsParts.pod(arm["elbow"], DARK, FRAME, Vector3.ZERO, 0.04, Vector3(s, 0, 0), 2)
+		var fa := _p(arm["elbow"], "Forearm", Vector3(0, -0.02, 0))
+		GmsParts.armored_box(fa, TEAL2, FRAME, fore - 0.04, 0.09, 0.1, 1.05)
+		_add(fa, SmoothKit.rounded_box(Vector3(0.03, (fore - 0.04) * 0.7, 0.09), 0.01), RED, Vector3(s * 0.05, -(fore - 0.04) * 0.5, 0))
+		var hand := _p(arm["hand"], "Hand", Vector3.ZERO)
+		GmsParts.hand(hand, FRAME, RED, 0.08, s, 0.9)
 
 
 # --- Drake (IPS-N) -----------------------------------------------------------------------
