@@ -1,0 +1,136 @@
+class_name StoryText
+extends RefCounted
+## Written text from templates (DESIGN.md section 9): picks one of many variants and fills in
+## names. "@pool" picks a line from data/game/story/lines.json (never the same one twice in a
+## row); {placeholders} are filled from the conversation:
+##   {npc} {npc_first} {npc_title} {npc_faction} {npc_role} {npc_want} {npc_quirk}   the NPC
+##   {pilot} {callsign} {pilot_first}                          the speaking pilot
+##   {hub} {hub_faction} {planet}                              the current hub
+##   {operation} {patron} {objective} {target}                 the current mission hook
+##   {subject} and anything else in ctx["vars"]
+
+const LINES_FILE := "res://data/game/story/lines.json"
+const STANDING_LABELS := {-3: "Hostile", -2: "Unfriendly", -1: "Wary", 0: "Neutral", 1: "Friendly", 2: "Trusted", 3: "Allied"}
+
+static var _pools: Dictionary = {}
+static var _re: RegEx
+
+
+## One line: "@pool" -> a variant, an Array -> one of its entries, then placeholders filled.
+static func line(src: Variant, story: StoryState, campaign: Campaign, ctx: Dictionary) -> String:
+	var text := ""
+	if src is Array:
+		var arr: Array = src
+		text = str(arr[_pick_index("inline:" + str(arr.hash()), arr.size(), story)]) if not arr.is_empty() else ""
+	else:
+		text = str(src)
+	while text.begins_with("@"):
+		text = pool_line(text.substr(1), story, ctx)
+	return fill(text, story, campaign, ctx)
+
+
+## A line from a pool. The NPC's personality adds its own variants: "@greet_local" also draws
+## from "greet_local_gruff" for a gruff local; standing adds "_friendly" / "_hostile" ones.
+static func pool_line(pool: String, story: StoryState, ctx: Dictionary = {}) -> String:
+	var lines: Array = (pools().get(pool, []) as Array).duplicate()
+	var npc: Dictionary = story.npcs.get(str(ctx.get("npc", "")), {})
+	if not npc.is_empty():
+		lines.append_array(pools().get(pool + "_" + str(npc.get("personality", "")), []))
+		# Standing changes the tone: Wary or worse uses only the cold lines, Friendly or better adds warm ones.
+		var st := story.get_standing(str(npc.get("faction", "")))
+		if st <= -1 and pools().has(pool + "_hostile"):
+			lines = (pools()[pool + "_hostile"] as Array).duplicate()
+		elif st >= 1:
+			lines.append_array(pools().get(pool + "_friendly", []))
+	if lines.is_empty():
+		return "[%s]" % pool
+	return str(lines[_pick_index(pool + ":" + str(npc.get("id", "")), lines.size(), story)])
+
+
+## Variant index from the story dice, never the last one used for this pool.
+static func _pick_index(key: String, n: int, story: StoryState) -> int:
+	if n <= 1:
+		return 0
+	var last := int(story.line_memory.get(key, -1))
+	var i := story.dice.die(n) - 1
+	if i == last:
+		i = (i + 1 + story.dice.die(n - 1) - 1) % n
+	story.line_memory[key] = i
+	return i
+
+
+static func pools() -> Dictionary:
+	if _pools.is_empty():
+		var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(LINES_FILE))
+		_pools = data.get("pools", {}) if data is Dictionary else {}
+	return _pools
+
+
+static func fill(text: String, story: StoryState, campaign: Campaign, ctx: Dictionary) -> String:
+	if not "{" in text:
+		return text
+	if _re == null:
+		_re = RegEx.create_from_string("\\{([a-z_]+)\\}")
+	var vars := values(story, campaign, ctx)
+	var out := text
+	for m: RegExMatch in _re.search_all(text):
+		var key := m.get_string(1)
+		if not vars.has(key) and key in ["place", "enemy"]:
+			# Rumors and small talk name a random place or threat from the hook tables.
+			var list: Array = MissionHooks.data().get("places" if key == "place" else "enemies", [])
+			if not list.is_empty():
+				vars[key] = list[story.dice.die(list.size()) - 1]
+		if vars.has(key):
+			out = out.replace(m.get_string(0), str(vars[key]))
+	return out
+
+
+static func values(story: StoryState, campaign: Campaign, ctx: Dictionary) -> Dictionary:
+	var v := {}
+	var npc: Dictionary = story.npcs.get(str(ctx.get("npc", "")), {})
+	v["npc_id"] = str(ctx.get("npc", ""))
+	if not npc.is_empty():
+		v["npc"] = npc.get("name", "")
+		v["npc_first"] = str(npc.get("name", "")).split(" ")[0]
+		v["npc_title"] = npc.get("title", "")
+		v["npc_faction"] = npc.get("faction", "")
+		v["npc_role"] = npc.get("role_name", "")
+		v["npc_role_lower"] = str(npc.get("role_name", "")).to_lower()
+		v["npc_want"] = npc.get("want", "")
+		v["npc_quirk"] = npc.get("quirk", "")
+		v["npc_secret"] = npc.get("secret", "")
+		v["npc_deal_reward"] = StoryEffects.reserve_name(str(npc.get("deal_reward", "reserve_backing")))
+	var p: Dictionary = campaign.pilots.get(str(ctx.get("speaker", "")), {}) if campaign != null else {}
+	if not p.is_empty():
+		v["pilot"] = p.get("name", "")
+		v["pilot_first"] = str(p.get("name", "")).split(" ")[0]
+		v["callsign"] = p.get("callsign", "")
+	v["hub"] = story.hub.get("name", "the settlement")
+	v["hub_faction"] = story.hub.get("faction", "the locals")
+	v["planet"] = story.hub.get("planet", "this world")
+	var hook: Dictionary = story.current_hook if not story.current_hook.is_empty() else ctx.get("hook", {})
+	for k in ["operation", "patron", "objective", "target", "stakes", "place", "question", "enemy", "cargo", "rival"]:
+		if hook.has(k):
+			v[k] = hook[k]
+	if hook.get("arc") is Dictionary:
+		v["arc_beat"] = hook["arc"].get("beat", "")
+		v["arc_name"] = hook["arc"].get("name", "")
+	if hook.get("deal") is Dictionary:
+		v["deal_reward"] = StoryEffects.reserve_name(str(hook["deal"].get("reward", "")))
+	var twist: Dictionary = hook.get("twist", {})
+	if not twist.is_empty():
+		v["twist_reveal"] = twist.get("reveal", "")
+		v["twist_question"] = twist.get("question", "")
+	v.merge(ctx.get("vars", {}), true)
+	return v
+
+
+static func standing_label(n: int) -> String:
+	return str(STANDING_LABELS.get(clampi(n, -3, 3), "Neutral"))
+
+
+## Strips the HTML lancer-data uses (<ul><li>, <i>, <br>) for plain labels.
+static func plain(html: String) -> String:
+	var t := html.replace("<li>", "\n• ").replace("<br>", "\n").replace("</li>", "")
+	var re := RegEx.create_from_string("<[^>]+>")
+	return re.sub(t, "", true).replace("• •", "•").strip_edges()

@@ -1,0 +1,534 @@
+{
+ "_note": "Our own writing. An agent of an outside faction: offers mission hooks, backing, and favors through Get Connected (Core p.55). At Unfriendly standing or worse they threaten the squad; talks gone wrong start a mission on foot beside your mechs (Core p.45: switching to mech combat).",
+ "id": "faction_agent",
+ "start": "greet",
+ "nodes": {
+  "greet": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@greet_faction_agent",
+   "effects": [
+    {
+     "set_flag": "met:{npc_id}"
+    }
+   ],
+   "next": "describe",
+   "branch": [
+    {
+     "if": {
+      "standing": "$npc.faction",
+      "max": -2
+     },
+     "next": "threat"
+    },
+    {
+     "if": [
+      {
+       "deal": "$npc",
+       "state": "lost"
+      },
+      {
+       "not": {
+        "flag": "deal_off_said:{npc_id}"
+       }
+      }
+     ],
+     "next": "deal_off"
+    },
+    {
+     "if": {
+      "flag": "met:{npc_id}"
+     },
+     "next": "greet_again"
+    }
+   ]
+  },
+  "greet_again": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": "@greet_faction_agent",
+   "next": "menu",
+   "branch": [
+    {
+     "if": {
+      "standing": "$npc.faction",
+      "max": -2
+     },
+     "next": "threat"
+    }
+   ]
+  },
+  "describe": {
+   "speaker": "narrator",
+   "line": "@describe_npc",
+   "next": "menu"
+  },
+  "farewell": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@farewell",
+   "end": true
+  },
+  "check_ok": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": "@check_success",
+   "next": "menu"
+  },
+  "check_bad": {
+   "speaker": "npc",
+   "expression": "angry",
+   "line": "@check_fail",
+   "next": "menu"
+  },
+  "favor": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@rep_favor_intro",
+   "effects": [
+    {
+     "downtime": "dt_get_connected",
+     "subject": "$npc"
+    }
+   ],
+   "next": "menu"
+  },
+  "deal_offer": {
+   "speaker": "npc",
+   "line": "@deal_offer",
+   "choices": [
+    {
+     "id": "deal_yes",
+     "text": [
+      "Deal. We'll do the job.",
+      "You've got yourself a squad."
+     ],
+     "tags": [
+      "practical",
+      "greedy",
+      "bold"
+     ],
+     "effects": [
+      {
+       "deal": {
+        "template": "$npc.want_hook",
+        "fallback": "clear_raiders"
+       }
+      },
+      {
+       "log": "Deal with {npc}: a job for {npc_deal_reward}."
+      }
+     ],
+     "next": "deal_done"
+    },
+    {
+     "id": "deal_no",
+     "text": [
+      "Not right now.",
+      "We'll think about it."
+     ],
+     "tags": [
+      "cautious",
+      "leave"
+     ],
+     "pinned": true,
+     "next": "menu"
+    }
+   ]
+  },
+  "deal_done": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": [
+    "Good. It's on the board. Don't let me down.",
+    "Then we have an understanding."
+   ],
+   "next": "menu"
+  },
+  "deal_waiting": {
+   "speaker": "npc",
+   "line": "@deal_waiting",
+   "next": "menu"
+  },
+  "deal_off": {
+   "speaker": "npc",
+   "expression": "worried",
+   "line": "@deal_off",
+   "effects": [
+    {
+     "set_flag": "deal_off_said:{npc_id}"
+    }
+   ],
+   "next": "menu"
+  },
+  "pay_favor": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": [
+    "Good. Here's what we need from you.",
+    "I was hoping you'd remember. There's a job.",
+    "A favor for a favor. Here's the job."
+   ],
+   "effects": [
+    {
+     "hook": "favor_owed",
+     "patron": "$npc"
+    },
+    {
+     "log": "{npc} called in the favor: a new job is on the board."
+    }
+   ],
+   "next": "menu"
+  },
+  "menu": {
+   "speaker": "npc",
+   "line": "@agent_job_intro",
+   "choices": [
+    {
+     "id": "job",
+     "text": [
+      "What's the job?",
+      "Tell us about the work.",
+      "We're listening. What do you need done?"
+     ],
+     "tags": [
+      "practical",
+      "greedy"
+     ],
+     "condition": {
+      "not": {
+       "flag": "job_from:{npc_id}"
+      }
+     },
+     "effects": [
+      {
+       "set_flag": "job_from:{npc_id}"
+      },
+      {
+       "hook": "$npc.want_hook",
+       "fallback": "clear_raiders",
+       "patron": "$npc"
+      },
+      {
+       "log": "{npc} posted a job for the squad."
+      }
+     ],
+     "next": "job"
+    },
+    {
+     "id": "who",
+     "text": [
+      "Who are {npc_faction}, really?",
+      "What does {npc_faction} actually want here?"
+     ],
+     "tags": [
+      "curious"
+     ],
+     "next": "who"
+    },
+    {
+     "id": "lead",
+     "text": "Convince them to back the squad openly.",
+     "trigger": "sk_lead_or_inspire",
+     "tags": [
+      "diplomatic",
+      "bold"
+     ],
+     "check": {
+      "skills": [
+       "sk_lead_or_inspire",
+       "sk_charm"
+      ],
+      "goal": "lead:{npc_id}",
+      "consequence": "It costs you time, and {npc} stays unconvinced.",
+      "success": "check_ok",
+      "fail": "check_bad",
+      "success_effects": [
+       {
+        "standing": "$npc.faction",
+        "add": 1
+       },
+       {
+        "reserve": "reserve_backing",
+        "name": "{npc_faction}'s backing",
+        "source": "$npc.name"
+       },
+       {
+        "set_flag": "lead:{npc_id}"
+       }
+      ],
+      "fail_effects": [],
+      "difficult": true,
+      "tags": [
+       "politics",
+       "military"
+      ]
+     },
+     "condition": [
+      {
+       "not": {
+        "flag": "lead:{npc_id}"
+       }
+      }
+     ]
+    },
+    {
+     "id": "refuse",
+     "text": [
+      "We don't work for {npc_faction}.",
+      "Not interested. Find someone else."
+     ],
+     "tags": [
+      "honest"
+     ],
+     "condition": {
+      "not": {
+       "flag": "refused:{npc_id}"
+      }
+     },
+     "effects": [
+      {
+       "set_flag": "refused:{npc_id}"
+      },
+      {
+       "standing": "$npc.faction",
+       "add": -1
+      }
+     ],
+     "next": "refused"
+    },
+    {
+     "id": "favor",
+     "text": "Can you help us out for the next mission? (Get Connected: your downtime action)",
+     "condition": [
+      {
+       "phase": "downtime"
+      },
+      {
+       "downtime_left": true
+      },
+      {
+       "standing": "$npc.faction",
+       "min": -2
+      }
+     ],
+     "tags": [
+      "practical",
+      "greedy"
+     ],
+     "next": "favor"
+    },
+    {
+     "id": "pay_favor",
+     "text": "About the favor we owe {npc_faction}...",
+     "condition": {
+      "obligation": "$npc.faction"
+     },
+     "tags": [
+      "honest"
+     ],
+     "priority": 3,
+     "next": "pay_favor"
+    },
+    {
+     "id": "deal",
+     "text": [
+      "Is there something we could do for you, in exchange for {npc_deal_reward}?",
+      "What would it take to get {npc_deal_reward} from you?"
+     ],
+     "condition": [
+      {
+       "deal": "$npc",
+       "state": "none"
+      },
+      {
+       "not": {
+        "phase": "mission"
+       }
+      }
+     ],
+     "tags": [
+      "greedy",
+      "practical",
+      "kind"
+     ],
+     "next": "deal_offer"
+    },
+    {
+     "id": "deal_wait",
+     "text": "About our deal...",
+     "condition": {
+      "deal": "$npc",
+      "state": "accepted"
+     },
+     "tags": [
+      "honest"
+     ],
+     "next": "deal_waiting"
+    },
+    {
+     "id": "leave",
+     "text": [
+      "That's all for now.",
+      "I should go.",
+      "Thanks. See you around.",
+      "We'll talk later."
+     ],
+     "tags": [
+      "leave"
+     ],
+     "pinned": true,
+     "next": "farewell"
+    }
+   ]
+  },
+  "job": {
+   "speaker": "npc",
+   "line": [
+    "It's on the board now. Take it or don't, but don't wait too long.",
+    "I've posted the details. Read them before your briefing.",
+    "Everything you need is in the packet. Questions at the briefing."
+   ],
+   "next": "menu"
+  },
+  "who": {
+   "speaker": "npc",
+   "line": [
+    "We keep the lights on, pilot. Everything else is negotiable.",
+    "Stability. Trade. People who keep their word. Is that so strange?",
+    "Ask around. You'll hear worse. Some of it's even true."
+   ],
+   "next": "menu"
+  },
+  "threat": {
+   "speaker": "npc",
+   "expression": "angry",
+   "line": [
+    "You've got a lot of nerve showing your faces here. {npc_faction} has people on every roof.",
+    "I told them you'd come back. They didn't believe me. Now they've got the street covered.",
+    "Walk away, pilots. You won't get a second warning."
+   ],
+   "choices": [
+    {
+     "id": "talk_down",
+     "text": "Easy. Nobody needs to get hurt today.",
+     "trigger": "sk_charm",
+     "tags": [
+      "diplomatic",
+      "cautious"
+     ],
+     "check": {
+      "skills": [
+       "sk_charm",
+       "sk_stay_cool"
+      ],
+      "goal": "talk_down:{npc_id}",
+      "risky": true,
+      "consequence": "They decide you're stalling, and the shooting starts.",
+      "success": "calmed",
+      "fail": "calmed",
+      "success_effects": [
+       {
+        "standing": "$npc.faction",
+        "add": 1
+       }
+      ],
+      "fail_effects": [
+       {
+        "start_combat": {
+         "hook": "trouble_followed",
+         "on_foot": true,
+         "patron": "$npc",
+         "reason": "Talks with {npc_faction} broke down: their mechs move in while you're on foot."
+        }
+       }
+      ]
+     }
+    },
+    {
+     "id": "stand_ground",
+     "text": [
+      "We're not going anywhere.",
+      "Then you'd better make that warning count."
+     ],
+     "tags": [
+      "bold",
+      "aggressive"
+     ],
+     "effects": [
+      {
+       "start_combat": {
+        "hook": "trouble_followed",
+        "on_foot": true,
+        "patron": "$npc",
+        "reason": "{npc_faction} called your bluff. Get to your mechs!"
+       }
+      }
+     ],
+     "end": true
+    },
+    {
+     "id": "apologize",
+     "text": [
+      "We didn't come for a fight. What would make this right?",
+      "Tell us how to fix this."
+     ],
+     "tags": [
+      "kind",
+      "honest"
+     ],
+     "effects": [
+      {
+       "obligation": {
+        "to": "$npc.faction",
+        "what": "Make amends with {npc_faction}"
+       }
+      }
+     ],
+     "next": "amends"
+    },
+    {
+     "id": "back_off",
+     "text": [
+      "We're leaving.",
+      "Fine. We'll go."
+     ],
+     "tags": [
+      "cautious",
+      "leave"
+     ],
+     "pinned": true,
+     "next": "farewell"
+    }
+   ]
+  },
+  "calmed": {
+   "speaker": "npc",
+   "expression": "worried",
+   "line": [
+    "...Fine. Talk. But keep your hands where I can see them.",
+    "All right. All right. Nobody move."
+   ],
+   "next": "menu"
+  },
+  "amends": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": [
+    "Do us a favor and we'll call it even. Don't make me regret this.",
+    "There's work that needs doing. Do it, and we'll see."
+   ],
+   "next": "menu"
+  },
+  "refused": {
+   "speaker": "npc",
+   "expression": "angry",
+   "line": [
+    "Your loss. {npc_faction} won't ask twice.",
+    "Noted. Don't come crawling back.",
+    "Fine. Remember you said that."
+   ],
+   "next": "menu"
+  }
+ }
+}

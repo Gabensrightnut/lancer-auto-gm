@@ -1,0 +1,136 @@
+{
+  "_note": "Our own data: how AI squadmates choose in conversations (DESIGN.md section 10, 'AI squadmates pick in character'). likes = weight per choice tag; caution = how much a RISKY/HEROIC check puts them off; leave = how keen they are to end a conversation. why = the line shown in the log for the tag that decided it. Choice tags used by scenes: aggressive, diplomatic, cautious, greedy, honest, deceptive, kind, curious, practical, bold, leave. downtime = the downtime actions this persona prefers, in order (the first one possible is taken).",
+  "personas": {
+    "steady": {
+      "name": "Steady",
+      "likes": {
+        "practical": 2,
+        "honest": 1.5,
+        "cautious": 1,
+        "diplomatic": 1,
+        "aggressive": -0.5,
+        "deceptive": -1
+      },
+      "caution": 1,
+      "leave": -1.5,
+      "why": {
+        "practical": "{callsign} keeps it practical.",
+        "honest": "{callsign} plays it straight.",
+        "cautious": "{callsign} doesn't take chances."
+      },
+      "why_default": "{callsign} makes the sensible call.",
+      "downtime": [
+        "dt_get_focused",
+        "dt_scrounge_and_barter",
+        "dt_gather_information"
+      ]
+    },
+    "bold": {
+      "name": "Bold",
+      "likes": {
+        "bold": 2.5,
+        "aggressive": 2,
+        "practical": 0.5,
+        "cautious": -1.5,
+        "leave": -1
+      },
+      "caution": 0.2,
+      "leave": -2.5,
+      "why": {
+        "bold": "{callsign} goes straight at it.",
+        "aggressive": "{callsign} isn't in the mood to ask nicely."
+      },
+      "why_default": "{callsign} picks the direct route.",
+      "downtime": [
+        "dt_get_a_damn_drink",
+        "dt_scrounge_and_barter",
+        "dt_get_focused"
+      ]
+    },
+    "kind": {
+      "name": "Kind",
+      "likes": {
+        "kind": 2.5,
+        "honest": 1.5,
+        "diplomatic": 1.5,
+        "aggressive": -2,
+        "greedy": -1.5,
+        "deceptive": -1
+      },
+      "caution": 1,
+      "leave": -1.5,
+      "why": {
+        "kind": "{callsign} can't walk past someone who needs help.",
+        "diplomatic": "{callsign} tries to keep everyone calm."
+      },
+      "why_default": "{callsign} picks the gentlest option.",
+      "downtime": [
+        "dt_get_connected",
+        "dt_gather_information",
+        "dt_get_focused"
+      ]
+    },
+    "mercenary": {
+      "name": "Mercenary",
+      "likes": {
+        "greedy": 2.5,
+        "practical": 1.5,
+        "deceptive": 0.5,
+        "kind": -0.5
+      },
+      "caution": 0.8,
+      "leave": -1,
+      "why": {
+        "greedy": "{callsign} asks what's in it for the squad.",
+        "practical": "{callsign} wants the job done and paid."
+      },
+      "why_default": "{callsign} follows the money.",
+      "downtime": [
+        "dt_scrounge_and_barter",
+        "dt_get_connected",
+        "dt_get_a_damn_drink"
+      ]
+    },
+    "curious": {
+      "name": "Curious",
+      "likes": {
+        "curious": 2.5,
+        "diplomatic": 1,
+        "honest": 0.5,
+        "leave": -1
+      },
+      "caution": 0.6,
+      "leave": -3,
+      "why": {
+        "curious": "{callsign} wants to know more first."
+      },
+      "why_default": "{callsign} keeps the conversation going.",
+      "downtime": [
+        "dt_gather_information",
+        "dt_get_creative",
+        "dt_get_focused"
+      ]
+    },
+    "sly": {
+      "name": "Sly",
+      "likes": {
+        "deceptive": 2.5,
+        "greedy": 1,
+        "cautious": 1,
+        "honest": -1
+      },
+      "caution": 0.7,
+      "leave": -1,
+      "why": {
+        "deceptive": "{callsign} has a story ready.",
+        "cautious": "{callsign} keeps their cards close."
+      },
+      "why_default": "{callsign} looks for an angle.",
+      "downtime": [
+        "dt_gather_information",
+        "dt_scrounge_and_barter",
+        "dt_get_a_damn_drink"
+      ]
+    }
+  }
+}

@@ -1,0 +1,717 @@
+{
+  "_note": "Our own structure for the book's downtime actions (Core p.53-55). Rule text shown to players comes from data/lancer-data/downtime_actions.json; the short option labels here are our own words. Bands: low = 9 or less, mid = 10-19, high = 20+. 'triggers' = triggers the procedural GM accepts as relevant (the GM arbitrates, Core p.25; Get a Damn Drink's are the book's own example, Core p.53). 'memory' = the book's 'next time you get this result for the same X, treat it as Y'. 'chooser': who picks from the list (player unless the book says the GM does).",
+  "actions_per_downtime": 1,
+  "long_downtime_actions": 2,
+  "actions": {
+    "dt_buy_some_time": {
+      "subject": "situation",
+      "subject_prompt": "What are you trying to stave off or keep open?",
+      "subject_presets": [
+        "The people hunting us",
+        "A deal that's about to close",
+        "A local crisis",
+        "Our own reputation catching up with us"
+      ],
+      "triggers": [
+        "sk_charm",
+        "sk_read_a_situation",
+        "sk_stay_cool",
+        "sk_act_unseen_or_unheard",
+        "sk_pull_rank",
+        "sk_get_a_hold_of_something"
+      ],
+      "memory": {
+        "mid": {
+          "next_mid": "low"
+        },
+        "high": {
+          "next_high": "mid"
+        }
+      },
+      "bands": {
+        "low": {
+          "summary": "Only a little time, and only with drastic measures right now.",
+          "effects": [
+            {
+              "set_flag": "time_short:{subject}"
+            }
+          ]
+        },
+        "mid": {
+          "summary": "Enough time, but things turn precarious.",
+          "effects": [
+            {
+              "reserve": "reserve_diversion",
+              "name": "Bought time: {subject}",
+              "source": "Buy Some Time"
+            },
+            {
+              "set_flag": "precarious:{subject}"
+            }
+          ]
+        },
+        "high": {
+          "summary": "As much time as you need, until next downtime.",
+          "effects": [
+            {
+              "reserve": "reserve_diversion",
+              "name": "Bought time: {subject}",
+              "source": "Buy Some Time"
+            }
+          ]
+        }
+      }
+    },
+    "dt_gather_information": {
+      "subject": "subject",
+      "subject_prompt": "What are you looking into, and how?",
+      "subject_presets": [
+        {
+          "label": "The enemies we'll face next mission",
+          "reserve": "reserve_scouting"
+        },
+        {
+          "label": "Where someone or something is",
+          "reserve": "reserve_tracking"
+        },
+        {
+          "label": "Local history, customs and etiquette",
+          "reserve": "reserve_knowledge"
+        },
+        {
+          "label": "Someone's secrets",
+          "reserve": "reserve_blackmail"
+        }
+      ],
+      "triggers": [
+        "sk_investigate",
+        "sk_word_on_the_street",
+        "sk_hack_or_fix",
+        "sk_act_unseen_or_unheard",
+        "sk_read_a_situation",
+        "sk_spot",
+        "sk_charm"
+      ],
+      "bands": {
+        "low": {
+          "summary": "Choose one.",
+          "choose": 1,
+          "options": [
+            {
+              "id": "trouble",
+              "label": "Get what you came for, but it gets you in trouble straight away",
+              "effects": [
+                {
+                  "reserve": "$preset_reserve",
+                  "name": "Information: {subject}",
+                  "source": "Gather Information"
+                },
+                {
+                  "set_flag": "in_trouble"
+                },
+                {
+                  "hook": "trouble_followed"
+                }
+              ]
+            },
+            {
+              "id": "get_out",
+              "label": "Get out now and avoid trouble (no information)",
+              "effects": []
+            }
+          ]
+        },
+        "mid": {
+          "summary": "You find it, but choose one.",
+          "effects": [
+            {
+              "reserve": "$preset_reserve",
+              "name": "Information: {subject}",
+              "source": "Gather Information"
+            }
+          ],
+          "choose": 1,
+          "options": [
+            {
+              "id": "evidence",
+              "label": "You leave clear evidence of your rummaging",
+              "effects": [
+                {
+                  "standing": "$hub.faction",
+                  "add": -1
+                }
+              ]
+            },
+            {
+              "id": "implicate",
+              "label": "You dispatch someone, or an innocent takes the blame",
+              "effects": [
+                {
+                  "set_flag": "innocent_blamed"
+                }
+              ]
+            }
+          ]
+        },
+        "high": {
+          "summary": "You get it, no complications.",
+          "effects": [
+            {
+              "reserve": "$preset_reserve",
+              "name": "Information: {subject}",
+              "source": "Gather Information"
+            }
+          ]
+        }
+      }
+    },
+    "dt_get_a_damn_drink": {
+      "subject": "intention",
+      "subject_prompt": "What do you hope to get out of tonight?",
+      "subject_presets": [
+        "Make some connections",
+        "Collect gossip",
+        "Forge a reputation",
+        "Forget the last mission"
+      ],
+      "requires": {
+        "hub_has": "bar"
+      },
+      "requires_reason": "You can only Get a Damn Drink where there's actually a drink to get: a town, station or other populated place (Core p.54).",
+      "triggers": [
+        "sk_survive",
+        "sk_charm",
+        "sk_word_on_the_street",
+        "sk_show_off",
+        "sk_apply_fists_to_faces"
+      ],
+      "gains": [
+        {
+          "id": "reputation",
+          "label": "A good reputation",
+          "effects": [
+            {
+              "reserve": "reserve_reputation",
+              "source": "Get a Damn Drink"
+            }
+          ],
+          "lose_effects": [
+            {
+              "standing": "$hub.faction",
+              "add": -1
+            }
+          ]
+        },
+        {
+          "id": "friend",
+          "label": "A friend or connection",
+          "effects": [
+            {
+              "reserve": "reserve_backing",
+              "name": "A friend at {hub}",
+              "source": "Get a Damn Drink"
+            },
+            {
+              "set_flag": "drinking_friend"
+            }
+          ],
+          "lose_effects": [
+            {
+              "set_flag": "lost_a_friend"
+            }
+          ]
+        },
+        {
+          "id": "item",
+          "label": "A useful item or piece of information",
+          "effects": [
+            {
+              "reserve": "reserve_knowledge",
+              "name": "A tip from the bar",
+              "source": "Get a Damn Drink"
+            }
+          ],
+          "lose_effects": [
+            {
+              "set_flag": "lost_an_item"
+            }
+          ]
+        },
+        {
+          "id": "opportunity",
+          "label": "A convenient opportunity",
+          "effects": [
+            {
+              "reserve": "reserve_access",
+              "name": "A convenient opportunity",
+              "source": "Get a Damn Drink"
+            }
+          ],
+          "lose_effects": [
+            {
+              "set_flag": "missed_an_opportunity"
+            }
+          ]
+        }
+      ],
+      "bands": {
+        "low": {
+          "summary": "You wake up in a gutter. Choose the one thing you still have.",
+          "choose": 1,
+          "options": [
+            {
+              "id": "dignity",
+              "label": "Your dignity",
+              "effects": [
+                {
+                  "set_flag": "hangover_lost_possessions"
+                },
+                {
+                  "set_flag": "hangover_lost_memory"
+                }
+              ]
+            },
+            {
+              "id": "possessions",
+              "label": "All of your possessions",
+              "effects": [
+                {
+                  "set_flag": "hangover_lost_dignity"
+                },
+                {
+                  "set_flag": "hangover_lost_memory"
+                }
+              ]
+            },
+            {
+              "id": "memory",
+              "label": "Your memory",
+              "effects": [
+                {
+                  "set_flag": "hangover_lost_dignity"
+                },
+                {
+                  "set_flag": "hangover_lost_possessions"
+                }
+              ]
+            }
+          ]
+        },
+        "mid": {
+          "summary": "Gain one as reserves and lose one.",
+          "gain": 1,
+          "lose": 1
+        },
+        "high": {
+          "summary": "Gain two as reserves and lose nothing.",
+          "gain": 2,
+          "lose": 0
+        }
+      }
+    },
+    "dt_get_connected": {
+      "subject": "contact",
+      "subject_prompt": "Who are you calling on?",
+      "requires_contact": true,
+      "requires_reason": "Get Connected needs a contact you can reach by comms or face to face (Core p.55). Talk to people at the hub to make contacts.",
+      "triggers": [
+        "sk_charm",
+        "sk_get_a_hold_of_something",
+        "sk_pull_rank",
+        "sk_lead_or_inspire",
+        "sk_word_on_the_street"
+      ],
+      "memory_key": "faction",
+      "memory": {
+        "mid": {
+          "next_mid": "low",
+          "only_if_unpaid": true
+        },
+        "high": {
+          "next_high": "mid"
+        }
+      },
+      "bands": {
+        "low": {
+          "summary": "They'll help, but only if you do them a favor right now.",
+          "choose": 1,
+          "options": [
+            {
+              "id": "favor_now",
+              "label": "Do the favor now",
+              "effects": [
+                {
+                  "help": true
+                },
+                {
+                  "set_flag": "favor_done_now:{subject}"
+                },
+                {
+                  "standing": "$npc.faction",
+                  "add": 1
+                }
+              ]
+            },
+            {
+              "id": "refuse",
+              "label": "Refuse (no help this time)",
+              "effects": []
+            }
+          ]
+        },
+        "mid": {
+          "summary": "They'll help, but you owe them a favor afterwards.",
+          "effects": [
+            {
+              "help": true
+            },
+            {
+              "obligation": {
+                "to": "$npc.faction",
+                "what": "A favor for {npc} of {npc_faction}"
+              }
+            }
+          ]
+        },
+        "high": {
+          "summary": "They'll help, no strings attached.",
+          "effects": [
+            {
+              "help": true
+            }
+          ]
+        }
+      }
+    },
+    "dt_get_creative": {
+      "subject": "project",
+      "subject_prompt": "What are you making or tweaking?",
+      "subject_presets": [
+        "A custom targeting routine",
+        "A better field kit",
+        "A decoy beacon",
+        "A one-off drone"
+      ],
+      "triggers": [
+        "sk_invent_or_create",
+        "sk_hack_or_fix",
+        "sk_blow_something_up",
+        "sk_patch"
+      ],
+      "memory": {
+        "low": {
+          "next_low": "mid"
+        }
+      },
+      "needs": [
+        "Quality materials",
+        "Specific knowledge or techniques",
+        "Specialized tools",
+        "A good workspace"
+      ],
+      "bands": {
+        "low": {
+          "summary": "No progress this time."
+        },
+        "mid": {
+          "summary": "Progress, not finished. Choose the two things you'll need; you can finish it next downtime without rolling.",
+          "project_needs": 2
+        },
+        "high": {
+          "summary": "Finished before the next mission.",
+          "effects": [
+            {
+              "reserve": "custom",
+              "name": "{subject}",
+              "source": "Get Creative"
+            }
+          ],
+          "complex_needs": 1
+        }
+      }
+    },
+    "dt_get_focused": {
+      "subject": "trigger",
+      "subject_prompt": "What do you want to learn or improve?",
+      "no_roll": true,
+      "max_rank": 3
+    },
+    "dt_get_organized": {
+      "subject": "organization",
+      "subject_prompt": "What is your organization for?",
+      "focuses": [
+        "military",
+        "scientific",
+        "academic",
+        "criminal",
+        "humanitarian",
+        "industrial",
+        "entertainment",
+        "political"
+      ],
+      "start": 2,
+      "max": 6,
+      "bands": {
+        "low": {
+          "summary": "Choose one, or the organization folds.",
+          "choose": 1,
+          "options": [
+            {
+              "id": "shrink",
+              "label": "Lose 2 Efficiency and 2 Influence",
+              "org": {
+                "efficiency": -2,
+                "influence": -2
+              },
+              "needs_points": true
+            },
+            {
+              "id": "trouble",
+              "label": "Pay debts, make an aggressive move or get bailed out",
+              "effects": [
+                {
+                  "hook": "org_trouble"
+                }
+              ]
+            },
+            {
+              "id": "fold",
+              "label": "Let it fold",
+              "org": {
+                "fold": true
+              }
+            }
+          ]
+        },
+        "mid": {
+          "summary": "Stable. +2 Efficiency or Influence.",
+          "choose": 1,
+          "options": [
+            {
+              "id": "efficiency",
+              "label": "+2 Efficiency",
+              "org": {
+                "efficiency": 2
+              }
+            },
+            {
+              "id": "influence",
+              "label": "+2 Influence",
+              "org": {
+                "influence": 2
+              }
+            }
+          ]
+        },
+        "high": {
+          "summary": "+2 Efficiency and +2 Influence.",
+          "org": {
+            "efficiency": 2,
+            "influence": 2
+          }
+        }
+      }
+    },
+    "dt_power_at_a_cost": {
+      "subject": "want",
+      "subject_prompt": "Name what you want.",
+      "no_roll": true,
+      "chooser": "gm",
+      "costs": [
+        {
+          "id": "time",
+          "label": "It's going to take a lot more time than you thought"
+        },
+        {
+          "id": "risky",
+          "label": "It's going to be really damn risky",
+          "effects": [
+            {
+              "set_flag": "risky_deal:{subject}"
+            }
+          ]
+        },
+        {
+          "id": "give_up",
+          "label": "You'll have to give something up or leave something behind"
+        },
+        {
+          "id": "anger",
+          "label": "You'll anger someone important and powerful",
+          "effects": [
+            {
+              "standing": "$hub.faction",
+              "add": -1
+            }
+          ]
+        },
+        {
+          "id": "off_plan",
+          "label": "Things will go wildly off-plan",
+          "effects": [
+            {
+              "hook": "deal_gone_wrong"
+            }
+          ]
+        },
+        {
+          "id": "info",
+          "label": "You'll need more information to proceed safely"
+        },
+        {
+          "id": "fall_apart",
+          "label": "It's going to fall apart soon"
+        },
+        {
+          "id": "more_resources",
+          "label": "You'll need more resources, but you know where to find them"
+        },
+        {
+          "id": "lesser",
+          "label": "You only get something almost right: a lesser version, or less of it"
+        }
+      ],
+      "costs_by_scale": {
+        "modest": 1,
+        "outlandish": 2
+      },
+      "effects": [
+        {
+          "reserve": "custom",
+          "name": "{subject}",
+          "source": "Power at a Cost"
+        }
+      ]
+    },
+    "dt_scrounge_and_barter": {
+      "subject": "item",
+      "subject_prompt": "What physical thing do you want?",
+      "subject_presets": [
+        {
+          "label": "Supplies for crossing hostile ground",
+          "reserve": "reserve_supplies"
+        },
+        {
+          "label": "Spare repair materials for the mech",
+          "reserve": "reserve_extra_repairs"
+        },
+        {
+          "label": "Extra ammunition",
+          "reserve": "reserve_ammo"
+        },
+        {
+          "label": "A vehicle",
+          "reserve": "reserve_vehicle"
+        },
+        {
+          "label": "Better pilot gear",
+          "reserve": "custom"
+        },
+        {
+          "label": "Medical supplies",
+          "reserve": "custom"
+        }
+      ],
+      "triggers": [
+        "sk_get_a_hold_of_something",
+        "sk_word_on_the_street",
+        "sk_charm",
+        "sk_survive",
+        "sk_hack_or_fix"
+      ],
+      "bands": {
+        "low": {
+          "summary": "You get it, but choose one.",
+          "effects": [
+            {
+              "reserve": "$preset_reserve",
+              "name": "{subject}",
+              "source": "Scrounge and Barter"
+            }
+          ],
+          "choose": 1,
+          "options": [
+            {
+              "id": "stolen",
+              "label": "It was stolen, and someone's looking for it",
+              "effects": [
+                {
+                  "hook": "stolen_goods"
+                }
+              ]
+            },
+            {
+              "id": "degraded",
+              "label": "It's degraded, old, filthy or malfunctioning",
+              "effects": [
+                {
+                  "set_flag": "degraded:{subject}"
+                }
+              ]
+            },
+            {
+              "id": "someone_has_it",
+              "label": "Someone else has it and won't give it up without force or convincing",
+              "effects": [
+                {
+                  "set_flag": "contested:{subject}"
+                }
+              ]
+            }
+          ]
+        },
+        "mid": {
+          "summary": "You get it. Choose the price.",
+          "effects": [
+            {
+              "reserve": "$preset_reserve",
+              "name": "{subject}",
+              "source": "Scrounge and Barter"
+            }
+          ],
+          "choose": 1,
+          "options": [
+            {
+              "id": "time",
+              "label": "Time"
+            },
+            {
+              "id": "dignity",
+              "label": "Dignity"
+            },
+            {
+              "id": "reputation",
+              "label": "Reputation",
+              "effects": [
+                {
+                  "standing": "$hub.faction",
+                  "add": -1
+                }
+              ]
+            },
+            {
+              "id": "health",
+              "label": "Health, comfort and wellness",
+              "effects": [
+                {
+                  "set_flag": "worn_down"
+                }
+              ]
+            }
+          ]
+        },
+        "high": {
+          "summary": "You get it, no problem.",
+          "effects": [
+            {
+              "reserve": "$preset_reserve",
+              "name": "{subject}",
+              "source": "Scrounge and Barter"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "_supplies_note": "Supplies the book's way (Core p.43, p.50-52, p.108): pilots carry pilot gear (Extra Rations, Wilderness Survival Kit, Patch, Sleeping Bag...); anything more is a reserve for one mission: Supplies (easy crossing of hostile ground), Extra repairs (+2 Repair Cap), Ammo. Get them through a contact (Get Connected) or by Scrounge and Barter. Everyday food and water aren't tracked."
+}
