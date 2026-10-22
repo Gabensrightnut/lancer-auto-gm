@@ -22,6 +22,11 @@ class StartCombat:
 			found = found or (u.side == first and TurnRules.takes_turns(u))
 		if not found:
 			return RuleResult.deny("Pick a side with units to go first.", TurnRules.REF_TURN_ORDER)
+		var players_here := false
+		for u: Unit in state.units.values():
+			players_here = players_here or (u.side == "players" and TurnRules.takes_turns(u))
+		if players_here and first != "players":
+			return RuleResult.deny("Players always get to act first.", TurnRules.REF_TURN_ORDER)
 		return RuleResult.allow()
 
 	func resolve(state: GameState, action: Dictionary) -> Array[Dictionary]:

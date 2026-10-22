@@ -180,7 +180,7 @@ static func turn_ending(state: GameState, u: Unit) -> Array[Dictionary]:
 	for e: Dictionary in of(u, "regenerate"):
 		if u.has_status("Regeneration Suppressed") or u.destroyed:
 			break
-		var heal := mini(int(u.max_hp * float(e.get("fraction", 0.25))), u.max_hp - u.hp)
+		var heal := mini(ceili(u.max_hp * float(e.get("fraction", 0.25))), u.max_hp - u.hp)  # always round up (Core p.12)
 		if heal > 0:
 			u.hp += heal
 			events.append({"type": "hp_changed", "unit": u.id, "hp": u.hp, "overshield": u.overshield, "source": e.get("label", "Regeneration")})

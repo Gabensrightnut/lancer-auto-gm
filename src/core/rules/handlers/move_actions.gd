@@ -126,6 +126,9 @@ class Boost:
 	func type() -> String:
 		return "boost"
 
+	func kinds() -> Array:
+		return [Unit.KIND_MECH, Unit.KIND_NPC, Unit.KIND_PILOT]
+
 	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
 		var r := MoveActions._can_move_voluntarily(u)
 		if not r.ok:
@@ -187,6 +190,9 @@ class Disengage:
 
 	func type() -> String:
 		return "disengage"
+
+	func kinds() -> Array:
+		return [Unit.KIND_MECH, Unit.KIND_NPC, Unit.KIND_PILOT]
 
 	func cost() -> String:
 		return TurnRules.FULL

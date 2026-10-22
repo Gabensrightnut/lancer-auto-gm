@@ -288,7 +288,7 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array, ap: bool, area: bool = false) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	var brace := false
-	if Reactions.can_react(target, "brace").ok and not parts.is_empty():
+	if Reactions.can_react(target, "brace", state).ok and not parts.is_empty():
 		var d := Reactions.offer(state, target, "brace", {"attacker": attacker.id, "damage": parts, "ap": ap},
 			{"take": _wants_brace(target, parts, ap)})
 		brace = d.get("take", false)
@@ -431,7 +431,7 @@ static func tech_preview(state: GameState, attacker: Unit, target: Unit, opts: D
 
 ## Shared checks for any tech action at a target: within SENSORS and line of sight, not
 ## Hidden, not Shut Down, and the user not Jammed.
-static func tech_target_check(state: GameState, user: Unit, target: Unit) -> RuleResult:
+static func tech_target_check(state: GameState, user: Unit, target: Unit, action: String = "") -> RuleResult:
 	if user.has_status("Jammed"):
 		return RuleResult.deny("Jammed: you can't take tech actions.", "statuses: Jammed")
 	if target == null or target.destroyed:
@@ -440,6 +440,8 @@ static func tech_target_check(state: GameState, user: Unit, target: Unit) -> Rul
 		return RuleResult.deny("Hidden characters can't be targeted.", "statuses: Hidden")
 	if target.has_status("Shut Down"):
 		return RuleResult.deny("Shut Down mechs are immune to tech actions.", "statuses: Shut Down")
+	if target.kind == Unit.KIND_PILOT and action != "scan" and action != "lock_on":
+		return RuleResult.deny("Pilots on foot are BIOLOGICAL: immune to tech actions except Lock On and Scan.", "Core p.74 Fighting on the Ground")
 	if Sight.unit_distance(state, user, target) > user.sensors:
 		return RuleResult.deny("Out of Sensors range (%d)." % user.sensors, "glossary: Sensors")
 	if not Sight.unit_line_of_sight(state, user, target):

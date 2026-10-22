@@ -47,6 +47,7 @@ func action_types() -> Array:
 
 
 func validate(state: GameState, action: Dictionary) -> RuleResult:
+	TurnRules._state_ref = weakref(state)
 	var handler: ActionHandler = _handlers.get(action.get("type", ""))
 	if handler == null:
 		return RuleResult.deny("Unknown action '%s'." % action.get("type", ""), "")

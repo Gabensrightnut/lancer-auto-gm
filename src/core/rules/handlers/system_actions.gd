@@ -129,7 +129,7 @@ class Hide:
 class Search:
 	extends TurnAction
 	## Quick action: contested Systems vs the target's Agility, target within SENSORS
-	## (actions: Search). PROVISIONAL: a tie keeps the target Hidden. params: {"target"}
+	## (Core p.70). The searcher started the contest, so it wins ties (Core p.13). params: {"target"}
 
 	func type() -> String:
 		return "search"
@@ -153,7 +153,7 @@ class Search:
 			return events
 		var mine := Combat.skill_check(state, u, "systems", "Search: Systems", 0)
 		var theirs := Combat.skill_check(state, target, "agility", "Stay hidden: Agility", 0)
-		var found: bool = int(mine["total"]) > int(theirs["total"])
+		var found: bool = int(mine["total"]) >= int(theirs["total"])
 		events.append({"type": "searched", "unit": u.id, "target": target.id, "found": found, "check": mine, "contest": theirs, "rule_ref": "actions: Search"})
 		if found:
 			events.append_array(Combat.remove_status(target, "Hidden", "found by " + u.id))

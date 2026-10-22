@@ -20,8 +20,9 @@ func economy_name() -> String:
 	return type()
 
 
-## Unit kinds that can take this action. Pilots on foot have their own list (actions.json
-## marks pilot actions): Move, Hide, Search, Prepare, Fight, Mount, Jump, Overwatch.
+## Unit kinds that can take this action. Pilots on foot (Core p.74): Boost, Hide, Search,
+## Activate, Skill Check, Disengage, Prepare, Mount, Overwatch (with Fight), Fight, Jockey,
+## Reload; plus moving and jumping.
 func kinds() -> Array:
 	return [Unit.KIND_MECH, Unit.KIND_NPC]
 

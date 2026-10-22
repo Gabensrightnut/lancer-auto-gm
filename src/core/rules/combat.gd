@@ -16,7 +16,7 @@ const REF_HARM := "glossary: Harm/Calculating Damage"
 const REF_STRUCTURE := "tables: Structure Damage"
 const REF_OVERHEAT := "tables: Overheating"
 const REF_HEAT := "glossary: Heat Capacity"
-const REF_FALL := "glossary: Falling/Fall Damage"
+const REF_FALL := "Core p.63 Falling"
 const REF_BURN := "glossary: Burn"
 const REF_PROVISIONAL := "PROVISIONAL (docs/RULES_TODO.md)"
 const CHECK_TARGET := 10
@@ -100,8 +100,10 @@ static func skill_check(state: GameState, u: Unit, skill: String, label: String,
 		all_sources.append({"label": "Bolstered", "kind": "accuracy", "type": "accuracy", "value": 2, "rule_ref": "actions: Bolster"})
 		u.statuses.erase("Bolstered")
 	var bonus := int(u.get(skill)) if SKILLS.has(skill) else 0
+	if u.kind == Unit.KIND_PILOT:
+		bonus = u.grit  # unmounted characters add GRIT to attacks and saves (Core p.74)
 	var record := state.dice.check(bonus, acc, diff, target, all_sources)
-	record["bonus_sources"] = [{"label": skill.capitalize(), "value": bonus}]
+	record["bonus_sources"] = [{"label": "Grit" if u.kind == Unit.KIND_PILOT else skill.capitalize(), "value": bonus}]
 	record["bonuses"] = record["bonus_sources"]
 	record["target_label"] = "Save Target" if target != CHECK_TARGET else "Check (10+)"
 	record["skill"] = skill
@@ -189,16 +191,21 @@ static func lose_hp(state: GameState, u: Unit, amount: int, source: String) -> A
 	if u.kind == Unit.KIND_DEPLOYABLE or u.max_structure <= 0:
 		events.append_array(destroy(state, u, "Reduced to 0 HP."))
 		return events
-	# PROVISIONAL: damage past 0 HP is lost; HP resets to full.
-	u.structure -= 1
-	u.hp = u.max_hp
-	events.append({"type": "structure_lost", "unit": u.id, "structure": u.structure, "rule_ref": "glossary: HP"})
-	events.append_array(_on_structure_or_stress(state, u, true))
-	if u.structure <= 0:
-		events.append_array(destroy(state, u, "Reached 0 Structure."))
-		return events
-	events.append_array(structure_check(state, u))
-	if not u.destroyed:
+	# At 0 HP: 1 structure damage, a structure check, HP back to full, then the excess
+	# damage, which can cost more structure (Core p.80).
+	while u.hp <= 0 and not u.destroyed:
+		var excess := -u.hp
+		u.structure -= 1
+		events.append({"type": "structure_lost", "unit": u.id, "structure": u.structure, "rule_ref": "Core p.80 Structure"})
+		events.append_array(_on_structure_or_stress(state, u, true))
+		if u.structure <= 0:
+			events.append_array(destroy(state, u, "Reached 0 Structure."))
+			return events
+		events.append_array(structure_check(state, u))
+		if u.destroyed:
+			return events
+		u.hp = u.max_hp - excess
+		events.append({"type": "hp_changed", "unit": u.id, "hp": maxi(u.hp, 0), "overshield": u.overshield, "source": "structure reset"})
 		events.append_array(_flyer_save(state, u, "structure damage"))
 	return events
 
@@ -335,18 +342,28 @@ static func apply_heat(state: GameState, u: Unit, amount: int, source: String, r
 		return deal_damage(state, u, [{"type": "Energy", "amount": amount}], {"source": source})
 	u.heat += amount
 	events.append({"type": "heat_changed", "unit": u.id, "amount": amount, "total": u.heat, "source": source})
-	if u.heat > u.heat_cap:
+	# Over HEAT CAP: 1 stress, an overheating check, clear all heat, then take the heat beyond
+	# what it took to exceed the cap, which can overheat again (Core p.81).
+	# PROVISIONAL (RULES_TODO "Heat overflow"): it takes cap + 1 heat to exceed the cap.
+	while u.heat > u.heat_cap and not u.destroyed:
+		var excess := u.heat - u.heat_cap - 1
 		u.heat = 0
 		u.stress -= 1
-		events.append({"type": "stress_lost", "unit": u.id, "stress": u.stress, "rule_ref": REF_HEAT})
+		events.append({"type": "stress_lost", "unit": u.id, "stress": u.stress, "rule_ref": "Core p.81 Overheating"})
 		events.append_array(_on_structure_or_stress(state, u, false))
 		events.append({"type": "heat_changed", "unit": u.id, "amount": 0, "total": 0, "source": "overheat"})
 		if u.stress <= 0:
-			events.append_array(destroy(state, u, "Reached 0 Stress: reactor meltdown."))
-			return events
+			# Reaching 0 STRESS: reactor meltdown at the end of its next turn (Core p.81).
+			if not u.counters.has("meltdown"):
+				events.append_array(_start_meltdown(state, u, -1))
+			break
 		events.append_array(stress_check(state, u))
-		if not u.destroyed:
-			events.append_array(_flyer_save(state, u, "stress damage"))
+		if u.destroyed:
+			return events
+		events.append_array(_flyer_save(state, u, "stress damage"))
+		u.heat = excess
+		if excess > 0:
+			events.append({"type": "heat_changed", "unit": u.id, "amount": excess, "total": u.heat, "source": "overheat excess"})
 	events.append_array(_danger_zone(u))
 	return events
 
@@ -471,9 +488,10 @@ static func _flyer_save(state: GameState, u: Unit, what: String) -> Array[Dictio
 	return events
 
 
-## Lands everyone who is falling, or unsupported without flight (e.g. knocked off a ledge).
-## PROVISIONAL: the whole fall happens at once, at the end of the current turn.
-static func fall_all(state: GameState) -> Array[Dictionary]:
+## Moves everyone who is falling, or unsupported without flight (e.g. knocked off a ledge).
+## Falling starts at the end of the current turn and continues at the end of each of the
+## faller's own turns, 10 spaces per round (Core p.63). `ended` = whose turn just ended.
+static func fall_all(state: GameState, ended: Unit = null) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	for u: Unit in state.units.values():
 		if u.destroyed:
@@ -481,27 +499,37 @@ static func fall_all(state: GameState) -> Array[Dictionary]:
 		var unsupported: bool = Movement.placement(state, u.size, u.cell, u.level)["airborne"]
 		if not u.counters.get("falling", false) and not (unsupported and not u.flying):
 			continue
-		events.append_array(fall_unit(state, u))
+		if u.counters.get("fall_started", false) and u != ended:
+			continue
+		events.append_array(fall_unit(state, u, 10))
 	if not events.is_empty():
 		events.append_array(refresh_engagement(state))
 	return events
 
 
-## Drops `u` to the ground below: 3 AP kinetic per 3 spaces, max 9 (glossary: Falling).
-static func fall_unit(state: GameState, u: Unit) -> Array[Dictionary]:
+## Drops `u` up to `max_drop` spaces (-1: all the way). On landing: 3 AP kinetic for every
+## 3 spaces of the whole fall, at most 9 (Core p.63).
+static func fall_unit(state: GameState, u: Unit, max_drop: int = -1) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
-	u.counters.erase("falling")
 	var start := u.level
 	var lv := u.level
-	while lv > 0 and Movement.placement(state, u.size, u.cell, lv)["airborne"]:
+	while lv > 0 and Movement.placement(state, u.size, u.cell, lv)["airborne"] and (max_drop < 0 or start - lv < max_drop):
 		lv -= 1
 	u.level = lv
 	u.flying = false
 	var dist := start - lv
-	if dist <= 0:
+	var total := int(u.counters.get("fallen", 0)) + dist
+	if dist > 0:
+		events.append({"type": "moved", "unit": u.id, "mode": "fall", "path": [[u.cell.x, u.cell.y, start], [u.cell.x, u.cell.y, lv]], "cost": 0, "rule_ref": REF_FALL})
+	if Movement.placement(state, u.size, u.cell, lv)["airborne"]:
+		u.counters["falling"] = true
+		u.counters["fall_started"] = true
+		u.counters["fallen"] = total
 		return events
-	events.append({"type": "moved", "unit": u.id, "mode": "fall", "path": [[u.cell.x, u.cell.y, start], [u.cell.x, u.cell.y, lv]], "cost": 0, "rule_ref": REF_FALL})
-	var dmg := mini(9, (dist / 3) * 3)
+	u.counters.erase("falling")
+	u.counters.erase("fall_started")
+	u.counters.erase("fallen")
+	var dmg := mini(9, (total / 3) * 3)
 	if dmg > 0:
 		events.append_array(deal_damage(state, u, [{"type": "Kinetic", "amount": dmg}], {"ap": true, "source": "fall"}))
 	return events
@@ -586,6 +614,8 @@ static func refresh_engagement(state: GameState) -> Array[Dictionary]:
 			for o: Unit in units:
 				if o.side == u.side or not _is_character(o) or o.has_status("Hidden"):
 					continue
+				if o.kind == Unit.KIND_PILOT and u.kind != Unit.KIND_PILOT:
+					continue  # pilots don't cause mechs to become Engaged (Core p.74)
 				if Sight.unit_distance(state, u, o) <= 1:
 					by = o.id
 					break

@@ -73,7 +73,12 @@ static func act(engine: RulesEngine, s: GameState, type: String, actor: String, 
 ## Starts combat with `u`'s side first and gives `u` its turn.
 static func begin(engine: RulesEngine, s: GameState, u: Unit) -> void:
 	if s.phase != GameState.PHASE_COMBAT:
-		engine.submit(s, {"type": "start_combat", "params": {"first_side": u.side}})
+		# Players always act first (Core p.60); tests then hand the pick to u's side.
+		var first := u.side
+		for o: Unit in s.units.values():
+			if o.side == "players":
+				first = "players"
+		engine.submit(s, {"type": "start_combat", "params": {"first_side": first}})
 	s.turn_side = u.side
 	engine.submit(s, {"type": "start_turn", "actor": u.id})
 

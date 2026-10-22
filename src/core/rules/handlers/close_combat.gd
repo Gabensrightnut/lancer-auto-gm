@@ -5,8 +5,7 @@ extends RefCounted
 ## Book rules used: actions Ram, Grapple, Ram/Grapple (NPC: +1/2/3 by tier), Jumping and
 ## Climbing (glossary).
 ## PROVISIONAL (docs/RULES_TODO.md "Grapple", "Jump"): same-Size grapples immobilize nobody
-## until the contested Hull check at the start of a turn is automated (not yet); breaking
-## free needs a higher Hull total than the grappler's (ties hold); a grappled smaller
+## until the contested Hull check at the start of a turn is automated (not yet); a grappled smaller
 ## character is dragged by the same step when the larger one moves, and the grapple ends if
 ## it can't follow; a horizontal jump must keep its height (it can cross pits and lower
 ## ground but not anything taller) and lands at the highest ground at or below that height;
@@ -193,7 +192,7 @@ class BreakFree:
 		var other := state.unit(String(u.counters["grapple"]["with"]))
 		var mine := Combat.skill_check(state, u, "hull", "Break free: Hull", 0)
 		var theirs := Combat.skill_check(state, other, "hull", "Hold on: Hull", 0)
-		var free: bool = int(mine["total"]) > int(theirs["total"])
+		var free: bool = int(mine["total"]) >= int(theirs["total"])  # the one breaking free started the contest: ties win (Core p.13)
 		var events: Array[Dictionary] = [{"type": "contested_check", "unit": u.id, "against": other.id, "check": mine, "contest": theirs, "success": free, "rule_ref": CloseCombat.REF_GRAPPLE}]
 		if free:
 			events.append_array(CloseCombat.end_grapple(state, u, "broke free"))

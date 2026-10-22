@@ -18,7 +18,7 @@ class QuickTech:
 		return check_tech(state, u, state.unit(String(params.get("target", ""))))
 
 	func check_tech(state: GameState, u: Unit, target: Unit) -> RuleResult:
-		return Attacks.tech_target_check(state, u, target)
+		return Attacks.tech_target_check(state, u, target, type())
 
 	func resolve(state: GameState, action: Dictionary) -> Array[Dictionary]:
 		var u := state.unit(action["actor"])
@@ -99,6 +99,8 @@ class Bolster:
 			return RuleResult.deny("Jammed characters can't benefit from tech actions.", "statuses: Jammed")
 		if target.has_status("Shut Down"):
 			return RuleResult.deny("Shut Down mechs are immune to tech actions.", "statuses: Shut Down")
+		if target.kind == Unit.KIND_PILOT:
+			return RuleResult.deny("Pilots on foot are BIOLOGICAL: immune to tech actions except Lock On and Scan.", "Core p.74 Fighting on the Ground")
 		if Sight.unit_distance(state, u, target) > u.sensors:
 			return RuleResult.deny("Out of Sensors range (%d)." % u.sensors, "actions: Bolster")
 		return RuleResult.allow()
