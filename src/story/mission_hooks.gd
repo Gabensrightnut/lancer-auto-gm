@@ -67,6 +67,8 @@ static func make(story: StoryState, campaign: Campaign, template_id: String, opt
 		twist["reveal"] = StoryText.fill(str(twist["reveal"]), story, campaign, ctx)
 		twist["question"] = StoryText.fill(str(twist["question"]), story, campaign, ctx)
 		hook["twist"] = twist
+	# Who leads the other side: an arc's commander, or one back for revenge (Rivals).
+	Rivals.attach(story, hook, rng, str(opts.get("commander", "")))
 	return hook
 
 

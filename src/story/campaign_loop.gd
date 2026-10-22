@@ -108,7 +108,18 @@ static func build_mission(campaign: Campaign, story: StoryState, db: ContentDB, 
 				_:
 					manual.append({"pilot": pid, "callsign": p.get("callsign", ""), "reserve": r.duplicate()})
 	mission.flavor["reserves"] = manual
+	# Someone leads the enemy force (Rivals): mission.flavor["commander"].
+	Rivals.setup_battle(story, campaign, state, mission)
 	return gen
+
+
+## A parley that ended the fight (the story event "battle_end_requested", Core p.60) as the
+## GM's gm_end_mission action, for the flow to submit through the rules engine.
+static func end_by_parley(mission: Mission, e: Dictionary) -> Dictionary:
+	var o := str(e.get("outcome", "none"))
+	mission.outcome = Mission.PLAYERS if o == "players" else (Mission.ENEMIES if o == "enemies" else "none")
+	mission.outcome_reason = str(e.get("reason", ""))
+	return mission.end_action()
 
 
 ## Pilot weapons from their pilot gear, as UnitFactory.build_pilot expects.

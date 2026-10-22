@@ -46,8 +46,8 @@ func _init() -> void:
 	_info.fit_content = true
 	_info.scroll_active = false
 	_info.custom_minimum_size = Vector2(330, 0)
-	_info.add_theme_font_size_override("normal_font_size", 14)
-	_info.add_theme_font_size_override("bold_font_size", 18)
+	_info.add_theme_font_size_override("normal_font_size", StorySettings.size(14))
+	_info.add_theme_font_size_override("bold_font_size", StorySettings.size(18))
 	_info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info_panel.add_child(_info)
 	_phase = StoryStyle.label("", 15, StoryStyle.GOLD, 700)

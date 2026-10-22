@@ -68,19 +68,23 @@
       "subject_presets": [
         {
           "label": "The enemies we'll face next mission",
-          "reserve": "reserve_scouting"
+          "reserve": "reserve_scouting",
+          "topic": "the enemies waiting on the next job"
         },
         {
           "label": "Where someone or something is",
-          "reserve": "reserve_tracking"
+          "reserve": "reserve_tracking",
+          "topic": "where someone is hiding"
         },
         {
           "label": "Local history, customs and etiquette",
-          "reserve": "reserve_knowledge"
+          "reserve": "reserve_knowledge",
+          "topic": "the local history and customs"
         },
         {
           "label": "Someone's secrets",
-          "reserve": "reserve_blackmail"
+          "reserve": "reserve_blackmail",
+          "topic": "someone's secrets"
         }
       ],
       "triggers": [

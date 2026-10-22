@@ -143,7 +143,8 @@ static func perform(story: StoryState, campaign: Campaign, pid: String, action_i
 	for e: Dictionary in events:
 		if str(e.get("type", "")) == "downtime_result" and not e.has("narration"):
 			var pool := action_id + ("_" + str(e["band"]) if e.has("band") else "")
-			var ctx := {"speaker": pid, "npc": str(params.get("npc", "")), "vars": {"subject": str(e.get("subject", ""))}}
+			var ctx := {"speaker": pid, "npc": str(params.get("npc", "")), "vars": {"subject": str(e.get("subject", "")),
+				"topic": _topic(action_cfg(action_id), _subject(params))}}
 			e["narration"] = StoryText.line("@" + pool, story, campaign, ctx) if StoryText.pools().has(pool) else str(e.get("summary", ""))
 			if not story.downtime.has("log"):
 				story.downtime["log"] = []
@@ -450,6 +451,17 @@ static func _key(action_id: String, params: Dictionary, story: StoryState = null
 
 static func _subject(params: Dictionary) -> String:
 	return str(params.get("subject", "")).strip_edges()
+
+
+## The subject as it reads mid-sentence: a preset's "topic", else the player's own words with
+## a lower-case first letter ("Where the bandits sleep" -> "where the bandits sleep").
+static func _topic(cfg: Dictionary, subject: String) -> String:
+	for p: Variant in cfg.get("subject_presets", []):
+		if p is Dictionary and str(p["label"]) == subject:
+			return str(p.get("topic", subject))
+	if subject.length() > 1 and subject[1] == subject[1].to_lower():
+		return subject[0].to_lower() + subject.substr(1)
+	return subject if subject != "" else "what they wanted to know"
 
 
 static func _preset_reserve(cfg: Dictionary, params: Dictionary) -> String:
