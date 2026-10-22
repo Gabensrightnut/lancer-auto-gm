@@ -276,6 +276,23 @@ vistas of Halo, the lived-in worlds of Star Wars, the grim scale of Warhammer 40
 - **Alien worlds that are beautiful but scary:** strange colored skies, giant moons and
   ringed planets overhead, bioluminescent plants, crystal fields, colossal ancient
   structures, toxic seas, storms on the horizon, things moving in the distance.
+- **Every kind of world, because Lancer's galaxy is huge and no two planets are alike:**
+  the Core Worlds (Cradle and other Union core worlds) look polished and similar; out in the
+  diaspora, every planet is its own place. Settings to build, each with its own architecture,
+  props, people, lighting and sky:
+  - **Medieval-tech worlds:** castles, walled towns, banners and stone bridges next to
+    mech hangars (low-tech colonies, feudal Karrakin-style baronies).
+  - **Old West frontier:** dusty boomtowns, mesas, rail lines, mining camps, saloons with
+    satellite dishes.
+  - **Retrofuturistic:** chrome, tail fins, atomic-age domes and monorails.
+  - **Cyberpunk sci-fi:** neon megacities, rain, holo-ads, stacked slums, corporate towers.
+  - **East Asian-inspired sci-fi:** pagoda-towers and shrine gates mixed with high tech,
+    terraced cities, lantern-lit streets, bamboo and cherry forests.
+  - **Clean high sci-fi:** gleaming Union architecture, orbital elevators, white and glass.
+  - plus the natural and alien landscapes above (hills, deserts, ice, jungle, ocean,
+    volcanic, crystal, toxic, gas-giant moons, ancient ruins, space stations).
+- **Biome + culture mix:** the map generator combines a landscape (e.g. desert mesas) with a
+  culture/era (e.g. Old West), so the same rules terrain can look completely different.
 - **Backgrounds beyond the board:** every map sits inside a full horizon (skybox, distant
   mountains/cities/megastructures, weather, lighting) so the battle feels like part of a
   huge world, not a tile on a void.
@@ -545,6 +562,10 @@ differently without an AI. Each game has a **seed**: share it to replay the same
   GM (section 9) can assemble scenes from it and new story content can be added without code.
 
 ### Progression
+- **Everyone starts at the bottom, like D&D level 1:** by the book, new pilots start at
+  **License Level 0** with only GMS starter gear (the Everest frame and GMS weapons/systems).
+  Every other manufacturer's frames and gear are unlocked rank by rank as you level up
+  after missions. (A campaign option lets you start higher, as the book allows GMs to do.)
 - License level up after missions, unlocking manufacturer gear by license rank, talent ranks,
   core bonuses, pilot rank; the builder enforces it.
 
