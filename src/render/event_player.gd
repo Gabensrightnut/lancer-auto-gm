@@ -100,6 +100,19 @@ func play_event(e: Dictionary) -> void:
 			await Fx.wait(self, 0.8)
 		"next_side", "combat_started":
 			pass
+		"ejected":
+			var emv := _view(e.get("unit", ""))
+			_log("[b]%s's pilot ejects![/b]" % _name(e.get("unit", "")))
+			_ejecting[String(e.get("unit", ""))] = true
+			if emv and Fx.speed > 0.0:
+				var top := emv.global_position + Vector3.UP * emv.model.height
+				Fx.light_flash(battle.fx_root, top, Color(1.0, 0.7, 0.35), 5.0, 3.0, 0.3)
+				Fx.sparks(battle.fx_root, top, Color(1.0, 0.75, 0.4), 18, 4.0)
+				Fx.dust(battle.fx_root, top, 8, Color(0.6, 0.6, 0.62, 0.7), 0.4, 1.0, 1.2)
+		"pilot_left_mech":
+			await _pilot_out(e)
+		"pilot_mounted":
+			await _pilot_in(e)
 		"zone_created":
 			var z: Dictionary = e.get("zone", {})
 			battle.zones.add_zone(z)
@@ -292,6 +305,77 @@ func _cell_of(v: Array) -> Vector2i:
 
 
 # --- movement --------------------------------------------------------------------------
+
+# --- pilots on foot -------------------------------------------------------------------
+
+var _ejecting: Dictionary = {}
+
+
+## A pilot leaves its mech: launched out on an arc after an Eject, or climbing down otherwise
+## (Dismount, or leaving a wreck). The pilot's token is added to the board if it's new.
+func _pilot_out(e: Dictionary) -> void:
+	var mech := _view(e.get("mech", ""))
+	var pid := String(e.get("unit", ""))
+	var cell: Array = e.get("cell", [0, 0, 0])
+	var c := Vector2i(int(cell[0]), int(cell[1]))
+	var lv := int(cell[2]) if cell.size() > 2 else battle.map.ground_height(c)
+	var pv := _view(pid)
+	if pv == null:
+		pv = battle.add_unit({"id": pid, "kind": "pilot", "name": "%s pilot" % (mech.unit.get("name", "") if mech else ""),
+			"side": mech.unit.get("side", "players") if mech else "players", "size": 0.5, "cell": [c.x, c.y], "level": lv})
+	pv.unit["mounted"] = false
+	pv.visible = true
+	var ejecting := bool(_ejecting.get(String(e.get("mech", "")), false))
+	_ejecting.erase(String(e.get("mech", "")))
+	_log("%s %s." % [_name(pid), "lands" if ejecting else "climbs out of " + _name(e.get("mech", ""))])
+	var land := pv.footprint_center(c, lv)
+	if mech == null or Fx.speed <= 0.0:
+		pv.place(c, lv)
+		return
+	pv.face(land + (land - mech.global_position))
+	var from := mech.global_position + Vector3.UP * mech.model.height * (0.95 if ejecting else 0.6)
+	pv.position = from
+	var tw := pv.create_tween()
+	if ejecting:
+		# Up and out on the seat's rocket, then down by the chute.
+		var peak := maxf(from.y, land.y) + 1.6
+		tw.tween_method(func(k: float) -> void:
+			var p := from.lerp(land, k)
+			p.y = lerpf(from.y, land.y, k) + (peak - maxf(from.y, land.y)) * 4.0 * k * (1.0 - k) * (1.0 - 0.35 * k)
+			pv.position = p, 0.0, 1.0, Fx.t(1.1))
+		var trail := Fx.dust(battle.fx_root, from, 10, Color(0.75, 0.75, 0.78, 0.6), 0.25, 0.4, 1.4)
+		trail.explosiveness = 0.1
+	else:
+		# Down the side of the mech to the ground.
+		var side := from.lerp(land, 0.35)
+		tw.tween_property(pv, "position", Vector3(side.x, from.y, side.z), Fx.t(0.25))
+		tw.tween_property(pv, "position", land, Fx.t(0.55)).set_ease(Tween.EASE_IN_OUT)
+	await tw.finished
+	Fx.dust(battle.fx_root, land, 4, Color(0.55, 0.52, 0.48, 0.5), 0.15, 0.3, 0.8)
+	pv.place(c, lv)
+
+
+## A pilot climbs into a mech and disappears inside; the mech's eyes light up.
+func _pilot_in(e: Dictionary) -> void:
+	var pv := _view(e.get("unit", ""))
+	var mech := _view(e.get("mech", ""))
+	_log("%s mounts %s." % [_name(e.get("unit", "")), _name(e.get("mech", ""))])
+	if pv == null:
+		return
+	if mech and Fx.speed > 0.0:
+		var hatch := mech.global_position + Vector3.UP * mech.model.height * 0.6
+		var tw := pv.create_tween()
+		tw.tween_property(pv, "position", Vector3(hatch.x, pv.position.y, hatch.z).lerp(pv.position, 0.4), Fx.t(0.3))
+		tw.tween_property(pv, "position", hatch, Fx.t(0.4))
+		tw.parallel().tween_property(pv.model, "scale", Vector3.ONE * 0.2, Fx.t(0.4))
+		await tw.finished
+		mech.model.set_fx("flash", 0.5)
+		var fl := mech.create_tween()
+		fl.tween_method(func(v: float) -> void: mech.model.set_fx("flash", v), 0.5, 0.0, Fx.t(0.4))
+	pv.model.scale = Vector3.ONE
+	pv.unit["mounted"] = true
+	pv.visible = false
+
 
 func _moved(e: Dictionary) -> void:
 	var mv := _view(e["unit"])
@@ -521,10 +605,13 @@ func _melee(att: MechView, tgt: MechView, hit: bool, color: Color) -> void:
 	tw.tween_property(att, "position", lunge, Fx.t(0.22)).set_ease(Tween.EASE_IN)
 	await tw.finished
 	var arm := "l" if att.model.slot_weapon.has("hand_l") else "r"
-	var shoulder: Node3D = att.model.arms[arm]["shoulder"]
 	var sw := att.create_tween()
-	sw.tween_property(shoulder, "rotation_degrees:x", 150.0, Fx.t(0.12))
-	sw.tween_property(shoulder, "rotation_degrees:x", 20.0, Fx.t(0.12))
+	if att.model.arms.has(arm):
+		var shoulder: Node3D = att.model.arms[arm]["shoulder"]
+		sw.tween_property(shoulder, "rotation_degrees:x", 150.0, Fx.t(0.12))
+		sw.tween_property(shoulder, "rotation_degrees:x", 20.0, Fx.t(0.12))
+	else:
+		sw.tween_interval(Fx.t(0.24))  # pilots and armless units: just the swing arc
 	Fx.swing_arc(battle.fx_root, att.body_center(), to.normalized(), att.model.height * 0.6, color)
 	await sw.finished
 	if hit:

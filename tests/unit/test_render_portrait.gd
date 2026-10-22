@@ -78,3 +78,11 @@ func test_barks_show_and_expire() -> void:
 	b._process(2.0)
 	expect_eq(b._live.size(), 0, "they fade out on their own")
 	b.free()
+
+
+func test_pilot_on_foot_model() -> void:
+	var m := MechView.pilot_model({"id": "p9"})
+	expect(is_equal_approx(m.height, MechView.PILOT_HEIGHT), "pilot tokens have a fixed readable height")
+	expect(m.meshes.size() > 5, "built from the token figure")
+	expect(m.eye != null and m.torso != null, "has the anchors effects use")
+	m.free()

@@ -616,6 +616,46 @@ func _battle_stage(tag: String) -> void:
 				await get_tree().create_timer(0.18).timeout
 				return
 			await get_tree().create_timer(0.4).timeout
+		"eject", "dismount", "on_foot":
+			# Pilots on foot through the rules engine: Eject (launched out), Dismount (climbs down).
+			var spot: Variant = Pilots.free_adjacent(battle.state, me, null)
+			var to: Vector2i = spot[0] if spot != null else me.cell
+			view.tactical.look_at_point(view.units["everest"].global_position + Vector3(0, 0.3, 0), 6.5 if tag == "dismount" else 11.0)
+			view.tactical.pitch = -30.0 if tag == "dismount" else -42.0
+			view.tactical.snap()
+			var seen := [false]
+			player.event_started.connect(func(ev: Dictionary) -> void:
+				if ev.get("type") == "pilot_left_mech":
+					seen[0] = true)
+			var act := {"type": "dismount" if tag == "dismount" else "eject", "actor": "everest", "params": {"to": [to.x, to.y]}}
+			if tag != "dismount":
+				# Eject's distance is a table ruling (grey area): use the suggested reading here,
+				# then the farthest landing space the engine accepts.
+				Rulings.apply_suggested(battle.state)
+				var best := -1
+				for c: Vector2i in view.map.grid.cells_within(me.cell, 6):
+					var p := {"type": "eject", "actor": "everest", "params": {"to": [c.x, c.y]}}
+					var d := view.map.grid.distance(me.cell, c)
+					if d > best and battle.engine.validate(battle.state, p).ok:
+						best = d
+						act = p
+			var r: RuleResult = battle.engine.validate(battle.state, act)
+			if not r.ok:
+				push_warning("%s refused: %s" % [act["type"], r.reason])
+			if tag == "on_foot":
+				await battle.submit(act)
+				var pv: MechView = view.units.get(battle.state.unit("everest").counters.get("pilot", ""))
+				if pv:
+					view.tactical.look_at_point(pv.global_position + Vector3(0, 0.2, 0), 4.0)
+					view.tactical.snap()
+				await get_tree().create_timer(0.5).timeout
+				return
+			battle.submit(act)
+			var guard := 0
+			while not seen[0] and guard < 600:
+				guard += 1
+				await get_tree().process_frame
+			await get_tree().create_timer(0.45 if tag == "eject" else 0.4).timeout
 		"barks":
 			var rng := RandomNumberGenerator.new()
 			rng.seed = 8
@@ -739,7 +779,7 @@ func lockout_samples() -> Array:
 func screenshot_stage(tag: String) -> void:
 	world_spec = ""
 	battle_systems = {}
-	if tag == "barks":
+	if tag in ["barks", "eject", "dismount", "on_foot"]:
 		await _battle_stage(tag)
 		return
 	if tag.begins_with("fly"):
