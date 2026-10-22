@@ -299,3 +299,14 @@ bulkheads are breakable more often than a station's; bunks, tables, consoles and
 - `boarding` (story map "docked"): the two docked hulls above.
 `MissionGenerator.generate(seed, {"boarding": {"kind": ..., "map": "docked" | "enemy_ship" |
 "own_ship"}})` picks the map; mission.flavor.boarding keeps the dict.
+
+## Hub day and night (story clock)
+
+`WorldKits.apply_hub_environment(culture, env, sun, period)` lays the clock's time of day
+(`TownLife.period`: dawn, day, evening, night; `WorldKits.TIMES`) over the culture's own look:
+low pink dawn sun from the east, the kit's own daylight, a gold evening sun in the west, blue
+moonlit night with stars. The neon city's kit is its night; by day it is a grey smoggy overcast
+with the signs still on. `WorldKits.set_hub_time(world, period)` switches the built town:
+lamps, lanterns and fires (lights with meta `hub_night_light`) burn at dawn, evening and night,
+and more windows are lit the later it gets. The hub scene calls both on every rebuild (waiting
+rebuilds it). Preview: `hub-<culture>~<period>[@close]`.

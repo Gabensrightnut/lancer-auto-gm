@@ -250,3 +250,38 @@ func test_every_place_has_its_own_look() -> void:
 	expect_eq(a["light"]["sun_yaw"], again["light"]["sun_yaw"], "same place, same look")
 	expect(a["light"]["sun_yaw"] != b["light"]["sun_yaw"] or a["architecture"]["walls"] != b["architecture"]["walls"], "another place looks different")
 	expect_eq(WorldStyle.resolve("city/retro")["kit"], "city/retro", "no seed, the plain kit")
+
+
+func test_hub_towns_follow_the_clock() -> void:
+	var day := WorldStyle.resolve("desert_mesas/old_west")
+	var night := WorldStyle.resolve("desert_mesas/old_west")
+	WorldKits.time_of_day(day, "day")
+	WorldKits.time_of_day(night, "night")
+	expect(float(night["light"]["sun_energy"]) < float(day["light"]["sun_energy"]) * 0.3, "night is dark")
+	var neon := WorldStyle.resolve("city/cyberpunk")
+	var neon_night_sun := float(neon["light"]["sun_energy"])
+	WorldKits.time_of_day(neon, "night")
+	expect_eq(float(neon["light"]["sun_energy"]), neon_night_sun, "the neon city's own look is its night")
+	# Lamps burn only after dark; more windows are lit at night.
+	var town := Node3D.new()
+	var lamp := WorldKits.build_hub_prop("medieval", "lamp", 1)
+	town.add_child(lamp)
+	town.add_child(WorldKits.build_hub_building("medieval", {"kind": "bar", "size": [8.0, 6.0, 4.0]}, 1))
+	var lights: Array[Light3D] = []
+	var walls: Array[ShaderMaterial] = []
+	var stack: Array[Node] = [town]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is Light3D and n.has_meta(WorldKits.NIGHT_LIGHT):
+			lights.append(n)
+		if n is MeshInstance3D and n.name == "Walls":
+			walls.append((n as MeshInstance3D).material_override)
+		stack.append_array(n.get_children())
+	expect(not lights.is_empty() and not walls.is_empty(), "lamps and walls found")
+	WorldKits.set_hub_time(town, "day")
+	expect(lights.all(func(l: Light3D) -> bool: return not l.visible), "lamps off by day")
+	var lit_day := float(walls[0].get_shader_parameter("lit"))
+	WorldKits.set_hub_time(town, "night")
+	expect(lights.all(func(l: Light3D) -> bool: return l.visible), "lamps on at night")
+	expect(float(walls[0].get_shader_parameter("lit")) > lit_day, "more windows lit at night")
+	town.free()
