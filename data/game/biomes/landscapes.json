@@ -1490,5 +1490,44 @@
 			"contrast": 1.05,
 			"exposure": 1.1
 		}
+	},
+	"boarding": {
+		"base": "starship",
+		"name": "two ships docked for boarding",
+		"horizon": {
+			"land": "none",
+			"far": "boarding",
+			"far_color": "#2a2622"
+		}
+	},
+	"boarding_defend": {
+		"base": "starship",
+		"name": "aboard our own ship",
+		"ground": {
+			"metal_a": "#7a7e84",
+			"metal_b": "#41454c",
+			"strip_light": "#ff4a3a",
+			"rim": "#ff8a70"
+		},
+		"light": {
+			"fill_color": "#ff4a3a",
+			"fill_energy": 0.35
+		}
+	},
+	"boarding_assault": {
+		"base": "starship",
+		"name": "aboard an enemy ship",
+		"ground": {
+			"metal_a": "#6a5e50",
+			"metal_b": "#34302a",
+			"stripe": "#c8a020",
+			"strip_light": "#ffa040",
+			"rim": "#ffb060"
+		},
+		"light": {
+			"fill_color": "#ffa040",
+			"fill_energy": 0.3,
+			"saturation": 0.9
+		}
 	}
 }

@@ -53,14 +53,14 @@ keeps the choices. An AI GM answers with the suggested reading and logs it. Code
 | Rule | Current state | Where in code |
 |---|---|---|
 | When a beaten enemy commander offers terms (story parley) | PROVISIONAL reading of Core p.60's "no questions as to the outcome": from round 2, once a share of the enemy force is down (the GM's fight length dial: a third on Short, half on Standard, two thirds on Long) or the commander is badly hurt with half that share down. The book leaves the moment to the GM | `src/story/rivals.gd` `enemy_losing`, `data/game/gm/presets.json` `fight_lengths` |
-| Prepare triggers | Only movement triggers so far (a character moves adjacent / within a range); the book allows any "When X, then Y" (p.72) | `pilot_actions.gd`, `reactions.gd` |
+| Prepare triggers | "When X, then Y" (p.72): X = a character moves adjacent / within a range, takes an action (optionally of listed types), or attacks (anyone, me, or an ally). PROVISIONAL: action triggers go off after that action resolves; reactions as triggers aren't offered | `pilot_actions.gd`, `reactions.gd` |
 | After-attack moves | Taken right away, on your own turn only; the Skirmisher talent's "before" option and its use after Overwatch aren't supported yet | `move_actions.gd`, `effects.gd` |
-| Multi-character grapples | Sizes add up on each side (p.69): not supported, only two-character grapples | `close_combat.gd` |
-| Mines | A mine goes off after the triggering move resolves (the mover isn't stopped); detecting and disarming mines (Systems checks) aren't automated yet | `abilities.gd` |
+| Multi-character grapples | A character can Grapple someone already grappling and joins the other side; Sizes add up per side and the smaller side is Immobilized (p.69). PROVISIONAL: each grappler is tied to the one it grabbed; whoever breaks adjacency or lets go leaves, and the rest keep grappling while both sides have someone; only a grappler's own partner is dragged | `close_combat.gd` |
+| Mines | A mine goes off after the triggering move resolves (the mover isn't stopped); `detect_mines` (quick, Systems check: every hostile mine within Sensors is detected; PROVISIONAL: one check for all) and `disarm_mine` (quick, adjacent, Systems check; a failure sets it off) | `abilities.gd` |
 | Deployables as cover | Solid deployed objects (type Deployable/Object) are hard cover like terrain; drones and mines aren't | `sight.gd` |
 | Drones and engagement | Drones don't engage or get Engaged | `combat.gd`, `movement.gd` |
 | Manticore Unstable System | "At the end of its next turn" counted on the pilot's turns inside the wreck | `combat.gd`, `turn_rules.gd` |
-| Minotaur Invert Cockpit | Eject without Impaired and a free Dismount 1/round are automated; the free Mount (taken by the pilot) isn't yet | `frame_effects.json` |
+| Minotaur Invert Cockpit | Eject without Impaired; the first Mount or Dismount each round is free (`free_via: "invert_cockpit"`; one free use per round covers either) | `frame_effects.json` |
 | Balor Scouring Swarm | "Characters of its choice" read as every hostile character | `effects.gd` |
 | Bonus damage on attacks without damage | Bonus damage (p.67) is added only when the weapon itself deals damage, so Ram and Grapple never carry it | `attacks.gd` |
 | Death's Head Neurolink | The engine rerolls the first ranged attack of the round only when it missed (rerolling a hit can't help) | `attacks.gd` |
@@ -205,6 +205,7 @@ default except the two Lancer Tactics options the user picked. Each card names i
 | `hr_hide_hard_cover` | Community (lancer-rules.carrd.co) | hard cover from everyone who sees you is enough to Hide and stay Hidden |
 | `hr_npc_recharge_heat` | Community (Train Lightning) | NPC Recharge abilities cost 1 heat (4+/5+) or 2 (6+) |
 | `hr_overheated` | Community (Train Lightning) | Exposed from overheating also blocks Heat (Self) and Overkill until Stabilize |
+| `hr_origin_perks` | Your idea | former employer (`pilot.origin.former_employer`, a manufacturer id, or `employer` by name): +1 Accuracy on the first attack each scene against a frame from that manufacturer. NPC classes have no manufacturer, so it only meets player-built frames |
 
 ## Environments
 
@@ -228,6 +229,7 @@ core book's environments as lancer-data has it; readings it leaves open are belo
 | Low / high gravity | Mechs fly when they Boost and must land at the end of that move; no falling damage. High: no Boost, and Immobilized whenever they'd be Slowed | `effects_for`, `Combat.add_status`, `Combat.fall_unit` |
 | Sinking world | Counts the spaces a mech moved on its own turn. 1 or less: Slowed; already Slowed: Immobilized and sinking. PROVISIONAL: both last until `dig_out` (full action Hull save by it or an adjacent mech) | `turn_ending`, `EnvironmentActions.DigOut` |
 | Dangerous flora | `Environments.make_flora(id, cell, size)`: Size 1-2, 5 HP, Evasion 10, takes no turns. PROVISIONAL: a character whose own move passes or ends next to it makes the Hull save (involuntary movement doesn't). Immobilized until the flora is destroyed | `_flora_moved`, `release_flora` |
+| Zero gravity (`env_zero_g` for the whole battle, or map cells tagged `zero_g` / `vacuum` for a ship's breached deck or hull; glossary: Zero Gravity, Core p.63) | Mechs without a flight trait/system, count-as-flying gear or an EVA Module are Slowed; anyone can fly when moving; nothing falls | `effects_for`, `_zero_g_slowed` |
 | Narrative only | Tomb world, spire world, holy world, primordial world (its terrain comes from the map's difficult/dangerous tags) | `Environments.NARRATIVE` |
 
 ## Terrain and objects (Core p.58, p.68)

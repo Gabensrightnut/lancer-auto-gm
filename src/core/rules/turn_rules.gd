@@ -64,6 +64,8 @@ static func start_combat(state: GameState, first_side: String) -> Array[Dictiona
 	state.first_side = first_side
 	state.round_number = 0
 	Environments.sync(state)
+	for u: Unit in state.units.values():
+		u.counters.erase("origin_used")  # a new scene: origin perks are fresh
 	var events: Array[Dictionary] = [{"type": "combat_started", "first_side": first_side}]
 	events.append_array(Combat.refresh_engagement(state))
 	events.append_array(_start_round(state, ""))

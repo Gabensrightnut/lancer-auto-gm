@@ -161,7 +161,8 @@ static func pick_culture(rng: RandomNumberGenerator, kind: String) -> String:
 	var data := _json(CULTURES_FILE)
 	var weights: Dictionary = data.get("weights", {})
 	var kinds: Dictionary = data.get("kinds", {})
-	var ids: Array = cultures().keys().filter(func(k: String) -> bool: return (kinds.get(k, [kind]) as Array).has(kind))
+	# kind "" = any kind of hub (a sector's other worlds): every kit can come up.
+	var ids: Array = cultures().keys().filter(func(k: String) -> bool: return kind == "" or (kinds.get(k, [kind]) as Array).has(kind))
 	ids.sort()
 	if ids.is_empty():
 		return "frontier_colony"

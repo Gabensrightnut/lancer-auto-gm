@@ -98,3 +98,59 @@ func test_npc_recharge_heat() -> void:
 	t.loadout["abilities"] = [ab]
 	Abilities.spend(s, t, ab)
 	expect_eq(int(t.turn.get("recharge_heat", 0)), 2, "Recharge 6+: 2 heat")
+
+
+func test_origin_perks() -> void:
+	var db := ContentDB.new()
+	db.load_all()
+	s = F.state()
+	e = RulesEngine.new()
+	a = UnitFactory.build_mech(db, "a", "mf_standard_pattern_i_everest", {"mounts": [{"weapons": ["mw_assault_rifle"]}], "systems": []},
+		{"ll": 0, "origin": {"employer": "Smith-Shimano Corpro"}})
+	a.side = "players"
+	s.add_unit(a)
+	t = UnitFactory.build_mech(db, "t", "mf_swallowtail", {"mounts": [], "systems": []}, {"ll": 0})
+	t.side = "enemies"
+	t.cell = Vector2i(4, 0)
+	s.add_unit(t)
+	F.begin(e, s, a)
+	expect_eq(RulesQueries.attack_preview(s, "a", "0:0", "t")["accuracy"], 0, "off by default")
+	e.submit(s, {"type": "set_house_rule", "params": {"id": "hr_origin_perks", "on": true}})
+	expect_eq(RulesQueries.attack_preview(s, "a", "0:0", "t")["accuracy"], 1, "ex-Smith-Shimano: knows SSC frames")
+	F.load_dice(s, [10, 1, 3])
+	F.act(e, s, "skirmish", "a", {"weapon": "0:0", "target": "t"})
+	expect_eq(RulesQueries.attack_preview(s, "a", "0:0", "t")["accuracy"], 0, "only the first attack this scene")
+	expect_eq(UnitFactory.origin_employer({"origin": {"former_employer": "HA"}}), "HA", "a manufacturer id works too")
+
+
+func test_zero_g() -> void:
+	s = F.state()
+	s.environments = [Environments.ZERO_G]
+	e = RulesEngine.new()
+	a = F.mech(s, "a", "players", Vector2i(0, 0))
+	var jet := F.mech(s, "jet", "players", Vector2i(0, 3))
+	jet.flight = "flight"
+	t = F.mech(s, "t", "enemies", Vector2i(9, 9))
+	F.begin(e, s, a)
+	expect(a.has_status("Slowed"), "no propulsion: Slowed")
+	expect(not jet.has_status("Slowed"), "a flight system moves normally")
+	var out := F.act(e, s, "move", "a", {"to": [2, 0], "level": 3, "fly": true})
+	expect(F.ok(out), "anyone can fly when moving: " + F.reason(out))
+	F.act(e, s, "end_turn", "a")
+	expect_eq(a.level, 3, "nothing falls in zero-g")
+	s.environments = []
+	Environments.sync(s)
+	expect(not a.has_status("Slowed"), "back in gravity")
+
+
+func test_zero_g_section_of_a_ship() -> void:
+	s = F.state()
+	e = RulesEngine.new()
+	for x in range(5, 12):
+		for y in range(0, 12):
+			s.map.set_column(Vector2i(x, y), 0, PackedStringArray(["vacuum"]))  # the breached deck
+	a = F.mech(s, "a", "players", Vector2i(0, 0))
+	t = F.mech(s, "t", "enemies", Vector2i(6, 0))
+	F.begin(e, s, a)
+	expect(not a.has_status("Slowed"), "inside the pressurized part: normal")
+	expect(t.has_status("Slowed"), "in the vacuum section: zero-g rules")

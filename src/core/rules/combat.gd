@@ -612,8 +612,8 @@ static func destroy(state: GameState, u: Unit, why: String) -> Array[Dictionary]
 # --- Flying and falling ---------------------------------------------------------------
 
 static func begin_falling(u: Unit, why: String) -> Array[Dictionary]:
-	if u.counters.get("falling", false):
-		return [] as Array[Dictionary]
+	if u.counters.get("falling", false) or Effects.has(u, "no_fall"):
+		return [] as Array[Dictionary]  # zero gravity: nothing falls
 	u.counters["falling"] = true
 	return [{"type": "falling", "unit": u.id, "reason": why, "rule_ref": REF_FALL}] as Array[Dictionary]
 
@@ -644,6 +644,8 @@ static func fall_all(state: GameState, ended: Unit = null) -> Array[Dictionary]:
 			continue
 		var unsupported: bool = Movement.placement(state, u.size, u.cell, u.level)["airborne"]
 		if not u.counters.get("falling", false) and not (unsupported and not u.flying):
+			continue
+		if Effects.has(u, "no_fall"):
 			continue
 		if u.counters.get("fall_started", false) and u != ended:
 			continue

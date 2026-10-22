@@ -32,7 +32,9 @@ var host: NetHost
 var mission: Mission
 var client: NetClient
 ## {"preset", "shape": "hex"/"square", "sitrep": "" (random), "seed": int, "fill_empty_with_ai": bool}
-var options: Dictionary = {"preset": "Standard", "shape": "hex", "sitrep": "", "seed": 0, "fill_empty_with_ai": false, "ai_squad_auto": true, "fight_length": "standard", "human_gm": false, "gm_where": "local"}
+var options: Dictionary = {"preset": "Standard", "shape": "hex", "sitrep": "", "seed": 0, "fill_empty_with_ai": false, "ai_squad_auto": true, "fight_length": "standard", "human_gm": false, "gm_where": "local", "map": ""}
+## A saved or edited map to fight on (MapDoc; options["map"] is its name), or null: generated.
+var map_doc: MapDoc
 ## seat -> mode (host)
 var modes: Dictionary = {}
 ## seat -> pilot id (host)
@@ -158,6 +160,17 @@ func gm_status() -> String:
 		return "here"
 	var row: Dictionary = host.seat_table().get(NetHost.GM_SEAT, {}) if host != null else {}
 	return "joined" if row.get("where", "") == "remote" and row.get("connected", false) else "waiting"
+
+
+## Fight on a saved map (MapDoc.list() names, from the map editor) or "" for a generated one.
+func set_map(map_name: String) -> void:
+	set_map_doc(MapDoc.load_named(map_name) if map_name != "" else null)
+
+
+func set_map_doc(doc: MapDoc) -> void:
+	map_doc = doc
+	options["map"] = doc.name if doc != null else ""
+	_rebuild()
 
 
 func set_fill_empty(on: bool) -> void:
@@ -365,7 +378,7 @@ func _rebuild() -> void:
 		squad.append({"seat": seat, "pilot": p, "mech": mech})
 	var gen: Dictionary = mission_builder.call(options) if mission_builder.is_valid() else MissionGenerator.generate(int(options["seed"]), {
 		"squad": squad, "shape": options["shape"], "sitrep": options["sitrep"], "db": db,
-		"settings": gm_settings_for(options["preset"], str(options.get("fight_length", "standard"))), "players": squad.size()})
+		"settings": gm_settings_for(options["preset"], str(options.get("fight_length", "standard"))), "players": squad.size(), "map_doc": map_doc})
 	var state: GameState = gen["state"]
 	if HouseRulesFlow.i_decide(campaign):
 		# The host's battle house rules (or a GM's here); story ones switch through the story.

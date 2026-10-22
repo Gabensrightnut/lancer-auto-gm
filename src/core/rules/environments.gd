@@ -20,6 +20,10 @@ const FLORA_REF := "Core: Environments, Dangerous Flora and Fauna"
 const COLD_HOLD := "Extreme cold"
 const SINKING_HOLD := "Sinking"
 const NARRATIVE := ["env_tombworld", "env_spireworld", "env_holyworld", "env_primordealworld"]
+## Zero gravity (glossary: Zero Gravity, Core p.63): our id, set by a mission in space or on a
+## ship's hull. Not in environments.json.
+const ZERO_G := "env_zero_g"
+const ZERO_G_REF := "glossary: Zero Gravity"
 
 
 static func active(state: GameState, id: String) -> bool:
@@ -54,11 +58,51 @@ static func sync(state: GameState) -> void:
 			u.counters.erase("env_effects")
 		else:
 			u.counters["env_effects"] = list
+		_zero_g_slowed(state, u)
+
+
+## Zero gravity: mechs without a propulsion or flight system are Slowed.
+static func _zero_g_slowed(state: GameState, u: Unit) -> void:
+	var slowed_by_it := u.has_status("Slowed") and String(u.statuses["Slowed"].get("source", "")) == "Zero gravity"
+	var should := in_zero_g(state, u) and is_mech(u) and Combat.is_present(u) and not has_propulsion(u)
+	if should and not u.has_status("Slowed"):
+		u.statuses["Slowed"] = {"source": "Zero gravity"}
+	elif slowed_by_it and not should:
+		u.statuses.erase("Slowed")
+
+
+## In zero gravity: the whole battle (env_zero_g), or standing in map cells tagged "zero_g"
+## or "vacuum" (a ship's hull, a breached deck). The glossary treats underwater, zero-g and space
+## alike; underwater has its own environment (env_oceanworld).
+static func in_zero_g(state: GameState, u: Unit) -> bool:
+	if active(state, ZERO_G):
+		return true
+	if state.map == null or not is_character(u):
+		return false
+	for c in state.map.grid.footprint(u.cell, u.size):
+		var col := state.map.column(c)
+		if col != null and (col.has_tag("zero_g") or col.has_tag("vacuum")):
+			return true
+	return false
+
+
+## A flight or propulsion system: a flight trait or system, count-as-flying gear, or an EVA
+## Module.
+static func has_propulsion(u: Unit) -> bool:
+	if u.flight != "":
+		return true
+	for e: Dictionary in u.loadout.get("effects", []):
+		if e.get("kind", "") in ["optional_flight", "boost_flight"]:
+			return true
+	for s: Dictionary in u.loadout.get("systems", []):
+		if s.get("id", "") == "ms_eva_module":
+			return true
+	return false
 
 
 static func effects_for(state: GameState, u: Unit) -> Array:
 	var out: Array = []
-	if state.environments.is_empty() or not is_character(u):
+	if not is_character(u) or (state.environments.is_empty() and not in_zero_g(state, u)):
 		return out
 	var mech := is_mech(u)
 	if mech and active(state, "env_extremecold"):
@@ -77,6 +121,14 @@ static func effects_for(state: GameState, u: Unit) -> Array:
 		out.append(_e({"kind": "boost_flight"}, "Low gravity"))
 	if mech and active(state, "env_highgravity"):
 		out.append(_e({"kind": "no_boost"}, "High gravity"))
+	if in_zero_g(state, u):
+		# Can fly when moving whatever the mech has, and can't fall.
+		var zg := _e({"kind": "optional_flight"}, "Zero gravity")
+		zg["rule_ref"] = ZERO_G_REF
+		out.append(zg)
+		var nf := _e({"kind": "no_fall"}, "Zero gravity")
+		nf["rule_ref"] = ZERO_G_REF
+		out.append(nf)
 	return out
 
 

@@ -92,6 +92,9 @@ without the map saying so, and the checks in `tests/unit/test_render_world.gd` h
 | `impassable` raised | sheer rock spire |
 | `destructible` | crack web on the surface; `break_cells()` bursts it into chunks and dust |
 | `gap` (overhang) | bridge deck with girders and a low railing |
+| `road` (+ `road_x` / `road_z` / `crossing`) | street in the culture's paving: dirt ruts, cobbles, asphalt with lane lines and zebra crossings, Union panels with guide lights; over water a bridge |
+| `farm` (+ `dry`) | crop rows (no rules effect) |
+| `house` / `keep` | village house (eaves instead of battlements in medieval kits) / castle keep |
 | nothing | open ground: grass, flowers, pebbles, glow plants, all under 0.18 tall |
 
 Buildings: walls sit exactly on the cell edges and rise exactly to the column's top; the
@@ -99,7 +102,8 @@ roof is where units stand. Parapets, battlements, eaves, signs, awnings and ante
 under 0.15 or flat against the wall. Rooftop props are small.
 
 The look tags (`rock`, `woods`, `building`, `wall`, `water`, `ice`, `lava`, `toxic`,
-`crystal`, `rubble`, `chasm`) never change rules. Rules come only from `difficult`,
+`crystal`, `rubble`, `chasm`, `road*`, `crossing`, `farm`, `dry`, `house`, `keep`) never
+change rules. Rules come only from `difficult`,
 `dangerous`, `impassable`, `destructible`, `soft_cover` and the heights.
 
 ## Files
@@ -113,7 +117,8 @@ The look tags (`rock`, `woods`, `building`, `wall`, `water`, `ice`, `lava`, `tox
 | `world_hazards.gd`, `flicker_light.gd` | Fire and glow on dangerous ground |
 | `world_horizon.gd` | Land that carries on from the board's edges, rivers out of the map, forest, far ranges, storms |
 | `landmarks.gd`, `spinner.gd` | Castle, windmill, water tower, headframe, domes, saucer tower, monorail, pagoda, torii, white towers, space elevator |
-| `skyline.gd`, `sky_traffic.gd` | The city around a city map; burning towers; sky traffic |
+| `skyline.gd`, `sky_traffic.gd`, `ground_traffic.gd` | The city around a city map (plain, stepped, eight-sided, twin and split-crown towers, spires with aircraft lights); burning towers; sky traffic; cars driving its streets |
+| `city_streets.gd`, `vehicles.gd`, `traffic_light.gd` | Street life on `road` cells by culture: parked vehicles, traffic lights, kiosks, steam vents, overhead wires and lanterns |
 | `city_builder.gd`, `city_props.gd` | Buildings on grid footprints; roofs, signs, neon, holo ads, street props |
 | `sky_beasts.gd` | Huge drifting creatures over alien horizons |
 | `flora.gd` | Tree, bush, cactus, bamboo, blossom, alien plant, grass, flower and rock meshes |
@@ -230,3 +235,67 @@ the mission's own, and `edited(events)` gives the host the events to send to eve
   splinters, stone and concrete chip and puff dust, metal and fortified walls spark and dent.
   `show_damage(state.terrain_damage)` deepens the cracks as a section wears down; destroyed
   wood breaks into planks, metal into bent plates.
+
+## Built on purpose, and lived in
+
+Maps read as places people made, not noise (`TerrainGen`):
+
+- **Villages** (`_village`): a levelled site, a main street across the map with a cross street,
+  houses on 2x2 / 3x2 plots facing the streets (mostly one storey), and fields on terraces
+  around it with field walls in straight runs and a gateway gap.
+- **Castles** (medieval, `_castle`): straight curtain walls (2 levels) with 2x2 corner towers
+  (3), a 2-wide gate facing the village on the main street's row, a causeway over the moat
+  (water, difficult), a keep against the back wall, and a cleared field of fire. The village is
+  built first and the castle last, so nothing overlaps the walls.
+- **Roads** (`_road`) follow the ground and bridge rivers (deck one level up, river beneath).
+  City streets are tagged from the street grid (`_tag_streets`): open runs of 6+ become lanes,
+  crossings where buildings sit on the diagonals, plazas stay paved without lanes.
+- **Rocks** (`_outcrops`) come in clusters (a tall core, lower stones), at least 4 spaces from
+  anything built and 2 from water, buildings and roads.
+
+Street life by culture (`architecture.street` in `cultures.json`: `road`, `vehicles`,
+`traffic_lights`, `kiosks`, `vents`, `wires`, `lanterns_on_wires`): Old West wagons on dirt,
+medieval carts on cobbles, cyberpunk cars, vans and bikes with traffic lights, kiosks, steam and
+wires, retro finned cars, East Asian scooters under lantern wires, Union hover-pods on lit
+panels, ruins and burning cities wrecks. Vehicles are about a quarter of a mech's height and
+are scenery only: the rules see no cover in them.
+
+## Every city its own look
+
+A culture's `in_city` block (cultures.json) applies only on a city map: its sky, light and
+ground palette. Medieval: misty morning in stone streets. Old West: hot gold afternoon. East
+Asian: soft pink-hazed morning. Union: bright noon over white towers. Retro: sunny pastels.
+Ruins: grey overcast. Cyberpunk: the wet neon night. Industrial: smoggy amber, brick and tanks,
+smokestacks. Port: clear harbor morning, a basin with a quay, container stacks, cranes. City
+weather follows the culture (`TerrainGen.CITY_WEATHER`).
+
+Only the mega-cities (`TerrainGen.MEGA_CITIES`: cyberpunk, Union) build towers; every other
+city is like a city on modern Earth: mostly 1-2 levels, some lots left empty, alleys between
+buildings, low skylines. Nothing tall stands between the camera and the board.
+
+Landscapes can chain `base` (boarding -> starship -> station); the nearest overrides last.
+
+## Boarding (ship to ship)
+
+`boarding`: two ships docked side by side. Each side fights from its own ship's outer hull:
+armor ridges (bulkhead, straight runs), turret housings (machinery), clamped cargo
+(containers), behind an armored hull rim (Armor 4, Core p.68 objects) with hatches. Open space
+between the hulls is impassable; boarding tubes (2 wide, deck) cross it. A boarding torpedo
+has punched through each hull: a hole in the rim, its body in the deck, wreckage (difficult).
+The far ship is the near one turned around, so both sides get the same ground. Beyond the board
+(`SpaceScenery._docked`) both hulls run on with the gap between them, armor belts down their
+flanks, more docking tubes, and the far ship's superstructure.
+
+Ship interiors for boarding fights (`TerrainGen._ship_interior`; enemies hold the top of the
+map, the squad the bottom): the outer hull (Armor 4) runs down both side edges; rooms by role
+from the boarders' edge: cargo holds and the airlock bay, then quarters (bunks), engineering
+(reactor housings, coolant leaks) and the mess, then the bridge (console banks). Inner
+bulkheads are breakable more often than a station's; bunks, tables, consoles and crates break.
+- `boarding_defend` (story map "own_ship"): pirates board the squad's ship; two boarding
+  torpedoes have punched through the side hulls near the top (wreckage around them, the
+  torpedo tails outside the hull). Red alert light.
+- `boarding_assault` (story map "enemy_ship"): the squad boards; a docking airlock in one side
+  hull near the bottom, the boarding tube running off to the other ship. Rusty, amber light.
+- `boarding` (story map "docked"): the two docked hulls above.
+`MissionGenerator.generate(seed, {"boarding": {"kind": ..., "map": "docked" | "enemy_ship" |
+"own_ship"}})` picks the map; mission.flavor.boarding keeps the dict.

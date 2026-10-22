@@ -184,6 +184,70 @@ class ShakeOff:
 		return events
 
 
+class DetectMines:
+	extends TurnAction
+	## Quick action: a Systems check; on a success every hostile mine within your Sensors is
+	## detected (no longer Hidden) (tags: Mine). PROVISIONAL: one check covers all of them.
+
+	func type() -> String:
+		return "detect_mines"
+
+	func kinds() -> Array:
+		return [Unit.KIND_MECH, Unit.KIND_NPC, Unit.KIND_PILOT]
+
+	func check(_state: GameState, _u: Unit, _params: Dictionary) -> RuleResult:
+		return RuleResult.allow()
+
+	func apply(state: GameState, u: Unit, _params: Dictionary) -> Array[Dictionary]:
+		var check := Combat.skill_check(state, u, "systems", "Detect mines: Systems check")
+		var events: Array[Dictionary] = [{"type": "skill_check", "unit": u.id, "check": check, "rule_ref": "tags: Mine"}]
+		if not check["success"]:
+			return events
+		var ids: Array = state.units.keys()
+		ids.sort()
+		for id: String in ids:
+			var m := state.unit(id)
+			if m.destroyed or String(m.counters.get("deploy_type", "")) != "Mine" or m.side == u.side or not m.has_status("Hidden"):
+				continue
+			if Sight.unit_distance(state, u, m) <= u.sensors:
+				events.append_array(Combat.remove_status(m, "Hidden", "detected by " + u.id))
+				events.append({"type": "mine_detected", "unit": u.id, "mine": m.id, "cell": [m.cell.x, m.cell.y], "rule_ref": "tags: Mine"})
+		return events
+
+
+class DisarmMine:
+	extends TurnAction
+	## Quick action: a detected mine in an adjacent space; a Systems check disarms it, and on a
+	## failure it detonates as normal (tags: Mine). params: {"mine"}
+
+	func type() -> String:
+		return "disarm_mine"
+
+	func kinds() -> Array:
+		return [Unit.KIND_MECH, Unit.KIND_NPC, Unit.KIND_PILOT]
+
+	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		var m := state.unit(String(params.get("mine", "")))
+		if m == null or m.destroyed or String(m.counters.get("deploy_type", "")) != "Mine":
+			return RuleResult.deny("Choose a mine (params.mine).", "tags: Mine")
+		if m.has_status("Hidden"):
+			return RuleResult.deny("Detect it first.", "tags: Mine")
+		if Sight.unit_distance(state, u, m) > 1:
+			return RuleResult.deny("Disarm it from an adjacent space.", "tags: Mine")
+		return RuleResult.allow()
+
+	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+		var m := state.unit(String(params["mine"]))
+		var check := Combat.skill_check(state, u, "systems", "Disarm the mine: Systems check")
+		var events: Array[Dictionary] = [{"type": "skill_check", "unit": u.id, "check": check, "rule_ref": "tags: Mine"}]
+		if check["success"]:
+			m.destroyed = true
+			events.append({"type": "mine_disarmed", "unit": u.id, "mine": m.id, "rule_ref": "tags: Mine"})
+		else:
+			events.append_array(Abilities.detonate(state, m, u))
+		return events
+
+
 class Drag:
 	extends TurnAction
 	## Start dragging (or towing on a cable) a character, wreck or object. params: {"target"}

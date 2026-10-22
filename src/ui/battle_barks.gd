@@ -127,18 +127,31 @@ func _make_panel(bark: Dictionary) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	panel.add_child(row)
+	var radio := String(bark.get("mode", "")) == "radio"
+	var jammed := bool(bark.get("jammed_here", false))
+	if radio:
+		edge = StoryStyle.RED if jammed else Color(0.3, 0.95, 0.55)
+		panel.edge = edge
 	var face: Dictionary = bark.get("face", {}) if bark.get("face") is Dictionary else {}
 	if face.get("portrait") is Dictionary and not (face["portrait"] as Dictionary).is_empty():
 		var pa := PortraitArt.new()
 		pa.custom_minimum_size = Vector2(64, 76)
 		pa.set_look(face["portrait"], String(face.get("expression", "neutral")))
 		row.add_child(pa)
+		if radio:
+			# Heard over comms: story's comms frame over the face (DialogueView.draw_comms).
+			var frame := CommsFrame.new()
+			frame.jammed = jammed
+			frame.set_anchors_preset(Control.PRESET_FULL_RECT)
+			pa.add_child(frame)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 2)
 	row.add_child(col)
 	var name := String(bark.get("name", ""))
 	if name == "" and mv:
 		name = String(mv.unit.get("name", ""))
+	if radio:
+		name = "%s · %s" % [String(bark.get("channel", "Comms")), name] if name != "" else String(bark.get("channel", "Comms"))
 	if name != "":
 		var nl := Label.new()
 		nl.text = name.to_upper()
@@ -146,13 +159,29 @@ func _make_panel(bark: Dictionary) -> Control:
 		nl.add_theme_color_override("font_color", edge.lightened(0.25))
 		col.add_child(nl)
 	var tl := Label.new()
-	tl.text = String(bark.get("text", ""))
+	tl.text = String(bark.get("text", "")) if not (radio and jammed) else "…kssshhh… (static: your comms are Jammed)"
 	tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tl.custom_minimum_size = Vector2(minf(320.0, 90.0 + tl.text.length() * 7.5), 0)
 	tl.add_theme_font_size_override("font_size", 17)
 	tl.add_theme_color_override("font_color", Color(0.94, 0.95, 0.97))
 	col.add_child(tl)
 	return panel
+
+
+## Story's comms frame (scanlines, static, signal bars) over a radio speaker's portrait.
+class CommsFrame extends Control:
+	var jammed := false
+	var _t := 0.0
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _process(delta: float) -> void:
+		_t += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		DialogueView.draw_comms(self, size, jammed, _t, 0.0)
 
 
 ## The bubble: a dark rounded box with a colored edge and a tail toward its unit.

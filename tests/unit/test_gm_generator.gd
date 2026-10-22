@@ -267,3 +267,124 @@ func test_materials_follow_the_culture() -> void:
 		if ship.column(c).has_tag("bulkhead"):
 			expect(ship.column(c).has_tag("armor_4"), "starship hull: Armor 4")
 			break
+
+
+
+func test_story_town_opts_are_understood() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 9
+	var spots := HubLayout.spots("town", rng)
+	var town := {"hub_id": "hub_9", "kind": "town", "culture": "medieval_tech", "map_culture": "medieval",
+		"landscape": "tundra", "seed": 9, "spots": spots, "at": "bar", "on_foot": true}
+	var g := _gen(44, {"town": town, "sitrep": "sitrep_standardcombat", "players": 2})
+	var m: Mission = g["mission"]
+	expect(str(m.flavor["kit"]).begins_with("tundra/medieval"), "town landscape and culture: %s" % m.flavor["kit"])
+	var s: GameState = g["state"]
+	var buildings := 0
+	for c in s.map.cells():
+		if s.map.column(c).has_tag("building"):
+			buildings += 1
+	expect(buildings > 15, "the town's buildings (%d)" % buildings)
+
+
+func test_maps_are_built_on_purpose() -> void:
+	# A medieval valley: a castle (keep, walls, moat), a village with houses, roads and fields;
+	# rocks stay off the roads.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3
+	var map := TerrainGen.generate(rng, 40, 34, GridLayout.Shape.SQUARE, {}, "grassy_hills", "medieval")
+	var count := {}
+	for c in map.cells():
+		for tag: String in ["keep", "wall", "water", "house", "road", "farm", "rock"]:
+			if map.column(c).has_tag(tag):
+				count[tag] = int(count.get(tag, 0)) + 1
+	expect(int(count.get("keep", 0)) == 9, "a 3x3 keep: %s" % count)
+	expect(int(count.get("wall", 0)) >= 24, "curtain walls and towers: %s" % count)
+	expect(int(count.get("water", 0)) >= 20, "a moat: %s" % count)
+	expect(int(count.get("house", 0)) >= 8 and int(count.get("road", 0)) >= 20, "a village on its streets: %s" % count)
+	expect(int(count.get("farm", 0)) > 0, "fields: %s" % count)
+	for c in map.cells():
+		if map.column(c).has_tag("rock"):
+			for n in map.grid.cells_within(c, 1):
+				expect(not (map.has_cell(n) and map.column(n).has_tag("road")), "rock %s next to a road" % c)
+	# A city: streets with lanes and crossings, and the rules see roads as open ground.
+	var rng2 := RandomNumberGenerator.new()
+	rng2.seed = 22
+	var city := TerrainGen.generate(rng2, 40, 40, GridLayout.Shape.SQUARE, {}, "city", "cyberpunk")
+	var lanes := 0
+	var crossings := 0
+	for c in city.cells():
+		var col := city.column(c)
+		if col.has_tag("road") and col.gap_top == 0:
+			expect(not col.has_tag(BattleMap.TAG_DIFFICULT) and not col.has_tag(Sight.TAG_SOFT_COVER), "roads are open ground")
+			lanes += 1 if not col.has_tag("crossing") else 0
+			crossings += 1 if col.has_tag("crossing") else 0
+	expect(lanes > 40 and crossings > 0 and crossings < lanes, "streets %d, crossings %d" % [lanes, crossings])
+
+
+func test_boarding_maps_dock_two_ships() -> void:
+	# Two hulls with open space between (impassable) crossed by tubes; both sides alike.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4
+	var map := TerrainGen.generate(rng, 36, 40, GridLayout.Shape.SQUARE, {}, "boarding", "")
+	var void_rows := {}
+	var tube_cells := 0
+	for c in map.cells():
+		var col := map.column(c)
+		if col.has_tag("void"):
+			expect(col.has_tag(BattleMap.TAG_IMPASSABLE), "open space can't be crossed")
+			void_rows[c.y] = true
+		elif col.has_tag("deck") and col.ground == 0:
+			tube_cells += 1
+		var m := Vector2i(35 - c.x, 39 - c.y)
+		expect(map.ground_height(m) == map.ground_height(c), "mirrored ship at %s" % c)
+	expect(void_rows.size() == 4 and tube_cells >= 8, "a gap of 4 rows with tubes: %s, %d" % [void_rows.keys(), tube_cells])
+	var hull := 0
+	for c in map.cells():
+		if map.column(c).has_tag("bulkhead") and map.column(c).has_tag("armor_4"):
+			hull += 1
+	expect(hull > 20, "hull plating is Armor 4: %d" % hull)
+
+
+func test_the_next_fight_in_a_region_keeps_its_look() -> void:
+	var first: Mission = _gen(11, {"landscape": "desert_mesas", "culture": "old_west"})["mission"]
+	var region: Dictionary = first.flavor["region"]
+	expect_eq(region["landscape"], "desert_mesas")
+	var second: Dictionary = _gen(12, {"region": region})
+	var m2: Mission = second["mission"]
+	expect_eq(m2.flavor["region"], region, "same landscape, culture, weather and place seed")
+	expect_eq(m2.flavor["kit"], first.flavor["kit"], "the same look")
+	var s1: GameState = _gen(11, {"landscape": "desert_mesas", "culture": "old_west"})["state"]
+	expect(JSON.stringify(s1.map.to_dict()) != JSON.stringify((second["state"] as GameState).map.to_dict()), "new terrain down the road")
+
+
+func test_boarding_opts_pick_the_ship_map() -> void:
+	var want := {"docked": "boarding", "enemy_ship": "boarding_assault", "own_ship": "boarding_defend"}
+	for kind: String in want:
+		var g := _gen(5, {"landscape": "starship", "boarding": {"kind": "seize", "map": kind}})
+		var m: Mission = g["mission"]
+		expect(str(m.flavor["kit"]).begins_with(want[kind]), "%s: %s" % [kind, m.flavor["kit"]])
+		expect_eq(m.flavor["boarding"]["map"], kind)
+		expect(bool(g["fairness"]["ok"]), "%s map is fair: %s" % [kind, g["fairness"]])
+
+
+func test_ship_interiors_have_hull_rooms_and_a_way_in() -> void:
+	for defend: bool in [true, false]:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 6
+		var map := TerrainGen.generate(rng, 36, 44, GridLayout.Shape.SQUARE, {}, "boarding_defend" if defend else "boarding_assault", "")
+		var hull := 0
+		var way_in := 0
+		var breakable_walls := 0
+		for c in map.cells():
+			var col := map.column(c)
+			if col.has_tag("hull"):
+				hull += 1
+				expect(col.has_tag("armor_4"), "the outer hull is Armor 4")
+			if col.has_tag("torpedo") or col.has_tag("airlock"):
+				way_in += 1
+			if col.has_tag("bulkhead") and col.has_tag(BattleMap.TAG_DESTRUCTIBLE):
+				breakable_walls += 1
+		expect(hull > 60, "hull down both sides: %d" % hull)
+		expect(way_in >= (2 if defend else 2), "%s: torpedo breaches or an airlock (%d)" % ["defend" if defend else "assault", way_in])
+		expect(breakable_walls > 0, "some inner bulkheads can be broken through")

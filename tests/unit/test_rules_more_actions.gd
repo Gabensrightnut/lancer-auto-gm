@@ -97,6 +97,45 @@ func test_prepared_skirmish_fires_when_a_hostile_moves_adjacent() -> void:
 	expect(not a.counters.has("prepared"))
 
 
+func test_two_against_one_grapple() -> void:
+	_setup(Vector2i(1, 0), 2.0)  # a Size 2 enemy
+	var b := F.mech(s, "b", "players", Vector2i(0, 2))
+	F.load_dice(s, [15])
+	F.act(e, s, "grapple", "a", {"target": "t"})
+	expect(a.has_status("Immobilized"), "Size 1 alone is the smaller side")
+	_next_turn(b)
+	F.load_dice(s, [15])
+	var out := F.act(e, s, "grapple", "b", {"target": "t"})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(String(b.counters["grapple"]["group"]), String(t.counters["grapple"]["group"]), "joined the same grapple")
+	expect(not a.has_status("Immobilized") and not t.has_status("Immobilized"), "1 + 1 against 2: equal sides")
+	CloseCombat.end_grapple(s, b, "let go")
+	expect(t.counters.has("grapple") and a.counters.has("grapple"), "the first pair still grapples")
+	expect(a.has_status("Immobilized"), "back to 1 against 2")
+
+
+func test_prepared_on_an_attack_or_action() -> void:
+	_setup(Vector2i(4, 0))
+	var ally := F.mech(s, "ally", "players", Vector2i(0, 3))
+	var out := F.act(e, s, "prepare", "a", {"action": {"type": "skirmish", "params": {"weapon": "0:0", "target": "trigger"}},
+		"trigger": {"event": "attacks", "who": "hostile", "target": "ally"}, "text": "When a hostile shoots my friend, I shoot it"})
+	expect(F.ok(out), F.reason(out))
+	_next_turn(t)
+	F.load_dice(s, [15, 2, 15, 3])
+	out = F.act(e, s, "skirmish", "t", {"weapon": "0:0", "target": "ally"})
+	expect_eq(F.events_of(out, "prepared_triggered").size(), 1, "the attack on an ally set it off")
+	expect_eq(t.hp, 7)
+	_next_turn(a)
+	out = F.act(e, s, "prepare", "a", {"action": {"type": "lock_on", "params": {"target": "trigger"}},
+		"trigger": {"event": "acts", "who": "hostile", "actions": ["boost"]}, "text": "When it Boosts, I Lock On"})
+	expect(F.ok(out), F.reason(out))
+	_next_turn(t)
+	F.act(e, s, "move", "t", {"to": [5, 0]})
+	expect(a.counters.has("prepared"), "a move isn't a Boost")
+	F.act(e, s, "boost", "t", {"to": [6, 0]})
+	expect(t.has_status("Lock On"), "the Boost set it off")
+
+
 func test_eject_dismount_and_mount() -> void:
 	_setup(Vector2i(9, 9))
 	var out := F.act(e, s, "eject", "a", {"to": [6, 0]})

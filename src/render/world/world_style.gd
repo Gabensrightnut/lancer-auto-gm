@@ -44,6 +44,11 @@ static func cultures() -> Array:
 ## The merged style for a kit name. Unknown parts fall back to grassy hills / no culture.
 static func resolve(kit: String) -> Dictionary:
 	_load()
+	# "#seed": the place's own seed (a town, a region): same kit, its own look.
+	var place := -1
+	if "#" in kit:
+		place = int(kit.get_slice("#", 1))
+		kit = kit.get_slice("#", 0)
 	var weather := ""
 	if "+" in kit:
 		weather = kit.get_slice("+", 1)
@@ -54,13 +59,24 @@ static func resolve(kit: String) -> Dictionary:
 	var cults: Dictionary = _data["cultures"]
 	var land_id: String = parts[0] if lands.has(parts[0]) else "grassy_hills"
 	var style: Dictionary = (lands.get(land_id, {}) as Dictionary).duplicate(true)
+	# Follow the base chain (boarding -> starship -> station), nearest overrides last.
 	var base: String = str(style.get("base", ""))
-	if base != "" and lands.has(base):
-		style = merge((lands[base] as Dictionary).duplicate(true), style)
+	var seen := {land_id: true}
+	while base != "" and lands.has(base) and not seen.has(base):
+		seen[base] = true
+		var parent: Dictionary = (lands[base] as Dictionary).duplicate(true)
+		var next := str(parent.get("base", ""))
+		style = merge(parent, style)
+		base = next
 	style["landscape"] = land_id
 	style["culture"] = ""
 	if parts.size() > 1 and cults.has(parts[1]):
-		style = merge(style, (cults[parts[1]] as Dictionary).duplicate(true))
+		var cult := (cults[parts[1]] as Dictionary).duplicate(true)
+		var in_city: Dictionary = cult.get("in_city", {})
+		cult.erase("in_city")
+		style = merge(style, cult)
+		if bool(style.get("urban", false)) and not in_city.is_empty():
+			style = merge(style, in_city)  # the culture's own city: its sky, light and palette
 		style["culture"] = parts[1]
 		style["culture_name"] = (cults[parts[1]] as Dictionary).get("name", parts[1])
 		style["name"] = (lands[land_id] as Dictionary).get("name", land_id)
@@ -82,7 +98,59 @@ static func resolve(kit: String) -> Dictionary:
 		style = merge(style, w)
 		style["weather"] = weather
 		style["kit"] += "+" + weather
+	if place >= 0:
+		vary(style, place)
+		style["kit"] += "#%d" % place
 	return style
+
+
+## Gives a place its own look within its kit, from its seed: the sun's angle, clouds and haze,
+## which of the culture's wall colors and landmarks it uses, how dense its skyline is. The
+## same seed always gives the same look (a region keeps it from fight to fight).
+static func vary(style: Dictionary, seed_value: int) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(["place", seed_value])
+	style["place_seed"] = seed_value
+	var light: Dictionary = style.get("light", {})
+	if not light.is_empty():
+		light["sun_yaw"] = float(light.get("sun_yaw", -40.0)) + rng.randf_range(-55.0, 55.0)
+		light["sun_pitch"] = clampf(float(light.get("sun_pitch", -35.0)) * rng.randf_range(0.8, 1.2), -80.0, -10.0)
+		light["fog_density"] = float(light.get("fog_density", 0.005)) * rng.randf_range(0.75, 1.3)
+	var sky: Dictionary = style.get("sky", {})
+	if sky.has("clouds"):
+		sky["clouds"] = clampf(float(sky["clouds"]) + rng.randf_range(-0.2, 0.2), 0.0, 1.0)
+	if sky.has("haze"):
+		sky["haze"] = clampf(float(sky["haze"]) * rng.randf_range(0.8, 1.2), 0.0, 1.0)
+	var arch: Dictionary = style.get("architecture", {})
+	for key: String in ["walls", "awning_colors", "sign_colors"]:
+		var list: Array = arch.get(key, [])
+		if list.size() > 3:
+			list = list.duplicate()
+			_shuffle(list, rng)
+			arch[key] = list.slice(0, maxi(3, list.size() - 2))
+	var sk: Dictionary = arch.get("skyline", {})
+	if sk.has("density"):
+		sk["density"] = clampf(float(sk["density"]) * rng.randf_range(0.8, 1.2), 0.1, 1.0)
+	var hz: Dictionary = style.get("horizon", {})
+	var marks: Array = hz.get("landmarks", [])
+	if marks.size() > 1:
+		marks = marks.duplicate()
+		_shuffle(marks, rng)
+		hz["landmarks"] = marks.slice(0, rng.randi_range(1, marks.size()))
+	var flora: Dictionary = style.get("flora", {})
+	var leaves: Array = flora.get("leaf_colors", [])
+	if leaves.size() > 2:
+		leaves = leaves.duplicate()
+		_shuffle(leaves, rng)
+		flora["leaf_colors"] = leaves.slice(0, leaves.size() - 1)
+
+
+static func _shuffle(list: Array, rng: RandomNumberGenerator) -> void:
+	for i in range(list.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var t: Variant = list[i]
+		list[i] = list[j]
+		list[j] = t
 
 
 ## Deep merge: dictionaries merge key by key, everything else in `over` replaces `base`.
