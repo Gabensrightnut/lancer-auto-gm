@@ -29,9 +29,9 @@ class StartCombat:
 			return RuleResult.deny("Pick a side with units to go first.", TurnRules.REF_TURN_ORDER)
 		var players_here := false
 		for u: Unit in inside:
-			players_here = players_here or (u.side == "players" and TurnRules.takes_turns(u))
-		if players_here and first != "players":
-			return RuleResult.deny("Players always get to act first.", TurnRules.REF_TURN_ORDER)
+			players_here = players_here or (state.player_sides.has(u.side) and TurnRules.takes_turns(u))
+		if players_here and not state.player_sides.has(first):
+			return RuleResult.deny("Players always get to act first.", "Core p.60")
 		return RuleResult.allow()
 
 	func resolve(state: GameState, action: Dictionary) -> Array[Dictionary]:
