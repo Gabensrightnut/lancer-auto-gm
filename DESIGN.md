@@ -129,6 +129,19 @@ Every effect gets an animation, a combat-log line, and floating text (damage, MI
     - **Loading** weapons show "Reload" until reloaded;
     - **1/scene, 1/mission, Limited X** show the uses left, or "used this scene";
     - **status lockouts** (Jammed, Shut Down...) show the status icon and how long it lasts.
+- **Hover cards say what will happen to you, in plain words,** worked out by the rules
+  engine from your current state, not just the item's text:
+  - costs and results as a number followed by the official icon, e.g. **+2 [heat icon]**,
+    **1d6+2 [energy icon]**, **3 [burn icon]**, **Range 10 [range icon]**;
+  - warnings when it crosses a line: *"This will overheat you (8/8 → 10): you'll take
+    stress damage and roll an overheating check"*, *"This puts you in the Danger Zone"*,
+    *"Last charge"*, *"You're Engaged: +1 Difficulty"*, *"Moving away provokes from 2 enemies"*;
+  - expected outcome vs. the hovered target: hit chance, cover, likely damage after Armor.
+- **Official icons everywhere:** damage types (kinetic, energy, explosive, heat, burn,
+  variable), ranges and areas (range, threat, blast, burst, cone, line), action types
+  (quick, full, free, reaction, protocol, overcharge, tech), statuses and conditions,
+  manufacturers, size, structure, stress, repairs. They're Massif's own icons from COMP/CON
+  (GPL-3.0) in `assets/icons/lancer/`, so they look exactly like the book.
 - **Cost preview:** hovering a button shows what it will spend on the resource bars (e.g. the
   heat bar previews +2), and warns if it would push you into the Danger Zone or overheat.
 - Enemies show only what the view rules allow (section 6): unscanned enemies show "??".
