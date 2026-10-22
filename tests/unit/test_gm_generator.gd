@@ -450,3 +450,25 @@ func test_no_rock_against_buildings() -> void:
 						if map.has_cell(n) and (map.column(n).has_tag("building") or map.column(n).has_tag("house")):
 							bad += 1
 			expect_eq(bad, 0, "mission %s/%s seed %d: rock against a building" % [kit[0], kit[1], s])
+
+
+func test_roads_have_a_hierarchy_and_no_bare_city_ground() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 22
+	var city := TerrainGen.generate(rng, 44, 44, GridLayout.Shape.SQUARE, {}, "city", "cyberpunk")
+	var widths := {}
+	var deck := 0
+	var bare := 0
+	for c in city.cells():
+		var col := city.column(c)
+		for t in col.tags:
+			if t.begins_with("lane"):
+				widths[int(t.split("_")[1])] = true
+		if col.has_tag("highway") and col.gap_top >= 2 and col.ground >= 2:
+			deck += 1
+		if col.ground == 0 and col.gap_top == 0 and col.tags.is_empty():
+			bare += 1
+	expect(widths.has(4), "a four-lane boulevard: %s" % widths.keys())
+	expect(widths.has(2) or widths.has(3), "streets: %s" % widths.keys())
+	expect(deck > 20, "an elevated highway on pillars in the mega-city: %d" % deck)
+	expect_eq(bare, 0, "no bare ground in the city")

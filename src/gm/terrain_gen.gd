@@ -184,6 +184,7 @@ static func generate(rng: RandomNumberGenerator, w: int, h: int, shape: GridLayo
 	g._clear_blocked()
 	if area:
 		g._area_edges()
+	g._lane_tags()
 	g._materials(landscape, culture)
 	return g.map
 
@@ -660,7 +661,23 @@ func _city(culture: String) -> void:
 							if height <= (4 if ruined else 3) and lot_breakable:
 								_tag(col, [BattleMap.TAG_DESTRUCTIBLE])
 			bx += 1
+	# A boulevard four lanes wide through the middle of the city (row band); in the
+	# mega-cities an elevated highway runs over it on pillars (units pass under and walk on it).
+	var band := h / 2 - 2
+	for r in range(band, band + 4):
+		for c in range(w):
+			var cell := _cell(c, r)
+			if map.has_cell(cell) and not blocked.has(cell):
+				map.column(cell).ground = 0
+				map.column(cell).tags = PackedStringArray()
 	_tag_streets()
+	if mega and w >= 36:
+		_elevated(band + 1)
+	# Every open space is a sidewalk, a lot or a square: no bare ground.
+	for cell in cells:
+		var col := map.column(cell)
+		if col.ground == 0 and col.tags.is_empty() and col.gap_top == 0:
+			col.tags = PackedStringArray(["lot"])
 	var area := w * h
 	if not ruined:
 		# Even a living city has roadworks, wreckage and debris in the streets.
@@ -768,12 +785,16 @@ func _tag_streets() -> void:
 				for d: Vector2i in [Vector2i(3, 3), Vector2i(-3, 3), Vector2i(3, -3), Vector2i(-3, -3)]:
 					if not is_open.call(c + d.x, r + d.y):
 						closed += 1
-				axis = "crossing" if closed >= 2 else ""
+				axis = "crossing" if closed >= 2 else "plaza"
 			elif run_x[i] >= 6:
 				axis = "road_x"
 			elif run_z[i] >= 6:
 				axis = "road_z"
-			if axis != "":
+			if axis == "plaza":
+				var cell := _cell(c, r)
+				map.column(cell).tags = PackedStringArray(["plaza"])  # a paved square, no lanes
+				built[cell] = true
+			elif axis != "":
 				var cell := _cell(c, r)
 				map.column(cell).tags = PackedStringArray(["road", axis])
 				built[cell] = true
@@ -1394,8 +1415,11 @@ func _village(cc: int, cr: int, culture: String, landscape: String, street_from:
 			_put(c, r, base, [])
 	# Main street across the whole map, cross street through the middle.
 	var main: Array = []
+	var wide := culture in ["retro", "union", "industrial", "cyberpunk", "ruins", "burning", "port"]
 	for c in range(street_from, street_to):
 		main.append(Vector2i(c, cr))
+		if wide:
+			main.append(Vector2i(c, cr + 1))  # a two-lane highway through modern towns
 	_road(main, "road_x")
 	var cross: Array = []
 	for r in range(cr - rad - 4, cr + rad + 5):
@@ -1571,6 +1595,55 @@ func _clear_rock_near_built() -> void:
 				low = mini(low, map.ground_height(n))
 		col.ground = 0 if low == 99 else low
 		col.tags = PackedStringArray()
+
+
+## An elevated highway along two rows (row0, row0 + 1): a deck two levels up on pillars, the
+## street open beneath it (gap columns: units pass under and stand on top), ramps down to the
+## ground at both ends.
+func _elevated(row0: int) -> void:
+	for r in [row0, row0 + 1]:
+		for c in range(w):
+			var cell := _cell(c, r)
+			if not map.has_cell(cell) or blocked.has(cell):
+				continue
+			var col := map.column(cell)
+			var lift := 2
+			if c < 2 or c >= w - 2:
+				lift = 1  # the ramps
+			col.ground = lift
+			col.gap_bottom = 0
+			col.gap_top = lift
+			col.tags = PackedStringArray(["road", "road_x", "highway"])
+			built[cell] = true
+
+
+## Lane tags for the road markings: for each straight road cell, its place across the road and
+## the road's width ("lane<i>_<n>": i from the low side, n up to 6). One space: an alley or a
+## lane; two or three: a street with lane lines; four or more: a boulevard with a median.
+func _lane_tags() -> void:
+	var road_at := func(c: int, r: int, axis: String) -> bool:
+		if c < 0 or r < 0 or c >= w or r >= h:
+			return false
+		var cell := _cell(c, r)
+		return map.has_cell(cell) and map.column(cell).has_tag("road") and map.column(cell).has_tag(axis) and not map.column(cell).has_tag("crossing")
+	for r in range(h):
+		for c in range(w):
+			var cell := _cell(c, r)
+			if not map.has_cell(cell):
+				continue
+			var col := map.column(cell)
+			if not col.has_tag("road") or col.has_tag("crossing"):
+				continue
+			var axis := "road_z" if col.has_tag("road_z") else "road_x"
+			var step := Vector2i(0, 1) if axis == "road_x" else Vector2i(1, 0)
+			var lo := 0
+			while road_at.call(c - step.x * (lo + 1), r - step.y * (lo + 1), axis):
+				lo += 1
+			var hi := 0
+			while road_at.call(c + step.x * (hi + 1), r + step.y * (hi + 1), axis):
+				hi += 1
+			var n := mini(lo + hi + 1, 6)
+			col.tags.append("lane%d_%d" % [mini(lo, n - 1), n])
 
 
 func _rect_blocked(r: Rect2i) -> bool:
