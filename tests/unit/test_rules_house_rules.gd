@@ -141,3 +141,16 @@ func test_zero_g() -> void:
 	s.environments = []
 	Environments.sync(s)
 	expect(not a.has_status("Slowed"), "back in gravity")
+
+
+func test_zero_g_section_of_a_ship() -> void:
+	s = F.state()
+	e = RulesEngine.new()
+	for x in range(5, 12):
+		for y in range(0, 12):
+			s.map.set_column(Vector2i(x, y), 0, PackedStringArray(["vacuum"]))  # the breached deck
+	a = F.mech(s, "a", "players", Vector2i(0, 0))
+	t = F.mech(s, "t", "enemies", Vector2i(6, 0))
+	F.begin(e, s, a)
+	expect(not a.has_status("Slowed"), "inside the pressurized part: normal")
+	expect(t.has_status("Slowed"), "in the vacuum section: zero-g rules")
