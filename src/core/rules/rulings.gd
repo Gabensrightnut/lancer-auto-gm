@@ -77,6 +77,11 @@ const CATALOG := {
 		"question": "Does 'ignore difficult terrain' (Bulwark Mods, Kai Bioplating) also cancel Prone's 'counts as moving in difficult terrain'?",
 		"options": {"cancels": "Yes.", "still_double": "No: Prone still costs double."},
 		"suggested": "cancels", "rule_ref": "Core p.77 Prone"},
+	"extremesun_turns": {
+		"question": "Extreme sun: characters take 1d6 heat 'whenever they aren't in shade at the end of a turn'. Whose turn?",
+		"options": {"own_turn": "Each character at the end of its own turn (like the other environments that hurt 'at the end of their turns').",
+			"every_turn": "Every character out of shade, at the end of every character's turn."},
+		"suggested": "own_turn", "rule_ref": "Core: Environments, Extreme Sun"},
 }
 
 

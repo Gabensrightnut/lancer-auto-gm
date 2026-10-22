@@ -1,0 +1,43 @@
+{
+  "_note": "Engine effects for NPC features, by feature id (src/content/npc_builder.gd). Effects as in src/core/rules/effects.gd (traits) or ability ops (systems).",
+  "npcf_ph_grunt_f0": [
+    {
+      "kind": "accuracy",
+      "on": "attack",
+      "reaction_only": true,
+      "value": 1
+    }
+  ],
+  "npcf_ph_assault_f0": [
+    {
+      "kind": "accuracy",
+      "on": "melee_attack",
+      "value": 1
+    }
+  ],
+  "npcf_ph_artillery_f0": [
+    {
+      "kind": "resist",
+      "damage": [
+        "Explosive"
+      ]
+    }
+  ],
+  "npcf_ph_brawler_f0": [
+    {
+      "kind": "heavy_frame"
+    }
+  ],
+  "npcf_ph_controller_f0": [
+    {
+      "kind": "accuracy",
+      "on": "tech_attack",
+      "value": 1
+    }
+  ],
+  "npcf_ph_support_f0": [
+    {
+      "kind": "guardian"
+    }
+  ]
+}

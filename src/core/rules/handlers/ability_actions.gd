@@ -67,7 +67,7 @@ class Activate:
 			"detail": a.get("detail", ""), "rule_ref": Abilities.REF}]
 		var self_heat := Abilities.heat_self(state, u, a)
 		if self_heat > 0:
-			events.append_array(Combat.apply_heat(state, u, self_heat, "Heat (Self): " + String(a.get("source_name", ""))))
+			events.append_array(Combat.apply_heat(state, u, Environments.gear_heat(state, self_heat), "Heat (Self): " + String(a.get("source_name", ""))))
 		match a.get("kind", "action"):
 			"deploy":
 				for c: Vector2i in AbilityActions.spots(params):
@@ -89,7 +89,12 @@ class Activate:
 				var tech: bool = (a.get("ops", []) as Array).any(func(o: Dictionary) -> bool: return o.get("tech_attack", false))
 				if a.get("activation", "") == "Invade" or tech:
 					# Invade options and systems that make a tech attack (Markerlight, Tracking Bug).
-					var r := Attacks.tech_attack(state, u, target, String(a["name"]), params)
+					var topts := params.duplicate()
+					for o: Dictionary in a.get("ops", []):
+						if o.get("op", "") == "npc_tech":
+							topts["tech_bonus"] = int(o.get("attack_bonus", 0))  # an NPC tech feature's own attack bonus
+							topts["tech_accuracy"] = int(o.get("accuracy", 0))
+					var r := Attacks.tech_attack(state, u, target, String(a["name"]), topts)
 					events.append_array(r["events"])
 					hit = r["hit"]
 					if hit and a.get("activation", "") == "Invade":
@@ -265,6 +270,8 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 					events.append_array(Combat.add_status(state, target, "Blinded", u.id, target.id))
 			"fire_integrated":
 				events.append_array(Attacks.attack(state, u, Weapons.find(u, "cbi:0"), target, {"fired_by_rule": true}))
+			"jackhammer":
+				events.append_array(TalentRules.jackhammer(state, u, target))
 			"fire_weapon":
 				var fw := Weapons.find(u, String(a["source_key"]).trim_prefix("w:"))
 				events.append_array(Attacks.attack(state, u, fw, target, {"fired_by_rule": true}))
@@ -490,6 +497,10 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 			var ww := String(a["source_key"]).trim_prefix("mod:")
 			if not (u.turn.get("hits", {}).get(ww, []) as Array).has(String(params.get("target", ""))):
 				return RuleResult.deny("Only right after hitting that character with the wreathed weapon this turn.", "mods: Shock Wreath")
+		if op.get("op", "") == "jackhammer":
+			var jr := TalentRules.check_jackhammer(state, u, state.unit(String(params.get("target", ""))))
+			if not jr.ok:
+				return jr
 		if op.get("op", "") == "fire_integrated":
 			var fired: Array = u.turn.get("fired", [])
 			if fired.filter(func(k: String) -> bool: return k != "cbi:0").is_empty():
@@ -569,10 +580,11 @@ const BASIC := [
 	["end_grapple", "Let Go", "other"], ["break_free", "Break Free", "other"], ["grapple_contest", "Grapple Contest", "other"],
 	["climb_on", "Climb On", "move"], ["board", "Board", "other"], ["disembark", "Climb Out", "other"], ["cut_cable", "Cut Cable", "attack"],
 	["pull_stake", "Pull Out Stake", "other"], ["use_object", "Use Object", "other"], ["ai_control", "Hand Over to AI", "other"],
+	["break_ice", "Break Free of the Ice", "other"], ["dig_out", "Dig Out of the Mud", "other"],
 ]
 ## Actions whose own check needs no target, so the bar can show exactly whether they work.
 const NO_TARGET := ["stand_up", "bonus_move", "disengage", "hide", "overcharge", "shut_down", "boot_up",
-	"core_power", "end_grapple", "break_free", "grapple_contest", "self_destruct", "pull_stake"]
+	"core_power", "end_grapple", "break_free", "grapple_contest", "self_destruct", "pull_stake", "break_ice"]
 
 
 ## Everything `u` might do now, for the action bar. See RulesQueries.available_actions.

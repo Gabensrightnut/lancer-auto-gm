@@ -701,6 +701,12 @@ static func weapon_effects_data() -> Dictionary:
 	return _weapon_data
 
 
+## An NPC from NPC class data (a content pack's, or our placeholder pack): see NPCBuilder.
+## opts: {"name", "templates": [ids], "optional": [feature ids], "side", "controller"}.
+static func build_npc_class(db: ContentDB, id: String, class_id: String, tier: int = 1, opts: Dictionary = {}) -> Unit:
+	return NPCBuilder.build(db, id, class_id, tier, opts)
+
+
 ## Hand-written NPC templates (data/game/npc_templates.json). Not official NPC data.
 static func npc_templates(path: String = NPC_TEMPLATES) -> Dictionary:
 	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))

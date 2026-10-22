@@ -66,7 +66,7 @@ const REF := "data/game: effects"
 static func all(u: Unit) -> Array:
 	if u == null:
 		return []
-	var list: Array = (u.loadout.get("effects", []) as Array) + (u.counters.get("active_effects", []) as Array)
+	var list: Array = (u.loadout.get("effects", []) as Array) + (u.counters.get("active_effects", []) as Array) + (u.counters.get("env_effects", []) as Array)
 	if u.counters.get("ai_control", false):
 		# An AI in control doesn't benefit from the pilot's talents or other features (Core p.107).
 		list = list.filter(func(e: Dictionary) -> bool: return not AISystems.pilot_feature(e))
@@ -329,7 +329,7 @@ static func turn_ending(state: GameState, u: Unit) -> Array[Dictionary]:
 	if u.turn.get("flew_optional", false):
 		for e: Dictionary in of(u, "optional_flight"):
 			var heat: Variant = e.get("heat", 0)
-			var amount := (GridLayout.spaces_per_side(u.size) + 1) if str(heat) == "size+1" else int(heat)
+			var amount := Environments.gear_heat(state, (GridLayout.spaces_per_side(u.size) + 1) if str(heat) == "size+1" else int(heat))
 			if amount > 0:
 				events.append_array(Combat.apply_heat(state, u, amount, String(e.get("label", "flight"))))
 			if e.get("land_by_turn_end", false) and u.flying:

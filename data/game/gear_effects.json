@@ -364,6 +364,11 @@
       {
         "kind": "ram_momentum"
       }
+    ],
+    "2": [
+      {
+        "kind": "kinetic_mass_transfer"
+      }
     ]
   },
   "t_nuclear_cavalier": {

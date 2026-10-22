@@ -460,7 +460,7 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		var dtype := String((w.get("damage", [{}]) as Array)[0].get("type", "Kinetic")) if not (w.get("damage", []) as Array).is_empty() else "Kinetic"
 		var parts := [{"type": dtype, "amount": Weapons.tag_value(w, "tg_reliable")}]
 		events.append({"type": "reliable_damage", "attacker": attacker.id, "target": target.id, "amount": Weapons.tag_value(w, "tg_reliable"), "rule_ref": "tags: Reliable"})
-		events.append_array(_apply(state, attacker, target, parts, Weapons.has_tag(w, "tg_ap"), opts.has("area_origin"), false, pre["resist_all"]))
+		events.append_array(_apply(state, attacker, target, parts, Weapons.has_tag(w, "tg_ap") or Environments.weapons_ap(state), opts.has("area_origin"), false, pre["resist_all"]))
 	if p["lock_on"]:
 		events.append_array(Combat.remove_status(target, "Lock On", "consumed by " + attacker.id))
 	if attacker.has_status("Hidden"):
@@ -485,7 +485,7 @@ static func _spend_weapon(state: GameState, attacker: Unit, w: Dictionary) -> Ar
 		ws["charged"] = false
 	var self_heat := Weapons.tag_value(w, "tg_heat_self")
 	if self_heat > 0:
-		events.append_array(Combat.apply_heat(state, attacker, self_heat, "Heat (Self): " + String(w.get("name", ""))))
+		events.append_array(Combat.apply_heat(state, attacker, Environments.gear_heat(state, self_heat), "Heat (Self): " + String(w.get("name", ""))))
 	return events
 
 
@@ -496,7 +496,7 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 	var total := 0
 	var shared: Dictionary = opts.get("shared_damage", {})
 	var damage: Array = w.get("damage", [])
-	var ap := Weapons.has_tag(w, "tg_ap")
+	var ap := Weapons.has_tag(w, "tg_ap") or Environments.weapons_ap(state)  # corrosive atmosphere
 	var obj := FrameSystems.object_damage(attacker, w, target)
 	if not obj.is_empty():
 		damage = obj  # Sherman COREBURN against objects and deployables
@@ -548,6 +548,10 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 		events.append_array(drill["events"])
 		parts.append({"type": "Kinetic", "amount": int(drill["total"])})
 		overkill_heat += int(drill["heat"])
+	if String(w.get("npc_on_hit", "")) != "":
+		# An NPC weapon's on-hit rule the game doesn't encode: the table applies it.
+		events.append({"type": "manual_effect", "unit": attacker.id, "source": String(w.get("name", "")), "text": String(w["npc_on_hit"]),
+			"note": "On hit (not automated): the table applies this.", "guidance": Automation.MANUAL_GUIDANCE})
 	var pv: Dictionary = opts.get("preview", {})
 	if not opts.get("no_bonus_damage", false) and not damage.is_empty():
 		# PROVISIONAL (docs/RULES_TODO.md): bonus damage only on attacks that deal damage.
@@ -567,7 +571,7 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 		parts.append({"type": "Heat", "amount": heat})
 	if overkill_heat > 0 and not shared.get("overkill_paid", false):
 		shared["overkill_paid"] = true
-		events.append_array(Combat.apply_heat(state, attacker, overkill_heat, "Overkill"))
+		events.append_array(Combat.apply_heat(state, attacker, Environments.gear_heat(state, overkill_heat), "Overkill"))
 	if pv.get("tomorrow", false):
 		attacker.counters.erase("tomorrow")
 	events.append_array(_apply(state, attacker, target, parts, ap, opts.has("area_origin"), pv.get("seeking_payload", false) or Weapons.has_tag(w, "tg_irreducible") or pv.get("tomorrow", false), opts.get("resist_all", false), opts.get("half_damage", false)))
@@ -674,7 +678,8 @@ static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array,
 	events.append_array(sim["events"])
 	resist_all = resist_all or sim["resist_all"]
 	var brace := false
-	if not unreducible and Reactions.can_react(target, "brace", state).ok and not parts.is_empty():
+	# Objects (deployables, terrain) don't Brace.
+	if not unreducible and target.kind != Unit.KIND_DEPLOYABLE and Reactions.can_react(target, "brace", state).ok and not parts.is_empty():
 		var d := Reactions.offer(state, target, "brace", {"attacker": attacker.id, "damage": parts, "ap": ap},
 			{"take": _wants_brace(target, parts, ap)})
 		brace = d.get("take", false)
@@ -858,9 +863,10 @@ static func pull_to(state: GameState, target: Unit, goal: Sight.Body, reach: int
 ## A tech attack: d20 + Tech Attack vs E-Defense. Range is SENSORS and needs line of sight
 ## (Core p.64): tech attacks ignore cover and can't crit.
 static func tech_preview(state: GameState, attacker: Unit, target: Unit, opts: Dictionary = {}) -> Dictionary:
-	var out := {"ok": false, "reason": "", "rule_ref": "actions: Invade", "kind": KIND_TECH, "accuracy": 0,
-		"difficulty": 0, "sources": [], "bonus": FrameSystems.shared_stat(state, attacker, "tech_attack"),
-		"bonus_sources": [{"label": "Tech Attack", "value": FrameSystems.shared_stat(state, attacker, "tech_attack")}],
+	var tech_bonus: int = int(opts["tech_bonus"]) if opts.has("tech_bonus") else FrameSystems.shared_stat(state, attacker, "tech_attack")
+	var out := {"ok": false, "reason": "", "rule_ref": "actions: Invade", "kind": KIND_TECH, "accuracy": int(opts.get("tech_accuracy", 0)),
+		"difficulty": 0, "sources": [], "bonus": tech_bonus,
+		"bonus_sources": [{"label": "Tech Attack", "value": tech_bonus}],
 		"defense_name": "E-Defense", "target_number": FrameSystems.shared_stat(state, target, "edef") if target else 0, "lock_on": false}
 	var r := tech_target_check(state, attacker, target)
 	if not r.ok:
@@ -873,7 +879,7 @@ static func tech_preview(state: GameState, attacker: Unit, target: Unit, opts: D
 	var sources: Array = []
 	if target.has_status("Lock On") and target.side != attacker.side and opts.get("use_lock_on", true):
 		sources.append(_src("Lock On", "accuracy", "statuses: Lock On"))
-		out["accuracy"] = 1
+		out["accuracy"] = int(out["accuracy"]) + 1
 		out["lock_on"] = true
 	if target.has_status("Prone"):
 		sources.append(_src("Target is Prone", "accuracy", "statuses: Prone"))

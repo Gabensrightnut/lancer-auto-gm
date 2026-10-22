@@ -389,6 +389,7 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool) -> Dictionar
 	# Clamps: climb at normal speed. Whether ignoring difficult terrain also covers Prone is
 	# the table's "prone_ignore_difficult" ruling.
 	var ignore_difficult := Effects.has(u, "ignore_difficult")
+	var ocean := Environments.ocean_slows(state, u)  # ocean world: underwater mechs that aren't flying
 	var climb_cost := 1 if Effects.has(u, "climb_normal") else 2
 	# Table rulings (Rulings): the readings the book allows. Previews use the suggested one
 	# until the table decides; the action itself asks.
@@ -440,7 +441,7 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool) -> Dictionar
 				var col := state.map.column(c)
 				difficult = difficult or col.has_tag(BattleMap.TAG_DIFFICULT) or wreck_cells.has(c) or Zones.difficult_at(state, c)
 				dangerous = dangerous or col.has_tag(BattleMap.TAG_DANGEROUS)
-			difficult = difficult and not ignore_difficult
+			difficult = (difficult or (ocean and not fly)) and not ignore_difficult
 			var flags: Array = (node.get("rulings", []) as Array).duplicate()
 			var prone_double := prone and not (ignore_difficult and prone_rule == "cancels")
 			if prone and ignore_difficult and not flags.has("prone_ignore_difficult"):
