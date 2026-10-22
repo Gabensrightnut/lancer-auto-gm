@@ -315,7 +315,7 @@
     "briefing_close": [
       "Get your reserves in order. You deploy soon.",
       "Gear up. We go when you're ready.",
-      "That's the job. Questions, now, or never.",
+      "That's everything. Good hunting.",
       "Boots on the ground in a few hours.",
       "Mount up when you're ready.",
       "Briefing's over. Go check your mechs.",
@@ -667,20 +667,22 @@
       "Whatever was coming, {callsign} has pushed it well past the next mission."
     ],
     "dt_gather_information_low": [
-      "{callsign} digs too deep and has to choose between the answer and a clean getaway.",
-      "{callsign}'s questions get noticed."
+      "{callsign} digs too deep looking into {topic}, and has to choose between the answer and a clean getaway.",
+      "{callsign}'s questions about {topic} get noticed by the wrong people."
     ],
     "dt_gather_information_mid": [
-      "{callsign} finds it: {subject}. Not without leaving a mess behind.",
-      "{callsign} gets the answer, and pays for it."
+      "{callsign} finds out about {topic}, but leaves a mess behind.",
+      "{callsign} gets answers about {topic}. Someone will want something for them."
     ],
     "dt_gather_information_high": [
-      "{callsign} comes back with everything: {subject}, clean.",
-      "Nobody even noticed {callsign} looking."
+      "{callsign} comes back knowing everything worth knowing about {topic}.",
+      "Nobody even noticed {callsign} asking about {topic}, and the answers are good."
     ],
     "dt_get_a_damn_drink_low": [
-      "{callsign} wakes up in a gutter with a headache and only one thing they're sure they still have.",
-      "Nobody's sure what happened to {callsign} last night. Least of all {callsign}."
+      "{callsign} wakes up somewhere unfamiliar, with a headache and a very patchy memory.",
+      "Nobody's sure what happened to {callsign} last night. Least of all {callsign}.",
+      "{callsign} says too much to the wrong person over drinks.",
+      "{callsign}'s night out ends with a broken chair and an apology to make."
     ],
     "dt_get_a_damn_drink_mid": [
       "{callsign} has a night to remember: something gained, something lost.",
@@ -753,14 +755,14 @@
       "The last job against {b} went badly. This one has to count."
     ],
     "debrief_detail": [
-      "{rounds} rounds. {kills} of theirs down. {lost_line}",
-      "It took {rounds} rounds. You put down {kills}. {lost_line}",
-      "{kills} enemy units destroyed in {rounds} rounds. {lost_line}"
+      "{rounds_text}. {kills_line} {lost_line}",
+      "It took {rounds_text}. {kills_line} {lost_line}",
+      "The fight lasted {rounds_text}. {kills_line} {lost_line}"
     ],
     "briefing_callback": [
-      "After {last_title}, {last_outcome_line}. People here remember.",
+      "Word about \"{last_title}\" got around: {last_outcome_line}. People here remember.",
       "Last time, at {last_place}, {last_outcome_line}. This one's different.",
-      "You all know how {last_title} went: {last_outcome_line}. Now, the next job."
+      "You all know how \"{last_title}\" turned out: {last_outcome_line}. Now, the next job."
     ],
     "briefing_recap": [
       "{downtime_recap}"

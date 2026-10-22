@@ -82,6 +82,13 @@ book in a way that changes the setting; parked.
 | Session zero: who are we, who gives us orders, our history | Consistent | The book's first-session questions (Core p.40-41); the book's d20 tables stay in the book, our lists are our own |
 | Session zero tone, focus and content toggles | Consistent | Only steer our own generators (twists, arcs, banter); no rule changes. "Story first" uses the book's long downtime (p.50) |
 | History answers set starting bonds | Consistent | Freeform bonds between pilots (p.50); our own amounts |
+| Enemy commanders: every enemy force has a named leader with a personality (the toughest enemy unit, renamed only; no stat change) | Consistent | NPCs have objectives of their own and care about self-preservation (Core p.60); NPC names and personalities are the GM's |
+| A commander may yield, withdraw or offer a deal when losing, or let a losing squad walk away; the squad may call for terms once the outcome is clear | Canon | Core p.60: surrender and retreat are valid end-conditions; the GM may end combat early when there's no question about the outcome |
+| Squad withdraws under a truce: the mission is lost, the fight ends | Canon | Core p.60 (retreat ends a fight); failed missions still level up (p.18) |
+| A wrecked commander's pilot got out (2 in 3) or didn't, rolled on the story dice | Consistent | What happens to an NPC pilot is the GM's call; destroyed mechs eject or die narratively (p.60, p.83) |
+| Commanders who got away come back for revenge on later jobs; captured ones don't | Consistent | Recurring NPCs and changing goals (p.42-43) |
+| Parley checks: Threaten / Pull Rank / Charm to make them stand down, Charm / Lead or Inspire to reason with a zealot (difficult), a both-sides truce is heroic | Canon (procedure) | Skill checks with triggers, difficult and heroic levels (p.45-46) |
+| Talking terms gives a Knowledge reserve when they trade what they know | Canon | Knowledge is a book reserve (lancer-data reserves.json) |
 
 ## When canon allows more than one answer
 

@@ -15,7 +15,8 @@ extends RefCounted
 ##   "settings": GmSettings, "db": ContentDB, "npc_templates": Dictionary,
 ##   "weather": a weather.json id ("clear" for none), "environments": [ids] (overrides the pick),
 ##   "squad": Campaign.squad() entries [{seat, pilot, mech}] to field the campaign's pilots}
-## Returns {"state": GameState (setup phase, seats p1..pN + gm), "mission": Mission}.
+## Returns {"state": GameState (setup phase, seats p1..pN + gm), "mission": Mission,
+##   "fairness": MapFairness.check() after repairs, "layout": SitrepLayout output}.
 
 static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
@@ -34,15 +35,18 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	_pick_sitrep(m, rng, cfg, str(opts.get("sitrep", "")))
 
 	var state := GameState.new(mission_seed, shape)
-	var blocked := {}  # cells kept clear of rocks and woods (deployment, zones)
-	_layout_zones(m, rng, w, h, shape, blocked)
 	# The world uses its own RNG so terrain changes never shift the rest of the mission.
 	var world_rng := RandomNumberGenerator.new()
 	world_rng.seed = hash([mission_seed, "world"])
-	var world := TerrainGen.pick(world_rng, str(opts.get("landscape", "")), str(opts.get("culture", "")))
-	state.map = TerrainGen.generate(world_rng, w, h, shape, blocked, world[0], world[1])
-	if m.sitrep_id in ["sitrep_holdout", "sitrep_gauntlet"]:
-		_fortify(state.map, rng, m.zones["zone"], shape)
+	var bf := battlefield(rng, world_rng, m.sitrep_id, w, h, shape, str(opts.get("landscape", "")), str(opts.get("culture", "")))
+	state.map = bf["map"]
+	var layout: Dictionary = bf["layout"]
+	var fairness: Dictionary = bf["fairness"]
+	var world: Array = bf["world"]
+	m.deployment = layout["deployment"]
+	m.zones = layout["zones"]
+	if layout["first_side"] != "":
+		m.first_side = layout["first_side"]
 
 	# Names use their own RNG so changing name lists never changes the battlefield.
 	var names_rng := RandomNumberGenerator.new()
@@ -61,7 +65,7 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 		_add_squad(state, m, rng, players, opts.get("db"), names)
 	_add_enemies(state, m, rng, cfg, players, settings, opts.get("npc_templates", UnitFactory.npc_templates()))
 	m.briefing = _briefing(m, w, h, players, state)
-	return {"state": state, "mission": m}
+	return {"state": state, "mission": m, "fairness": fairness, "layout": layout}
 
 
 static func _pick_sitrep(m: Mission, rng: RandomNumberGenerator, cfg: Dictionary, wanted: String) -> void:
@@ -111,35 +115,22 @@ static func _rect(c0: int, r0: int, cw: int, rh: int, w: int, h: int, shape: Gri
 	return out
 
 
-static func _layout_zones(m: Mission, rng: RandomNumberGenerator, w: int, h: int, shape: GridLayout.Shape, blocked: Dictionary) -> void:
-	var depth := 4
-	m.deployment = {
-		Mission.PLAYERS: _rect(2, h - depth, w - 4, depth, w, h, shape),
-		Mission.ENEMIES: _rect(2, 0, w - 4, depth, w, h, shape),
-	}
-	match m.sitrep_id:
-		"sitrep_control":
-			# Four 4x4 zones, one per quadrant, mirrored so neither side is favored.
-			var dx := rng.randi_range(2, maxi(2, w / 4 - 2))
-			var dy := rng.randi_range(depth + 1, maxi(depth + 1, h / 2 - 5))
-			var spots := [[dx, dy], [w - dx - 4, dy], [dx, h - dy - 4], [w - dx - 4, h - dy - 4]]
-			for i in range(4):
-				m.zones["zone_%d" % (i + 1)] = _rect(spots[i][0], spots[i][1], 4, 4, w, h, shape)
-		"sitrep_holdout":
-			var zone := _rect(w / 2 - 5, h / 2 - 2, 10, 5, w, h, shape)
-			m.zones["zone"] = zone
-			m.deployment[Mission.PLAYERS] = zone  # PCs deploy in the Control Zone.
-		"sitrep_gauntlet":
-			var zone := _rect(w / 2 - 5, 0, 10, 5, w, h, shape)
-			m.zones["zone"] = zone
-			m.deployment[Mission.ENEMIES] = zone  # The Control Zone is the EDZ.
-			m.first_side = Mission.PLAYERS
-	for list: Array in m.deployment.values():
+## The battlefield for a sitrep: its zones (SitrepLayout), the terrain (TerrainGen), the
+## sitrep's fortifications, then fairness repairs (MapFairness). `rng` lays out the zones;
+## `world_rng` builds the terrain. Returns {map, layout, fairness, world: [landscape, culture]}.
+static func battlefield(rng: RandomNumberGenerator, world_rng: RandomNumberGenerator, sitrep_id: String, w: int, h: int,
+		shape: GridLayout.Shape, landscape: String = "", culture: String = "") -> Dictionary:
+	var layout := SitrepLayout.layout(sitrep_id, w, h, shape, rng)
+	var blocked := {}  # cells kept clear of rocks and woods (deployment, zones, routes)
+	for list: Array in (layout["deployment"] as Dictionary).values() + (layout["zones"] as Dictionary).values() + [layout["clear"]]:
 		for c: Array in list:
 			blocked[Vector2i(c[0], c[1])] = true
-	for list: Array in m.zones.values():
-		for c: Array in list:
-			blocked[Vector2i(c[0], c[1])] = true
+	var world := TerrainGen.pick(world_rng, landscape, culture)
+	var map := TerrainGen.generate(world_rng, w, h, shape, blocked, world[0], world[1])
+	if sitrep_id in ["sitrep_holdout", "sitrep_gauntlet"]:
+		_fortify(map, rng, layout["zones"]["zone"], shape)
+	var fairness := MapFairness.repair(map, layout, w, h, shape, blocked, world_rng, TerrainGen.cover_tags(world[0]))
+	return {"map": map, "layout": layout, "fairness": fairness, "world": world}
 
 
 # --- Terrain (TerrainGen) -------------------------------------------------------------

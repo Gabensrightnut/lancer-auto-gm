@@ -13,6 +13,8 @@ section 9). Everything it does goes through `NetHost.submit()` -> `RulesEngine.s
 | `ai_knowledge.gd` | The planning copy of the battle for one side: Hidden enemies left out, unscanned stats unknown. |
 | `ai_director.gd` | Runs AI seats on the host: starts combat, picks who acts, plays AI turns, reinforcements, ends the mission. |
 | `gm_settings.gd` | Dials (aggression, caution, focus fire, reinforcements, difficulty, randomness) and presets. |
+| `sitrep_layout.gd` | `SitrepLayout.layout(sitrep, w, h, shape, rng)`: deployment zones, sitrep zones (control/recon quadrants mirrored, holdout center with a wrap-around EDZ, gauntlet, escort extraction and route, extraction objective) and cells kept clear. |
+| `map_fairness.gd` | `MapFairness.check/repair`: balanced cover between halves, part of each deployment zone out of the other's sight, every objective reachable on foot by Size 1-3. PROVISIONAL thresholds (GM choice). |
 | `name_gen.gd` | Seeded callsigns, pilot/mech names and mission flavor from the COMP/CON generator lists. |
 | `gm_actions.gd` | Host-only engine actions `gm_spawn`, `gm_end_mission` and `gm_narrate` (events `units_arrived`, `mission_ended`, `twist_revealed`, `gm_narration`). |
 | `gm_twist.gd` | The story hook's hidden twist (`mission.flavor.twist`, Core p.43): the AI GM picks its moment (round 3 or halfway through a timed mission, or sooner at the first mech/NPC destroyed or zone scored) and reveals it through `gm_narrate`, seen only by the squad's side (`seen_by`, ViewFilter). Also narrates `arrived_late` / `arrived_spent` at the start of combat. |

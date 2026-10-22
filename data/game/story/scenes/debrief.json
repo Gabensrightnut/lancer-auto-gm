@@ -99,10 +99,25 @@
        "hook": "twist"
       }
      },
-     "next": "talk"
+     "next": "rival"
     }
    ],
    "line": "@debrief_twist",
+   "next": "rival"
+  },
+  "rival": {
+   "speaker": "npc",
+   "branch": [
+    {
+     "if": {
+      "not": {
+       "var": "rival_line"
+      }
+     },
+     "next": "talk"
+    }
+   ],
+   "line": "{rival_line}",
    "next": "talk"
   },
   "talk": {
