@@ -90,6 +90,8 @@ cover, line of sight, attack/area/tech previews with hit chance).
 | `invisible_roll` | `attacker`, `target`, `roll` (d2), `missed` |
 | `damage_rolled` | `attacker`, `target`, `damage_type`, `crit`, `roll` (`expr`, `dice`, `kept`, `bonus`, `total`, `overkill_heat`) |
 | `reliable_damage` | `attacker`, `target`, `amount` |
+| `bonus_damage` | `attacker`, `target`, `source` (trait/talent/system), `damage_type`, `roll`, `amount`, `halved` (Core p.67) |
+| `attack_rerolled` | `attacker`, `target`, `first` (the discarded check), `source` (Death's Head Neurolink); the `attack_rolled` that follows has the kept roll |
 | `damage_dealt` | `target`, `source`, `amount` (taken), `damage_type`, `roll` (before reductions), `exposed`, `armor_reduced`, `resisted`, `hp` and `overshield` (after), `immune` |
 | `hp_changed` | `unit`, `hp`, `overshield`, `source` |
 | `burn_marked` / `burn_cleared` | `unit`, `amount`, `total` |
@@ -112,7 +114,7 @@ cover, line of sight, attack/area/tech previews with hit chance).
 | `scanned` | `unit`, `target`, `side` |
 | `tech_attack` | `attacker`, `target`, `check`, `result` (`hit`/`miss`), `effect`, `invisible_miss`, `lock_on_consumed` |
 | `tech_action` | `unit`, `target`, `action` (`lock_on`, `invade` on an ally) |
-| `reaction_offered` | `id`, `unit` (who decides), `reaction` (`brace`/`overwatch`/`prepared`), `context`, `trigger_action`. The engine is paused: answer with `{"type": "react", "actor": unit, "params": {"take": bool, ...}}` (Overwatch: `weapon`) |
+| `reaction_offered` | `id`, `unit` (who decides), `reaction` (`brace`/`overwatch`/`prepared`, or a trait choice such as `avenger_silos`), `context` (`targets` to choose from; `suggested` = the default answer), `trigger_action`. The engine is paused: answer with `{"type": "react", "actor": unit, "params": {"take": bool, ...}}` (Overwatch: `weapon`; target choices: `target`) |
 | `movement_cancelled` | `unit`, `reason` (a reaction made the move impossible) |
 | `area_attack` | `attacker`, `weapon`, `weapon_name`, `pattern`, `size`, `cells` [[x, y]], `origin` [x, y, level], `targets` |
 | `ram` / `grapple` results | `attack_rolled` + `status_added` (Prone/Immobilized); `grappled` {`unit`, `target`}; `grapple_ended` {`unit`, `other`, `reason`}; `contested_check` {`unit`, `against`, `check`, `contest`, `success`} |

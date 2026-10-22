@@ -136,13 +136,16 @@ static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dict
 		return events
 	var source: String = opts.get("source", "")
 	var shredded := target.has_status("Shredded")
-	var armor_left := 0 if shredded or opts.get("ap", false) else target.armor
+	# "Can't be reduced in any way" (Monarch Seeking Payload, Pegasus Omnigun): no Armor,
+	# Resistance or other reduction; "bypasses Immunity" (Omnigun) skips Immunity too.
+	var unreducible: bool = opts.get("unreducible", false)
+	var armor_left := 0 if shredded or unreducible or opts.get("ap", false) else target.armor
 	for part: Dictionary in parts:
 		var dtype: String = part.get("type", "Kinetic")
 		var amount: int = part.get("amount", 0)
 		if dtype == "Variable":
 			dtype = "Kinetic"  # PROVISIONAL: weapons with a chosen damage type default to Kinetic.
-		if Effects.immune_to_damage(target, dtype):
+		if Effects.immune_to_damage(target, dtype) and not opts.get("bypass_immunity", false):
 			events.append({"type": "damage_dealt", "target": target.id, "source": source, "amount": 0, "damage_type": dtype,
 				"roll": amount, "immune": true, "hp": target.hp, "rule_ref": "glossary: Immunity"})
 			continue
@@ -163,13 +166,13 @@ static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dict
 			amount -= armor_used
 		# 3) Resistance halves what's left, rounding the damage taken up (Core p.12).
 		var resisted := 0
-		if not shredded and amount > 0 and (resist_here or _resists(target, dtype)):
+		if not shredded and not unreducible and amount > 0 and (resist_here or _resists(target, dtype)):
 			resisted = amount / 2
 			amount -= resisted
 		var ev := {"type": "damage_dealt", "target": target.id, "source": source, "amount": amount,
 			"damage_type": dtype, "roll": rolled, "exposed": exposed, "armor_reduced": armor_used,
 			"resisted": resisted, "rule_ref": REF_HARM}
-		if opts.get("damage_to_one", false) and amount > 0:
+		if opts.get("damage_to_one", false) and amount > 0 and not unreducible:
 			# Napoleon Flash Aegis: Bracing reduces the incoming damage to 1 (instead of Resistance).
 			ev["reduced_to_one"] = true
 			ev["resisted"] = int(ev["resisted"]) + amount - (0 if opts.get("one_used", false) else 1)

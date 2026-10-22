@@ -60,6 +60,8 @@ static func suggested_answer(state: GameState) -> Dictionary:
 	if p.is_empty():
 		return {}
 	var ctx: Dictionary = p.get("context", {})
+	if ctx.has("suggested"):
+		return ctx["suggested"]
 	match String(p.get("reaction", "")):
 		"overwatch":
 			var weapons: Array = ctx.get("weapons", [])
@@ -94,6 +96,8 @@ static func can_react(u: Unit, reaction: String, state: GameState = null) -> Rul
 		return RuleResult.deny("Grappling characters can't take reactions.", "actions: Grapple")
 	if u.counters.has("prepared"):
 		return RuleResult.deny("Holding a prepared action: no other reactions until it triggers.", "actions: Prepare")
+	if u.counters.has("focus"):
+		return RuleResult.deny("While focusing on a Mark for Death target you can't take reactions.", "frames: Death's Head core system")
 	if reaction == "brace" and u.kind == Unit.KIND_NPC:
 		if state == null or Rulings.ask(state, "npc_brace") != "yes":
 			return RuleResult.deny("NPCs don't Brace (table ruling).", REF_BRACE)
@@ -136,7 +140,7 @@ static func overwatch_weapons(state: GameState, u: Unit, mover: Unit) -> Array[S
 	var out: Array[String] = []
 	var dist := Sight.unit_distance(state, u, mover)
 	for w: Dictionary in u.loadout.get("weapons", []):
-		if Weapons.threat_for(u, w) < dist or Weapons.has_tag(w, "tg_ordnance") or w.get("size", "") == "Superheavy" or Weapons.area(w) != "":
+		if Weapons.threat_for(u, w) < dist or Weapons.has_tag(w, "tg_ordnance") or w.get("size", "") == "Superheavy" or Weapons.area(w) != "" or w.get("no_attack", false):
 			continue
 		if Attacks.preview(state, u, w, mover)["ok"]:
 			out.append(String(w["key"]))
@@ -149,7 +153,7 @@ static func _area_overwatch_weapons(state: GameState, u: Unit, mover: Unit) -> A
 	var out: Array[String] = []
 	var dist := Sight.range_distance(state, Sight.body_of(state, u), Sight.body_of(state, mover))
 	for w: Dictionary in u.loadout.get("weapons", []):
-		if Weapons.area(w) == "" or Weapons.threat_for(u, w) < dist or Weapons.has_tag(w, "tg_ordnance") or w.get("size", "") == "Superheavy":
+		if Weapons.area(w) == "" or Weapons.threat_for(u, w) < dist or Weapons.has_tag(w, "tg_ordnance") or w.get("size", "") == "Superheavy" or w.get("no_attack", false):
 			continue
 		if Attacks.weapon_ready(u, w).ok and Areas.plan(state, u, w, mover.cell, mover.level)["ok"]:
 			out.append(String(w["key"]))

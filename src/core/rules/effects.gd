@@ -26,6 +26,17 @@ extends RefCounted
 ##   maze            hostiles must stop when Engaged with it, whatever their Size
 ##   immobilize_shreds  Immobilize it inflicts also Shreds for the same duration
 ##   grapple_free    can Boost and take reactions while grappling
+##   bonus_damage    see BonusDamage (Nelson Momentum, Mourning Cloak Hunter, Tokugawa Limit
+##                   Break, Death's Head Mark for Death)
+##   bonus_to_burn   {weapon_damage}: in the Danger Zone, bonus damage becomes burn (Plasma Sheath)
+##   damage_type_swap {from, to, when: exposed} (Tokugawa Limit Break)
+##   reach_bonus     {range, threat, when?, damage_type?} (Limit Break, Tokugawa Radiance)
+##   reroll_first_ranged  rerolls a missed first ranged attack each round (Death's Head Neurolink)
+##   seeking_payload Launchers attack Locked On targets as if Seeking; damage can't be reduced
+##   avenger_silos   {damage, range}: 1/round on a ranged crit, damage another character (Monarch)
+##   average_damage_option  may deal average damage instead of rolling (Pegasus)
+##   mjolnir_chambers  Raleigh Thunder God chambers (counters.chambers)
+##   frequency_override {ability, count}: ability usable count/its period (Pegasus core: 3/round)
 ## Movement (each only because a trait/system/talent/core bonus says so, never the model):
 ##   ignore_difficult  ignores difficult terrain (Bulwark Mods, Kai Bioplating)
 ##   climb_normal      climbs at normal speed (Kai Bioplating, High-Stress Mag Clamps)
@@ -205,6 +216,10 @@ static func moved(state: GameState, u: Unit, mode: String) -> Array[Dictionary]:
 		events.append_array(_drop_still_status(u, e))
 	if has(u, "afterimage") and (mode == "walk" or mode == "boost"):
 		u.counters["afterimage"] = true
+	if mode == "boost":
+		for e: Dictionary in of(u, "bonus_damage"):
+			if e.get("when", "") == "after_boost":
+				u.counters["momentum"] = true  # Nelson Momentum: the next melee attack gains it
 	if mode != "walk":
 		events.append_array(punish_movement(state, u))
 	return events
@@ -300,6 +315,11 @@ static func turn_ending(state: GameState, u: Unit) -> Array[Dictionary]:
 	for e: Dictionary in of(u, "status_if_still"):
 		if not u.turn.get("moved", false):
 			events.append_array(Combat.add_status(state, u, String(e["status"]), String(e.get("label", "trait"))))
+	if has(u, "mjolnir_chambers") and not u.turn.get("fired_mjolnir", false):
+		# Raleigh Thunder God: two rounds chambered at the end of a turn it didn't fire (max 6).
+		u.counters["chambers"] = mini(6, int(u.counters.get("chambers", 0)) + 2)
+		events.append({"type": "effect_triggered", "unit": u.id, "effect": of(u, "mjolnir_chambers")[0].get("label", ""),
+			"target": u.id, "chambers": u.counters["chambers"], "rule_ref": "frames: Raleigh core system"})
 	if has(u, "reload_if_idle") and not u.turn.get("attacked", false):
 		for w: Dictionary in u.loadout.get("weapons", []):
 			if Weapons.has_tag(w, "tg_loading"):

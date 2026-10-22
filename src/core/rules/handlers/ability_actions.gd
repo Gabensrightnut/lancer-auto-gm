@@ -115,6 +115,20 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit) ->
 					events.append_array(Combat.add_status(state, who, String(op["status"]), a["name"]))
 			"self_effects":
 				events.append_array(Effects.activate(state, u, op.get("effects", []), String(a["name"]), duration))
+			"focus":
+				# Death's Head Mark for Death: focus on one character; Immobilized and no
+				# reactions while focusing.
+				events.append_array(AbilityActions._unfocus(u))
+				u.counters["focus"] = target.id
+				events.append_array(Combat.add_status(state, u, "Immobilized", "Mark for Death"))
+				events.append({"type": "effect_triggered", "unit": u.id, "effect": "Mark for Death", "target": target.id, "rule_ref": "frames: Death's Head core system"})
+			"unfocus":
+				events.append_array(AbilityActions._unfocus(u))
+			"omnigun":
+				# Pegasus Ushabti Omnigun: not an attack; hits automatically, ignores cover,
+				# bypasses Immunity, and can't be reduced.
+				events.append_array(Combat.deal_damage(state, target, [{"type": "Kinetic", "amount": int(op.get("damage", 1))}],
+					{"source": u.id, "ap": true, "unreducible": true, "bypass_immunity": true}))
 			"revive":
 				# Lancaster Combat Repair: 4 Repairs bring a destroyed mech back to 1 Structure, 1 Stress, 1 HP.
 				if target != null and target.destroyed:
@@ -124,6 +138,16 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit) ->
 					target.stress = 1
 					target.hp = 1
 					events.append({"type": "revived", "unit": target.id, "by": u.id})
+	return events
+
+
+static func _unfocus(u: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if not u.counters.has("focus"):
+		return events
+	u.counters.erase("focus")
+	if u.has_status("Immobilized") and u.statuses["Immobilized"].get("source", "") == "Mark for Death":
+		events.append_array(Combat.remove_status(u, "Immobilized", "stopped focusing"))
 	return events
 
 
@@ -155,6 +179,17 @@ static func apply_target_ops(state: GameState, u: Unit, ops: Array, ids: Array) 
 ## Extra checks some ops need before activating.
 static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictionary) -> RuleResult:
 	for op: Dictionary in a.get("ops", []):
+		if op.get("op", "") in ["focus", "omnigun"]:
+			var t := state.unit(String(params.get("target", "")))
+			var ref := "frames: %s" % a.get("source_name", "")
+			if t == null or not Combat.is_present(t) or t == u or t.kind == Unit.KIND_DEPLOYABLE:
+				return RuleResult.deny("Choose a character.", ref)
+			var d := Sight.unit_distance(state, u, t)
+			if d > int(op.get("range", 50)) or d <= int(op.get("min", 0)):
+				return RuleResult.deny("The target must be within range %d%s." % [int(op.get("range", 50)),
+					(" but further than range %d" % int(op["min"])) if op.has("min") else ""], ref)
+			if op.get("los", false) and not Sight.unit_line_of_sight(state, u, t):
+				return RuleResult.deny("No line of sight to the target.", Sight.REF_LOS)
 		if op.get("op", "") == "revive":
 			var t := state.unit(String(params.get("target", "")))
 			if t == null or not t.destroyed or t.kind != Unit.KIND_MECH or t.counters.get("vaporized", false):

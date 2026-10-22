@@ -99,7 +99,15 @@
   },
   "mf_nelson": {
     "traits": {
-      "Momentum": "manual",
+      "Momentum": [
+        {
+          "kind": "bonus_damage",
+          "value": "1d6",
+          "on": "melee",
+          "per": "round",
+          "when": "after_boost"
+        }
+      ],
       "Skirmisher": [
         {
           "kind": "after_attack_move",
@@ -129,7 +137,11 @@
         }
       ]
     },
-    "core": "manual"
+    "core": [
+      {
+        "kind": "mjolnir_chambers"
+      }
+    ]
   },
   "mf_tortuga": {
     "traits": {
@@ -208,7 +220,11 @@
   },
   "mf_deaths_head": {
     "traits": {
-      "Neurolink": "manual",
+      "Neurolink": [
+        {
+          "kind": "reroll_first_ranged"
+        }
+      ],
       "Perfected Targeting": [
         {
           "kind": "attack_bonus",
@@ -217,7 +233,20 @@
         }
       ]
     },
-    "core": "manual"
+    "core": [
+      {
+        "kind": "bonus_damage",
+        "on": "ranged",
+        "crit_only": true,
+        "when": "focus",
+        "by_size": {
+          "Auxiliary": "1d6",
+          "Main": "2d6",
+          "Heavy": "3d6",
+          "Superheavy": "3d6"
+        }
+      }
+    ]
   },
   "mf_dusk_wing": {
     "traits": {
@@ -270,8 +299,18 @@
   },
   "mf_monarch": {
     "traits": {
-      "Avenger Silos": "manual",
-      "Seeking Payload": "manual"
+      "Avenger Silos": [
+        {
+          "kind": "avenger_silos",
+          "damage": 3,
+          "range": 15
+        }
+      ],
+      "Seeking Payload": [
+        {
+          "kind": "seeking_payload"
+        }
+      ]
     },
     "core": [],
     "core_ops": [
@@ -287,7 +326,15 @@
   },
   "mf_mourning_cloak": {
     "traits": {
-      "Hunter": "manual",
+      "Hunter": [
+        {
+          "kind": "bonus_damage",
+          "value": "1d6",
+          "on": "melee",
+          "per": "round",
+          "when": "isolated"
+        }
+      ],
       "Biotic Components": [
         {
           "kind": "accuracy",
@@ -452,10 +499,20 @@
   },
   "mf_pegasus": {
     "traits": {
-      "¿%:?EXTR!UDE GUN": "manual",
-      "By the Way, I Know Everything": "manual"
+      "¿%:?EXTR!UDE GUN": [],
+      "By the Way, I Know Everything": [
+        {
+          "kind": "average_damage_option"
+        }
+      ]
     },
-    "core": "manual"
+    "core": [
+      {
+        "kind": "frequency_override",
+        "ability": "Fire Omnigun",
+        "count": 3
+      }
+    ]
   },
   "mf_barbarossa": {
     "traits": {
@@ -583,9 +640,44 @@
   },
   "mf_tokugawa": {
     "traits": {
-      "Limit Break": "manual",
-      "Plasma Sheath": "manual"
+      "Limit Break": [
+        {
+          "kind": "bonus_damage",
+          "value": 3,
+          "type": "Energy",
+          "on": "attack",
+          "when": "exposed"
+        },
+        {
+          "kind": "damage_type_swap",
+          "from": [
+            "Kinetic",
+            "Explosive"
+          ],
+          "to": "Energy",
+          "when": "exposed"
+        },
+        {
+          "kind": "reach_bonus",
+          "range": 5,
+          "threat": 1,
+          "when": "exposed"
+        }
+      ],
+      "Plasma Sheath": [
+        {
+          "kind": "bonus_to_burn",
+          "weapon_damage": "Energy"
+        }
+      ]
     },
-    "core": "manual"
+    "core": [
+      {
+        "kind": "reach_bonus",
+        "range": 5,
+        "threat": 2,
+        "damage_type": "Energy"
+      }
+    ]
   }
 }

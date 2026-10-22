@@ -57,6 +57,11 @@ keeps the choices. An AI GM answers with the suggested reading and logs it. Code
 | Manticore Unstable System | "At the end of its next turn" counted on the pilot's turns inside the wreck | `combat.gd`, `turn_rules.gd` |
 | Minotaur Invert Cockpit | Eject without Impaired and a free Dismount 1/round are automated; the free Mount (taken by the pilot) isn't yet | `frame_effects.json` |
 | Balor Scouring Swarm | "Characters of its choice" read as every hostile character | `effects.gd` |
+| Bonus damage on attacks without damage | Bonus damage (p.67) is added only when the weapon itself deals damage, so Ram and Grapple never carry it | `attacks.gd` |
+| Death's Head Neurolink | The engine rerolls the first ranged attack of the round only when it missed (rerolling a hit can't help) | `attacks.gd` |
+| Monarch Seeking Payload | Always used when a Launcher attacks a Locked On target (it only ever helps); Brace isn't offered, as the damage can't be reduced | `attacks.gd` |
+| Pegasus average damage | The player asks for it per attack (`"average_damage": true`); dice are averaged up, (sides + 1) / 2 each, which matches the trait's table | `attacks.gd` |
+| Raleigh M35 Mjolnir | Its own rule (fire as a free action 1/round when you reload) isn't automated; with the core active and no rounds chambered it deals 0 | `attacks.gd`, `effects.gd` |
 | Frame trait readings | Tortuga Sentinel counts Overwatch as a reaction attack; Blast Plating resists all damage types from area attacks; Vlad's core resistance applies to attackers within range 3; Shrike Armor damage comes before the attack roll; Kai Bioplating jumps up to Speed across, half Speed up; Iskander's range is measured at each move | `data/game/frame_effects.json`, `gear_effects.json` |
 
 ## Movement audit (Core p.62-63, 77-78 and lancer-data text)
@@ -107,7 +112,8 @@ Every action in lancer-data (systems, weapons, core systems, unautomated traits,
 NPC features) is an ability used with `activate`; costs, once-per-system-per-turn, Protocols,
 Limited, X/turn, X/round, 1/scene, Recharge and lockouts are automated. What an ability does
 is automated only where `data/game/activation_effects.json` (or frame core ops) encodes it:
-now Crack Shot's Steady Aim, Lancaster Combat Repair, Monarch's missile core. Everything
+now Crack Shot's Steady Aim, Lancaster Combat Repair, Monarch's missile core, Death's Head
+Mark for Death, Tokugawa Overclock, the Pegasus omnigun. Everything
 else is handed to the table as text (`manual_effect`). Deployables, drones and mines deploy,
 take damage and are destroyed or recalled.
 
@@ -115,7 +121,7 @@ take damage and are destroyed or recalled.
 
 NPC templates and multiple activations, weapon profile choice, mod effects, frame traits and core systems
 marked "manual" in `data/game/frame_effects.json`, talents (beyond unlocking talent gear),
-bonus damage (p.67), Jockey and Reload (p.75), pilot armor and gear, zero-g
+Jockey and Reload (p.75), pilot armor and gear, zero-g
 (p.63), lifting and dragging (p.62), dragging wrecks, objects as attack targets (p.68),
 overshield sources, Scan's other two options, the same-Size grapple contest, Engineering
 retries against a meltdown, rest and Full Repair (p.82), unlicensed mechs (p.74: Impaired
@@ -126,6 +132,8 @@ and Slowed), NHP control (p.75).
 | Rule | Source |
 |---|---|
 | Square grid: diagonal moves are adjacent moves; adjacency includes diagonal and vertical | Core p.62 |
+| Bonus damage: melee/ranged attacks only; kinetic, explosive or energy (kinetic by default or one of the weapon's types); halved when the attack targets more than one character; rolled twice on a crit | Core p.64, 67 |
+| Integrated mounts: always fitted, can't be destroyed, removed or modified | Core p.32 |
 | Size N = N spaces on each side and N high; under 1 rounds up; Size 1/2 and 1 share one space | Core p.59, 79 |
 | Turn order: players first; sides alternate; leftovers act in turn; the side that didn't take the last turn starts the next round | Core p.60 |
 | Two quick or one full action plus a standard move; no repeating an action except free actions and reactions; Quick Tech repeats with different options | Core p.61, 68, 69 |
