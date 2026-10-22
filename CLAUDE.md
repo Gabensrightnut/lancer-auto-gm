@@ -16,7 +16,10 @@ LANCER_SLOW_TESTS=1 $G --headless --path . -s res://tests/run_tests.gd -- fairne
 $G --path . -s res://tools/screenshot.gd -- res://scenes/main.tscn out.png   # check visuals
 ```
 
-Run the tests before every commit. For visual work, take a screenshot and look at it.
+Before every commit run only your area's tests (`-- <area>` filter); the main session runs the full
+suite on merge. The user's PC is shared: launch Godot/Blender/Python at below-normal priority
+(`cmd.exe //c start "" //belownormal //b //wait <exe> <args>`), no benchmarks unless asked, and keep
+screenshots and GPU-heavy work to a minimum (one at a time).
 
 ## Rules that don't bend
 
