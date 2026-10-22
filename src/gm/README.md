@@ -48,3 +48,18 @@ Names and flavor (callsigns, pilot and mech names, operation, planet, faction, t
 come from COMP/CON's lists in `data/compcon/generators/` via `NameGen`; our own extra lines
 go in `data/game/names/<same file name>`. Pilot details are in `state.seats[seat]`
 (`callsign`, `pilot`, `mech`); `mission.flavor` holds the rest.
+
+## Difficulty
+
+`tools/gm_balance.gd` plays seeded story missions AI vs AI (four LL0 AI pilots, the same ten
+first jobs per preset) and prints win rate, mechs lost and pilot deaths per GM preset:
+
+```bash
+$G --headless --path . -s res://tools/gm_balance.gd -- 10 Teaching,Standard,Ruthless
+```
+
+Last run (after tuning): Teaching 100% wins, 0 mechs lost; Standard 80% wins, 0.4 mechs lost
+and 0.1 pilot deaths per mission; Cautious and Chaotic 80%; Ruthless 60% wins, 30% losses.
+The enemy AI remembers damage and structure losses it saw on squad mechs it hasn't Scanned
+(public at the table) and focuses fire on them; encounter size is still PROVISIONAL
+(`missions.json` per_player x preset difficulty), as the free core book has no GM chapter.

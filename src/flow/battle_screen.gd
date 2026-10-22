@@ -27,7 +27,7 @@ var menu_layer: Control
 var tutorial: TutorialPanel
 var narration: NarrationPopup
 ## AI squadmates' barks over their mechs (story campaigns).
-var bubbles: SpeechBubbles
+var bubbles: BattleBarks
 ## The rules reference (CodexPanel): from the pause menu, or the Codex key (F1) on whatever is
 ## hovered (an action on the bar, or a mech's frame).
 var codex: CodexPanel
@@ -67,7 +67,7 @@ func _ready() -> void:
 	add_child(view)
 	_build_ui()
 	bubbles.view = view
-	bubbles.duration_scale = MenuSession.settings().popup_duration
+	bubbles.read_rate *= MenuSession.settings().popup_duration
 	player = EventPlayer.new(view, rolls, combat_log)
 	player.camera = view.tactical
 	player.on_banner = show_banner
@@ -136,7 +136,7 @@ func _stage_twist() -> void:
 		var mv: MechView = view.units[id]
 		var u: Dictionary = mv.unit
 		if u.get("side", "") == Mission.PLAYERS and not mates.has(id) and screen.has_point(cam.unproject_position(mv.plate_anchor())):
-			bubbles.say(id, str(u.get("name", id)), "Contact front. I'll hold this side, you push.")
+			bubbles.say({"unit": id, "name": str(u.get("name", id)), "text": "Contact front. I'll hold this side, you push."})
 			break
 	var lesson: Dictionary = Tutorial.lessons()[3]
 	tutorial.show_events([{"type": "tutorial_prompt", "kind": "lesson", "id": lesson["id"], "title": lesson.get("title", ""), "text": lesson.get("text", ""),
@@ -222,7 +222,9 @@ func _barks(events: Array) -> void:
 	for e: Dictionary in events:
 		for line: Dictionary in Squadmate.barks_for(st, c, e, unit_pilot, seat_of):
 			var who := str(line.get("who", c.pilots.get(str(line.get("pilot", "")), {}).get("callsign", "")))
-			bubbles.say(str(line["unit"]), who, str(line["text"]))
+			var bark := line.duplicate()
+			bark["name"] = who
+			bubbles.say(bark)
 			combat_log.add_line("[color=#9fc3e8]%s:[/color] %s" % [who, line["text"]])
 
 
@@ -727,7 +729,7 @@ func _build_ui() -> void:
 	reaction_panel.custom_minimum_size = Vector2(620, 0)
 	reaction_panel.visible = false
 	ui.add_child(reaction_panel)
-	bubbles = SpeechBubbles.new()
+	bubbles = BattleBarks.new()
 	ui.add_child(bubbles)
 	ui.move_child(bubbles, 0)
 	sitrep_box = VBoxContainer.new()
