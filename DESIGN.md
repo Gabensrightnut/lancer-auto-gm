@@ -233,12 +233,16 @@ That gives a "kinda like fog of war" feel without adding rules that aren't in th
 
 - **What the rules keep secret** (each revealed only the way the book says):
   - **Hidden units:** a unit that takes the **Hide** action and becomes **Hidden** vanishes
-    from enemy boards; enemies see a "last known position" marker only if the rules give
-    them that knowledge. Allies still see it. Smoke and cover matter because they let you
+    from enemy boards; enemies only know its approximate location (book: Hidden), shown as
+    a fuzzy area, not an exact space. Allies still see it. Smoke and cover matter because they let you
     Hide, not because they black out the map.
   - **Enemy details:** you see the mech or NPC on the field (silhouette, size), but HP,
     armor, heat, systems, templates and exact stats stay "??" until revealed by **Scan**,
     by seeing them use something (a weapon fired is now known), or by the GM.
+  - **Stat-revealing abilities:** players never see enemy stats by default. Only abilities
+    that say they reveal information (Scan, and any frame, system or talent whose text
+    grants it) reveal anything, and only exactly what that text says, shared with the
+    squad as the book allows.
   - **GM secrets:** hidden reinforcements, traps, and secret sitrep objectives stay off
     player boards until the GM or the rules reveal them.
 - **Line-of-sight overlay (display aid, not a rule change):** when you pick an attack, spaces
@@ -247,7 +251,8 @@ That gives a "kinda like fog of war" feel without adding rules that aren't in th
 - **Filtered on the host, not hidden on screen.** The host builds a separate view for each
   player and sends only that, so secrets never reach other players' computers and can't be
   dug out of game files or network traffic.
-- **GM view:** the procedural GM (and an optional human GM seat) sees everything.
+- **GM view:** the procedural GM (and an optional human GM seat) sees everything a tabletop
+  GM would: all units, all stats, hidden positions, secret objectives, reinforcements.
 - **Hot-seat at one screen:** a "Pass to Player 2" screen between turns, since what's
   secret can differ between players (e.g. one is Hidden from an enemy-controlled seat).
 - **Squad intel sharing (the book default; players share freely at the table):**
@@ -326,6 +331,86 @@ differently without an AI. Each game has a **seed**: share it to replay the same
 - **All of it is data:** tables, behaviors and presets live in editable data files, so new
   content and variety can be added without changing code.
 
+## 10. Around combat: the rest of the game
+
+### Enemy (NPC) data
+- Massif's public data has no NPC stats. They were in `lancer-data` until January 2020, when
+  Massif removed them on purpose ("remove npc content"), so we don't use those old files.
+- **Plan:** load the official NPC content from your own copy (as a content pack if you have
+  one for COMP/CON, otherwise entered from your book) through the content-pack loader below. It lives on
+  your PC in `/local/` and never goes into the public repo. Each player who hosts needs their
+  own copy.
+- **Until then:** a few clearly-labeled placeholder enemies written by us (generic grunt,
+  artillery, striker, controller) so the game is playable and testable. They're replaced
+  once real NPC data is loaded.
+
+### Content packs
+- Load Lancer Content Packs (`.lcp`, the format COMP/CON uses): official supplements Massif
+  publishes (Long Rim, Wallflower, Karrakin Trade Baronies, Dustgrave, etc.), the NPC pack,
+  and community packs. Each pack can be turned on per campaign; everyone in a game must have
+  the same packs (checked when joining, like the version check).
+
+### Mech and pilot builder
+- Build pilots (background, skill triggers, talents, licenses, core bonuses, pilot gear) and
+  mechs (frame, weapons in mounts, mods, systems), with the rules checker live: illegal
+  choices are blocked with the reason (mount size, SP, license level).
+- **COMP/CON import/export:** bring in pilots built in COMP/CON, and export back.
+- The 3D mech preview updates as you change the loadout.
+
+### Effects system (talents, traits, core powers, systems)
+- Hundreds of unique effects. Built as a data-driven effects system where possible (bonuses,
+  triggers, reactions, deployables), with hand-written code only for truly unique ones.
+- Order: core book frames first (their traits and core powers), then the gear they start
+  with, then talents, then everything else. Each effect gets a scenario test.
+- Anything not implemented yet is marked in the builder so nobody picks it by surprise.
+
+### Narrative and campaign flow
+- The full loop: **briefing → mission → debrief → downtime → level up → next mission.**
+- Skill checks with skill triggers and their consequences, reserves, downtime actions
+  (from the book) rolled per the rules, and procedural GM narration (section 9).
+- Mission failure, retreat and pilot death have real consequences, as the book describes.
+
+### Progression
+- License level up after missions, unlocking manufacturer gear by license rank, talent ranks,
+  core bonuses, pilot rank; the builder enforces it.
+
+### Menus and lobby
+- Main menu, create/join game (room code), seat and pilot select, mission select, campaign
+  list, settings.
+
+### Saves
+- Campaign saves, autosave between turns, resume a mission when everyone reconnects. Saves
+  live outside the game folder so updates never touch them.
+
+### Undo and action log
+- Anything planned can be changed freely until you press confirm; after that it's locked.
+- A full action log of the battle (who did what, every roll), and a replay from the seed.
+
+### Accessibility and settings
+- Colorblind-safe modes (important: the roll display uses blue vs. red, so they also differ by
+  symbol and shape, + vs. −), UI scale, text size, rebindable keys, graphics quality presets
+  for weaker PCs, animation speed.
+
+### Audio
+- No audio made by us. Use free sound effects and music that are licensed for reuse
+  (CC0 / public domain), credited in-game, or ship without sound until good ones are chosen.
+
+### Customization
+- Callsigns, pilot portraits, mech paint schemes (colors, decals), shown to everyone.
+
+### Human GM seat
+- Optional: a person can run the game instead of the procedural GM: sees everything, spawns
+  units, edits the map, triggers events, makes rulings. The procedural GM can still run the
+  enemies while the human GM handles story.
+
+### Milestones
+1. **First playable:** one full mission start to finish, hot-seat, core frames vs.
+   placeholder enemies, book rules, 3D board with overlays and roll display.
+2. **Online:** the same mission with friends over the internet, launcher updating it.
+3. **Builder:** mech/pilot builder with COMP/CON import; content packs (real NPC data).
+4. **Campaign:** the full narrative loop, progression, saves, procedural missions.
+5. **Polish:** effects coverage, animations, audio, accessibility, customization, human GM.
+
 ## Rule differences: Lancer Tactics vs. the book
 
 Whenever Lancer Tactics handles a rule differently from the tabletop book, it's listed here
@@ -374,7 +459,8 @@ each with a narrow, self-contained brief, and a new piece only starts once one f
 - **Player content:** Massif Press `lancer-data` (official JSON): frames, weapons, systems,
   talents, core bonuses, statuses, downtime, sitreps, glossary rule text. In
   `data/lancer-data/` (v4.0.12, GPL-3.0).
-- **NPCs:** not in `lancer-data`. Look for official NPC data first, otherwise from your books.
+- **NPCs:** not public (removed from `lancer-data` by Massif in 2020). Loaded from your own
+  copy of the official NPC content pack; see section 10.
 - **Rules text and campaign books:** from you where needed.
 - Check Massif's third-party content guidelines before sharing the game outside your group.
 
