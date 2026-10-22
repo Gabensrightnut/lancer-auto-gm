@@ -46,12 +46,23 @@ static func cover_at(state: GameState, unit_id: String, cell: Vector2i, level: i
 ## and `hit_chance` (0..1). See Attacks.preview().
 static func attack_preview(state: GameState, attacker_id: String, weapon_key: String, target_id: String, use_lock_on: bool = true) -> Dictionary:
 	var a := state.unit(attacker_id)
+	var made := TerrainDamage.materialize(state, {"params": {"target": target_id}})  # "terrain:x,y" targets
 	var p := Attacks.preview(state, a, Weapons.find(a, weapon_key), state.unit(target_id), {"use_lock_on": use_lock_on})
 	if p["ok"]:
 		p["hit_chance"] = hit_chance(p["bonus"], p["accuracy"] - p["difficulty"], p["target_number"])
 		if state.unit(target_id).has_status("Invisible"):
 			p["hit_chance"] = float(p["hit_chance"]) * 0.5
+	TerrainDamage.remove(state, made)
 	return p
+
+
+## A destructible terrain column's section HP, Evasion and Armor for the HUD (Core p.68), or
+## {} if it can't be damaged. Attack it with target "terrain:x,y" (TerrainDamage.id_for).
+static func terrain_info(state: GameState, cell: Vector2i) -> Dictionary:
+	var out := TerrainDamage.info(state, cell)
+	if not out.is_empty():
+		out["target"] = TerrainDamage.id_for(cell)
+	return out
 
 
 ## Area attack template preview: the cells it covers, its origin, and every character it

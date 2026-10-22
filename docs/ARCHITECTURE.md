@@ -155,6 +155,11 @@ cover, line of sight, attack/area/tech previews with hit chance).
 | `climbed_on` / `climbed_off` / `boarded` / `disembarked` / `control_transferred` / `cable_attached` / `cable_cut` | `unit` and `host` / `mech` / `to` / `target` / `other` (riders, passengers, cables) |
 | `ruling_needed` | `id`, `question`, `options` {id: text}, `rule_ref`, `trigger_action`: the engine is paused; the host answers `{"type": "set_ruling", "params": {"id", "choice"}}` |
 | `ruling_made` | `id`, `choice`, `text` |
+| `terrain_destroyed` | `cells` [[x, y, new ground]], `from` (old ground), `source`, `rule_ref` (Core p.68). The rules' BattleMap is already lowered; rubble gets no new tags |
+| `terrain_damaged` | `cell`, `amount`, `damage_type`, `ap`, `armor`, `hp_left`, `source` (damage that hits objects automatically) |
+| Attacking terrain | Any attack or ability target may be `"terrain:x,y"` (a destructible column's top section). Events about it name that id as `target`/`unit`. `RulesQueries.terrain_info(state, cell)` gives `hp`, `max_hp`, `evasion`, `armor`, `sections`, `target`; `attack_preview` accepts the id |
+| `environment_roll` | `environment`, `roll`, `text` (earthquakes at the end of a round) |
+| Environment actions | `break_ice` (quick: Hull save, extreme cold), `dig_out` {`target`} (full: Hull save, sinking world). `Environments.listing(state, db)` gives each environment's `name`, `text`, `automated` for the HUD; hostile flora are units with `counters.flora` (side `wildlife`) |
 
 ## What's automated (for the builder and action bar)
 
@@ -164,6 +169,14 @@ list every trait, core system, system, weapon and talent rank with `status`
 (`automated` / `partial` / `manual`), `note` (what the table handles), `guidance` (plain words
 for the player) and `text` (the rule). `available_actions` entries carry `automation` and
 `table_note`. Notes for partly automated gear: `data/game/automation_notes.json`.
+
+## NPCs
+
+`UnitFactory.build_npc_class(db, id, class_id, tier, {"templates": [...], "optional": [...], "name", "side", "controller"})`
+builds an NPC from a pack's NPC classes (or the placeholder pack, `NPCBuilder.source(db)`).
+NPC units carry `counters.activations` (turns per round); `loadout.class`, `tier`,
+`templates`, `placeholder`. The old `UnitFactory.build_npc(template)` still reads
+`data/game/npc_templates.json`.
 
 ## Commands
 

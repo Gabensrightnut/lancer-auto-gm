@@ -18,7 +18,13 @@ const STYLE := {
 	"mag_field": {"color": Color(0.7, 0.35, 1.0), "label": "MAG FIELD"},
 	"hologram": {"color": Color(0.3, 1.0, 0.95), "label": "HOLOGRAM"},
 	"enclave": {"color": Color(0.4, 0.9, 1.0), "label": "ENCLAVE"},
+	"flash": {"color": Color(1.0, 0.95, 0.75), "label": "FLASH: can't see out"},
+	"hardlight": {"color": Color(0.35, 0.8, 1.0), "label": "HARDLIGHT: blocks sight and attacks"},
+	"blink": {"color": Color(0.7, 0.45, 1.0), "label": "BLINKSHIELD: nothing crosses"},
+	"oasis": {"color": Color(0.35, 1.0, 0.7), "label": "OASIS WALL: hard cover beside it"},
 }
+## Barrier zones get walls on their outer edge: [height, alpha].
+const WALLS := {"hardlight": [1.4, 0.32], "blink": [2.0, 0.4], "oasis": [0.45, 0.6], "enclave": [0.0, 0.0]}
 
 var battle: BattleView
 var zones: Dictionary = {}  # id -> zone dict
@@ -166,6 +172,20 @@ func _build(n: Node3D, z: Dictionary) -> void:
 			dome.scale = Vector3(1, 0.55, 1)
 			dome.position = center
 			n.add_child(dome)
+	if WALLS.has(kind) and float(WALLS[kind][0]) > 0.0:
+		_edge_walls(n, cells, col, float(WALLS[kind][0]), float(WALLS[kind][1]), kind == "oasis")
+	if kind == "flash":
+		var haze := MeshInstance3D.new()
+		var sph := SphereMesh.new()
+		sph.radius = 1.0
+		sph.height = 2.0
+		haze.mesh = sph
+		haze.material_override = MeshKit.overlay_material(Color(1.0, 0.97, 0.85, 0.22), false, false)
+		var r := sqrt(float(cells.size())) * 0.55 + 0.4
+		haze.scale = Vector3(r, r * 0.45, r)
+		haze.position = center
+		n.add_child(haze)
+		Fx.light_flash(n, center + Vector3.UP * 0.6, Color(1.0, 0.95, 0.8), 2.5, r * 2.5, 99999.0)
 	var l := Label3D.new()
 	l.text = String(st["label"])
 	l.font_size = 16
@@ -179,6 +199,53 @@ func _build(n: Node3D, z: Dictionary) -> void:
 	l.position = center + Vector3.UP * 0.35
 	l.add_to_group(LabelDeclutter.GROUP_SCREEN_SIZED)
 	n.add_child(l)
+
+
+## Walls along the outside edge of a set of spaces: a translucent glowing panel per edge
+## that faces a space outside the set (each cell's edges come from MeshKit.cell_shape, so
+## no hex/square knowledge here). `segments` breaks low walls into blocks (Oasis Wall).
+func _edge_walls(n: Node3D, cells: Array[Vector2i], col: Color, height: float, alpha: float, segments: bool) -> void:
+	var shape := MeshKit.cell_shape(battle.map.grid)
+	var corners: PackedVector2Array = shape["corners"]
+	var inside := {}
+	for c in cells:
+		inside[c] = true
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_color(Color.WHITE)
+	var rim := SurfaceTool.new()
+	rim.begin(Mesh.PRIMITIVE_TRIANGLES)
+	rim.set_color(Color.WHITE)
+	for c in cells:
+		var lv := battle.map.ground_height(c)
+		var ctr := battle.cell_pos(c, lv)
+		for i in range(corners.size()):
+			var a2 := corners[i]
+			var b2 := corners[(i + 1) % corners.size()]
+			var mid := (a2 + b2) * 0.5
+			var across := battle.map.grid.from_world(ctr + Vector3(mid.x, 0, mid.y) * 2.0)
+			if inside.has(across):
+				continue
+			var a := ctr + Vector3(a2.x, 0.02, a2.y)
+			var b := ctr + Vector3(b2.x, 0.02, b2.y)
+			if segments:
+				a = a.lerp(b, 0.08)
+				b = b.lerp(ctr + Vector3(a2.x, 0.02, a2.y), 0.08)
+			var up := Vector3.UP * height
+			var out := Vector3(mid.x, 0, mid.y).normalized()
+			MeshKit.add_quad(st, a, b, b + up, a + up, out)
+			MeshKit.add_quad(st, b, a, a + up, b + up, -out)
+			var t := Vector3.UP * 0.03
+			MeshKit.add_quad(rim, a + up - t, b + up - t, b + up + t, a + up + t, out)
+	var wall := MeshInstance3D.new()
+	wall.mesh = st.commit()
+	wall.material_override = MeshKit.overlay_material(Color(col.r, col.g, col.b, alpha), false, false)
+	wall.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	n.add_child(wall)
+	var top := MeshInstance3D.new()
+	top.mesh = rim.commit()
+	top.material_override = MeshKit.fx_material(col, 2.2)
+	n.add_child(top)
 
 
 func _mesh(n: Node3D, st: SurfaceTool, c: Color) -> void:

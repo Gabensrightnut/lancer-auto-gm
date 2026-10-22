@@ -53,6 +53,13 @@ func show_action(a: Dictionary, scale_factor: float = 1.0) -> void:
 		var wd: Dictionary = w if w is Dictionary else {"text": str(w)}
 		var col := DANGER if String(wd.get("level", "warn")) == "danger" else WARN
 		Icons.write(_text, "[color=#%s]⚠ %s[/color]\n" % [col.to_html(false), wd["text"]], px)
+	if a.get("mod") is Dictionary:
+		var md: Dictionary = a["mod"]
+		Icons.write(_text, "[color=#9fd1ff][b]Mod: %s[/b]%s[/color]
+" % [md.get("name", ""), ("  (%d uses left)" % int(md["uses"])) if md.has("uses") else ""], px)
+		if String(md.get("text", "")) != "":
+			Icons.write(_text, "[color=#8fb4d8]%s[/color]
+" % md["text"], px)
 	if a.has("table_note"):
 		Icons.write(_text, "[color=#e0b050][b]%s:[/b] %s[/color]
 " % ["Table" if String(a.get("table", "")) == "manual" else "Partly the table", a["table_note"]], px)

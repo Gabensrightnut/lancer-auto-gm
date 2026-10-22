@@ -886,5 +886,11 @@
   "cb_the_lesson_of_the_open_door:The Lesson of the Open Door": [],
   "cb_the_lesson_of_the_held_image:Lesson of the Held Image": [],
   "cb_the_lesson_of_transubstantiation:The Lesson of Transubstantiation": [],
-  "cb_overpower_caliber:Overpower Caliber": []
+  "cb_overpower_caliber:Overpower Caliber": [],
+  "t_siege_specialist:Jackhammer Round": [
+    {
+      "op": "jackhammer",
+      "label": "Jackhammer Round"
+    }
+  ]
 }

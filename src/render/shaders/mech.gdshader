@@ -17,6 +17,8 @@ instance uniform float flash = 0.0;
 instance uniform float dim = 0.0;
 // Dark maps: a soft cool rim and a little self-light so mechs still read (BattleView sets it).
 instance uniform float lift = 0.0;
+// A cascading NHP has the mech: red glitching (jitter bands, red scanlines, pulsing seams).
+instance uniform float cascade = 0.0;
 
 varying vec3 opos;
 varying vec3 onrm;
@@ -26,10 +28,11 @@ void vertex() {
 	opos = VERTEX;
 	onrm = NORMAL;
 	vcol = COLOR;
-	if (glitch > 0.0) {
+	float gl = max(glitch, cascade * (0.35 + 0.65 * step(0.82, fract(sin(floor(TIME * 3.0) * 12.9898) * 43758.5453))));
+	if (gl > 0.0) {
 		float band = floor(VERTEX.y * 14.0 + TIME * 24.0);
 		float r = fract(sin(band * 91.7) * 43758.5453);
-		VERTEX.x += glitch * 0.09 * (r - 0.5) * step(0.55, r);
+		VERTEX.x += gl * 0.09 * (r - 0.5) * step(0.55, r);
 	}
 }
 
@@ -81,6 +84,11 @@ void fragment() {
 	if (glitch > 0.0) {
 		float scan = step(0.5, fract(SCREEN_UV.y * 140.0 + TIME * 9.0));
 		e += mix(vec3(0.1, 0.95, 1.0), vec3(1.0, 0.1, 0.6), step(0.5, fract(TIME * 7.0))) * glitch * scan * 0.9;
+	}
+	if (cascade > 0.0) {
+		float scan2 = step(0.6, fract(SCREEN_UV.y * 90.0 - TIME * 4.0));
+		float beat = 0.55 + 0.45 * sin(TIME * 9.0);
+		e += vec3(1.0, 0.08, 0.05) * cascade * (0.35 * scan2 + 1.6 * seam * beat + 0.5 * fres);
 	}
 	EMISSION = e;
 }

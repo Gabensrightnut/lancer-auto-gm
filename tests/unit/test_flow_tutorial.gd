@@ -188,7 +188,7 @@ func test_parley_in_a_story_battle() -> void:
 	expect(not b.is_empty(), "the enemy has a commander")
 	var early := GameFlow.story_engine.submit(story, c, {"type": "parley", "seat": "p1", "params": {}})
 	expect(not early["ok"] and str(early["reason"]).contains("Core p.60"), "no terms while the fight's in question: %s" % early.get("reason", ""))
-	var downs: Array = []
+	var downs: Array = [{"type": "round_started", "round": 2}]  # nobody yields in the first round
 	for id: String in b["enemy_ids"]:
 		if id != b["unit"]:
 			downs.append({"type": "unit_destroyed", "unit": id})

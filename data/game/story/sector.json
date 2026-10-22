@@ -1,0 +1,24 @@
+{
+  "_note": "Our own writing. The part of space the squad works in: a few systems joined by blink gates, which the book describes as common, fast and safe (Core p.10), each with a few worlds, moons or stations. Every world has its own culture kit and landscape (cultures.json) and one hub. Travel is narrative: no costs or travel time are tracked (CANON.md parks paid travel). Interstellar travel without a gate happens at near light speed, so time passes differently for travellers (Core p.20); the game only travels by gate between systems.",
+  "systems": 3,
+  "worlds": [2, 3],
+  "kind_names": {"town": "World", "base": "Moon", "station": "Station"},
+  "stars": ["a yellow star", "a red dwarf", "a white star", "twin stars", "an orange star", "a blue-white giant"],
+  "travel": {
+    "local": [
+      "{patron_ship} carries the squad from {from} to {to}. A few days in transit, mechs strapped down in the hold.",
+      "The squad hitches a ride on an ore hauler from {from} to {to}. Nobody asks what's in the crates, on either side.",
+      "A short hop across the system, from {from} to {to}. Long enough to sleep, check the mechs, and argue about the next job."
+    ],
+    "gate": [
+      "Out of {from}, through the blink gate, and out again in the {system} system. It takes no time at all, and it never stops feeling strange.",
+      "The ship lines up on the blink gate and slips through. On the other side is the {system} system, and {to}.",
+      "A queue at the gate, a moment of nothing, and then a new sky: the {system} system. {to} is a short flight in."
+    ]
+  },
+  "ships": ["Your patron's ship", "A chartered transport", "A Union courier", "A friendly freighter captain"],
+  "arc_done_hint": [
+    "There's nothing more for the squad here for now. Open the map (M) when you're ready to move on: there's work on other worlds.",
+    "This situation is settled. Other worlds in the sector could use a lancer squad; check the map (M)."
+  ]
+}

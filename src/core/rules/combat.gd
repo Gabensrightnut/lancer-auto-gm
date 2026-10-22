@@ -29,6 +29,7 @@ const DOUBLED_BY_EXPOSED := ["Kinetic", "Explosive", "Energy"]
 ## Adds a status. `next_turn_end_of` = a unit whose "end of next turn" ends it ("" = lasts).
 static func add_status(state: GameState, u: Unit, status: String, source: String, next_turn_end_of: String = "", until_start_of: String = "") -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
+	status = Environments.slowed_becomes(state, u, status)  # high gravity
 	if status == "Prone" and u.flying:
 		return events  # Flying characters have IMMUNITY to PRONE (glossary: Flight/Hover).
 	if status == "Prone" and not u.has_status("Prone"):
@@ -166,6 +167,8 @@ static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dict
 			continue
 		var resist_here: bool = opts.get("resist_all", false) or (opts.get("resist_types", []) as Array).has(dtype) or Effects.resists(target, dtype, opts.get("area", false), int(opts.get("distance", -1))) or Effects.shepherded(state, target)
 		if dtype == "Heat":
+			if state.unit(source) != null:
+				amount = Environments.gear_heat(state, amount)  # extreme heat: heat from a character's weapons and systems
 			events.append_array(apply_heat(state, target, amount, source, resist_here))
 			continue
 		var rolled := amount
@@ -634,6 +637,8 @@ static func fall_unit(state: GameState, u: Unit, max_drop: int = -1) -> Array[Di
 	u.counters.erase("fall_started")
 	u.counters.erase("fallen")
 	var dmg := mini(9, (total / 3) * 3)
+	if Environments.no_fall_damage(state):
+		dmg = 0  # low gravity
 	if dmg > 0:
 		events.append_array(deal_damage(state, u, [{"type": "Kinetic", "amount": dmg}], {"ap": true, "source": "fall"}))
 	return events

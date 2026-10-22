@@ -93,6 +93,7 @@ static func _do_move(state: GameState, u: Unit, plan: Dictionary, mode: String, 
 		events.append_array(Combat.begin_falling(u, "Jump jets: the Boost didn't end on a surface."))
 		events.append_array(Combat.fall_unit(state, u))
 	events.append_array(Effects.moved(state, u, mode))
+	events.append_array(Environments.moved(state, u, path))
 	if u.counters.has("riding"):
 		events.append_array(Riders.drop(state, u, false, "climbed down"))  # riders climb down by moving away
 	events.append_array(Zones.leave_hologram(state, u, from, from_level))
@@ -168,6 +169,8 @@ class Boost:
 			return RuleResult.deny("Slowed (Prone characters are Slowed too): your only movement is your standard move, so no Boost.", "statuses: Slowed, Prone")
 		if u.counters.has("grapple") and not Effects.has(u, "grapple_free"):
 			return RuleResult.deny("Grappling characters can't Boost.", "actions: Grapple")
+		if Effects.has(u, "no_boost"):
+			return RuleResult.deny("High gravity: mechs can't Boost here.", Environments.REF)
 		return MoveActions._plan_result(MoveActions._plan(state, u, params, Movement.MODE_BOOST))
 
 	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:

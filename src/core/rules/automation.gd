@@ -79,6 +79,8 @@ static func for_unit(db: ContentDB, u: Unit) -> Array:
 			continue
 		seen[id] = true
 		var raw := db.weapon(id)
+		if raw.is_empty() and w.has("npc_on_hit"):
+			raw = {"name": w.get("name", id), "on_hit": w.get("npc_on_hit", ""), "effect": w.get("npc_effect", "")}  # an NPC feature
 		var text := " ".join([_strip(raw.get("effect", "")), _strip(raw.get("on_hit", "")), _strip(raw.get("on_crit", "")), _strip(raw.get("on_attack", ""))]).strip_edges()
 		var wabil := (u.loadout.get("abilities", []) as Array).filter(func(a: Dictionary) -> bool: return a["source_key"] == "w:" + String(w["key"]))
 		var encoded: bool = w.has("rules") or w.has("data_on_hit") or w.has("data_on_crit")

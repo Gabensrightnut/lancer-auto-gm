@@ -32,6 +32,7 @@ keeps the choices. An AI GM answers with the suggested reading and logs it. Code
 | `manticore_inferno_self` | Is the Manticore caught in its own charge-die inferno? | yes (a Burst that isn't an attack includes the user) / no | p.64, Manticore core |
 | `hologram_blast_targets` | Dusk Wing Hologram Teleport explosions: who is caught? | hostiles / every character but the Dusk Wing | p.64, Dusk Wing core |
 | `basilisk_failed_save` | Gorgon Basilisk: does a failed save stop the attack? | no attack / attack goes ahead | p.77, Gorgon core |
+| `extremesun_turns` | Extreme sun: 1d6 heat "at the end of a turn" if not in shade. Whose turn? | each character at the end of its own turn / everyone out of shade at the end of every turn | Environments (lancer-data environments.json) |
 
 ## Engine geometry (consistent with the book, which only describes a flat tabletop)
 
@@ -151,17 +152,70 @@ take damage and are destroyed or recalled.
 | HORUS systems | Hive Drone, Scanner Swarm, Swarm Body, Eject Power Cores, Sentinel Drone, //SCORPION (on missed tech attacks), Puppetmaster Electropulse, Tempest Drone, Beckoner, Smite and Sear, EMP Pulse, Lightning Generator, Mesmer Mine, Viral Logic Suite, Chains of Prometheus and Excommunicate (`shake_off`), Metafold Carver, Interdiction Field (not its teleport rule), Hunter Lock, Eye of HORUS | Puppet System, Metahook, H0R_OS II and III constructs, Mimic Mesh, Monitor Module, Guide the Flock, Assassin Drone, Mesmer Beacon, Law of Blades, SISYPHUS; //SCORPION after saves against tech effects |
 | HA weapons | Siege Cannon modes and other profiled weapons (`profile`), Plasma Thrower Cone/Line (`pattern`), Shatterhead (no Difficulty), Tachyon Lance backblast, Annihilator secondary attacks | Gravity Gun's effect |
 | HA systems | Siege Stabilizers (toggle), Autoloader Drone, Flak Launcher, External Ammo Feed, Explosive Vents, Napalm Grenade, Auto-Cooler, AGNI, Gravity Grenade, Grounding Mine (detonated as a quick action), Repulser Field, Clamp Bombs, Stasis Bolt (Interdiction Point), Stasis Generator, ENCLAVE shield (Blinkfield Intervention), Flash Anchor, Reactor Stabilizer, Redundant Systems Upgrade, ASURA (two extra quick actions), External Batteries, Deep Well Heat Sink, LUCIFER, Plasma Gauntlet | Roller Grenade, Bouncing and HAVOK Mines, Tesseract (zero-g), Stasis Barrier; ASURA's "one extra full action" option; the Repulser's immunity to its own mines |
-| Talents | Ace 1, Brawler 1-2, Brutal 1-3, Centimane 1-2 (3 uses Harrying Swarm), Combined Arms 1-2, Crack Shot 1-2 (`zero_in`), Drone Commander 1 (+5 HP; not the Shepherd protocol), Duelist 1, Executioner 2, Grease Monkey 1-2, Gunslinger 1, Hacker 1, Hunter 2, Infiltrator 2, Juggernaut 1, Nuclear Cavalier 1-2 (3 is talent gear), Siege Specialist 2 (not your own 1-space push), Skirmisher 1-3, Spotter 1, Stormbringer 1, Tactician 1-2, Vanguard 1-2 | Ace 2-3, Bonded, Crack Shot 3, Drone Commander 2-3, Duelist 2-3, Engineer, Executioner 1 and 3, Exemplar, Grease Monkey 3, Gunslinger 2-3, Hacker 2-3, Heavy Gunner, Hunter 1 and 3, Infiltrator 1 and 3, Juggernaut 2-3, Leader, Siege Specialist 1 and 3, Spotter 2-3, Stormbringer 2-3, Tactician 3, Technophile, Vanguard 3, Walking Armory; Skirmisher 1's "forcing a save" also ends the chaff |
+| Talents | Ace 1, Brawler 1-2, Brutal 1-3, Centimane 1-2 (3 uses Harrying Swarm), Combined Arms 1-2, Crack Shot 1-2 (`zero_in`), Drone Commander 1 (+5 HP; not the Shepherd protocol), Duelist 1, Executioner 2, Grease Monkey 1-2, Gunslinger 1, Hacker 1, Hunter 2, Infiltrator 2, Juggernaut 1-2 (Kinetic Mass Transfer on Ram knockback), Nuclear Cavalier 1-2 (3 is talent gear), Siege Specialist 1-2 (Jackhammer Round on objects and terrain; not your own 1-space push), Skirmisher 1-3, Spotter 1, Stormbringer 1, Tactician 1-2, Vanguard 1-2 | Ace 2-3, Bonded, Crack Shot 3, Drone Commander 2-3, Duelist 2-3, Engineer, Executioner 1 and 3, Exemplar, Grease Monkey 3, Gunslinger 2-3, Hacker 2-3, Heavy Gunner, Hunter 1 and 3, Infiltrator 1 and 3, Juggernaut 3, Leader, Siege Specialist 3, Spotter 2-3, Stormbringer 2-3, Tactician 3, Technophile, Vanguard 3, Walking Armory; Skirmisher 1's "forcing a save" also ends the chaff |
 | Weapon mods | All eight: added tags and range (Stabilizer, Nanocomposite, Paracausal: damage can't be reduced), Thermal Charge (`thermal_charge` on a hit), UNCLE (free attack at +2 Difficulty, weapon locked until your next turn), Throughbolt Rounds (`throughbolt`: aim point), Shock Wreath (quick action after a hit), Phase-Ready (`phase`). A mount's mod goes on its first weapon unless `mod_slot` says otherwise | Phase-Ready's "know the rough location"; Shock Wreath's line-of-sight limit |
 | Core bonuses | All 31: stats (Reinforced Frame, Sloped Plating, Full Subjectivity Sync, Disbelief, Open Door, Superior by Design), Accuracy (Gyges, Kai, Disbelief, Armory-Sculpted), reach (Gyges, Neurolink Targeting), mounts (Improved Armament, Mount Retrofitting, Integrated Weapon), choices in `pilot.core_bonus_choices` (Auto-Stabilizing Hardpoints: mount index; Overpower Caliber: weapon key; Mount Retrofitting: mount index), Universal Compatibility (automatic on core power), Briareos, Titanomachy, the five Lessons, Adaptive Reactor (`adaptive` on Stabilize), Heatfall, Integrated Ammo Feeds, Stasis Shielding, Fomorian, flight and movement ones | Open Door's heat only follows saves from systems, weapons and mines the game resolves; Transubstantiation's "nearest free space" when it comes back |
 | Data corrections | Explosive Mine deals 2d6 as Core p.120 says (lancer-data has 3d6): `activation_effects.json` "deploy:" entries override deployable data | - |
 
+## NPCs
+
+NPCs are built from NPC class data in the lancer-data / COMP/CON format (npc_classes,
+npc_features, npc_templates): from a loaded content pack, or from our placeholder pack
+(`data/game/npc_placeholder_pack.json`, not official) when no pack has NPCs. Code:
+`src/content/npc_builder.gd`, `UnitFactory.build_npc_class(db, id, class_id, tier, opts)`.
+
+| Rule | Current state | Where in code |
+|---|---|---|
+| NPC rules source | The free core book has no NPC rules; the NPC numbers come from the pack's data. Recharge follows lancer-data's tag text (one 1d6 roll at the start of each of the NPC's turns recharges everything at or under it) | `abilities.gd` |
+| Multiple activations (PROVISIONAL) | An NPC with N activations (class stats.activations plus template bonuses, e.g. Elite) takes N turns per round, each a normal turn in the sides' alternation; Recharge rolls and reactions refresh at the start of each of them. Whether an NPC may take two turns in a row isn't restricted | `turn_rules.gd` |
+| NPC features | Weapons (tiered damage, attack bonus, accuracy, tags), tech features (rolled with their own attack bonus), systems with activation tags, Recharge and Limited, and stat bonuses/overrides (templates) work for any pack. Effect text is applied by the table unless `data/game/npc_feature_effects.json` encodes the feature | `npc_builder.gd` |
+| Placeholder Elite/Ultra | Our stand-ins: Elite +1 Structure, +1 Stress, 2 activations; Ultra +2/+2, 3 activations. The official templates replace them when an NPC pack is loaded | `data/game/npc_placeholder_pack.json` |
+
+## Environments
+
+`state.environments` (lancer-data environments.json ids; the mission generator sets them
+from the world's weather). Code: `src/core/rules/environments.gd`. The text comes from the
+core book's environments as lancer-data has it; readings it leaves open are below.
+
+| Rule | Current state (PROVISIONAL where marked) | Where in code |
+|---|---|---|
+| "During storms" | A storm environment in the list is active for the whole battle (the GM can drop it from the list when the storm passes) | `environments.gd` |
+| Who counts as a mech | Player mechs and NPCs (hostile flora are characters, not mechs). PROVISIONAL: NPCs are mechs | `Environments.is_mech` |
+| Extreme heat "+1 heat from systems or weapons" | PROVISIONAL: heat damage from a character's attacks and systems, Heat (Self) from weapons and systems, flight-system heat and Overkill. Not Overcharge, basic Invade options, talents, core bonuses or other environments | `Environments.gear_heat` callers |
+| Extreme cold | Mechs that didn't move or Boost on their turn are Immobilized at its end; `break_ice` (quick action, Hull save) ends it | `turn_ending`, `EnvironmentActions.BreakIce` |
+| Extreme sun shade | PROVISIONAL: a column tagged `shade`, solid ground overhead, or next to an object that gives hard cover. Whose turn: the `extremesun_turns` ruling | `in_shade` |
+| Dangerous storms "adjacent to an object that grants hard cover" | PROVISIONAL: terrain right next to it at least as tall as it (the hard-cover test against attacks) | `next_to_hard_cover` |
+| Particulate storms "each turn they are outside" | A pilot outside a mech takes 1 AP kinetic at the end of its own turn | `turn_ending` |
+| Electrical storms | One character at random (`state.dice`) at the end of each round; Engineering save with +1 Difficulty per Size (PROVISIONAL: Size 1/2 adds none) or Stunned until the end of its next turn | `round_ending` |
+| Earthquakes | 1d6 at the end of each round; on 1, every non-flying mech makes a Hull save or is knocked Prone | `round_ending` |
+| Molten world | Columns tagged `lava`: 5 AP energy and 3 heat when a character moves in for the first time on its turn or starts its turn there | `moved`, `turn_started` |
+| Ocean world | Mechs move as in difficult terrain unless flying or carrying an EVA Module ("ignore difficult terrain" still applies) | `movement.gd` |
+| Low / high gravity | Mechs fly when they Boost and must land at the end of that move; no falling damage. High: no Boost, and Immobilized whenever they'd be Slowed | `effects_for`, `Combat.add_status`, `Combat.fall_unit` |
+| Sinking world | Counts the spaces a mech moved on its own turn. 1 or less: Slowed; already Slowed: Immobilized and sinking. PROVISIONAL: both last until `dig_out` (full action Hull save by it or an adjacent mech) | `turn_ending`, `EnvironmentActions.DigOut` |
+| Dangerous flora | `Environments.make_flora(id, cell, size)`: Size 1-2, 5 HP, Evasion 10, takes no turns. PROVISIONAL: a character whose own move passes or ends next to it makes the Hull save (involuntary movement doesn't). Immobilized until the flora is destroyed | `_flora_moved`, `release_flora` |
+| Narrative only | Tomb world, spire world, holy world, primordial world (its terrain comes from the map's difficult/dangerous tags) | `Environments.NARRATIVE` |
+
+## Terrain and objects (Core p.58, p.68)
+
+Code: `src/core/rules/terrain_damage.gd`. Columns tagged `destructible` are made of Size 1
+sections (10 HP, Evasion 5, Armor from an `armor_N` tag); untagged terrain is the GM waiving
+the rule (Core p.68 allows it). Attack a section with target `terrain:x,y`.
+
+| Rule | Current state (PROVISIONAL where marked) | Where in code |
+|---|---|---|
+| Which section an attack hits | The top one. PROVISIONAL: excess damage doesn't carry into the next section | `TerrainDamage.settle` |
+| Floor | A column breaks down to its `floor_N` tag, else 0. Walls built on raised ground need the tag | `floor_of` |
+| Rubble | The book gives destroyed terrain no special rule, so the cell keeps its tags (minus `destructible`) and isn't difficult | `destroy_sections` |
+| Area attacks | Blast, Burst and Cone "affect characters": they don't hit terrain unless the gear says objects are hit (Thermal Grenade, Manticore's discharge, Apocalypse Rail). PROVISIONAL: those hit every section of a column in the area | `damage_area`, `after_area` |
+| Knockback into terrain | No damage by the book (tags: Knockback); Juggernaut 2 adds 1d6 kinetic | `TalentRules.kinetic_mass_transfer` |
+| Not automated | Juggernaut 3's charge through walls, Breaching Charge's 30 AP to objects, Line attacks that "affect all targets" hitting terrain | - |
+
 ## Not implemented yet
 
-NPC templates and multiple activations, weapon profile choice, mod effects, frame traits and core systems
+ frame traits and core systems
 marked "manual" in `data/game/frame_effects.json`, talents (beyond unlocking talent gear),
 Jockey and Reload (p.75), pilot armor and gear, zero-g
-(p.63), lifting and dragging (p.62), dragging wrecks, objects as attack targets (p.68),
+(p.63), lifting and dragging (p.62), dragging wrecks,
 overshield sources, Scan's other two options, the same-Size grapple contest, Engineering
 retries against a meltdown, Full Repair (p.82; rest is automated), unlicensed mechs (p.74: Impaired
 and Slowed), NHP control (p.75).

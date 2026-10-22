@@ -37,7 +37,7 @@ func _close(t: Dictionary) -> void:
 
 
 func _down(t: Dictionary, ids: Array) -> Array:
-	var evs: Array = []
+	var evs: Array = [{"type": "round_started", "round": 2}]
 	for id: String in ids:
 		evs.append({"type": "unit_destroyed", "unit": id})
 	return t["engine"].submit(t["story"], t["campaign"], {"type": "battle_events", "seat": "gm", "params": {"events": evs}})["events"]
@@ -73,6 +73,8 @@ func test_every_enemy_force_has_a_commander() -> void:
 func test_talking_terms_only_once_the_outcome_is_clear() -> void:
 	var t := _ready_battle(161, "zealous")
 	var s: StoryState = t["story"]
+	var b0 := Rivals.battle(s)
+	t["engine"].submit(s, t["campaign"], {"type": "battle_events", "seat": "gm", "params": {"events": [{"type": "unit_destroyed", "unit": (b0["enemy_ids"] as Array).filter(func(x: String) -> bool: return x != str(b0["unit"])).slice(0, ceili((b0["enemy_ids"] as Array).size() / 2.0))[0]}]}})
 	var r: Dictionary = t["engine"].submit(s, t["campaign"], {"type": "parley", "seat": "p1", "params": {}})
 	expect(not r["ok"], "not while the fight is in question")
 	expect(str(r["rule_ref"]).contains("p.60"))

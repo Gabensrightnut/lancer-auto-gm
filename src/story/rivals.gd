@@ -156,7 +156,7 @@ static func setup_battle(story: StoryState, campaign: Campaign, state: GameState
 	lead.loadout["rival_id"] = id
 	story.flags[BATTLE] = {"rival": id, "unit": lead.id, "enemy_ids": enemies.map(func(u: Unit) -> String: return u.id),
 		"squad_ids": squad.map(func(u: Unit) -> String: return u.id), "enemy_down": [], "squad_down": [],
-		"rival_structure": lead.structure, "rival_max_structure": lead.max_structure, "rival_destroyed": false,
+		"rival_structure": lead.structure, "rival_max_structure": lead.max_structure, "rival_hp": lead.hp, "rival_max_hp": lead.max_hp, "rival_destroyed": false, "round": 0,
 		"offered": false, "demanded": false, "refused": false, "ended": "", "reason": "", "fate": ""}
 	mission.flavor["commander"] = {"id": id, "name": call_name(r), "unit": lead.id, "personality": str(r.get("personality", "")),
 		"returning": int(r.get("met", 0)) > 0}
@@ -166,22 +166,25 @@ static func battle(story: StoryState) -> Dictionary:
 	return story.flags.get(BATTLE, {})
 
 
-## The fight has turned against the enemy: half their force is down, or the commander is on
-## their last structure. PROVISIONAL: our reading of "no questions as to the outcome" (Core
-## p.60), which the book leaves to the GM.
+## The fight has turned against the enemy: from round 2 on, half their force is down, or the
+## commander is badly hurt (last structure; below half HP for a one-structure NPC) with a
+## quarter of their force down. PROVISIONAL: our reading of "no questions as to the outcome"
+## (Core p.60), which the book leaves to the GM.
 static func enemy_losing(b: Dictionary) -> bool:
-	if b.is_empty():
+	if b.is_empty() or int(b.get("round", 0)) < 2:
 		return false
 	var total := (b["enemy_ids"] as Array).size()
-	if total > 0 and (b["enemy_down"] as Array).size() * 2 >= total:
+	var down := (b["enemy_down"] as Array).size()
+	if total > 0 and down * 2 >= total:
 		return true
-	return int(b["rival_max_structure"]) > 1 and int(b["rival_structure"]) <= 1
+	var hurt := int(b["rival_structure"]) <= 1 if int(b["rival_max_structure"]) > 1 else (int(b.get("rival_max_hp", 0)) > 0 and int(b.get("rival_hp", 1)) * 2 < int(b["rival_max_hp"]))
+	return hurt and down * 4 >= total and down > 0
 
 
 ## ...or against the squad: half its mechs are wrecked.
 static func squad_losing(b: Dictionary) -> bool:
 	var total := (b.get("squad_ids", []) as Array).size()
-	return total > 0 and (b["squad_down"] as Array).size() * 2 >= total
+	return int(b.get("round", 0)) >= 2 and total > 0 and (b["squad_down"] as Array).size() * 2 >= total
 
 
 ## Reads a batch of battle events (StoryEngine "battle_events"): keeps count, and opens the
@@ -196,6 +199,9 @@ static func observe(story: StoryState, campaign: Campaign, events: Array) -> Arr
 			"structure_lost":
 				if u == str(b["unit"]):
 					b["rival_structure"] = int(e.get("structure", b["rival_structure"]))
+			"hp_changed":
+				if u == str(b["unit"]):
+					b["rival_hp"] = int(e.get("hp", b.get("rival_hp", 0)))
 			"unit_destroyed":
 				if u == str(b["unit"]):
 					b["rival_destroyed"] = true
@@ -203,6 +209,8 @@ static func observe(story: StoryState, campaign: Campaign, events: Array) -> Arr
 					(b["enemy_down"] as Array).append(u)
 				elif (b["squad_ids"] as Array).has(u) and not (b["squad_down"] as Array).has(u):
 					(b["squad_down"] as Array).append(u)
+			"round_started":
+				b["round"] = int(e.get("round", b.get("round", 0)))
 			"mission_ended":
 				b["ended"] = "over"
 	if bool(b["rival_destroyed"]) or bool(b["offered"]) or str(b["ended"]) != "" or Dialogue.is_open(story):
@@ -386,7 +394,9 @@ static func after_mission(story: StoryState, outcome: String, hook: Dictionary) 
 	var f: Dictionary = data().get("fates", {}).get(fate, {})
 	var extra := {"patron": str(hook.get("patron", "your patron"))}
 	story.add_log(fill(str(f.get("log", "")), r, extra))
-	var lines: Array = f.get("debrief", [])
-	var line := fill(_line(story, lines), r, extra)
+	# Picked like other story lines (no repeats until the list runs out); "again" lines when the
+	# same thing happened with this commander before.
+	var lines: Array = f.get("again", []) if (r["history"] as Array).filter(func(h: Dictionary) -> bool: return str(h["fate"]) == fate).size() > 1 and f.has("again") else f.get("debrief", [])
+	var line := fill(str(lines[StoryText._pick_index("rival_fate:%s:%d" % [fate, lines.size()], lines.size(), story)]), r, extra) if not lines.is_empty() else ""
 	story.flags[DEBRIEF] = line
 	return [{"type": "rival_fate", "rival": id, "name": call_name(r), "fate": fate, "text": line, "grudge": int(r.get("grudge", 0))}]

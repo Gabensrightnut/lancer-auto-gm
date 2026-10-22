@@ -180,3 +180,30 @@ func test_destroyed_terrain_reaches_the_board() -> void:
 	expect_eq(view.map.ground_height(hit[0]), 0)
 	expect(view.refresh_map(rules_map).is_empty(), "nothing changed: nothing happens")
 	view.free()
+
+
+func test_inputs_for_rider_and_cable_actions() -> void:
+	var g := _gear_state()
+	var u: Unit = g[3]
+	for t: Array in [["climb_on", "host"], ["board", "mech"], ["disembark", "to"], ["cut_cable", "target"], ["use_object", "object"]]:
+		var st := ActionInputs.steps(g[1], g[2], u, {"type": t[0], "params": {}})
+		expect_eq(st.size(), 1, t[0])
+		expect_eq(st[0]["param"], t[1], "%s picks %s" % [t[0], t[1]])
+	expect(ActionInputs.steps(g[1], g[2], u, {"type": "ai_control", "params": {"take_back": false}}).is_empty(), "AI control needs no pick")
+
+
+func test_weapon_mod_shows_on_the_card() -> void:
+	var db := ContentDB.new()
+	db.load_all()
+	var s := F.state()
+	var u := UnitFactory.build_mech(db, "me", "mf_standard_pattern_i_everest", {"mounts": [{"weapons": ["mw_assault_rifle"], "mod": "wm_thermal_charge"}], "systems": []}, {"ll": 3})
+	u.side = "players"
+	u.cell = Vector2i(3, 3)
+	s.add_unit(u)
+	F.mech(s, "foe", "enemies", Vector2i(8, 3))
+	var engine := RulesEngine.new()
+	F.begin(engine, s, u)
+	var weapon: Array = ActionCatalog.for_unit(s, engine, db, "me").filter(func(a: Dictionary) -> bool: return String(a.get("id", "")).begins_with("w:"))
+	expect(not weapon.is_empty() and weapon[0].get("mod") is Dictionary, "the modded weapon carries its mod")
+	expect_eq(String(weapon[0]["mod"]["name"]), "Thermal Charge")
+	expect(String(weapon[0]["mod"]["text"]) != "", "with what it does")

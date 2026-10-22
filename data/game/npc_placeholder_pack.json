@@ -1,0 +1,1331 @@
+{
+  "_note": "Placeholder NPCs made for this game in the lancer-data NPC format (npc_classes, npc_features, npc_templates), used until a real NPC pack is loaded. Not official Lancer content; the Elite/Ultra templates here are stand-ins.",
+  "npc_classes": [
+    {
+      "id": "npcc_training_drone",
+      "name": "Training Drone",
+      "role": "",
+      "info": {
+        "flavor": "Placeholder enemy made for this game; not official Lancer content."
+      },
+      "stats": {
+        "hp": [
+          10,
+          10,
+          10
+        ],
+        "armor": [
+          0,
+          0,
+          0
+        ],
+        "evade": [
+          8,
+          8,
+          8
+        ],
+        "edef": [
+          8,
+          8,
+          8
+        ],
+        "heatcap": [
+          6,
+          6,
+          6
+        ],
+        "speed": [
+          4,
+          4,
+          4
+        ],
+        "sensor": [
+          10,
+          10,
+          10
+        ],
+        "save": [
+          10,
+          10,
+          10
+        ],
+        "hull": [
+          0,
+          0,
+          0
+        ],
+        "agility": [
+          0,
+          0,
+          0
+        ],
+        "systems": [
+          0,
+          0,
+          0
+        ],
+        "engineering": [
+          0,
+          0,
+          0
+        ],
+        "size": [
+          [
+            1
+          ],
+          [
+            1
+          ],
+          [
+            1
+          ]
+        ],
+        "structure": [
+          1,
+          1,
+          1
+        ],
+        "stress": [
+          1,
+          1,
+          1
+        ],
+        "activations": [
+          1,
+          1,
+          1
+        ]
+      },
+      "base_features": [
+        "npcf_training_drone_w0"
+      ],
+      "optional_features": [],
+      "power": 100
+    },
+    {
+      "id": "npcc_training_brawler",
+      "name": "Training Brawler",
+      "role": "",
+      "info": {
+        "flavor": "Placeholder enemy made for this game; not official Lancer content."
+      },
+      "stats": {
+        "hp": [
+          14,
+          14,
+          14
+        ],
+        "armor": [
+          1,
+          1,
+          1
+        ],
+        "evade": [
+          6,
+          6,
+          6
+        ],
+        "edef": [
+          6,
+          6,
+          6
+        ],
+        "heatcap": [
+          6,
+          6,
+          6
+        ],
+        "speed": [
+          3,
+          3,
+          3
+        ],
+        "sensor": [
+          8,
+          8,
+          8
+        ],
+        "save": [
+          10,
+          10,
+          10
+        ],
+        "hull": [
+          2,
+          2,
+          2
+        ],
+        "agility": [
+          0,
+          0,
+          0
+        ],
+        "systems": [
+          0,
+          0,
+          0
+        ],
+        "engineering": [
+          1,
+          1,
+          1
+        ],
+        "size": [
+          [
+            2
+          ],
+          [
+            2
+          ],
+          [
+            2
+          ]
+        ],
+        "structure": [
+          1,
+          1,
+          1
+        ],
+        "stress": [
+          1,
+          1,
+          1
+        ],
+        "activations": [
+          1,
+          1,
+          1
+        ]
+      },
+      "base_features": [
+        "npcf_training_brawler_w0"
+      ],
+      "optional_features": [],
+      "power": 100
+    },
+    {
+      "id": "npcc_ph_grunt",
+      "name": "Placeholder Grunt",
+      "role": "grunt",
+      "info": {
+        "flavor": "Placeholder enemy made for this game; not official Lancer content."
+      },
+      "stats": {
+        "hp": [
+          6,
+          8,
+          10
+        ],
+        "armor": [
+          0,
+          0,
+          1
+        ],
+        "evade": [
+          8,
+          9,
+          10
+        ],
+        "edef": [
+          8,
+          8,
+          9
+        ],
+        "heatcap": [
+          4,
+          5,
+          6
+        ],
+        "speed": [
+          4,
+          4,
+          5
+        ],
+        "sensor": [
+          8,
+          8,
+          10
+        ],
+        "save": [
+          10,
+          11,
+          12
+        ],
+        "hull": [
+          0,
+          1,
+          1
+        ],
+        "agility": [
+          0,
+          1,
+          1
+        ],
+        "systems": [
+          0,
+          0,
+          1
+        ],
+        "engineering": [
+          0,
+          0,
+          1
+        ],
+        "tech_attack": [
+          0,
+          0,
+          1
+        ],
+        "size": [
+          [
+            1
+          ],
+          [
+            1
+          ],
+          [
+            1
+          ]
+        ],
+        "structure": [
+          1,
+          1,
+          1
+        ],
+        "stress": [
+          1,
+          1,
+          1
+        ],
+        "activations": [
+          1,
+          1,
+          1
+        ]
+      },
+      "base_features": [
+        "npcf_ph_grunt_w0",
+        "npcf_ph_grunt_f0"
+      ],
+      "optional_features": [],
+      "power": 100
+    },
+    {
+      "id": "npcc_ph_assault",
+      "name": "Placeholder Assault",
+      "role": "striker",
+      "info": {
+        "flavor": "Placeholder enemy made for this game; not official Lancer content."
+      },
+      "stats": {
+        "hp": [
+          12,
+          15,
+          18
+        ],
+        "armor": [
+          1,
+          1,
+          2
+        ],
+        "evade": [
+          8,
+          9,
+          10
+        ],
+        "edef": [
+          8,
+          8,
+          9
+        ],
+        "heatcap": [
+          6,
+          7,
+          8
+        ],
+        "speed": [
+          4,
+          5,
+          5
+        ],
+        "sensor": [
+          10,
+          10,
+          10
+        ],
+        "save": [
+          11,
+          12,
+          13
+        ],
+        "hull": [
+          1,
+          2,
+          2
+        ],
+        "agility": [
+          1,
+          1,
+          2
+        ],
+        "systems": [
+          0,
+          0,
+          1
+        ],
+        "engineering": [
+          1,
+          1,
+          2
+        ],
+        "tech_attack": [
+          0,
+          0,
+          1
+        ],
+        "size": [
+          [
+            1
+          ],
+          [
+            1
+          ],
+          [
+            1
+          ]
+        ],
+        "structure": [
+          1,
+          1,
+          1
+        ],
+        "stress": [
+          1,
+          1,
+          1
+        ],
+        "activations": [
+          1,
+          1,
+          1
+        ]
+      },
+      "base_features": [
+        "npcf_ph_assault_w0",
+        "npcf_ph_assault_f0"
+      ],
+      "optional_features": [],
+      "power": 100
+    },
+    {
+      "id": "npcc_ph_artillery",
+      "name": "Placeholder Artillery",
+      "role": "artillery",
+      "info": {
+        "flavor": "Placeholder enemy made for this game; not official Lancer content."
+      },
+      "stats": {
+        "hp": [
+          10,
+          12,
+          14
+        ],
+        "armor": [
+          0,
+          1,
+          1
+        ],
+        "evade": [
+          6,
+          7,
+          8
+        ],
+        "edef": [
+          8,
+          8,
+          9
+        ],
+        "heatcap": [
+          8,
+          9,
+          10
+        ],
+        "speed": [
+          3,
+          3,
+          4
+        ],
+        "sensor": [
+          15,
+          15,
+          15
+        ],
+        "save": [
+          11,
+          12,
+          13
+        ],
+        "hull": [
+          1,
+          1,
+          2
+        ],
+        "agility": [
+          0,
+          0,
+          1
+        ],
+        "systems": [
+          1,
+          1,
+          2
+        ],
+        "engineering": [
+          1,
+          2,
+          2
+        ],
+        "tech_attack": [
+          0,
+          1,
+          1
+        ],
+        "size": [
+          [
+            2
+          ],
+          [
+            2
+          ],
+          [
+            2
+          ]
+        ],
+        "structure": [
+          1,
+          1,
+          1
+        ],
+        "stress": [
+          1,
+          1,
+          1
+        ],
+        "activations": [
+          1,
+          1,
+          1
+        ]
+      },
+      "base_features": [
+        "npcf_ph_artillery_w0",
+        "npcf_ph_artillery_f0"
+      ],
+      "optional_features": [],
+      "power": 100
+    },
+    {
+      "id": "npcc_ph_brawler",
+      "name": "Placeholder Brawler",
+      "role": "striker",
+      "info": {
+        "flavor": "Placeholder enemy made for this game; not official Lancer content."
+      },
+      "stats": {
+        "hp": [
+          14,
+          17,
+          20
+        ],
+        "armor": [
+          1,
+          2,
+          2
+        ],
+        "evade": [
+          7,
+          8,
+          8
+        ],
+        "edef": [
+          7,
+          7,
+          8
+        ],
+        "heatcap": [
+          6,
+          7,
+          8
+        ],
+        "speed": [
+          4,
+          5,
+          5
+        ],
+        "sensor": [
+          8,
+          8,
+          8
+        ],
+        "save": [
+          11,
+          12,
+          13
+        ],
+        "hull": [
+          2,
+          2,
+          3
+        ],
+        "agility": [
+          0,
+          1,
+          1
+        ],
+        "systems": [
+          0,
+          0,
+          0
+        ],
+        "engineering": [
+          1,
+          1,
+          2
+        ],
+        "tech_attack": [
+          0,
+          0,
+          0
+        ],
+        "size": [
+          [
+            2
+          ],
+          [
+            2
+          ],
+          [
+            2
+          ]
+        ],
+        "structure": [
+          1,
+          1,
+          1
+        ],
+        "stress": [
+          1,
+          1,
+          1
+        ],
+        "activations": [
+          1,
+          1,
+          1
+        ]
+      },
+      "base_features": [
+        "npcf_ph_brawler_w0",
+        "npcf_ph_brawler_f0"
+      ],
+      "optional_features": [],
+      "power": 100
+    },
+    {
+      "id": "npcc_ph_controller",
+      "name": "Placeholder Controller",
+      "role": "controller",
+      "info": {
+        "flavor": "Placeholder enemy made for this game; not official Lancer content."
+      },
+      "stats": {
+        "hp": [
+          10,
+          12,
+          14
+        ],
+        "armor": [
+          0,
+          0,
+          1
+        ],
+        "evade": [
+          8,
+          9,
+          10
+        ],
+        "edef": [
+          11,
+          12,
+          13
+        ],
+        "heatcap": [
+          6,
+          7,
+          8
+        ],
+        "speed": [
+          4,
+          4,
+          5
+        ],
+        "sensor": [
+          15,
+          15,
+          15
+        ],
+        "save": [
+          11,
+          12,
+          13
+        ],
+        "hull": [
+          0,
+          0,
+          1
+        ],
+        "agility": [
+          1,
+          1,
+          1
+        ],
+        "systems": [
+          2,
+          2,
+          3
+        ],
+        "engineering": [
+          0,
+          1,
+          1
+        ],
+        "tech_attack": [
+          1,
+          2,
+          3
+        ],
+        "size": [
+          [
+            1
+          ],
+          [
+            1
+          ],
+          [
+            1
+          ]
+        ],
+        "structure": [
+          1,
+          1,
+          1
+        ],
+        "stress": [
+          1,
+          1,
+          1
+        ],
+        "activations": [
+          1,
+          1,
+          1
+        ]
+      },
+      "base_features": [
+        "npcf_ph_controller_w0",
+        "npcf_ph_controller_f0"
+      ],
+      "optional_features": [],
+      "power": 100
+    },
+    {
+      "id": "npcc_ph_support",
+      "name": "Placeholder Support",
+      "role": "support",
+      "info": {
+        "flavor": "Placeholder enemy made for this game; not official Lancer content."
+      },
+      "stats": {
+        "hp": [
+          10,
+          12,
+          14
+        ],
+        "armor": [
+          1,
+          1,
+          1
+        ],
+        "evade": [
+          8,
+          8,
+          9
+        ],
+        "edef": [
+          9,
+          10,
+          10
+        ],
+        "heatcap": [
+          6,
+          7,
+          8
+        ],
+        "speed": [
+          4,
+          4,
+          5
+        ],
+        "sensor": [
+          10,
+          12,
+          12
+        ],
+        "save": [
+          11,
+          12,
+          13
+        ],
+        "hull": [
+          1,
+          1,
+          1
+        ],
+        "agility": [
+          0,
+          1,
+          1
+        ],
+        "systems": [
+          1,
+          2,
+          2
+        ],
+        "engineering": [
+          1,
+          1,
+          2
+        ],
+        "tech_attack": [
+          1,
+          1,
+          2
+        ],
+        "size": [
+          [
+            1
+          ],
+          [
+            1
+          ],
+          [
+            1
+          ]
+        ],
+        "structure": [
+          1,
+          1,
+          1
+        ],
+        "stress": [
+          1,
+          1,
+          1
+        ],
+        "activations": [
+          1,
+          1,
+          1
+        ]
+      },
+      "base_features": [
+        "npcf_ph_support_w0",
+        "npcf_ph_support_f0",
+        "npcf_ph_support_f1"
+      ],
+      "optional_features": [],
+      "power": 100
+    }
+  ],
+  "npc_features": [
+    {
+      "id": "npcf_training_drone_w0",
+      "name": "Practice Rifle",
+      "origin": {
+        "type": "Class",
+        "name": "Training Drone",
+        "base": true
+      },
+      "type": "Weapon",
+      "weapon_type": "Main Rifle",
+      "damage": [
+        {
+          "type": "Kinetic",
+          "damage": [
+            "1d6",
+            "1d6",
+            "1d6"
+          ]
+        }
+      ],
+      "range": [
+        {
+          "type": "Range",
+          "val": 8
+        }
+      ],
+      "tags": [],
+      "attack_bonus": [
+        1,
+        1,
+        1
+      ],
+      "accuracy": [
+        0,
+        0,
+        0
+      ],
+      "effect": ""
+    },
+    {
+      "id": "npcf_training_brawler_w0",
+      "name": "Practice Hammer",
+      "origin": {
+        "type": "Class",
+        "name": "Training Brawler",
+        "base": true
+      },
+      "type": "Weapon",
+      "weapon_type": "Heavy Melee",
+      "damage": [
+        {
+          "type": "Kinetic",
+          "damage": [
+            "1d6+2",
+            "1d6+2",
+            "1d6+2"
+          ]
+        }
+      ],
+      "range": [
+        {
+          "type": "Threat",
+          "val": 1
+        }
+      ],
+      "tags": [
+        {
+          "id": "tg_knockback",
+          "val": 1
+        }
+      ],
+      "attack_bonus": [
+        1,
+        1,
+        1
+      ],
+      "accuracy": [
+        0,
+        0,
+        0
+      ],
+      "effect": ""
+    },
+    {
+      "id": "npcf_ph_grunt_w0",
+      "name": "Service Rifle",
+      "origin": {
+        "type": "Class",
+        "name": "Placeholder Grunt",
+        "base": true
+      },
+      "type": "Weapon",
+      "weapon_type": "Main Rifle",
+      "damage": [
+        {
+          "type": "Kinetic",
+          "damage": [
+            "1d6",
+            "1d6+1",
+            "1d6+2"
+          ]
+        }
+      ],
+      "range": [
+        {
+          "type": "Range",
+          "val": 8
+        }
+      ],
+      "tags": [],
+      "attack_bonus": [
+        1,
+        2,
+        3
+      ],
+      "accuracy": [
+        0,
+        0,
+        0
+      ],
+      "effect": ""
+    },
+    {
+      "id": "npcf_ph_grunt_f0",
+      "name": "Squad Drill",
+      "origin": {
+        "type": "Class",
+        "name": "Placeholder Grunt",
+        "base": true
+      },
+      "type": "Trait",
+      "effect": "Placeholder trait: +1 Accuracy on attacks made as reactions."
+    },
+    {
+      "id": "npcf_ph_assault_w0",
+      "name": "Assault Carbine",
+      "origin": {
+        "type": "Class",
+        "name": "Placeholder Assault",
+        "base": true
+      },
+      "type": "Weapon",
+      "weapon_type": "Main Rifle",
+      "damage": [
+        {
+          "type": "Kinetic",
+          "damage": [
+            "1d6+1",
+            "1d6+2",
+            "2d6+1"
+          ]
+        }
+      ],
+      "range": [
+        {
+          "type": "Range",
+          "val": 8
+        }
+      ],
+      "tags": [
+        {
+          "id": "tg_reliable",
+          "val": 1
+        }
+      ],
+      "attack_bonus": [
+        1,
+        2,
+        3
+      ],
+      "accuracy": [
+        0,
+        0,
+        0
+      ],
+      "effect": ""
+    },
+    {
+      "id": "npcf_ph_assault_f0",
+      "name": "Close Drill",
+      "origin": {
+        "type": "Class",
+        "name": "Placeholder Assault",
+        "base": true
+      },
+      "type": "Trait",
+      "effect": "Placeholder trait: +1 Accuracy on melee attacks."
+    },
+    {
+      "id": "npcf_ph_artillery_w0",
+      "name": "Mortar",
+      "origin": {
+        "type": "Class",
+        "name": "Placeholder Artillery",
+        "base": true
+      },
+      "type": "Weapon",
+      "weapon_type": "Heavy Launcher",
+      "damage": [
+        {
+          "type": "Explosive",
+          "damage": [
+            "1d6+1",
+            "1d6+2",
+            "2d6+1"
+          ]
+        }
+      ],
+      "range": [
+        {
+          "type": "Blast",
+          "val": 1
+        },
+        {
+          "type": "Range",
+          "val": 15
+        }
+      ],
+      "tags": [
+        {
+          "id": "tg_arcing"
+        },
+        {
+          "id": "tg_recharge",
+          "val": 5
+        }
+      ],
+      "attack_bonus": [
+        1,
+        2,
+        3
+      ],
+      "accuracy": [
+        0,
+        0,
+        0
+      ],
+      "effect": ""
+    },
+    {
+      "id": "npcf_ph_artillery_f0",
+      "name": "Dug In",
+      "origin": {
+        "type": "Class",
+        "name": "Placeholder Artillery",
+        "base": true
+      },
+      "type": "Trait",
+      "effect": "Placeholder trait: Resistance to Explosive damage."
+    },
+    {
+      "id": "npcf_ph_brawler_w0",
+      "name": "Breaker Fists",
+      "origin": {
+        "type": "Class",
+        "name": "Placeholder Brawler",
+        "base": true
+      },
+      "type": "Weapon",
+      "weapon_type": "Heavy Melee",
+      "damage": [
+        {
+          "type": "Kinetic",
+          "damage": [
+            "1d6+2",
+            "1d6+4",
+            "2d6+3"
+          ]
+        }
+      ],
+      "range": [
+        {
+          "type": "Threat",
+          "val": 1
+        }
+      ],
+      "tags": [
+        {
+          "id": "tg_knockback",
+          "val": 1
+        }
+      ],
+      "attack_bonus": [
+        1,
+        2,
+        3
+      ],
+      "accuracy": [
+        0,
+        0,
+        0
+      ],
+      "effect": ""
+    },
+    {
+      "id": "npcf_ph_brawler_f0",
+      "name": "Heavy Frame",
+      "origin": {
+        "type": "Class",
+        "name": "Placeholder Brawler",
+        "base": true
+      },
+      "type": "Trait",
+      "effect": "Placeholder trait: can't be pushed, pulled, knocked Prone or back by smaller characters."
+    },
+    {
+      "id": "npcf_ph_controller_w0",
+      "name": "Disruptor",
+      "origin": {
+        "type": "Class",
+        "name": "Placeholder Controller",
+        "base": true
+      },
+      "type": "Weapon",
+      "weapon_type": "Main CQB",
+      "damage": [
+        {
+          "type": "Energy",
+          "damage": [
+            "1d3",
+            "1d3+1",
+            "1d3+2"
+          ]
+        }
+      ],
+      "range": [
+        {
+          "type": "Range",
+          "val": 10
+        }
+      ],
+      "tags": [
+        {
+          "id": "tg_smart"
+        },
+        {
+          "id": "tg_heat_target",
+          "val": 2
+        }
+      ],
+      "attack_bonus": [
+        1,
+        2,
+        3
+      ],
+      "accuracy": [
+        0,
+        0,
+        0
+      ],
+      "effect": ""
+    },
+    {
+      "id": "npcf_ph_controller_f0",
+      "name": "Signal Mastery",
+      "origin": {
+        "type": "Class",
+        "name": "Placeholder Controller",
+        "base": true
+      },
+      "type": "Trait",
+      "effect": "Placeholder trait: +1 Accuracy on tech attacks."
+    },
+    {
+      "id": "npcf_ph_support_w0",
+      "name": "Sidearm",
+      "origin": {
+        "type": "Class",
+        "name": "Placeholder Support",
+        "base": true
+      },
+      "type": "Weapon",
+      "weapon_type": "Auxiliary CQB",
+      "damage": [
+        {
+          "type": "Kinetic",
+          "damage": [
+            "1d3+1",
+            "1d3+2",
+            "1d6+2"
+          ]
+        }
+      ],
+      "range": [
+        {
+          "type": "Range",
+          "val": 5
+        }
+      ],
+      "tags": [],
+      "attack_bonus": [
+        1,
+        2,
+        3
+      ],
+      "accuracy": [
+        0,
+        0,
+        0
+      ],
+      "effect": ""
+    },
+    {
+      "id": "npcf_ph_support_f0",
+      "name": "Shield Projector",
+      "origin": {
+        "type": "Class",
+        "name": "Placeholder Support",
+        "base": true
+      },
+      "type": "Trait",
+      "effect": "Placeholder trait: adjacent allied characters can use it as hard cover."
+    },
+    {
+      "id": "npcf_ph_support_f1",
+      "name": "Field Patch",
+      "origin": {
+        "type": "Class",
+        "name": "Placeholder Support",
+        "base": true
+      },
+      "type": "System",
+      "effect": "Placeholder action: restore HP to an adjacent ally (not automated yet).",
+      "tags": [
+        {
+          "id": "tg_quick_action"
+        }
+      ]
+    },
+    {
+      "id": "npcf_ph_template_elite",
+      "name": "Elite (placeholder)",
+      "origin": {
+        "type": "Template",
+        "name": "Elite",
+        "base": true
+      },
+      "type": "Trait",
+      "effect": "Placeholder template: tougher and acts twice a round. Not the official Elite template.",
+      "bonus": {
+        "structure": 1,
+        "stress": 1,
+        "activations": 1
+      }
+    },
+    {
+      "id": "npcf_ph_template_ultra",
+      "name": "Ultra (placeholder)",
+      "origin": {
+        "type": "Template",
+        "name": "Ultra",
+        "base": true
+      },
+      "type": "Trait",
+      "effect": "Placeholder template: much tougher and acts three times a round. Not the official Ultra template.",
+      "bonus": {
+        "structure": 2,
+        "stress": 2,
+        "activations": 2
+      }
+    }
+  ],
+  "npc_templates": [
+    {
+      "id": "npct_ph_elite",
+      "name": "Elite (placeholder)",
+      "base_features": [
+        "npcf_ph_template_elite"
+      ],
+      "optional_features": []
+    },
+    {
+      "id": "npct_ph_ultra",
+      "name": "Ultra (placeholder)",
+      "base_features": [
+        "npcf_ph_template_ultra"
+      ],
+      "optional_features": []
+    }
+  ]
+}

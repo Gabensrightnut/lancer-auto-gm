@@ -67,6 +67,9 @@ static func blast_save(state: GameState, u: Unit, op: Dictionary, params: Dictio
 		elif op.has("object_damage"):
 			# Objects are hit automatically (Thermal Grenade: 10 AP energy).
 			events.append_array(Combat.deal_damage(state, o, [{"type": String(op.get("type", "Energy")), "amount": int(op["object_damage"])}], {"ap": true, "source": u.id}))
+	if op.has("object_damage"):
+		# Terrain is an object too (Core p.58): destructible terrain in the area is hit.
+		events.append_array(TerrainDamage.damage_area(state, cells, int(op["object_damage"]), String(op.get("type", "Energy")), true, u.id))
 	ids.sort()
 	var save_op := op.duplicate()
 	save_op["op"] = "save_damage"

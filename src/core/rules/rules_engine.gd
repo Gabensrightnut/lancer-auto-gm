@@ -30,6 +30,7 @@ func _init() -> void:
 		PilotActions.DropPrepared.new(), SystemActions.CorePower.new(), MoveActions.BonusMove.new(),
 		Rulings.SetRuling.new(), CloseCombat.GrappleContest.new(), AbilityActions.Activate.new(),
 		RestActions.Rest.new(), GearActions.AIControl.new(), GearActions.ClimbOn.new(), GearActions.Board.new(), GearActions.Disembark.new(), GearActions.CutCable.new(), GearActions.PullStake.new(), GearActions.UseObject.new(), GearActions.ShakeOff.new(),
+		EnvironmentActions.BreakIce.new(), EnvironmentActions.DigOut.new(),
 	]:
 		register(h)
 
@@ -51,6 +52,15 @@ func action_types() -> Array:
 func validate(state: GameState, action: Dictionary) -> RuleResult:
 	TurnRules._state_ref = weakref(state)
 	Combat.state_for_presence = weakref(state)
+	Environments.sync(state)  # standing environment effects (resistances, cover...)
+	# Terrain targets ("terrain:x,y") stand on the field as objects while the action is checked.
+	var made := TerrainDamage.materialize(state, action)
+	var r := _validate(state, action)
+	TerrainDamage.remove(state, made)
+	return r
+
+
+func _validate(state: GameState, action: Dictionary) -> RuleResult:
 	var handler: ActionHandler = _handlers.get(action.get("type", ""))
 	if handler == null:
 		return RuleResult.deny("Unknown action '%s'." % action.get("type", ""), "")
@@ -129,11 +139,14 @@ func _run(state: GameState, action: Dictionary, decisions: Dictionary, result: R
 	var snap := _snapshot(state)
 	state.reaction_run = {"decisions": decisions, "count": 0, "pending": {}}
 	var handler: ActionHandler = _handlers[action["type"]]
+	var made := TerrainDamage.materialize(state, action)
 	var events := handler.resolve(state, action)
 	var asked: Dictionary = state.reaction_run.get("pending", {})
 	state.reaction_run = {}
 	if asked.is_empty():
+		events.append_array(TerrainDamage.settle(state, made, String(action.get("actor", ""))))
 		return {"result": result, "events": events}
+	TerrainDamage.remove(state, made)
 	_restore(state, snap)
 	var pending := asked.duplicate(true)
 	pending["action"] = action

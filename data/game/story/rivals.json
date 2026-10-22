@@ -299,6 +299,10 @@
       "debrief": [
         "{rival} pulled out before the end. We'll see them again.",
         "{rival} got away. That one won't forget you."
+      ],
+      "again": [
+        "{rival} pulled back again. They're learning when to quit.",
+        "{rival} left before the end, again."
       ]
     },
     "escaped": {
@@ -306,6 +310,10 @@
       "debrief": [
         "{rival} punched out and got away. Expect them back.",
         "{rival}'s mech is scrap, but they made it out. They'll want payback."
+      ],
+      "again": [
+        "{rival} got out again. That's twice they've walked away from a wreck.",
+        "Another wreck, and {rival} climbs out of it again. They're getting good at that."
       ]
     },
     "dead": {
@@ -320,6 +328,10 @@
       "debrief": [
         "{rival} held the field. They'll be gloating about that.",
         "{rival} beat you this time."
+      ],
+      "again": [
+        "{rival} has the upper hand on you now. That has to change.",
+        "{rival} beat you again."
       ]
     },
     "routed": {
@@ -327,6 +339,10 @@
       "debrief": [
         "{rival}'s force broke when the fight turned, and {rival} went with it. They'll be back.",
         "{rival} pulled what was left of their force out. We haven't seen the last of them."
+      ],
+      "again": [
+        "{rival}'s people broke again. One of these days {rival} won't get away.",
+        "{rival} ran again."
       ]
     }
   },

@@ -88,7 +88,10 @@ class Ram:
 			if params.get("knockback", false) or momentum:
 				# Juggernaut Momentum: knocked back 2 more spaces.
 				var extra := 1 if Effects.has(u, "titanomachy") and params.get("knockback", false) else 0  # Titanomachy Mesh
-				events.append_array(Attacks.knock_back(state, t, u.cell, (1 if params.get("knockback", false) else 0) + (2 if momentum else 0) + extra, u))
+				var spaces := (1 if params.get("knockback", false) else 0) + (2 if momentum else 0) + extra
+				var from := t.cell
+				events.append_array(Attacks.knock_back(state, t, u.cell, spaces, u))
+				events.append_array(TalentRules.kinetic_mass_transfer(state, u, t, u.cell, from, spaces))
 		return events
 
 

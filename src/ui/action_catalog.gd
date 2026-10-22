@@ -120,6 +120,14 @@ static func for_unit(state: GameState, engine: RulesEngine, db: ContentDB, unit_
 				warns.append({"text": "Last charge."})
 		if Effects.has(u, "average_damage_option"):
 			warns.append({"text": AVERAGE_NOTE})
+		if w.get("mod") is Dictionary:
+			# The weapon mod: its name and what it does (lancer-data effect text).
+			var md: Dictionary = w["mod"]
+			var mentry := db.get_entry("mods", String(md.get("id", "")))
+			a["mod"] = {"name": String(md.get("name", "")), "text": _strip(String(mentry.get("effect", mentry.get("description", "")))).left(260)}
+			if w.has("mod_uses"):
+				a["mod"]["uses"] = int(ws.get("mod_uses", w["mod_uses"]))
+				extras.append({"icon": "generic_item", "value": "M%d" % int(a["mod"]["uses"])})
 		var self_heat := Weapons.tag_value(w, "tg_heat_self")
 		if self_heat > 0:
 			extras.append({"icon": "heat", "value": "+%d" % self_heat})
@@ -167,7 +175,7 @@ static func for_unit(state: GameState, engine: RulesEngine, db: ContentDB, unit_
 	out.append(_from_data(db, "act_overwatch", {"group": "reactions", "cost": "reaction", "icon": "threat", "short": "Overwatch", "kind": "policy", "preview": {"reaction": 1}, "enabled": true}))
 	# Everything else the engine lists: other basic actions, systems, talents, traits, core.
 	var listing := RulesQueries.available_actions(state, u.id)
-	out.append_array(_from_listing(state, db, u, listing))
+	out.append_array(_from_listing(state, engine, db, u, listing))
 	var core_entry: Dictionary = {}
 	for e: Dictionary in listing:
 		if String(e.get("type", "")) == "core_power":
@@ -202,14 +210,14 @@ const OWN_TYPES := ["move", "boost", "skirmish", "barrage", "hide", "stabilize",
 ## Situational basic actions: on the More tab (not on All).
 const MORE := ["jump", "stand_up", "bonus_move", "disengage", "improvised_attack", "ram", "grapple", "fight", "bolster", "full_tech",
 	"search", "prepare", "shut_down", "boot_up", "eject", "dismount", "mount", "self_destruct", "end_grapple", "break_free",
-	"grapple_contest", "pull_stake", "use_object"]
+	"grapple_contest", "pull_stake", "use_object", "climb_on", "board", "disembark", "cut_cable"]
 ## Basic actions that are about moving: shown on the Quick tab.
 const GROUP_OF_BASIC := {"move": "quick", "attack": "quick", "tech": "tech", "other": "quick"}
 
 
 ## Bar entries for the engine's listing (RulesQueries.available_actions) that aren't built
 ## above: other basic actions, system/talent/trait abilities and trait reactions.
-static func _from_listing(state: GameState, db: ContentDB, u: Unit, listing: Array) -> Array:
+static func _from_listing(state: GameState, engine: RulesEngine, db: ContentDB, u: Unit, listing: Array) -> Array:
 	var out: Array = []
 	for e: Dictionary in listing:
 		var id := String(e.get("id", ""))
@@ -237,6 +245,17 @@ static func _from_listing(state: GameState, db: ContentDB, u: Unit, listing: Arr
 				"params": (e.get("params", {}) as Dictionary).duplicate(), "kind": "pick", "icon": Icons.cost(cost)}, true)
 		a["enabled"] = bool(e.get("available", false))
 		a["reason"] = String(e.get("reason", ""))
+		if type == "ai_control":
+			# One button: hand the controls over, or take them back (Core p.107).
+			var back := AISystems.controlled(u)
+			a["params"] = {"take_back": back}
+			a["name"] = "Take Back Control" if back else "Hand Control to AI"
+			a["short"] = "Take back" if back else "AI control"
+			a["text"] = "Protocol: %s" % ("take the controls back from your AI." if back else "your AI flies the mech until you take control back at the start of a later turn. NHPs may cascade (a 1 on a d20 after taking control).")
+			var r2: RuleResult = engine.validate(state, {"type": type, "actor": u.id, "params": a["params"]})
+			a["enabled"] = r2.ok
+			a["reason"] = r2.reason
+			a["group"] = "quick" if AISystems.has_ai(u) else "more"
 		# Situational extras live on More; the ones that only work in a pinch (Prone, grappled,
 		# shut down) come forward when they can be used.
 		if MORE.has(type) and not (a["enabled"] and type in ["stand_up", "break_free", "boot_up", "end_grapple", "pull_stake"]):

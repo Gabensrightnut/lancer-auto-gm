@@ -20,6 +20,7 @@ extends RefCounted
 ##   session_zero {identity, patron, history: [{question, a, b}], tone, focus, content_off: []}
 ##   battle_events {events: [battle events]}  (host, each batch: the enemy commander may offer terms)
 ##   parley {}                                        the squad calls on the enemy commander to stand down
+##   travel {world}                                   go to another world of the sector (between missions; Sector)
 ## "seat" "gm" (the host / procedural GM) may act for anyone.
 
 const REF_FLOW := "Core p.40: the structure of play"
@@ -206,6 +207,12 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 		"battle_events":
 			if seat != "gm":
 				return _no("The host reports the battle.")
+		"travel":
+			if seat != "gm":
+				return _no("The squad travels together; the host moves it.")
+			var why_t := Sector.travel_refusal(story, str(p.get("world", "")))
+			if why_t != "":
+				return _no(why_t, Sector.REF)
 		"parley":
 			var why := Rivals.parley_refusal(story, seat)
 			if why != "":
@@ -246,7 +253,9 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 			var events: Array = []
 			if story.hub.is_empty() or int(story.hub.get("seed", -1)) != int(p.get("seed", story.hub.get("seed", 0))):
 				NpcGen.make_hub(story, campaign, int(p.get("seed", story.mission_number)), str(p.get("kind", "town")), str(p.get("culture", "")))
+				Sector.adopt_hub(story)
 				events.append({"type": "hub_entered", "hub": story.hub.duplicate(true)})
+			Sector.ensure(story, campaign)
 			if not bool(p.get("no_jobs", false)):
 				for h: Dictionary in MissionHooks.fill_board(story, campaign):
 					events.append({"type": "hook_added", "hook": h})
@@ -356,6 +365,8 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 			return SessionZero.apply(story, campaign, p)
 		"battle_events":
 			return Rivals.observe(story, campaign, p.get("events", []))
+		"travel":
+			return Sector.travel(story, campaign, str(p["world"]))
 		"parley":
 			return Rivals.demand(story, campaign, seat)
 		"end_downtime":

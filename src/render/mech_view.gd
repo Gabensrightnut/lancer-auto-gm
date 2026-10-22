@@ -10,7 +10,7 @@ const STATUS_TAGS := {
 	"Lock On": "LOCK", "Jammed": "JAM", "Impaired": "IMP", "Slowed": "SLOW",
 	"Immobilized": "IMMOB", "Shredded": "SHRED", "Stunned": "STUN", "Prone": "PRONE",
 	"Hidden": "HIDDEN", "Invisible": "INVIS", "Exposed": "EXPOSED", "Danger Zone": "DANGER",
-	"Engaged": "ENGAGED", "Burn": "BURN",
+	"Engaged": "ENGAGED", "Burn": "BURN", "Cascading": "⚠ CASCADE", "Blinded": "BLINDED",
 }
 
 var unit: Dictionary = {}
@@ -28,6 +28,7 @@ var _drop: MeshInstance3D
 var _alt: Label3D
 var _burn: Node3D
 var _push := 0.0
+var _blind: MeshInstance3D
 
 ## Nameplate font sizes in 1080p screen pixels.
 const NAME_PX := 24
@@ -158,6 +159,8 @@ func _rebuild_ring() -> void:
 	_ring = MeshInstance3D.new()
 	_ring.mesh = st.commit()
 	var col := side_color()
+	if (unit.get("statuses", {}) as Dictionary).has("Cascading"):
+		col = Color(1.0, 0.15, 0.1)  # the NHP has it: not your side's color any more
 	col.a = 0.9
 	_ring.material_override = MeshKit.overlay_material(col)
 	_ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -209,6 +212,32 @@ func refresh() -> void:
 	for s: String in (unit.get("statuses", {}) as Dictionary):
 		tags.append(STATUS_TAGS.get(s, s.to_upper()))
 	_status.text = "  ".join(tags)
+	# Blinded: a dark shroud; it can only see the spaces next to it.
+	var blinded := (unit.get("statuses", {}) as Dictionary).has("Blinded")
+	if blinded and _blind == null:
+		_blind = MeshInstance3D.new()
+		var sph := SphereMesh.new()
+		sph.radius = maxf(0.7, h * 0.75)
+		sph.height = sph.radius * 2.0
+		_blind.mesh = sph
+		_blind.material_override = MeshKit.overlay_material(Color(0.02, 0.02, 0.04, 0.55), false, false)
+		_blind.position = Vector3(0, h * 0.55, 0)
+		_blind.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(_blind)
+	elif not blinded and _blind:
+		_blind.queue_free()
+		_blind = null
+	# A cascading NHP: red glitching body, red name, the tag in red.
+	var cascading := (unit.get("statuses", {}) as Dictionary).has("Cascading")
+	model.set_fx("cascade", 1.0 if cascading else 0.0)
+	if cascading != bool(get_meta("cascading", false)):
+		set_meta("cascading", cascading)
+		_rebuild_ring()
+	if cascading:
+		_label.modulate = Color(1.0, 0.3, 0.25)
+		_status.modulate = Color(1.0, 0.35, 0.3)
+	else:
+		_status.modulate = Color(1.0, 0.85, 0.3)
 	set_plate_push(_push)
 	if unit.has("heat") and unit.has("heat_cap"):
 		set_heat(int(unit["heat"]), int(unit["heat_cap"]))
