@@ -22,12 +22,6 @@ extends RefCounted
 
 signal changed
 
-const AUTOMATION_SCRIPT := "res://src/core/rules/automation.gd"
-const AUTOMATION_GUIDANCE := {
-	"manual": "The game doesn't do this one for you yet. When it comes up, read the rule and resolve it together at the table: the GM has the final say.",
-	"partial": "Mostly automatic. The table handles one part: %s",
-}
-
 const HASE := ["hull", "agility", "systems", "engineering"]
 ## How many weapons each mount type holds (UnitFactory.MOUNT_SLOTS).
 const SLOTS := {"Main": 1, "Heavy": 1, "Flex": 2, "Main/Aux": 2, "Aux/Aux": 2}
@@ -101,30 +95,14 @@ func picks_left() -> Dictionary:
 	return out
 
 
-## What the game runs for this build and what the table handles, from the rules engine's
-## automation report (Automation.for_build): [{kind: trait|core|system|weapon|talent, id, name,
-## status: automated|partial|manual, note, guidance, text}]. Until that report is in the
-## game, the frame's traits and core system from the built mech.
+## What the game runs for this build and what the table handles (the rules engine's
+## automation report, RulesQueries.automation_for_build): [{kind: trait|core|system|weapon|
+## talent, id, name, status: automated|partial|manual, note, guidance, text}].
 func automation() -> Array:
 	var m := mech()
 	if m.is_empty():
 		return []
-	if ResourceLoader.exists(AUTOMATION_SCRIPT):
-		var report: Variant = (load(AUTOMATION_SCRIPT) as Script).call("for_build", db, str(m["frame"]), m.get("loadout", {}), pilot)
-		if report is Array:
-			return report
-	var u := UnitFactory.build_mech(db, "preview", str(m["frame"]), m.get("loadout", {}), pilot)
-	var out: Array = []
-	var parts: Array = (u.loadout.get("traits", []) as Array).map(func(t: Dictionary) -> Array: return ["trait", t])
-	if not (u.loadout.get("core", {}) as Dictionary).is_empty():
-		parts.append(["core", u.loadout["core"]])
-	for pair: Array in parts:
-		var d: Dictionary = pair[1]
-		var note := str(d.get("manual_note", ""))
-		var status := "manual" if not d.get("automated", false) else ("partial" if note != "" else "automated")
-		out.append({"kind": pair[0], "id": str(d.get("name", "")), "name": str(d.get("name", "")), "status": status, "note": note,
-			"guidance": AUTOMATION_GUIDANCE.get(status, "") % note if status == "partial" else AUTOMATION_GUIDANCE.get(status, ""), "text": _plain(str(d.get("text", "")))})
-	return out
+	return RulesQueries.automation_for_build(db, str(m["frame"]), m.get("loadout", {}), pilot)
 
 
 ## Everything illegal about the build right now, in plain words.

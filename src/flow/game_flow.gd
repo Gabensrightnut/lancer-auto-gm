@@ -244,7 +244,21 @@ static func start_story_mission(campaign: Campaign, db: ContentDB, store: SaveSt
 	for seat: String in modes:
 		lobby.ready[seat] = true  # the squad deployed together at the hub
 	story.save_to(campaign)
-	return start_mission(lobby, store)
+	var s := start_mission(lobby, store)
+	apply_squad_orders(s, campaign, db)
+	return s
+
+
+## AI squadmates fight the way their character would (Squadmate.orders: a stance from their
+## frame's role or persona), given to the AI director when a story battle starts or resumes.
+static func apply_squad_orders(s: BattleSession, campaign: Campaign, db: ContentDB) -> void:
+	if s == null or s.director == null or not is_story(campaign):
+		return
+	open_story(campaign, db)
+	var by_seat := Squadmate.orders(story, campaign, db)
+	for u: Unit in s.host.state.units.values():
+		if u.kind == Unit.KIND_MECH and by_seat.has(u.controller):
+			s.director.set_orders(u.id, by_seat[u.controller])
 
 
 ## Starts the lobby's mission. Returns the session, or null with `error` set on the lobby.
@@ -267,7 +281,7 @@ static func start_mission(lobby: LobbyModel, store: SaveStore) -> BattleSession:
 
 
 ## Picks a saved mission back up (host). Returns the session or null.
-static func resume_mission(store: SaveStore, campaign: Campaign) -> BattleSession:
+static func resume_mission(store: SaveStore, campaign: Campaign, db: ContentDB = null) -> BattleSession:
 	var r := MissionAutosave.resume(store, campaign.id)
 	if r.get("error", "") != "":
 		return null
@@ -278,6 +292,8 @@ static func resume_mission(store: SaveStore, campaign: Campaign) -> BattleSessio
 	local_seats = Array(host.local_seats)
 	session = BattleSession.for_host(host, director, r["mission"], local_seats, save)
 	host.hold_until_back()
+	if is_story(campaign) and db != null:
+		apply_squad_orders(session, campaign, db)
 	return session
 
 

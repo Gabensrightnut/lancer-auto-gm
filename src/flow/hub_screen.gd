@@ -8,9 +8,14 @@ extends Node
 ##
 ## Online: the host's hub UI talks to a StoryHostEngine (every action goes through the
 ## StorySession, so friends see it); a friend's hub UI talks to their StoryClient and shows
-## its mirror of the host's story, and follows the host into each battle.
+## its mirror of the host's story, and follows the host into each battle. Where everyone's
+## pilot is walking is shared too (cosmetic, not game state): each screen sends its own pilot's
+## spot a few times a second ({"hub_pos": [x, z, facing]}), the host passes them on to everyone,
+## and other players' pilots glide to where their player has them.
 
 const HUB_SCENE := "res://scenes/explore/hub.tscn"
+## Seconds between position updates sent.
+const SEND_EVERY := 0.15
 
 var campaign: Campaign
 var hub: HubScene
@@ -20,6 +25,10 @@ var room_label: Label
 var story_client: StoryClient
 var client: NetClient
 var _seat := "p1"
+var _send_left := 0.0
+var _last_sent: Array = []
+## seat -> [Vector3, facing] where other players' pilots are heading.
+var _targets: Dictionary = {}
 
 
 func _ready() -> void:
@@ -52,6 +61,7 @@ func _ready() -> void:
 	if GameFlow.story_host != null:
 		session.resync()
 		_show_room(GameFlow.story_host.room_code)
+		_listen_as_host()
 
 
 func _on_story_events(_events: Array) -> void:
@@ -105,6 +115,52 @@ func _ready_as_friend(db: ContentDB) -> void:
 	_show_room("")
 
 
+## The host's room: friends' walking positions come in through the lobby channel.
+func _listen_as_host() -> void:
+	if not GameFlow.story_host.lobby_message.is_connected(_on_friend_message):
+		GameFlow.story_host.lobby_message.connect(_on_friend_message)
+
+
+func _on_friend_message(seat: String, msg: Dictionary) -> void:
+	var at := HubScreenPositions.parse(msg.get("hub_pos"))
+	if at.is_empty() or seat == _seat:
+		return
+	_targets[seat] = at
+	GameFlow.story_host.send_lobby({"hub_pos": {seat: msg["hub_pos"]}})
+
+
+## Everyone's pilots on the host's screen and the friends' (the host passes each one on).
+func _process(delta: float) -> void:
+	if hub == null or hub.avatars.is_empty() or (story_client == null and GameFlow.story_host == null):
+		return
+	_send_left -= delta
+	if _send_left <= 0.0:
+		_send_left = SEND_EVERY
+		_send_position()
+	for seat: String in _targets:
+		var fig: PilotFigure = hub.avatars.get(seat)
+		if fig == null or seat == _seat:
+			continue
+		var goal: Array = _targets[seat]
+		var pos: Vector3 = fig.position.move_toward(goal[0], HubScene.WALK_SPEED * 1.4 * delta)
+		hub.set_avatar_position(seat, pos, lerp_angle(fig.rotation.y, float(goal[1]), 0.3))
+
+
+func _send_position() -> void:
+	var me: PilotFigure = hub.avatars.get(_seat)
+	if me == null:
+		return
+	var data := HubScreenPositions.pack(me.position, me.rotation.y)
+	if data == _last_sent:
+		return
+	_last_sent = data
+	if story_client != null:
+		if client != null:
+			client.transport.send(NetTransport.HOST_PEER, {"t": NetProtocol.LOBBY, "hub_pos": data})
+	else:
+		GameFlow.story_host.send_lobby({"hub_pos": {_seat: data}})
+
+
 ## A new view of the host's story: copied into the objects the hub's panels already hold.
 func _on_mirror(s: StoryState, c: Campaign, events: Array) -> void:
 	var where := JSON.stringify([hub.story.hub.get("name", ""), hub.story.hub.get("seed", "")])
@@ -121,6 +177,12 @@ func _on_refused(reason: String, _rule_ref: String) -> void:
 
 ## The host started the battle: follow them in.
 func _on_host_lobby(data: Dictionary) -> void:
+	if data.get("hub_pos") is Dictionary:
+		for seat: String in data["hub_pos"]:
+			var at := HubScreenPositions.parse(data["hub_pos"][seat])
+			if not at.is_empty() and seat != _seat:
+				_targets[seat] = at
+		return
 	if data.get("started", false) and client != null:
 		GameFlow.session = BattleSession.for_client(client)
 		MenuSession.go(self, "battle")
@@ -224,6 +286,7 @@ func _host_online() -> void:
 	var host := GameFlow.host_story_online(campaign, MenuSession.content(), MenuSession.store, [_seat])
 	net.host = host
 	host.room_opened.connect(_show_room)
+	_listen_as_host()
 	host.open_failed.connect(func(why: String) -> void: room_label.text = why)
 	room_label.text = "Opening a room..."
 	net.open_online(host)

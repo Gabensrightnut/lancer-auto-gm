@@ -258,7 +258,7 @@ func _load_campaign(id: String) -> void:
 	MenuSession.campaign = r["campaign"]
 	MenuSession.lobby = null
 	if MenuSession.store.has_mission(id):
-		var s := GameFlow.resume_mission(MenuSession.store, MenuSession.campaign)
+		var s := GameFlow.resume_mission(MenuSession.store, MenuSession.campaign, MenuSession.content())
 		if s != null:
 			var net := MenuSession.net(self)
 			if net != null and not (s.host.export_seats()["tokens"] as Dictionary).is_empty():

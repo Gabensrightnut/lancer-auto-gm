@@ -26,6 +26,8 @@ var reaction_panel: PanelContainer
 var menu_layer: Control
 var tutorial: TutorialPanel
 var narration: NarrationPopup
+## AI squadmates' barks over their mechs (story campaigns).
+var bubbles: SpeechBubbles
 ## The campaign's story (host), for the tutorial's lessons and which tips were shown. A friend
 ## in someone else's game gets a fresh one (tips only; the host keeps the campaign).
 var story: StoryState
@@ -47,6 +49,8 @@ func _ready() -> void:
 	view.content = content
 	add_child(view)
 	_build_ui()
+	bubbles.view = view
+	bubbles.duration_scale = MenuSession.settings().popup_duration
 	player = EventPlayer.new(view, rolls, combat_log)
 	player.camera = view.tactical
 	player.on_banner = show_banner
@@ -101,6 +105,15 @@ func _stage_twist() -> void:
 		await get_tree().process_frame
 	_narrate([{"type": "twist_revealed", "title": "Twist", "speaker": "Commander Ilse Vey", "rule_ref": GmTwist.REF,
 		"twist": {"id": "third_party", "reveal": "New transponders on the scope. Not the enemy you came for. Someone else wants this too.", "question": "Who sent them, and what do they want here?"}}])
+	var mates := _local_units()
+	var cam := get_viewport().get_camera_3d()
+	var screen := get_viewport().get_visible_rect()
+	for id: String in view.units:
+		var mv: MechView = view.units[id]
+		var u: Dictionary = mv.unit
+		if u.get("side", "") == Mission.PLAYERS and not mates.has(id) and screen.has_point(cam.unproject_position(mv.plate_anchor())):
+			bubbles.say(id, str(u.get("name", id)), "Contact front. I'll hold this side, you push.")
+			break
 	var lesson: Dictionary = Tutorial.lessons()[3]
 	tutorial.show_events([{"type": "tutorial_prompt", "kind": "lesson", "id": lesson["id"], "title": lesson.get("title", ""), "text": lesson.get("text", ""),
 		"objective": lesson.get("objective", ""), "rule_ref": lesson.get("rule_ref", ""), "step": 4, "of": Tutorial.lessons().size()}])
@@ -161,6 +174,28 @@ func _narrate(events: Array) -> void:
 	narration.show_events(events)
 
 
+## AI squadmates speak up as things happen (Squadmate.barks_for: their persona and what they
+## remember). Story campaigns only: the host's story, or a friend's mirror of it.
+func _barks(events: Array) -> void:
+	var st: StoryState = story if campaign != null else (GameFlow.story_client.story if GameFlow.story_client != null else null)
+	var c: Campaign = campaign if campaign != null else (GameFlow.story_client.campaign if GameFlow.story_client != null else null)
+	if st == null or c == null or st.seats.is_empty():
+		return
+	var unit_pilot := {}
+	var seat_of := {}
+	for id: String in session.view.get("units", {}):
+		var u: Dictionary = session.view["units"][id]
+		var seat := str(u.get("controller", ""))
+		if str(u.get("kind", "")) == Unit.KIND_MECH and st.seats.has(seat):
+			unit_pilot[id] = st.pilot_of_seat(seat)
+			seat_of[id] = seat
+	for e: Dictionary in events:
+		for line: Dictionary in Squadmate.barks_for(st, c, e, unit_pilot, seat_of):
+			var who := str(c.pilots.get(str(line["pilot"]), {}).get("callsign", ""))
+			bubbles.say(str(line["unit"]), who, str(line["text"]))
+			combat_log.add_line("[color=#9fc3e8]%s:[/color] %s" % [who, line["text"]])
+
+
 func _load(v: Dictionary) -> void:
 	_loaded = true
 	view.set_map(BattleMap.from_dict(v.get("map", {})), BIOME)
@@ -193,6 +228,7 @@ func _drain() -> void:
 		if not events.is_empty():
 			await player.play(events)
 			_narrate(events)
+			_barks(events)
 		_sync(item[0])
 	_draining = false
 
@@ -475,6 +511,9 @@ func _build_ui() -> void:
 	reaction_panel.custom_minimum_size = Vector2(620, 0)
 	reaction_panel.visible = false
 	ui.add_child(reaction_panel)
+	bubbles = SpeechBubbles.new()
+	ui.add_child(bubbles)
+	ui.move_child(bubbles, 0)
 	narration = NarrationPopup.new()
 	narration.theme = MenuTheme.theme()
 	ui.add_child(narration)
