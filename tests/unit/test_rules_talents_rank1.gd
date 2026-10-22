@@ -183,3 +183,45 @@ func test_hacker_invade_options() -> void:
 	F.load_dice(s, [15])
 	F.act(e, s, "fix_hack", "t", {"what": "hack_slash"})
 	expect(F.ok(F.act(e, s, "scan", "t", {"target": "a"})), "rebooted")
+
+
+func test_return_fire() -> void:
+	_setup({"t_gunslinger": 2}, [{"weapons": ["mw_assault_rifle"]}, {"weapons": ["mw_pistol"]}], Vector2i(3, 0))
+	F.act(e, s, "end_turn", "a")
+	F.act(e, s, "start_turn", "t")
+	F.load_dice(s, [15, 2, 15, 2])
+	var out := F.act(e, s, "skirmish", "t", {"weapon": "0:0", "target": "a"})
+	var rolls := F.events_of(out, "attack_rolled")
+	expect_eq(rolls.size(), 2, "shot back")
+	expect_eq(rolls[1]["attacker"], "a")
+
+
+func test_intercede() -> void:
+	_setup({"t_bonded": 2}, [{"weapons": ["mw_assault_rifle"]}], Vector2i(5, 0), {"bondmate": "b"})
+	var b := F.mech(s, "b", "players", Vector2i(1, 0))
+	b.hp = 3
+	Combat.deal_damage(s, b, [{"type": "Kinetic", "amount": 5}], {"source": "t"})
+	expect_eq(b.hp, 3, "the Bonded mech took it")
+	expect(a.hp < a.max_hp)
+
+
+func test_flank() -> void:
+	_setup({"t_tactician": 3}, [{"weapons": ["mw_assault_rifle"]}], Vector2i(4, 0))
+	var ally := F.mech(s, "ally", "players", Vector2i(0, 2))
+	F.act(e, s, "end_turn", "a")
+	s.turn_side = "players"
+	F.act(e, s, "start_turn", "ally")
+	F.load_dice(s, [15, 2, 15, 4])
+	var out := F.act(e, s, "skirmish", "ally", {"weapon": "0:0", "target": "t"})
+	var rolls := F.events_of(out, "attack_rolled")
+	expect_eq(rolls.size(), 2, "Flank: the Tactician joins in")
+	expect_eq(t.hp, 40 - 2 - 2, "half of 4")
+
+
+func test_executioner_reroll() -> void:
+	_setup({"t_executioner": 3}, [{"weapons": ["mw_assault_rifle"]}, {"weapons": ["mw_tactical_knife"]}, {"weapons": ["mw_heavy_melee_weapon"]}], Vector2i(1, 0))
+	var other := F.mech(s, "o", "enemies", Vector2i(0, 1))
+	F.load_dice(s, [2, 15, 3, 3])
+	var out := F.act(e, s, "skirmish", "a", {"weapon": "1:0", "target": "t"})
+	expect_eq(F.events_of(out, "attack_rerolled")[0]["target"], "o", "rerolled against the other character")
+	expect(other.hp < 10)

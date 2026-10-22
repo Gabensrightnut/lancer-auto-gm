@@ -921,5 +921,8 @@
       "effect": "hack_slash",
       "label": "Hack./Slash"
     }
-  ]
+  ],
+  "t_gunslinger:Return Fire": [],
+  "t_bonded:Intercede": [],
+  "t_tactician:Flank": []
 }

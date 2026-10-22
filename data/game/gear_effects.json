@@ -324,6 +324,11 @@
       {
         "kind": "backswing"
       }
+    ],
+    "3": [
+      {
+        "kind": "melee_reroll"
+      }
     ]
   },
   "t_gunslinger": {
@@ -338,6 +343,11 @@
     "3": [
       {
         "kind": "gunslinger_die"
+      }
+    ],
+    "2": [
+      {
+        "kind": "return_fire"
       }
     ]
   },
@@ -447,6 +457,11 @@
         "when": "higher_elevation",
         "accuracy": 1,
         "per": "round"
+      }
+    ],
+    "3": [
+      {
+        "kind": "flank"
       }
     ]
   },
@@ -647,6 +662,11 @@
     "1": [
       {
         "kind": "bonded"
+      }
+    ],
+    "2": [
+      {
+        "kind": "intercede"
       }
     ]
   },
