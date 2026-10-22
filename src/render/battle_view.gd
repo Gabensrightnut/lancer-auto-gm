@@ -160,12 +160,6 @@ func show_mission(m: Dictionary, battle_phase: String = GameState.PHASE_SETUP) -
 			continue
 		zones[zname] = src[zname]
 	var dep: Dictionary = m.get("deployment", {}) if m.get("deployment") is Dictionary else {}
-	# Workaround: TerrainRenderer._draw_objectives can't remove its old markers (a void
-	# ternary); take them off first. Remove once world-maps fixes it.
-	var old := terrain.get_node_or_null("Objectives")
-	if old:
-		terrain.remove_child(old)
-		old.queue_free()
 	terrain.show_objectives(zones, dep, phase == GameState.PHASE_SETUP)
 
 
