@@ -63,11 +63,16 @@ void fragment() {
 	vec3 e = emission_color * 3.0;
 	// Heat: the paint darkens and the panel seams and edges glow, orange toward yellow-white.
 	float h = clamp(heat, 0.0, 1.0);
-	vec3 hc = mix(vec3(1.0, 0.28, 0.03), vec3(1.0, 0.75, 0.35), h * h);
+	vec3 hc = mix(vec3(1.0, 0.22, 0.02), vec3(1.0, 0.6, 0.18), h * h);
 	float fres = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.0);
 	float pulse = 0.85 + 0.15 * sin(TIME * 6.0);
-	ALBEDO *= 1.0 - 0.65 * h;
-	e += hc * h * (0.25 + 1.4 * fres + 3.0 * smoothstep(0.03, 0.0, min(g.x, g.y))) * pulse;
+	// Glowing seams: panel lines on code-built parts, sharp edges on Blender-made ones.
+	float seam = smoothstep(0.03, 0.0, min(g.x, g.y));
+	if (vertex_wear > 0.0) {
+		seam = smoothstep(60.0, 160.0, length(fwidth(NORMAL)) / max(length(fwidth(VERTEX)), 1e-5));
+	}
+	ALBEDO *= 1.0 - 0.7 * h;
+	e += hc * h * (0.12 + 0.9 * fres + 2.2 * seam) * pulse;
 	e += vec3(1.0, 0.95, 0.9) * flash * 1.1;
 	if (glitch > 0.0) {
 		float scan = step(0.5, fract(SCREEN_UV.y * 140.0 + TIME * 9.0));
