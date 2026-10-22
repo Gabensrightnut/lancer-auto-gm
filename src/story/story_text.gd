@@ -33,12 +33,16 @@ static func line(src: Variant, story: StoryState, campaign: Campaign, ctx: Dicti
 ## from "greet_local_gruff" for a gruff local; standing adds "_friendly" / "_hostile" ones.
 static func pool_line(pool: String, story: StoryState, ctx: Dictionary = {}) -> String:
 	var lines: Array = (pools().get(pool, []) as Array).duplicate()
+	var culture := str(story.hub.get("culture", ""))
+	if culture != "":
+		lines.append_array(pools().get(pool + "_" + culture, []))
 	var npc: Dictionary = story.npcs.get(str(ctx.get("npc", "")), {})
 	if not npc.is_empty():
 		lines.append_array(pools().get(pool + "_" + str(npc.get("personality", "")), []))
 		# Standing changes the tone: Wary or worse uses only the cold lines, Friendly or better adds warm ones.
 		var st := story.get_standing(str(npc.get("faction", "")))
 		if st <= -1 and pools().has(pool + "_hostile"):
+			# Cold lines only (no culture flavor either: they're not in the mood).
 			lines = (pools()[pool + "_hostile"] as Array).duplicate()
 		elif st >= 1:
 			lines.append_array(pools().get(pool + "_friendly", []))

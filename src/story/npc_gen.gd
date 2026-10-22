@@ -5,6 +5,7 @@ extends RefCounted
 
 const ROLES_FILE := "res://data/game/npcs/roles.json"
 const TABLES_FILE := "res://data/game/npcs/tables.json"
+const CULTURES_FILE := "res://data/game/story/cultures.json"
 const MANUFACTURER_NAMES := {"GMS": "General Massive Systems", "IPS-N": "IPS-Northstar", "SSC": "Smith-Shimano Corpro",
 	"HORUS": "HORUS", "HA": "Harrison Armory"}
 
@@ -19,20 +20,26 @@ static func tables() -> Dictionary:
 	return _json(TABLES_FILE)
 
 
-## A new hub with its people. kind: "town", "base" or "station". Adds the NPCs to story.npcs
-## and returns the hub record (also set as story.hub).
-static func make_hub(story: StoryState, campaign: Campaign, hub_seed: int, kind: String = "town") -> Dictionary:
+## A new hub with its people. kind: "town", "base" or "station"; culture: a kit id from
+## data/game/story/cultures.json ("" = picked by weight). Adds the NPCs to story.npcs and
+## returns the hub record (also set as story.hub).
+static func make_hub(story: StoryState, campaign: Campaign, hub_seed: int, kind: String = "town", culture: String = "") -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([story.story_seed, hub_seed, "hub"])
 	var names := NameGen.new(rng)
 	var t := tables()
+	if culture == "" or not cultures().has(culture):
+		culture = pick_culture(rng, kind)
+	var kit: Dictionary = cultures().get(culture, {})
 	var hub_names: Dictionary = t.get("hub_names", {})
 	var pattern := _pick(rng, hub_names.get(kind, ["{a}"]))
+	var a_pool: Array = (hub_names.get("a", ["Haven"]) as Array) + (kit.get("hub_a", []) as Array) + (kit.get("hub_a", []) as Array)
 	var hub := {
-		"id": "hub_%d" % hub_seed, "kind": kind, "name": pattern.replace("{a}", _pick(rng, hub_names.get("a", ["Haven"]))),
+		"id": "hub_%d" % hub_seed, "kind": kind, "culture": culture, "culture_name": kit.get("name", culture),
+		"name": pattern.replace("{a}", _pick(rng, a_pool)),
 		"planet": names.planet(), "faction": names.faction(), "seed": hub_seed, "npcs": [], "spots": [],
 	}
-	hub["spots"] = HubLayout.spots(kind, rng)
+	hub["spots"] = HubLayout.spots(kind, rng, kit.get("spots", {}))
 	hub["conflict"] = _conflict(rng, names, hub)
 	var plan: Dictionary = _json(ROLES_FILE).get("hub_roles", {}).get(kind, {})
 	var role_list: Array = (plan.get("always", []) as Array).duplicate()
@@ -54,6 +61,8 @@ static func make_hub(story: StoryState, campaign: Campaign, hub_seed: int, kind:
 static func make_npc(rng: RandomNumberGenerator, names: NameGen, campaign: Campaign, hub: Dictionary, role: String, id: String) -> Dictionary:
 	var r: Dictionary = roles().get(role, {})
 	var t := tables()
+	var kit: Dictionary = cultures().get(str(hub.get("culture", "")), {})
+	var titles: Array = (r.get("titles", [r.get("name", role)]) as Array) + (kit.get("titles", {}).get(role, []) as Array) + (kit.get("titles", {}).get(role, []) as Array)
 	var looks: Dictionary = t.get("looks", {})
 	var faction := str(hub.get("faction", ""))
 	match str(r.get("faction", "hub")):
@@ -72,7 +81,7 @@ static func make_npc(rng: RandomNumberGenerator, names: NameGen, campaign: Campa
 	var want: Dictionary = _pick_any(rng, t.get("wants", [{}]))
 	var npc := {
 		"id": id, "name": names.pilot_name(), "role": role, "role_name": r.get("name", role),
-		"title": _pick(rng, r.get("titles", [r.get("name", role)])), "faction": faction,
+		"title": _pick(rng, titles), "faction": faction,
 		"personality": _pick(rng, t.get("personalities", ["warm"])), "quirk": _pick(rng, t.get("quirks", [""])),
 		"want": want.get("text", ""), "want_hook": want.get("hook", ""),
 		"offers": (r.get("offers", []) as Array).duplicate(), "trusted_offers": (r.get("trusted_offers", []) as Array).duplicate(),
@@ -109,16 +118,19 @@ static func manufacturer_for(campaign: Campaign, rng: RandomNumberGenerator) -> 
 
 ## The hub's situation (data/game/story/conflicts.json): its own faction against an outside one.
 static func _conflict(rng: RandomNumberGenerator, names: NameGen, hub: Dictionary) -> Dictionary:
-	var list: Array = _json("res://data/game/story/conflicts.json").get("conflicts", [])
+	var culture := str(hub.get("culture", ""))
+	var liked: Array = cultures().get(culture, {}).get("conflicts", [])
+	var list: Array = (_json("res://data/game/story/conflicts.json").get("conflicts", []) as Array).filter(func(c: Dictionary) -> bool:
+		return not c.has("cultures") or (c["cultures"] as Array).has(culture))
 	if list.is_empty():
 		return {}
 	var total := 0
 	for c: Dictionary in list:
-		total += int(c.get("weight", 1))
+		total += _culture_weight(c, liked)
 	var roll := rng.randi_range(1, maxi(total, 1))
 	var pick: Dictionary = list[0]
 	for c: Dictionary in list:
-		roll -= int(c.get("weight", 1))
+		roll -= _culture_weight(c, liked)
 		if roll <= 0:
 			pick = c
 			break
@@ -131,6 +143,35 @@ static func _conflict(rng: RandomNumberGenerator, names: NameGen, hub: Dictionar
 		"a_hooks": pick.get("a_hooks", []), "b_hooks": pick.get("b_hooks", [])}
 	out["summary"] = _pick(rng, pick.get("summary", [""])).replace("{a}", str(out["a"])).replace("{b}", b).replace("{hub}", str(hub["name"])).replace("{planet}", str(hub["planet"])).replace("{hub_faction}", str(hub["faction"]))
 	return out
+
+
+## A conflict or job's weight at this hub: x3 when the culture kit lists it.
+static func _culture_weight(entry: Dictionary, liked: Array) -> int:
+	return int(entry.get("weight", 1)) * (3 if liked.has(entry.get("id", "")) else 1)
+
+
+static func cultures() -> Dictionary:
+	return _json(CULTURES_FILE).get("kits", {})
+
+
+## A culture kit for a hub of this kind, by the weights in cultures.json.
+static func pick_culture(rng: RandomNumberGenerator, kind: String) -> String:
+	var data := _json(CULTURES_FILE)
+	var weights: Dictionary = data.get("weights", {})
+	var kinds: Dictionary = data.get("kinds", {})
+	var ids: Array = cultures().keys().filter(func(k: String) -> bool: return (kinds.get(k, [kind]) as Array).has(kind))
+	ids.sort()
+	if ids.is_empty():
+		return "frontier_colony"
+	var total := 0
+	for k: String in ids:
+		total += int(weights.get(k, 1))
+	var roll := rng.randi_range(1, maxi(total, 1))
+	for k: String in ids:
+		roll -= int(weights.get(k, 1))
+		if roll <= 0:
+			return k
+	return ids[0]
 
 
 ## A pilot-side contact made by downtime (Get a Damn Drink's "friend"), stored like hub NPCs.
