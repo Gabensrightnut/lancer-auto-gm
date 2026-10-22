@@ -390,3 +390,24 @@ func test_guide_the_flock_and_annihilation_secondary() -> void:
 	out = F.act(e, s, "activate", "a", {"ability": key})
 	expect(F.ok(out), F.reason(out))
 	expect_eq(F.events_of(out, "area_attack").size(), 1, "the second Burst")
+
+
+func test_perimeter_command_plate_and_assassin_drone() -> void:
+	_setup(["ms_perimeter_command_plate", "ms_assassin_drone"], Vector2i(6, 0))
+	var out := F.act(e, s, "activate", "a", {"ability": _key("Print Perimeter Command Plate"), "aim": [3, 0], "setting": "attract"})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(Zones.of_kind(s, "pcp").size(), 1)
+	out = F.act(e, s, "activate", "a", {"ability": _key("Deploy Assassin Drone"), "to": [0, 1], "aim": [5, 4]})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(Zones.of_kind(s, "assassin").size(), 1, "the drone's Blast 2 area")
+	F.act(e, s, "end_turn", "a")
+	F.act(e, s, "start_turn", "t")
+	F.load_dice(s, [3])
+	F.act(e, s, "move", "t", {"to": [4, 0]})
+	expect(t.has_status("Immobilized"), "Attract: failed Hull save")
+	t.statuses.erase("Immobilized")
+	t.cell = Vector2i(9, 4)
+	t.turn["move_spent"] = 0
+	F.load_dice(s, [15])
+	out = F.act(e, s, "move", "t", {"to": [7, 4]})
+	expect_eq(t.hp, 37, "Area Denial: 3 kinetic as it entered the area")

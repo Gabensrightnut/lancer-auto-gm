@@ -166,7 +166,7 @@ const ZONE_PREFIX := "zone:"
 
 static func zone_unit(state: GameState, id: String) -> Unit:
 	var zid := id.substr(ZONE_PREFIX.length())
-	for z: Dictionary in Zones.of_kind(state, "bunker"):
+	for z: Dictionary in Zones.of_kind(state, "bunker") + Zones.of_kind(state, "pcp"):
 		if String(z["id"]) != zid:
 			continue
 		var u := Unit.new()
@@ -176,9 +176,10 @@ static func zone_unit(state: GameState, id: String) -> Unit:
 		u.side = "terrain"
 		u.cell = Vector2i(int(z["center"][0]), int(z["center"][1]))
 		u.level = state.map.ground_height(u.cell)
-		u.size = 4.0
-		u.max_hp = 40
-		u.hp = int(z.get("hp", 40))
+		var pcp: bool = z["kind"] == "pcp"
+		u.size = 2.0 if pcp else 4.0
+		u.max_hp = 20 if pcp else 40
+		u.hp = int(z.get("hp", u.max_hp))
 		u.evasion = 5
 		u.max_structure = 1
 		u.structure = 1
@@ -203,11 +204,14 @@ static func settle(state: GameState, ids: Array[String], source: String = "") ->
 		state.units.erase(id)
 		if id.begins_with(ZONE_PREFIX):
 			var zid := id.substr(ZONE_PREFIX.length())
-			for z: Dictionary in Zones.of_kind(state, "bunker"):
+			for z: Dictionary in Zones.of_kind(state, "bunker") + Zones.of_kind(state, "pcp"):
 				if String(z["id"]) == zid:
 					z["hp"] = u.hp
 					if u.destroyed or u.hp <= 0:
 						events.append_array(Zones.remove(state, zid, "destroyed"))
+						for o: Unit in state.units.values():
+							if o.has_status("Immobilized") and String(o.statuses["Immobilized"].get("source", "")) == "pcp:" + zid:
+								events.append_array(Combat.remove_status(o, "Immobilized", "the plate was destroyed"))
 			continue
 		var c: Vector2i = cell_of(id)
 		if u.destroyed or u.hp <= 0:

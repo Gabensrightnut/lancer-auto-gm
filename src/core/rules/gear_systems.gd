@@ -980,6 +980,93 @@ static func fade_roll(state: GameState, u: Unit) -> Array[Dictionary]:
 	return events
 
 
+## Perimeter Command Plate: a flat 2x2 plate within Range 5 (params.aim), set to "repulse" or
+## "attract" (params.setting). A new one replaces the old. It has 20 HP and Evasion 5
+## (target "zone:<id>"). It goes off for a character the first time it enters in a round, or
+## when it ends its turn there.
+static func print_pcp(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for z: Dictionary in Zones.of_kind(state, "pcp").duplicate():
+		if z.get("owner", "") == u.id:
+			events.append_array(Zones.remove(state, String(z["id"]), "replaced"))
+	var aim: Vector2i = TurnAction.cell_param(params, "aim")
+	var cells: Array = []
+	for c in state.map.grid.footprint(aim, 2.0):
+		cells.append([c.x, c.y])
+	events.append_array(Zones.add(state, {"kind": "pcp", "owner": u.id, "label": "Perimeter Command Plate", "center": [aim.x, aim.y], "cells": cells,
+		"setting": String(params.get("setting", "attract")), "hp": 20, "hit": {}, "rule_ref": "systems: Perimeter Command Plate"}))
+	return events
+
+
+static func pcp_trigger(state: GameState, z: Dictionary, t: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var owner := state.unit(String(z.get("owner", "")))
+	var hit: Dictionary = z.get("hit", {})
+	if owner == null or int(hit.get(t.id, -1)) == state.round_number or t.kind == Unit.KIND_DEPLOYABLE:
+		return events
+	if String(z.get("setting", "")) == "repulse" and t.side == owner.side:
+		return events  # allies may fly 3 spaces as a free action (the table's)
+	hit[t.id] = state.round_number
+	z["hit"] = hit
+	var save := Combat.skill_check(state, t, "hull", "Save vs Perimeter Command Plate", owner.save_target, 0, 0, [], true)
+	events.append({"type": "skill_check", "unit": t.id, "check": save, "rule_ref": "systems: Perimeter Command Plate"})
+	if save["success"]:
+		return events
+	if String(z.get("setting", "")) == "repulse":
+		# Pushed 3 spaces (PROVISIONAL: away from the plate's center); Prone if it hits an obstruction.
+		var from := t.cell
+		var kb := Attacks.knock_back(state, t, Vector2i(int(z["center"][0]), int(z["center"][1])), 3, owner)
+		events.append_array(kb)
+		if state.map.grid.distance(from, t.cell) < 3:
+			events.append_array(Combat.add_status(state, t, "Prone", owner.id))
+	else:
+		events.append_array(Combat.add_status(state, t, "Immobilized", "pcp:" + String(z["id"])))
+	return events
+
+
+## Assassin Drone: on deployment it targets a Blast 2 area (params.aim) within line of sight and
+## Sensors. Area Denial (reaction, any number per round): a hostile starts moving in it or
+## enters it: a ranged attack from the drone with your Grit, 3 kinetic on a hit.
+static func assassin_area(state: GameState, u: Unit, drone: Unit, params: Dictionary) -> Array[Dictionary]:
+	var aim: Variant = TurnAction.cell_param(params, "aim")
+	if aim == null:
+		return [] as Array[Dictionary]
+	for z: Dictionary in Zones.of_kind(state, "assassin").duplicate():
+		if z.get("owner", "") == u.id:
+			Zones.remove(state, String(z["id"]), "retargeted")
+	var cells := Zones.cells_around(state, [aim] as Array[Vector2i], 2)
+	return Zones.add(state, {"kind": "assassin", "owner": u.id, "drone": drone.id, "label": "Assassin Drone", "center": [aim.x, aim.y], "cells": cells,
+		"rule_ref": "systems: Assassin Drone"})
+
+
+static func area_denial(state: GameState, z: Dictionary, t: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var owner := state.unit(String(z.get("owner", "")))
+	var drone := state.unit(String(z.get("drone", "")))
+	if owner == null or drone == null or not Combat.is_present(drone) or t.side == owner.side or t.kind == Unit.KIND_DEPLOYABLE:
+		return events
+	if owner.has_status("Stunned") or not Combat.is_present(owner):
+		return events
+	var d := Reactions.offer(state, owner, "area_denial", {"target": t.id, "suggested": {"take": true}}, {"take": true})
+	if not d.get("take", false):
+		return events
+	var check := state.dice.check(owner.grit, 0, 0, t.evasion)
+	events.append({"type": "attack_rolled", "attacker": drone.id, "target": t.id, "weapon": "", "weapon_name": "Assassin Drone", "kind": Attacks.KIND_RANGED,
+		"check": check, "result": ("crit" if check["crit"] else "hit") if check["success"] else "miss", "rule_ref": "systems: Assassin Drone"})
+	if check["success"]:
+		events.append_array(Combat.deal_damage(state, t, [{"type": "Kinetic", "amount": 3}], {"source": owner.id}))
+	return events
+
+
+## Area Denial when a hostile starts moving inside the area.
+static func area_denial_start(state: GameState, mover: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for z: Dictionary in Zones.of_kind(state, "assassin"):
+		if Zones.contains(state, z, mover):
+			events.append_array(area_denial(state, z, mover))
+	return events
+
+
 ## Mesmer Beacon: Systems save, or until the end of its next turn its only voluntary movements
 ## are toward you.
 static func mesmer(state: GameState, u: Unit, t: Unit) -> Array[Dictionary]:

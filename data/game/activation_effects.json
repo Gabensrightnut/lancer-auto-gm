@@ -1098,5 +1098,21 @@
       "op": "annihilation_second",
       "label": "Annihilation Nexus Secondary Attack"
     }
+  ],
+  "deploy:ms_perimeter_command_plate:Perimeter Command Plate": {
+    "skip": true
+  },
+  "actions:ms_perimeter_command_plate": [
+    {
+      "name": "Print Perimeter Command Plate",
+      "activation": "Quick",
+      "detail": "A flat 2x2 plate within Range 5 (params.aim), set to repulse or attract (params.setting).",
+      "ops": [
+        {
+          "op": "pcp",
+          "label": "Perimeter Command Plate"
+        }
+      ]
+    }
   ]
 }

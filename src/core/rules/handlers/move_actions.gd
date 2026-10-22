@@ -198,6 +198,7 @@ class Move:
 		if not r.is_empty():
 			events.append(r)
 			return events
+		events.append_array(GearSystems.area_denial_start(state, u))  # Assassin Drone
 		var plan := MoveActions._plan(state, u, params, Movement.MODE_MOVE)
 		u.turn["move_spent"] = int(u.turn.get("move_spent", 0)) + int(plan["cost"])
 		if plan["stopped_by"] != "":

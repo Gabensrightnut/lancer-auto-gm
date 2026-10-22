@@ -75,6 +75,9 @@ class Activate:
 			"deploy":
 				for c: Vector2i in AbilityActions.spots(params):
 					events.append_array(Abilities.deploy(state, u, a, c))
+				if String(a.get("deployable", {}).get("name", "")) == "Assassin Drone":
+					for dep: Dictionary in AbilityActions._deployed(events):
+						events.append_array(GearSystems.assassin_area(state, u, state.unit(String(dep["id"])), params))
 				var extra := AbilityActions.extra_mines(params)
 				if not extra.is_empty():
 					# Iskander Mine Deployers: up to two more mines next to it, as a free action.
@@ -105,6 +108,14 @@ class Activate:
 				if hit:
 					events.append_array(AbilityActions.apply_ops(state, u, a, target, params))
 		return events
+
+
+static func _deployed(events: Array[Dictionary]) -> Array:
+	var out: Array = []
+	for ev: Dictionary in events:
+		if ev.get("type", "") == "deployed":
+			out.append(ev["object"])
+	return out
 
 
 static func spots(params: Dictionary) -> Array[Vector2i]:
@@ -279,6 +290,8 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				events.append_array(GearSystems.mesmer(state, u, target))
 			"mimic_mesh":
 				events.append_array(GearSystems.mimic_mesh(state, u, target))
+			"pcp":
+				events.append_array(GearSystems.print_pcp(state, u, params))
 			"guide_flock":
 				events.append_array(GearSystems.guide_flock(state, u, params))
 			"annihilation_second":
@@ -550,6 +563,10 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 			var mt := state.unit(String(params.get("target", "")))
 			if mt == null or mt == u or mt.side != u.side or not Combat.is_present(mt) or Sight.unit_distance(state, u, mt) > 1:
 				return RuleResult.deny("Choose an adjacent allied character (params.target).", "systems: Monitor Module")
+		if op.get("op", "") == "pcp":
+			var pa: Variant = TurnAction.cell_param(params, "aim")
+			if pa == null or not state.map.has_cell(pa) or state.map.grid.distance(u.cell, pa) > 5 or not String(params.get("setting", "")) in ["repulse", "attract"]:
+				return RuleResult.deny("Choose a 2x2 space within Range 5 (params.aim) and a setting (params.setting: repulse or attract).", "systems: Perimeter Command Plate")
 		if op.get("op", "") == "guide_flock":
 			var gr := GearSystems.check_guide(state, u, params)
 			if not gr.ok:
