@@ -160,6 +160,8 @@ static func hidden_by_smoke(state: GameState, target: Unit, attacker: Unit) -> b
 
 ## Soft cover from a cloud (the Genghis ignores its own), smoke or an allied hive swarm.
 static func soft_cover(state: GameState, target: Unit, attacker: Unit) -> bool:
+	if not wall_field_between(state, attacker, target).is_empty():
+		return true
 	for z: Dictionary in of_kind(state, "hive"):
 		var o := state.unit(String(z.get("owner", "")))
 		if o != null and o.side == target.side and contains(state, z, target):
@@ -558,12 +560,45 @@ static func barrier_between(state: GameState, a: Unit, b: Unit) -> Dictionary:
 	return {}
 
 
-## Movement can't cross a Blinkshield's edge.
+## Movement can't cross a Blinkshield's edge, or enter a wall field (Magnetic Shield, Stasis
+## Barrier: obstructions 4 spaces high).
 static func blocks_step(state: GameState, from: Vector2i, to: Vector2i) -> bool:
 	for z: Dictionary in of_kind(state, "blink"):
 		if _cell_in(state, z, from) != _cell_in(state, z, to):
 			return true
+	for z: Dictionary in of_kind(state, "wall_field"):
+		if _has_cell(z, to) and state.map.ground_height(to) + 4 > state.map.ground_height(from):
+			return true
 	return false
+
+
+## A wall field between attacker and target (its soft cover): the straight line crosses it.
+static func wall_field_between(state: GameState, attacker: Unit, target: Unit) -> Dictionary:
+	if attacker == null:
+		return {}
+	for z: Dictionary in of_kind(state, "wall_field"):
+		for c: Vector2i in state.map.grid.line(attacker.cell, target.cell):
+			if _has_cell(z, c):
+				return z
+	return {}
+
+
+## Builds a line of up to 4 free spaces starting next to `u` toward params.aim (Magnetic
+## Shield, Stasis Barrier).
+static func make_wall_field(state: GameState, u: Unit, label: String, flavor: String, params: Dictionary) -> Array[Dictionary]:
+	for z: Dictionary in of_kind(state, "wall_field"):
+		if z.get("owner", "") == u.id and z.get("flavor", "") == flavor:
+			remove(state, String(z["id"]), "replaced")  # a new one deactivates the old one
+	var aim: Variant = TurnAction.cell_param(params, "aim")
+	var start: Vector2i = aim if aim != null else u.cell + Vector2i(1, 0)
+	var line := state.map.grid.line(start, start + (start - u.cell) * 6)
+	var cells: Array = []
+	for c: Vector2i in line:
+		if cells.size() >= 4 or not state.map.has_cell(c):
+			break
+		cells.append([c.x, c.y])
+	return add(state, {"kind": "wall_field", "flavor": flavor, "owner": u.id, "label": label, "cells": cells,
+		"center": cells[0] if not cells.is_empty() else [start.x, start.y], "rule_ref": "systems: " + label})
 
 
 ## Oasis Wall: next to the trail, hard cover and Resistance to energy.

@@ -480,6 +480,10 @@ differently without an AI. Each game has a **seed**: share it to replay the same
   protecting allies, retreating when damaged. Scored by a utility system, with randomness so
   enemies aren't predictable. Enemies only act on what *they* could know (they can't target
   someone Hidden).
+- **Fight length dial:** Short / Standard / Long. A tabletop fight takes about 1-3 hours;
+  with automation we aim for ~15-25 / 20-40 / 40-60+ minutes solo. It changes encounter
+  size, deployment distance and how early surrender or retreat becomes possible, never
+  rules like HP or damage.
 - **GM personality / difficulty dials:** aggression, caution, focus fire vs. spread damage,
   reinforcement rate, how often complications happen, overall difficulty. Presets (e.g.
   "Ruthless", "Cautious", "Chaotic", "Teaching") plus custom sliders.
@@ -703,9 +707,9 @@ an option name can already be switched in the game's table rules (`state.rulings
 
 | Rule | Book | Lancer Tactics | Why LT might do it | Your pick |
 |---|---|---|---|---|
-| Firing two weapons (option `lt_split_barrage`) | Two weapons only as a Barrage, a full action with both shots together; Skirmish (one weapon) once per turn (Core p.60, p.64) | Two "action points" instead of quick/full actions; each mount costs 1, so two weapons are two separate shots and you can move between them | One simple action currency is easier to show on a video-game action bar, and moving between shots gives more positional play | |
-| Repeating a Quick Tech option (option `lt_repeat_quick_tech`) | Quick Tech can be taken twice, but each time a different option (Core p.69) | The same option can be used twice (e.g. two Invades) | Falls out of the action-point system; fewer "why is this greyed out?" moments | |
-| When Brace is offered (option `lt_brace_prompt`) | Brace whenever an attack hits and deals damage (Core p.73) | Only offered when the hit would structure or stress you, or deal more than half your HP | Stops a pop-up after every hit; Brace is mostly worth it on big hits anyway | |
+| Firing two weapons (option `lt_split_barrage`) | Two weapons only as a Barrage, a full action with both shots together; Skirmish (one weapon) once per turn (Core p.60, p.64) | Two "action points" instead of quick/full actions; each mount costs 1, so two weapons are two separate shots and you can move between them | One simple action currency is easier to show on a video-game action bar, and moving between shots gives more positional play | **Lancer Tactics** (on by default; fire, move, fire) |
+| Repeating a Quick Tech option (option `lt_repeat_quick_tech`) | Quick Tech can be taken twice, but each time a different option (Core p.69) | The same option can be used twice (e.g. two Invades) | Falls out of the action-point system; fewer "why is this greyed out?" moments | **Book** (no repeating the same option) |
+| When Brace is offered (option `lt_brace_prompt`) | Brace whenever an attack hits and deals damage (Core p.73) | Only offered when the hit would structure or stress you, or deal more than half your HP | Stops a pop-up after every hit; Brace is mostly worth it on big hits anyway | **Lancer Tactics** (on by default; only asked on big hits) |
 | Firing only the Aux weapon of a mount | A Skirmish's main attack can be an Auxiliary weapon and deals bonus damage as usual; only the extra Aux shot gets none (Core p.64, p.67) | Firing just the Aux on a mount that also has a Main counts as firing the mount, with no Aux bonus damage | Follows from attacking "per mount" instead of "per weapon" | |
 | Flying | Flyers choose their altitude freely as they move and must move at least 1 space each turn or fall (Core p.63) | Flying is an on/off state that puts you 3 spaces above the surface | Much simpler camera, targeting and pathing in 3D | |
 | NPCs | The core book's NPC classes, tiers and templates (Veteran, Elite, Ultra...) | Uses "NPC Rebake" (a community revision by Kai): no extra attacks from tier, reworked Veteran/Ultra options | Better balance for automated enemies; LT notes it is a deliberate divergence | |

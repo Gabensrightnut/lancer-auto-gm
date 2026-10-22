@@ -87,5 +87,11 @@
   },
   "wm_phase_ready_mod": {
     "phase_ready": true
+  },
+  "mw_autopod": {
+    "no_attack": true
+  },
+  "mw_vorpal_gun": {
+    "no_attack": true
   }
 }

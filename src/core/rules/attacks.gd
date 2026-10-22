@@ -42,6 +42,8 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 		return fail.call("No such weapon.", REF_SKIRMISH)
 	if target == null or target.destroyed:
 		return fail.call("No valid target.", REF_SKIRMISH)
+	if GearSystems.intangible(attacker) or GearSystems.intangible(target):
+		return fail.call("Intangible (FADE Cloak): it can't interact or be interacted with.", "systems: FADE Cloak")
 	if target == attacker:
 		return fail.call("You can't attack yourself.", REF_SKIRMISH)
 	if Effects.has(attacker, "no_attacks"):
@@ -284,6 +286,17 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 	var afterimage: bool = target.counters.get("afterimage", false)
 	if afterimage:
 		target.counters.erase("afterimage")  # Flicker Field: Invisible the next time it's attacked
+	var barrier := Zones.wall_field_between(state, attacker, target)
+	if barrier.get("flavor", "") == "stasis" and kind != KIND_TECH and not target.has_status("Invisible"):
+		# Stasis Barrier: on 4+ on 1d6 the attack is consumed with no effect at all.
+		var sb := state.dice.die(6)
+		events.append({"type": "effect_triggered", "unit": String(barrier.get("owner", "")), "effect": "Stasis Barrier", "target": target.id, "roll": sb, "rule_ref": "systems: Stasis Barrier"})
+		if sb >= 4:
+			events.append({"type": "attack_blocked", "attacker": attacker.id, "target": target.id, "zone": barrier["id"], "rule_ref": "systems: Stasis Barrier"})
+			attacker.turn["attacked"] = true
+			if not opts.get("skip_spend", false):
+				events.append_array(_spend_weapon(state, attacker, w))
+			return events
 	var blocked := Zones.blocking_field(state, attacker, target, w, kind) if not opts.has("area_origin") else {}
 	if not blocked.is_empty():
 		# Black Witch Mag Field: the projectile stops at the edge; the field records it.
@@ -449,6 +462,10 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		hit_opts["momentum"] = momentum
 		hit_opts["chambers"] = chambers
 		hit_opts["resist_all"] = pre["resist_all"]
+		var bm := TalentRules.blademaster_defense(state, target, kind)
+		events.append_array(bm["events"])
+		if bm["resist"]:
+			hit_opts["resist_all"] = true  # Duelist Parry / Deflect
 		hit_opts["roland"] = roland
 		hit_opts["d20"] = int(check.get("d20", 0))
 		hit_opts["dz_heat"] = dz_first and Effects.has(attacker, "dz_heat")
@@ -481,7 +498,11 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		events.append_array(AISystems.ark_backlash(state, attacker, target, w))
 	if not opts.get("reaction", false):
 		events.append_array(AISystems.scylla(state, attacker, target))
-	events.append_array(TalentRules.after_attack(state, attacker, w, target, kind, result, opts))
+	var aopts := opts.duplicate()
+	aopts["lock_on_consumed"] = p["lock_on"]
+	events.append_array(TalentRules.after_attack(state, attacker, w, target, kind, result, aopts))
+	var dealt := events.any(func(ev: Dictionary) -> bool: return ev.get("type", "") == "damage_dealt" and ev.get("target", "") == target.id and int(ev.get("amount", 0)) > 0)
+	events.append_array(GearSystems.after_attack(state, attacker, target, p["lock_on"], dealt))
 	Effects.attacked(state, attacker, String(opts.get("action", "attack")))
 	return events
 
@@ -690,14 +711,16 @@ static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array,
 	events.append_array(sim["events"])
 	resist_all = resist_all or sim["resist_all"]
 	var brace := false
+	var brace_answer := {}
 	# Objects (deployables, terrain) don't Brace.
 	if not unreducible and target.kind != Unit.KIND_DEPLOYABLE and Reactions.can_react(target, "brace", state).ok and not parts.is_empty() \
 			and (not Rulings.lancer_tactics(state, "lt_brace_prompt") or _brace_worthwhile(target, parts, ap)):
 		var d := Reactions.offer(state, target, "brace", {"attacker": attacker.id, "damage": parts, "ap": ap},
 			{"take": _wants_brace(target, parts, ap)})
 		brace = d.get("take", false)
+		brace_answer = d
 	if brace:
-		events.append_array(Reactions.brace(state, target, attacker.id))
+		events.append_array(Reactions.brace(state, target, attacker.id, brace_answer.get("move_to")))
 	var aegis := brace and Effects.has(target, "flash_aegis")
 	if half:
 		var halved_parts: Array = []
@@ -736,7 +759,7 @@ static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array,
 		resist_all = true  # Portable Bunker: Resistance to area attacks from outside
 	events.append_array(Combat.deal_damage(state, target, parts, {"source": attacker.id, "ap": ap, "resist_all": (brace and not aegis) or resist_all,
 		"damage_to_one": aegis, "area": area, "distance": Sight.unit_distance(state, attacker, target), "unreducible": unreducible,
-		"resist_types": ["Energy"] if energy_resist else []}))
+		"resist_types": (["Energy"] if energy_resist else []) + (["Kinetic", "Explosive"] if Zones.wall_field_between(state, attacker, target).get("flavor", "") == "magnetic" else [])}))
 	events.append_array(TraitReactions.teleport(state, target, sim["teleport"]))
 	return events
 
@@ -947,6 +970,8 @@ static func tech_target_check(state: GameState, user: Unit, target: Unit, action
 		return RuleResult.deny("Jammed: you can't take tech actions.", "statuses: Jammed")
 	if target == null or target.destroyed:
 		return RuleResult.deny("No valid target.", "actions: Quick Tech")
+	if GearSystems.intangible(user) or GearSystems.intangible(target):
+		return RuleResult.deny("Intangible (FADE Cloak): it can't interact or be interacted with.", "systems: FADE Cloak")
 	if Effects.has(target, "aegis"):
 		return RuleResult.deny("Inside the Trueblack Aegis it's immune to all tech actions.", "frames: Napoleon core system")
 	if GearSystems.in_stasis(target):
