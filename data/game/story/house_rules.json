@@ -34,7 +34,7 @@
       "name": "Food and water",
       "source": "Your idea",
       "label": "Your idea, not a book rule",
-      "text": "The squad needs food and water: every mission uses a day's rations for each pilot. Without them pilots go hungry: +1 Difficulty on skill checks out of the mech until they eat, and 1 damage after a second hungry mission. Buy, scrounge or get rations at a friendly hub. By the book there's no survival meter."
+      "text": "The squad needs food and water: one of each per pilot per night. On a mission the supplies ride in the mech's cockpit storage, packed for the mission's planned length; pilots carry only a grab bag (one night's worth) when they get out. Lose the mech or run from it and the rest is out of reach. (What a pilot carries still follows the book's limits: one armor, two weapons, three other gear, Core p.28, p.108.) When the squad is hosted (a room at an inn, a patron's quarters, a ship's passage, the communal Union Core) meals come with the stay. Restaurants and stalls are cheap, but a dish may not sit right with someone from far away (+1 Difficulty until they rest) or become a favourite (+1 Accuracy on their next skill check). Without food pilots go hungry: +1 Difficulty on skill checks out of the mech until they eat, and 1 damage after a second hungry night in a row. By the book there's no survival meter."
     }
   ],
   "wallet": {
@@ -60,7 +60,7 @@
       "local": 6
     },
     "food": {
-      "name": "Food and water for the squad (2 days)",
+      "name": "Mission food and water, packed in the mech (2 nights each)",
       "local": 12,
       "rations": 2
     },
@@ -93,12 +93,21 @@
     "passage_gate": {
       "name": "Passage through the blink gate",
       "manna": 250
+    },
+    "meal": {
+      "name": "A meal at a restaurant (tonight's food, for the squad)",
+      "local": 10
+    },
+    "street_food": {
+      "name": "Food from a stall (tonight's food, for the squad)",
+      "local": 4
     }
   },
   "survival": {
     "start_rations_per_pilot": 3,
     "free_restock_standing": 0,
-    "harm_after_hungry": 2
+    "harm_after_hungry": 2,
+    "grab_bag_nights": 1
   },
   "printers": {
     "no_printer_chance": {
@@ -184,5 +193,41 @@
     "drink",
     "food",
     "lodging"
-  ]
+  ],
+  "culture_food": {
+    "old_west": [
+      "stew",
+      "fatty",
+      "bread"
+    ],
+    "frontier_colony": [
+      "stew",
+      "bread",
+      "dried"
+    ],
+    "medieval_tech": [
+      "stew",
+      "bread",
+      "fine"
+    ],
+    "cyberpunk": [
+      "street_food",
+      "printed",
+      "spicy"
+    ],
+    "retrofuturistic": [
+      "printed",
+      "fine",
+      "salty"
+    ],
+    "east_asian": [
+      "fish",
+      "spicy",
+      "fresh"
+    ],
+    "union_core": [
+      "fine",
+      "fresh"
+    ]
+  }
 }

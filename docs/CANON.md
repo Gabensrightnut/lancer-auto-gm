@@ -111,6 +111,10 @@ book in a way that changes the setting; parked.
 | Main campaign "The Long Arrival": a nearlight colony ship arriving at a settled frontier world, its sleepers, its NHP, a corpro, a militia, a Union DoJ/HR envoy | Consistent (our own story) | Nearlight travel and time dilation (Core p.20), NHPs and cascade (p.107), Union and DoJ/HR, manna, blink gates (p.10); no Massif module content |
 | The final battle on the ship is fought in its interior (no zero-g) | Consistent | Zero-g rules (Core p.63) aren't in the rules engine yet |
 | Boarding actions: seize a ship, rescue a crew, take a smuggler; pirates boarding the squad's transport on the way | Canon | Mission goal "board a hostile ship or station and take it over" (Core p.42); pirates (p.40, p.42); boarding actions in microgravity (p.26); IPS-N boarding parties (p.139) |
+| Pilot origins (homeworld, upbringing, former employer, specialty, knowledge perks) widen what the background covers | Canon (procedure) | A relevant background gives +1 Accuracy on skill checks (Core p.20); still one +1 at most; never License Levels or gear; Diasporan/Cosmopolitan/Core origins (p.10, p.19-20) |
+| Origin combat perks (e.g. +1 Accuracy against a former employer's frames) | Not a book rule (house rule data) | For the rules engine's "Origin perks" house rule, off by default |
+| Food and water house rule: mech storage, grab bag, nights per mission, hosted meals, dishes that disagree or become favourites | Not canon (house rule) | The user's idea; carry limits still the book's (one armor, two weapons, three other gear, Core p.28, p.108) |
+| First person on foot in hubs (look, use, sneak) | Consistent | Presentation of the same narrative checks (Core p.26-27, p.45) |
 
 ## When canon allows more than one answer
 

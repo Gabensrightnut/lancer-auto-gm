@@ -200,6 +200,7 @@ static func travel(story: StoryState, campaign: Campaign, id: String) -> Array:
 	to["visited"] = true
 	sec["at"] = id
 	story.add_log("Travelled from %s to %s." % [from.get("name", "?"), to["name"]])
+	story.flags["travelled:%d" % story.mission_number] = true
 	events.append({"type": "travelled", "from": str(from.get("id", "")), "to": id, "via": "ship" if same else "blink gate", "text": text,
 		"rule_ref": REF if not same else "Travel is narrative: no costs are tracked (CANON.md)"})
 	events.append({"type": "hub_entered", "hub": story.hub.duplicate(true)})

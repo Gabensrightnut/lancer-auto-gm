@@ -27,6 +27,7 @@ extends RefCounted
 ##                                                    the money-and-supplies house rules (Economy)
 ##   wait / go / follow / sneak / pick_lock / break_in / pickpocket / take_out / take / slip_away
 ##                                                    doing things yourself in town (TownLife)
+##   set_origin {pilot, origin: {homeworld, upbringing, employer, specialty, perks}}  (Origin)
 ##   travel {world}                                   go to another world of the sector (between missions; Sector)
 ## "seat" "gm" (the host / procedural GM) may act for anyone.
 
@@ -231,6 +232,13 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 		"battle_events":
 			if seat != "gm":
 				return _no("The host reports the battle.")
+		"set_origin":
+			var opid := str(p.get("pilot", me))
+			if not campaign.pilots.has(opid) or (seat != "gm" and not _controls(story, seat, opid)):
+				return _no("Pick one of your pilots.")
+			var why_o := Origin.refusal(p.get("origin", {}))
+			if why_o != "":
+				return _no(why_o, "Core p.20: backgrounds")
 		"travel":
 			if seat != "gm":
 				return _no("The squad travels together; the host moves it.")
@@ -406,6 +414,8 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 			story.phase = "downtime"
 			var events := Downtime.start(story, campaign, bool(p.get("long", campaign.options.get("long_downtime", false))))
 			events.append_array(_ai_downtime(story, campaign))
+			# Food and water house rule: tonight's meal, hosted or from the stores.
+			events.append_array(Economy.downtime_night(story, campaign))
 			# The main campaign: the conversation that follows the chapter's mission.
 			if CampaignScript.active(campaign):
 				events.append_array(CampaignScript.aftermath(story, campaign, _first_alive(story, campaign)))
@@ -432,6 +442,10 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 		"travel":
 			var paid := Economy.pay_passage(story, campaign, Sector.world(story, str(p["world"])))
 			return paid + Sector.travel(story, campaign, str(p["world"]))
+		"set_origin":
+			var op: Dictionary = campaign.pilots[str(p.get("pilot", me))]
+			op["origin"] = (p.get("origin", {}) as Dictionary).duplicate(true)
+			return [{"type": "origin_set", "pilot": op["id"], "text": "%s: %s." % [op.get("callsign", ""), Origin.describe(op)], "rule_ref": "Core p.20: backgrounds"}]
 		"house_rule":
 			return StoryHouseRules.set_rule(story, campaign, str(p["id"]), bool(p.get("on", true)))
 		"buy":
