@@ -31,6 +31,7 @@ const MOUNT_SLOTS := {
 }
 const NPC_TEMPLATES := "res://data/game/npc_templates.json"
 const FRAME_EFFECTS := "res://data/game/frame_effects.json"
+const GEAR_EFFECTS := "res://data/game/gear_effects.json"
 ## lancer-data core_system active_bonuses ids -> the roll type they give Accuracy on.
 const BONUS_ROLLS := {"attack": "attack", "check": "check", "save": "save", "tech_attack": "tech_attack"}
 
@@ -267,7 +268,48 @@ static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dic
 			n += 1
 	u.loadout = {"frame": frame_id, "mounts": mounts, "weapons": weapons, "systems": systems}
 	_frame_effects(u, frame)
+	# Passive effects of systems, core bonuses and talents (data/game/gear_effects.json).
+	var gear_ids: Array = []
+	for s: Dictionary in systems:
+		gear_ids.append(s["id"])
+	gear_ids.append_array(pilot.get("core_bonuses", []))
+	_add_gear_effects(u, gear_ids, pilot.get("talents", {}))
 	return u
+
+
+static var _gear_data: Dictionary = {}
+
+
+static func gear_effects_data() -> Dictionary:
+	if _gear_data.is_empty():
+		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(GEAR_EFFECTS))
+		_gear_data = d if d is Dictionary else {}
+	return _gear_data
+
+
+## Adds encoded effects for gear ids (systems, core bonuses, pilot gear) and talents
+## ({talent_id: rank}; ranks are cumulative). Size steps apply at once (Fomorian Frame).
+static func _add_gear_effects(u: Unit, ids: Array, talents: Dictionary) -> void:
+	var data := gear_effects_data()
+	var effects: Array = u.loadout.get("effects", [])
+	var add := func(list: Array, source: String) -> void:
+		for e: Dictionary in list:
+			var copy := e.duplicate(true)
+			copy["label"] = source
+			copy["rule_ref"] = "lancer-data: " + source
+			effects.append(copy)
+			if copy["kind"] == "size_step":
+				u.size = minf(3.0, 1.0 if u.size < 1.0 else u.size + 1.0)
+	for id: String in ids:
+		if data.get(id) is Array:
+			add.call(data[id], id)
+	for t: String in talents:
+		var ranks: Variant = data.get(t)
+		if ranks is Dictionary:
+			for r in range(1, int(talents[t]) + 1):
+				if (ranks as Dictionary).has(str(r)):
+					add.call(ranks[str(r)], "%s rank %d" % [t, r])
+	u.loadout["effects"] = effects
 
 
 static var _frame_data: Dictionary = {}
@@ -416,5 +458,6 @@ static func build_pilot(db: ContentDB, id: String, pilot: Dictionary, side: Stri
 		prof["size"] = "Pilot"
 		weapons.append(prof)
 		i += 1
-	p.loadout = {"weapons": weapons, "systems": []}
+	p.loadout = {"weapons": weapons, "systems": [], "effects": []}
+	_add_gear_effects(p, pilot.get("gear", []), {})
 	return p

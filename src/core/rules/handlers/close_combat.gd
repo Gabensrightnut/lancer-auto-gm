@@ -211,6 +211,8 @@ static func plan_jump(state: GameState, u: Unit, dest: Vector2i, vertical: bool)
 			out["reason"] = "A vertical jump goes 1 space over."
 			return out
 		air = u.level + maxi(1, int(u.size))
+		if Effects.has(u, "jump_plus"):
+			air = u.level + maxi(maxi(1, int(u.size)), ceili(u.speed / 2.0))  # Kai Bioplating: up to half Speed
 		# Room to rise in your own column first.
 		for c in grid.footprint(u.cell, u.size):
 			for lv in range(u.level, air + GridLayout.spaces_per_side(u.size)):
@@ -218,8 +220,9 @@ static func plan_jump(state: GameState, u: Unit, dest: Vector2i, vertical: bool)
 					out["reason"] = "No room to jump up here."
 					return out
 	else:
-		if dist < 1 or dist > u.speed / 2:
-			out["reason"] = "A horizontal jump goes up to half your Speed (%d) in a straight line." % (u.speed / 2)
+		var reach := u.speed if Effects.has(u, "jump_plus") else u.speed / 2  # Kai Bioplating: full Speed
+		if dist < 1 or dist > reach:
+			out["reason"] = "A horizontal jump goes up to %d spaces in a straight line." % reach
 			return out
 	var line := grid.line(u.cell, dest)
 	var path: Array = [[u.cell.x, u.cell.y, u.level]]

@@ -59,6 +59,8 @@ func validate(state: GameState, action: Dictionary) -> RuleResult:
 func resolve(state: GameState, action: Dictionary) -> Array[Dictionary]:
 	var u := state.unit(action["actor"])
 	var params: Dictionary = action.get("params", {})
+	if type() != "bonus_move":
+		u.turn.erase("bonus_move")  # an after-attack move has to be taken immediately
 	var events := apply(state, u, params)
 	if params.has("free_via"):
 		Effects.use_grant(u, Effects.grant(u, String(params["free_via"]), type(), cost() == TurnRules.QUICK))

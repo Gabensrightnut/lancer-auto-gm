@@ -26,6 +26,28 @@ extends RefCounted
 ##   maze            hostiles must stop when Engaged with it, whatever their Size
 ##   immobilize_shreds  Immobilize it inflicts also Shreds for the same duration
 ##   grapple_free    can Boost and take reactions while grappling
+## Movement (each only because a trait/system/talent/core bonus says so, never the model):
+##   ignore_difficult  ignores difficult terrain (Bulwark Mods, Kai Bioplating)
+##   climb_normal      climbs at normal speed (Kai Bioplating, High-Stress Mag Clamps)
+##   optional_flight   {heat: n or "size+1", land_by_turn_end?}: may count any movement as
+##                     flying; heat at the end of turns it flew (Type-I Flight System,
+##                     All-Theater Movement Suite, Mobility Hardsuit)
+##   boost_flight      flies when it Boosts; must land at the end of that move or fall
+##                     (Rapid Burst Jump Jet System)
+##   boost_bonus       {value}: extra spaces when Boosting (Integrated Nerveweave)
+##   teleport_moves    its standard move and Boost are teleports (Mourning Cloak core)
+##   jump_plus         standard-move jumps go up to full Speed across, half Speed up (Kai)
+##   after_attack_move {spaces, after: attack|skirmish}: a free move after attacking that
+##                     ignores engagement and doesn't provoke (Nelson Skirmisher, Skirmisher)
+##   status_if_still   {status}: at the end of a turn it didn't move, gains the status until
+##                     it moves, reacts, or its next turn starts (Swallowtail Integrated Cloak)
+##   afterimage        after a standard move or Boost, counts as Invisible against the next
+##                     attack (Flicker Field Projector)
+##   punish_movement   {damage, range}: hostiles within range that make any movement other
+##                     than a standard move take that much AP explosive, 1/round each
+##                     (Iskander core)
+##   size_step         one Size larger, to at most 3 (Fomorian Frame)
+## accuracy effects can have "while_flying": true (Ace).
 
 const REF := "data/game: effects"
 
@@ -54,6 +76,8 @@ static func accuracy_sources(u: Unit, on: Array, skill: String = "", reaction: b
 		if e.has("skill") and e["skill"] != skill:
 			continue
 		if e.get("reaction_only", false) and not reaction:
+			continue
+		if e.get("while_flying", false) and not u.flying:
 			continue
 		var v := int(e.get("value", 1))
 		var kind := "accuracy" if v > 0 else "difficulty"
@@ -157,9 +181,72 @@ static func activate(state: GameState, u: Unit, effects: Array, source: String) 
 	return events
 
 
+## After `u` moved voluntarily (mode "walk" = standard move, "boost", "bonus"...).
+static func moved(state: GameState, u: Unit, mode: String) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for e: Dictionary in of(u, "status_if_still"):
+		events.append_array(_drop_still_status(u, e))
+	if has(u, "afterimage") and (mode == "walk" or mode == "boost"):
+		u.counters["afterimage"] = true
+	if mode != "walk":
+		events.append_array(punish_movement(state, u))
+	return events
+
+
+static func _drop_still_status(u: Unit, e: Dictionary) -> Array[Dictionary]:
+	var s := String(e.get("status", ""))
+	if u.has_status(s) and u.statuses[s].get("source", "") == e.get("label", ""):
+		return Combat.remove_status(u, s, "moved or reacted")
+	return [] as Array[Dictionary]
+
+
+## Reacting ends "until it moves or takes a reaction" statuses (Swallowtail cloak).
+static func reacted(u: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for e: Dictionary in of(u, "status_if_still"):
+		events.append_array(_drop_still_status(u, e))
+	return events
+
+
+## Iskander's Broad-Sweep Seeder: hostiles within its range that make any movement other than
+## their standard move (involuntary included) take 3 AP explosive, 1/round each.
+static func punish_movement(state: GameState, mover: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if not Combat.is_present(mover):
+		return events
+	for o: Unit in state.units.values():
+		if o.side == mover.side or not Combat.is_present(o):
+			continue
+		for e: Dictionary in of(o, "punish_movement"):
+			var hit: Array = mover.counters.get("punished", [])
+			var key := "%d:%s" % [state.round_number, o.id]
+			if hit.has(key) or Sight.unit_distance(state, o, mover) > int(e.get("range", 50)):
+				continue
+			hit.append(key)
+			mover.counters["punished"] = hit
+			events.append({"type": "effect_triggered", "unit": o.id, "effect": e.get("label", ""), "target": mover.id})
+			events.append_array(Combat.deal_damage(state, mover, [{"type": "Explosive", "amount": int(e.get("damage", 3))}], {"ap": true, "source": o.id}))
+	return events
+
+
+## After `attacker` attacks on its own turn: extra move it may take right away.
+static func attacked(state: GameState, attacker: Unit, action: String) -> void:
+	if state.active_unit != attacker.id:
+		return
+	var spaces := 0
+	for e: Dictionary in of(attacker, "after_attack_move"):
+		var after: String = e.get("after", "attack")
+		if after == "attack" or after == action:
+			spaces = maxi(spaces, int(e.get("spaces", 1)))
+	if spaces > 0:
+		attacker.turn["bonus_move"] = spaces
+
+
 ## Start of the unit's turn: statuses it has "during its turn".
 static func turn_started(state: GameState, u: Unit) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
+	for e: Dictionary in of(u, "status_if_still"):
+		events.append_array(_drop_still_status(u, e))
 	for e: Dictionary in of(u, "status"):
 		if e.get("when", "") == "own_turn":
 			events.append_array(Combat.add_status(state, u, String(e["status"]), String(e.get("label", "trait"))))
@@ -172,6 +259,20 @@ static func turn_ending(state: GameState, u: Unit) -> Array[Dictionary]:
 	for e: Dictionary in of(u, "status"):
 		if e.get("when", "") == "own_turn" and u.has_status(String(e["status"])) and u.statuses[e["status"]].get("source", "") == e.get("label", "trait"):
 			events.append_array(Combat.remove_status(u, String(e["status"]), "end of turn"))
+	# Count-as-flying systems: heat at the end of a turn flown that way; the Mobility Hardsuit
+	# must end the turn on a surface or begin falling.
+	if u.turn.get("flew_optional", false):
+		for e: Dictionary in of(u, "optional_flight"):
+			var heat: Variant = e.get("heat", 0)
+			var amount := (GridLayout.spaces_per_side(u.size) + 1) if str(heat) == "size+1" else int(heat)
+			if amount > 0:
+				events.append_array(Combat.apply_heat(state, u, amount, String(e.get("label", "flight"))))
+			if e.get("land_by_turn_end", false) and u.flying:
+				events.append_array(Combat.begin_falling(u, "%s: must end the turn on a surface." % e.get("label", "")))
+			break
+	for e: Dictionary in of(u, "status_if_still"):
+		if not u.turn.get("moved", false):
+			events.append_array(Combat.add_status(state, u, String(e["status"]), String(e.get("label", "trait"))))
 	if has(u, "reload_if_idle") and not u.turn.get("attacked", false):
 		for w: Dictionary in u.loadout.get("weapons", []):
 			if Weapons.has_tag(w, "tg_loading"):

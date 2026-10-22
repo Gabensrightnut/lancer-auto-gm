@@ -188,7 +188,10 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 	var events: Array[Dictionary] = []
 	var kind: String = p["kind"]
 	var invisible_miss := false
-	if target.has_status("Invisible"):
+	var afterimage: bool = target.counters.get("afterimage", false)
+	if afterimage:
+		target.counters.erase("afterimage")  # Flicker Field: Invisible the next time it's attacked
+	if target.has_status("Invisible") or afterimage:
 		# 50% chance to miss outright before the roll (statuses: Invisible).
 		var coin := state.dice.die(2)
 		invisible_miss = coin == 1
@@ -229,6 +232,7 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 	if attacker.has_status("Hidden"):
 		events.append_array(Combat.remove_status(attacker, "Hidden", "attacked"))
 		events.append_array(Combat.refresh_engagement(state))
+	Effects.attacked(state, attacker, String(opts.get("action", "attack")))
 	return events
 
 
@@ -388,6 +392,7 @@ static func knock_back(state: GameState, target: Unit, origin: Vector2i, spaces:
 	var last: Array = path.back()
 	target.cell = Vector2i(last[0], last[1])
 	var events: Array[Dictionary] = [{"type": "moved", "unit": target.id, "path": path, "mode": "involuntary", "cost": 0, "rule_ref": "tags: Knockback"}]
+	events.append_array(Effects.punish_movement(state, target))
 	if Movement.placement(state, target.size, target.cell, target.level)["airborne"] and not target.flying:
 		events.append_array(Combat.begin_falling(target, "Knocked off a ledge."))
 	events.append_array(Combat.after_movement(state))
@@ -473,4 +478,5 @@ static func tech_attack(state: GameState, attacker: Unit, target: Unit, label: S
 	if attacker.has_status("Hidden"):
 		events.append_array(Combat.remove_status(attacker, "Hidden", "attacked"))
 		events.append_array(Combat.refresh_engagement(state))
+	Effects.attacked(state, attacker, "tech")
 	return {"events": events, "hit": hit}

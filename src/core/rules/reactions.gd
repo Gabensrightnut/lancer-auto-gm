@@ -110,6 +110,7 @@ static func _mark_used(u: Unit, reaction: String, state: GameState = null) -> vo
 	u.counters["reactions"] = used
 	if state != null:
 		u.counters["reaction_turn"] = _turn_key(state)
+	Effects.reacted(u)
 
 
 ## BRACE: resistance to the triggering attack's damage, burn and heat (applied by the caller),

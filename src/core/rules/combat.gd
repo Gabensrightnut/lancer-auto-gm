@@ -521,6 +521,7 @@ static func fall_unit(state: GameState, u: Unit, max_drop: int = -1) -> Array[Di
 	var total := int(u.counters.get("fallen", 0)) + dist
 	if dist > 0:
 		events.append({"type": "moved", "unit": u.id, "mode": "fall", "path": [[u.cell.x, u.cell.y, start], [u.cell.x, u.cell.y, lv]], "cost": 0, "rule_ref": REF_FALL})
+		events.append_array(Effects.punish_movement(state, u))  # falling is involuntary movement
 	if Movement.placement(state, u.size, u.cell, lv)["airborne"]:
 		u.counters["falling"] = true
 		u.counters["fall_started"] = true
