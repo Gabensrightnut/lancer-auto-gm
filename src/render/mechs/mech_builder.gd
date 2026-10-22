@@ -45,6 +45,7 @@ func _build(frame: Dictionary, loadout: Dictionary, content: ContentDB, size_ove
 	_m.manufacturer = mfr
 	var stats: Dictionary = frame.get("stats", {})
 	_m.size = size_override if size_override > 0 else float(stats.get("size", 1))
+	_m.gait = MechModel.gait_for(_m.frame_id)
 	var body := Node3D.new()
 	body.name = "Body"
 	_m.add_child(body)

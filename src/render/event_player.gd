@@ -233,9 +233,14 @@ func _moved(e: Dictionary) -> void:
 	if Fx.speed <= 0.0:
 		mv.place(_cell_of(last), int(last[2]) if last.size() > 2 else 0)
 		return
-	var step_time := {"walk": 0.32, "boost": 0.2, "fly": 0.24, "involuntary": 0.15}.get(mode, 0.3) as float
-	if mode == "walk" or mode == "boost":
-		mv.model.set_walk(1.0)
+	# Time per space: bigger mechs take longer, heavier strides.
+	var step_time := ({"walk": 0.42, "boost": 0.28, "fly": 0.3, "involuntary": 0.15}.get(mode, 0.35) as float) * (0.85 + 0.15 * maxf(mv.model.size, 0.5))
+	var model := mv.model
+	var legged := mode == "walk" or mode == "boost"
+	model.airborne = mode == "fly"
+	if legged or mode == "fly":
+		var fade := mv.create_tween()
+		fade.tween_property(model, "walk_amount", 1.0, Fx.t(0.15))
 	var thruster: Node3D = null
 	if mode == "fly" or mode == "jump" or mode == "boost":
 		thruster = MeshKit.part(mv, MeshKit.sphere(0.08, 10), MeshKit.fx_material(Color(0.5, 0.8, 1.0), 4.0), Vector3(0, 0.05, 0.1))
@@ -267,12 +272,20 @@ func _moved(e: Dictionary) -> void:
 					mv.position = p2, 0.0, 1.0, Fx.t(step_time * 1.6))
 			else:
 				tw.tween_property(mv, "position", target, Fx.t(step_time))
+			if legged:
+				# Advance the gait by whole steps per cell, so feet land as the cell is reached.
+				var steps := model.steps_per_cell()
+				var t2 := mv.create_tween()
+				t2.tween_property(model, "walk_phase", model.walk_phase + steps * PI, Fx.t(step_time * (1.6 if hop else 1.0)))
 			await tw.finished
 			if mode == "boost":
 				Fx.dust(battle.fx_root, target, 3, Color(0.55, 0.52, 0.48, 0.5), 0.3, 0.4, 0.8)
 			elif mode == "involuntary":
 				Fx.dust(battle.fx_root, target, 4, Color(0.55, 0.52, 0.48, 0.6), 0.3, 0.4, 0.8)
-	mv.model.set_walk(0.0)
+	model.airborne = false
+	var stop := mv.create_tween()
+	stop.tween_property(model, "walk_amount", 0.0, Fx.t(0.15))
+	stop.tween_callback(func() -> void: model.set_walk(0.0))
 	if thruster:
 		thruster.queue_free()
 	mv.place(_cell_of(last), int(last[2]) if last.size() > 2 else battle.map.ground_height(_cell_of(last)))

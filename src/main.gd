@@ -533,7 +533,7 @@ func screenshot_setup(args: PackedStringArray) -> Array:
 	var tags: Array = Array(args)
 	if tags.is_empty() or tags[0] == "all":
 		tags = ["board", "square", "move", "sky", "los", "roll", "kinetic", "beam", "missile", "melee", "tech", "deploy", "heat", "vent", "destroy", "cockpit", "hud", "hills", "hills_close", "hills_nogrid", "hills_square", "alien", "alien_close", "alien_vista",
-			"turn_order", "my_turn", "target", "cooldowns", "enemy_turn", "skill"]
+			"turn_order", "my_turn", "target", "cooldowns", "enemy_turn", "skill", "walk"]
 	return tags
 
 
@@ -650,6 +650,13 @@ func screenshot_stage(tag: String) -> void:
 			view.tactical.snap()
 			player.play(ev["structure"] + ev["destroy"])
 			await Fx.wait(self, 3.4)
+		"walk":
+			_focus_for("move")
+			view.tactical.distance = 4.0
+			view.tactical.pitch = -20
+			view.tactical.snap()
+			player.play(demo_events()["move"])
+			await get_tree().create_timer(0.9).timeout
 		"hills", "hills_square":
 			view.tactical.look_at_point(Vector3(15.0, 1.0, 13.5), 30.0)
 			view.tactical.pitch = -46
