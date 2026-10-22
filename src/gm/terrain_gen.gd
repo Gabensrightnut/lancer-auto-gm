@@ -31,7 +31,7 @@ const CULTURES := {
 	"asteroid": [""],
 	"ocean": ["", "east_asian", "retro", "union"],
 	"jungle": ["", "", "east_asian", "medieval"],
-	"city": ["ruins", "cyberpunk", "burning", "union", "retro", "east_asian", "medieval", "old_west"],
+	"city": ["ruins", "cyberpunk", "burning", "union", "retro", "east_asian", "medieval", "old_west", "industrial", "port"],
 }
 
 
@@ -93,12 +93,18 @@ const WEATHER := {
 }
 
 
+## Each city's own weather: the neon city is wet at night, the others mostly clear.
+const CITY_WEATHER := {"cyberpunk": ["rain", "rain", "storm", ""], "union": ["", "", "", "rain"], "retro": ["", "", "", "rain"],
+	"old_west": ["", "", "", "", "sandstorm"], "east_asian": ["", "", "mist", "rain"], "medieval": ["", "mist", "rain", ""],
+	"ruins": ["", "mist", "storm", ""], "industrial": ["", "", "mist"], "port": ["", "", "rain", "mist"]}
+
+
 static func pick_weather(rng: RandomNumberGenerator, landscape: String, culture: String = "") -> String:
 	var options: Array = WEATHER.get(landscape, [""])
 	if culture == "burning":
 		return "ashfall"
-	if culture == "cyberpunk":
-		options = ["rain", "rain", "storm"]
+	if landscape == "city" and CITY_WEATHER.has(culture):
+		options = CITY_WEATHER[culture]
 	return str(options[rng.randi_range(0, options.size() - 1)])
 
 
@@ -168,6 +174,7 @@ static func generate(rng: RandomNumberGenerator, w: int, h: int, shape: GridLayo
 const MATERIALS := {
 	"old_west": ["wood", 0], "": ["wood", 0], "east_asian": ["wood", 0], "medieval": ["stone", 1],
 	"cyberpunk": ["concrete", 1], "retro": ["concrete", 1], "ruins": ["concrete", 1], "burning": ["concrete", 1],
+	"industrial": ["concrete", 1], "port": ["metal", 1],
 	"union": ["fortified", 3],
 }
 
@@ -534,7 +541,8 @@ func _city(culture: String) -> void:
 	_fill(func(_c: int, _r: int) -> int: return 0)
 	var block := rng.randi_range(5, 7)
 	var street := 2
-	var tall: int = {"cyberpunk": 6, "union": 6, "ruins": 5, "burning": 5, "retro": 4, "east_asian": 4}.get(culture, 3)
+	var tall: int = {"cyberpunk": 6, "union": 6, "ruins": 5, "burning": 5, "retro": 4, "east_asian": 4, "industrial": 3, "port": 2}.get(culture, 3)
+	var dock := _dock() if culture == "port" else Rect2i()
 	var ruined := culture in ["ruins", "burning"]
 	var bx := 0
 	var off_c := rng.randi_range(-2, 1)
@@ -542,6 +550,14 @@ func _city(culture: String) -> void:
 	for r0 in range(off_r, h, block + street):
 		for c0 in range(off_c, w, block + street):
 			var kind := rng.randf()
+			if dock.has_area() and Rect2i(c0, r0, block, block).intersects(dock.grow(1)):
+				continue  # the harbor basin and quay
+			if dock.has_area() and Rect2i(c0, r0, block, block).intersects(dock.grow(block + street + 1)) and kind < 0.6:
+				_yard(c0, r0, block, "container")  # container stacks along the quay
+				continue
+			if culture == "industrial" and kind > 0.75:
+				_yard(c0, r0, block, "machinery")  # tanks and pipe racks
+				continue
 			if kind < 0.18:
 				_plaza(c0, r0, block)
 				continue
@@ -579,16 +595,54 @@ func _city(culture: String) -> void:
 		# Rubble spills into the streets, craters and burning wrecks.
 		_patches(area / 140, Vector2i(2, 4), [BattleMap.TAG_DIFFICULT, "rubble"], 0, true)
 		_patches(area / (180 if culture == "burning" else 400), Vector2i(1, 3), [BattleMap.TAG_DANGEROUS], 0, true)
-	# Destructible barricades: short walls across some streets.
+	# Destructible barricades: short straight walls across some streets (not along them).
 	for i in range(area / 220):
-		var at := _random_cell()
-		if _free(at) and map.ground_height(at) == 0:
-			var line := _blob(at, rng.randi_range(2, 3))
-			for cell in line:
-				if _free(cell) and map.ground_height(cell) == 0:
-					var col := map.column(cell)
-					col.ground = 1
-					_tag(col, ["wall", BattleMap.TAG_DESTRUCTIBLE])
+		var c := rng.randi_range(0, w - 1)
+		var r := rng.randi_range(0, h - 1)
+		var at := _cell(c, r)
+		if not map.has_cell(at) or not map.column(at).has_tag("road") or map.column(at).has_tag("crossing"):
+			continue
+		var across := Vector2i(0, 1) if map.column(at).has_tag("road_x") else Vector2i(1, 0)
+		for k in range(-1, 2):
+			var q := Vector2i(c, r) + across * k
+			if q.x < 0 or q.y < 0 or q.x >= w or q.y >= h:
+				continue
+			var cell := _cell(q.x, q.y)
+			if map.has_cell(cell) and not blocked.has(cell) and map.column(cell).has_tag("road") and map.ground_height(cell) == 0:
+				var col := map.column(cell)
+				col.ground = 1
+				col.tags = PackedStringArray(["wall", BattleMap.TAG_DESTRUCTIBLE])
+
+
+## A harbor basin along one long side of the map (columns at the left or right edge): deep
+## water (difficult) with a quay road along it. Returns the basin's rectangle.
+func _dock() -> Rect2i:
+	var width := 3 + (1 if w >= 40 else 0)
+	var c0 := 0 if rng.randf() < 0.5 else w - width
+	for r in range(h):
+		for c in range(c0, c0 + width):
+			_put(c, r, 0, [BattleMap.TAG_DIFFICULT, "water"])
+		var quay := c0 + width if c0 == 0 else c0 - 1
+		_put(quay, r, 0, ["road", "road_z"])
+	return Rect2i(c0, 0, width, h)
+
+
+## A yard filling a city block: stacks of shipping containers (1-2 high) or industrial tanks
+## and pipe racks (machinery, 1-2 high) in straight rows with aisles between them.
+func _yard(c0: int, r0: int, block: int, tag: String) -> void:
+	for r in range(r0, r0 + block):
+		for c in range(c0, c0 + block):
+			if c < 0 or r < 0 or c >= w or r >= h:
+				continue
+			var cell := _cell(c, r)
+			if blocked.has(cell) or not map.has_cell(cell) or map.column(cell).has_tag("water"):
+				continue
+			# Rows of two with a one-space aisle: every third row stays open.
+			if (r - r0) % 3 == 2 or c == c0 or c == c0 + block - 1:
+				continue
+			var col := map.column(cell)
+			col.ground = 1 if rng.randf() < 0.55 else 2
+			col.tags = PackedStringArray([tag, BattleMap.TAG_DESTRUCTIBLE] if tag == "container" else [tag])
 
 
 ## Open ground-level cells between city blocks become roads: running along the row (road_x),
@@ -681,10 +735,14 @@ func _plaza(c0: int, r0: int, block: int) -> void:
 				continue
 			if park and rng.randf() < 0.55:
 				_tag(map.column(cell), [Sight.TAG_SOFT_COVER, BattleMap.TAG_DIFFICULT, "woods"])
-			elif not park and rng.randf() < 0.08:
+			elif not park and (c - c0 == 1 or c - c0 == block - 2) and (r - r0 == 1 or r - r0 == block - 2):
 				var col := map.column(cell)
 				col.ground = 1
-				_tag(col, ["wall"])  # monument plinths, planters
+				_tag(col, ["wall"])  # planters at the square's corners
+			elif not park and c == c0 + block / 2 and r == r0 + block / 2:
+				var col := map.column(cell)
+				col.ground = 2
+				_tag(col, ["wall"])  # the monument in the middle
 
 
 # --- Space, moons, sea and jungle ------------------------------------------------------

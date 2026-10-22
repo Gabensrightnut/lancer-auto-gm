@@ -58,7 +58,34 @@
 		"flora": {
 			"rough": "rubble"
 		},
-		"particles": "dust"
+		"particles": "dust",
+		"in_city": {
+			"sky": {
+				"top": "#6a7280",
+				"horizon": "#b8b4ac",
+				"haze_color": "#b8aa98",
+				"haze": 0.8,
+				"clouds": 0.85,
+				"cloud_color": "#a8a8a8",
+				"cloud_shade": "#5a5c60"
+			},
+			"light": {
+				"sun_color": "#e8e4dc",
+				"sun_energy": 1.3,
+				"sun_pitch": -40.0,
+				"sun_yaw": -50.0,
+				"ambient": 0.7,
+				"fill_color": "#a0a8b8",
+				"fill_energy": 0.3,
+				"fog_color": "#9a948a",
+				"fog_density": 0.008,
+				"fog_aerial": 0.6,
+				"sun_scatter": 0.1,
+				"saturation": 0.78,
+				"contrast": 1.08,
+				"exposure": 1.0
+			}
+		}
 	},
 	"cyberpunk": {
 		"name": "neon megacity",
@@ -418,6 +445,37 @@
 				"castle",
 				"windmill"
 			]
+		},
+		"in_city": {
+			"sky": {
+				"top": "#7a94b4",
+				"horizon": "#dcd8cc",
+				"haze_color": "#e8dcc8",
+				"haze": 0.8,
+				"clouds": 0.55,
+				"cloud_color": "#eae6de",
+				"cloud_shade": "#8a8e98"
+			},
+			"light": {
+				"sun_color": "#ffe8cc",
+				"sun_energy": 1.8,
+				"sun_pitch": -18.0,
+				"sun_yaw": -110.0,
+				"ambient": 0.55,
+				"fill_color": "#9ab4d8",
+				"fill_energy": 0.35,
+				"fog_color": "#c8c8c0",
+				"fog_density": 0.009,
+				"fog_aerial": 0.6,
+				"sun_scatter": 0.35,
+				"saturation": 0.92,
+				"contrast": 1.02,
+				"exposure": 1.0
+			},
+			"ground": {
+				"top_a": "#6a665e",
+				"top_b": "#7a756a"
+			}
 		}
 	},
 	"old_west": {
@@ -499,6 +557,39 @@
 				"windmill",
 				"headframe"
 			]
+		},
+		"in_city": {
+			"sky": {
+				"top": "#4a7ab8",
+				"horizon": "#f0c890",
+				"haze_color": "#ffb060",
+				"haze": 0.85,
+				"clouds": 0.2,
+				"cloud_color": "#f8e0c0",
+				"cloud_shade": "#a08070"
+			},
+			"light": {
+				"sun_color": "#ffc890",
+				"sun_energy": 2.6,
+				"sun_pitch": -16.0,
+				"sun_yaw": -60.0,
+				"ambient": 0.45,
+				"fill_color": "#8aa8d8",
+				"fill_energy": 0.25,
+				"fog_color": "#d8b890",
+				"fog_density": 0.0065,
+				"fog_aerial": 0.55,
+				"sun_scatter": 0.45,
+				"saturation": 1.08,
+				"contrast": 1.08,
+				"exposure": 1.0
+			},
+			"ground": {
+				"top_a": "#8a7458",
+				"top_b": "#9a8464",
+				"soil": "#7a6448"
+			},
+			"particles": "dust"
 		}
 	},
 	"retro": {
@@ -592,6 +683,28 @@
 			"horizon": "#f8e0c8",
 			"haze_color": "#ffc8a0",
 			"clouds": 0.35
+		},
+		"in_city": {
+			"light": {
+				"sun_color": "#fff0d0",
+				"sun_energy": 2.8,
+				"sun_pitch": -48.0,
+				"sun_yaw": -35.0,
+				"ambient": 0.55,
+				"fill_color": "#90d8e0",
+				"fill_energy": 0.3,
+				"fog_color": "#e8d8c8",
+				"fog_density": 0.0035,
+				"fog_aerial": 0.5,
+				"sun_scatter": 0.2,
+				"saturation": 1.15,
+				"contrast": 1.05,
+				"exposure": 1.05
+			},
+			"ground": {
+				"top_a": "#8a8680",
+				"top_b": "#a09a90"
+			}
 		}
 	},
 	"east_asian": {
@@ -691,6 +804,33 @@
 				"torii",
 				"pagoda"
 			]
+		},
+		"in_city": {
+			"sky": {
+				"top": "#86a8cc",
+				"horizon": "#f4dcd8",
+				"haze_color": "#f8c8c8",
+				"haze": 0.75,
+				"clouds": 0.4,
+				"cloud_color": "#fbf0ee",
+				"cloud_shade": "#a8a0b0"
+			},
+			"light": {
+				"sun_color": "#fff0e4",
+				"sun_energy": 2.0,
+				"sun_pitch": -28.0,
+				"sun_yaw": -100.0,
+				"ambient": 0.6,
+				"fill_color": "#c8b8e8",
+				"fill_energy": 0.3,
+				"fog_color": "#e0d0d4",
+				"fog_density": 0.0065,
+				"fog_aerial": 0.55,
+				"sun_scatter": 0.3,
+				"saturation": 1.0,
+				"contrast": 1.02,
+				"exposure": 1.05
+			}
 		}
 	},
 	"union": {
@@ -783,6 +923,267 @@
 				-0.75
 			],
 			"moon_a_size": 0.035
+		},
+		"in_city": {
+			"sky": {
+				"top": "#2e6cd0",
+				"horizon": "#d4e6fa",
+				"haze_color": "#e8f2ff",
+				"haze": 0.5,
+				"clouds": 0.25,
+				"cloud_color": "#ffffff",
+				"cloud_shade": "#a8b8d0"
+			},
+			"light": {
+				"sun_color": "#fffaf0",
+				"sun_energy": 2.0,
+				"sun_pitch": -62.0,
+				"sun_yaw": -20.0,
+				"ambient": 0.45,
+				"fill_color": "#a8c8ff",
+				"fill_energy": 0.25,
+				"fog_color": "#c8dcf0",
+				"fog_density": 0.003,
+				"fog_aerial": 0.5,
+				"sun_scatter": 0.15,
+				"saturation": 1.02,
+				"contrast": 1.08,
+				"exposure": 0.86,
+				"glow": 0.45,
+				"bloom": 0.02
+			},
+			"ground": {
+				"top_a": "#9aa0a6",
+				"top_b": "#a8aeb4",
+				"wall": "#c8ccd0"
+			}
+		}
+	},
+	"industrial": {
+		"name": "industrial district",
+		"architecture": {
+			"materials": [
+				"brick",
+				"metal",
+				"concrete",
+				"brick"
+			],
+			"walls": [
+				"#8a4a36",
+				"#7a3e2e",
+				"#6a6460",
+				"#8a8070",
+				"#5a5e62",
+				"#9a5a3e"
+			],
+			"trim": "#3a3634",
+			"glass": "#2a2c28",
+			"window_light": "#ffc070",
+			"lit_windows": 0.06,
+			"roof": "#4a4a48",
+			"roof_surface": "metal",
+			"roof_edge": "parapet",
+			"roof_props": "modern",
+			"floors": 2,
+			"bay": 0.45,
+			"window_w": 0.6,
+			"window_h": 0.6,
+			"storefront": 0,
+			"signs": 0.2,
+			"awnings": 0.0,
+			"sign_colors": [
+				"#e8c040",
+				"#d8d0c0",
+				"#a03a2a"
+			],
+			"accent": "#e8a040",
+			"landmark_color": "#8a5a44",
+			"street": {
+				"lamps": 0.25,
+				"lamp_style": "post",
+				"lamp_color": "#ffc070",
+				"barrels": 0.3,
+				"crates": 0.4,
+				"barrel_color": "#3a5a7a",
+				"road": "asphalt",
+				"vehicles": [
+					"truck",
+					"truck",
+					"van",
+					"car"
+				],
+				"traffic_lights": true,
+				"kiosks": 0.0,
+				"vents": 0.2,
+				"wires": 0.35,
+				"lanterns_on_wires": false
+			},
+			"skyline": {
+				"near": [
+					1.0,
+					3.0
+				],
+				"far": [
+					2.0,
+					8.0
+				],
+				"density": 0.5
+			}
+		},
+		"horizon": {
+			"landmarks": [
+				"smokestacks",
+				"water_tower",
+				"smokestacks"
+			]
+		},
+		"particles": "dust",
+		"in_city": {
+			"sky": {
+				"top": "#7a7e86",
+				"horizon": "#d8b088",
+				"haze_color": "#d89858",
+				"haze": 0.9,
+				"clouds": 0.5,
+				"cloud_color": "#c8b8a0",
+				"cloud_shade": "#6a625a"
+			},
+			"light": {
+				"sun_color": "#ffc890",
+				"sun_energy": 1.9,
+				"sun_pitch": -24.0,
+				"sun_yaw": -75.0,
+				"ambient": 0.5,
+				"fill_color": "#8898a8",
+				"fill_energy": 0.25,
+				"fog_color": "#a89070",
+				"fog_density": 0.0095,
+				"fog_aerial": 0.65,
+				"sun_scatter": 0.45,
+				"saturation": 0.9,
+				"contrast": 1.08,
+				"exposure": 1.0
+			},
+			"ground": {
+				"top_a": "#4e4a46",
+				"top_b": "#5a5650"
+			}
+		}
+	},
+	"port": {
+		"name": "harbor town",
+		"architecture": {
+			"materials": [
+				"metal",
+				"concrete",
+				"plaster",
+				"brick"
+			],
+			"walls": [
+				"#d8d4cc",
+				"#4a6a8a",
+				"#8a4a3a",
+				"#c8b898",
+				"#5a7a6a",
+				"#e0dcd0"
+			],
+			"trim": "#2a3440",
+			"glass": "#22323e",
+			"window_light": "#ffe0b0",
+			"lit_windows": 0.05,
+			"roof": "#5a6670",
+			"roof_surface": "metal",
+			"roof_edge": "parapet",
+			"roof_props": "modern",
+			"floors": 2,
+			"bay": 0.4,
+			"window_w": 0.5,
+			"window_h": 0.5,
+			"storefront": 1,
+			"signs": 0.35,
+			"awnings": 0.3,
+			"sign_colors": [
+				"#e8e4dc",
+				"#c83a2a",
+				"#2a5a8a"
+			],
+			"awning_colors": [
+				"#2a5a8a",
+				"#c83a2a",
+				"#e8e4dc"
+			],
+			"accent": "#e8a020",
+			"landmark_color": "#e8a020",
+			"street": {
+				"lamps": 0.3,
+				"lamp_style": "post",
+				"lamp_color": "#ffe0b0",
+				"barrels": 0.2,
+				"crates": 0.5,
+				"barrel_color": "#8a3a2a",
+				"road": "asphalt",
+				"vehicles": [
+					"truck",
+					"van",
+					"car",
+					"truck"
+				],
+				"traffic_lights": false,
+				"kiosks": 0.15,
+				"vents": 0.0,
+				"wires": 0.15,
+				"lanterns_on_wires": false
+			},
+			"skyline": {
+				"near": [
+					1.0,
+					3.0
+				],
+				"far": [
+					2.0,
+					9.0
+				],
+				"density": 0.45
+			}
+		},
+		"horizon": {
+			"landmarks": [
+				"cranes",
+				"cranes",
+				"water_tower"
+			]
+		},
+		"in_city": {
+			"sky": {
+				"top": "#3a78c8",
+				"horizon": "#d8e8f0",
+				"haze_color": "#c8dcec",
+				"haze": 0.6,
+				"clouds": 0.35,
+				"cloud_color": "#ffffff",
+				"cloud_shade": "#9aaabb"
+			},
+			"light": {
+				"sun_color": "#fff4e4",
+				"sun_energy": 2.5,
+				"sun_pitch": -30.0,
+				"sun_yaw": -95.0,
+				"ambient": 0.55,
+				"fill_color": "#9ac0e8",
+				"fill_energy": 0.35,
+				"fog_color": "#b8ccd8",
+				"fog_density": 0.0055,
+				"fog_aerial": 0.55,
+				"sun_scatter": 0.25,
+				"saturation": 1.02,
+				"contrast": 1.04,
+				"exposure": 1.03
+			},
+			"liquid": {
+				"kind": "water",
+				"shallow": "#2a5a6a",
+				"deep": "#0e2a3a"
+			}
 		}
 	}
 }

@@ -3,7 +3,7 @@ extends RefCounted
 ## Ground vehicles made in code, one mesh each with vertex colors (sRGB). About 0.6 x 0.3
 ## board units: far smaller than a mech, so they never read as cover. Kinds: car, van, bike,
 ## fin_car (atomic-age, tail fins), pod (Union hover-pod), wreck (burned-out car), cart,
-## wagon (covered), scooter. Lit parts (lights) use vertex alpha 0 (glow in foliage shader).
+## wagon (covered), scooter, truck (cab and box). Lit parts (lights) use vertex alpha 0 (glow in foliage shader).
 
 static var _cache := {}
 
@@ -17,6 +17,7 @@ const PAINTS := {
 	"cart": ["#6a4a2a"],
 	"wagon": ["#6a4a2a", "#5a3e24"],
 	"scooter": ["#c81e1e", "#f0f0f0", "#2a6ab0"],
+	"truck": ["#c83a2a", "#2a4a7a", "#e8e4dc", "#3a5a3a", "#e8a020"],
 }
 
 
@@ -102,6 +103,15 @@ static func mesh(kind: String, paint: Color) -> ArrayMesh:
 				for z: float in [-0.15, 0.15]:
 					_wheel(st, 0.08, Vector3(x, 0.08, z), Color(0.3, 0.22, 0.14, 1.0))
 			_box(st, Vector3(0.3, 0.02, 0.02), Vector3(0.42, 0.1, 0), wood, 0.0)
+		"truck":
+			_box(st, Vector3(0.2, 0.22, 0.28), Vector3(0.32, 0.17, 0), p, 0.03)
+			_box(st, Vector3(0.02, 0.09, 0.24), Vector3(0.42, 0.21, 0), glass, 0.01)
+			_box(st, Vector3(0.52, 0.3, 0.3), Vector3(-0.08, 0.21, 0), Color(0.82, 0.8, 0.76, 1.0), 0.02)
+			for x: float in [-0.26, -0.1, 0.3]:
+				for z: float in [-0.14, 0.14]:
+					_wheel(st, 0.055, Vector3(x, 0.055, z), dark)
+			_box(st, Vector3(0.01, 0.03, 0.22), Vector3(0.425, 0.11, 0), head, 0.0)
+			_box(st, Vector3(0.01, 0.03, 0.24), Vector3(-0.345, 0.1, 0), tail, 0.0)
 		"scooter":
 			_box(st, Vector3(0.24, 0.05, 0.08), Vector3(0, 0.08, 0), p, 0.02)
 			_box(st, Vector3(0.02, 0.12, 0.02), Vector3(0.1, 0.14, 0), dark, 0.0)
