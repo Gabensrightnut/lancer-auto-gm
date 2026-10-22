@@ -244,7 +244,14 @@ static func plan(state: GameState, u: Unit, dest: Vector2i, level: int = -1, mod
 	if fly and u.flight != "hover":
 		result = _straight_flight(state, u, dest, level, cap)
 	else:
-		var search := _search(state, u, cap, fly)
+		# Stop searching once every possible end position at `dest` is settled.
+		var goals := {}
+		if level >= 0:
+			goals[_key(dest, level)] = true
+		elif not fly:
+			for lv in surface_levels(state, u.size, dest):
+				goals[_key(dest, lv)] = true
+		var search := _search(state, u, cap, fly, goals)
 		result = _pick(state, u, search, dest, level)
 	if not result.get("found", false):
 		out["reason"] = result.get("reason", "Can't get there.")
@@ -391,13 +398,23 @@ static func reachable(state: GameState, u: Unit, mode: String = MODE_MOVE, fly: 
 
 
 ## Dijkstra over (anchor, level) nodes. Ground movement walks and climbs; hover flies freely.
-static func _search(state: GameState, u: Unit, cap: int, fly: bool) -> Dictionary:
+## `goals` (keys): stop as soon as all of them are settled (their cheapest path is known).
+static func _search(state: GameState, u: Unit, cap: int, fly: bool, goals: Dictionary = {}) -> Dictionary:
 	var others := _others(state, u)
 	var engaged_at_start := _engagers(state, u, Sight.body_of(state, u), others)
 	var start := _key(u.cell, u.level)
 	var nodes := {start: {"cost": 0, "parent": null, "stop": "", "can_end": false, "uneven": false, "difficult": false, "dangerous": false}}
-	var open: Array[Vector3i] = [start]
+	# Open list as a binary heap (cost, key): popping the cheapest node is O(log n).
+	var heap_cost: Array[int] = [0]
+	var heap_key: Array[Vector3i] = [start]
 	var done := {}
+	# Things that don't change during one search: look them up once.
+	var uneven_rule := uneven_choice(state)
+	var step_zones := not Zones.of_kind(state, "blink").is_empty() or not Zones.of_kind(state, "wall_field").is_empty()
+	var diff_zones := false
+	for z: Dictionary in state.zones:
+		diff_zones = diff_zones or String(z.get("kind", "")) in ["mag_field", "sealant", "caltrops"]  # as Zones.difficult_at
+	var place_cache := {}
 	var top := _max_ground(state) + cap + GridLayout.spaces_per_side(u.size)
 	var prone := u.has_status("Prone")
 	var wreck_cells := _wreck_cells(others)
@@ -412,16 +429,15 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool) -> Dictionar
 	var climb_rule := Rulings.choice_or_suggested(state, "climb_cost")
 	var fly_diff_rule := Rulings.choice_or_suggested(state, "flight_difficult")
 	var prone_rule := Rulings.choice_or_suggested(state, "prone_ignore_difficult")
-	while not open.is_empty():
-		var best := 0
-		for i in range(1, open.size()):
-			if nodes[open[i]]["cost"] < nodes[open[best]]["cost"]:
-				best = i
-		var k: Vector3i = open[best]
-		open.remove_at(best)
+	while not heap_key.is_empty():
+		var k: Vector3i = _heap_pop(heap_cost, heap_key)
 		if done.has(k):
 			continue
 		done[k] = true
+		if goals.has(k):
+			goals.erase(k)
+			if goals.is_empty():
+				break
 		var node: Dictionary = nodes[k]
 		if node["stop"] != "":
 			continue  # engagement ended the move here
@@ -433,16 +449,19 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool) -> Dictionar
 			var nk := _key(nb, lv)
 			if done.has(nk):
 				continue
-			var place := placement(state, u.size, nb, lv)
+			var place: Dictionary = place_cache.get(nk, {})
+			if place.is_empty():
+				place = placement(state, u.size, nb, lv)
+				place_cache[nk] = place
 			if not place["ok"]:
 				continue
 			if not fly and place["airborne"]:
 				continue
-			if place["uneven"] and uneven_choice(state) == "forbid":
+			if place["uneven"] and uneven_rule == "forbid":
 				continue
 			if not _clearance(state, u.size, here, k.z, nb, lv):
 				continue
-			if Zones.blocks_step(state, here, nb):
+			if step_zones and Zones.blocks_step(state, here, nb):
 				continue  # a Blinkshield's edge can't be crossed
 			var body := Sight.make_body(state, nb, lv, u.size)
 			if not fly and _blocked_by_unit(body, others, false):
@@ -455,7 +474,7 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool) -> Dictionar
 				if here_cells.has(c):
 					continue
 				var col := state.map.column(c)
-				difficult = difficult or col.has_tag(BattleMap.TAG_DIFFICULT) or wreck_cells.has(c) or Zones.difficult_at(state, c)
+				difficult = difficult or col.has_tag(BattleMap.TAG_DIFFICULT) or wreck_cells.has(c) or (diff_zones and Zones.difficult_at(state, c))
 				dangerous = dangerous or col.has_tag(BattleMap.TAG_DANGEROUS)
 			difficult = (difficult or (ocean and not fly)) and not ignore_difficult
 			var flags: Array = (node.get("rulings", []) as Array).duplicate()
@@ -489,8 +508,54 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool) -> Dictionar
 				"can_end": not _blocked_by_unit(body, others, true),
 				"uneven": node["uneven"] or place["uneven"], "difficult": difficult and not fly,
 				"dangerous": dangerous, "climb": absi(lv - k.z) if not fly else 0, "rulings": flags}
-			open.append(nk)
+			_heap_push(heap_cost, heap_key, total, nk)
 	return {"nodes": nodes}
+
+
+static func _heap_push(costs: Array[int], keys: Array[Vector3i], cost: int, key: Vector3i) -> void:
+	costs.append(cost)
+	keys.append(key)
+	var i := costs.size() - 1
+	while i > 0:
+		var p := (i - 1) / 2
+		if costs[p] <= costs[i]:
+			break
+		var tc := costs[p]
+		costs[p] = costs[i]
+		costs[i] = tc
+		var tk := keys[p]
+		keys[p] = keys[i]
+		keys[i] = tk
+		i = p
+
+
+static func _heap_pop(costs: Array[int], keys: Array[Vector3i]) -> Vector3i:
+	var top := keys[0]
+	var last := costs.size() - 1
+	costs[0] = costs[last]
+	keys[0] = keys[last]
+	costs.remove_at(last)
+	keys.remove_at(last)
+	var i := 0
+	var n := costs.size()
+	while true:
+		var l := i * 2 + 1
+		var r := l + 1
+		var m := i
+		if l < n and costs[l] < costs[m]:
+			m = l
+		if r < n and costs[r] < costs[m]:
+			m = r
+		if m == i:
+			break
+		var tc := costs[m]
+		costs[m] = costs[i]
+		costs[i] = tc
+		var tk := keys[m]
+		keys[m] = keys[i]
+		keys[i] = tk
+		i = m
+	return top
 
 
 ## Candidate next nodes from (cell, level): [[cell, level], ...].
