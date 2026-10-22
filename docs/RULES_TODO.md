@@ -222,6 +222,7 @@ the rule (Core p.68 allows it). Attack a section with target `terrain:x,y`.
 |---|---|---|
 | Which section an attack hits | The top one. PROVISIONAL: excess damage doesn't carry into the next section | `TerrainDamage.settle` |
 | Floor | A column breaks down to its `floor_N` tag, else 0. Walls built on raised ground need the tag | `floor_of` |
+| Armor and HP from the map | `armor_N` (0-4) wins; else `material:<name>`: wood, prefab, glass 0; metal, rock 1; stone, concrete 2; reinforced 3; fortified 4 (Core p.68: solid rock 1-2, fortified 3-4). Sections have 10 HP unless tagged `hp_N`. No "collapse save" (not in the book) | `armor_of`, `section_hp` |
 | Rubble | The book gives destroyed terrain no special rule, so the cell keeps its tags (minus `destructible`) and isn't difficult | `destroy_sections` |
 | Area attacks | Blast, Burst and Cone "affect characters": they don't hit terrain unless the gear says objects are hit (Thermal Grenade, Manticore's discharge, Apocalypse Rail). PROVISIONAL: those hit every section of a column in the area | `damage_area`, `after_area` |
 | Knockback into terrain | No damage by the book (tags: Knockback); Juggernaut 2 adds 1d6 kinetic | `TalentRules.kinetic_mass_transfer` |

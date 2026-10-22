@@ -5,9 +5,10 @@ extends RefCounted
 ## destroyed separately; solid rock can have 1-2 Armor, fortified places 3-4.
 ##
 ## On the map: a column tagged "destructible" is made of Size 1 sections, one per level above
-## its floor (tag "floor_N", else 0). Its Armor comes from a tag "armor_N" (else 0). Columns
-## without the tag can't be damaged: the GM waived the rule for them (Core p.68 lets the GM
-## waive it for objects characters didn't make).
+## its floor (tag "floor_N", else 0). Its Armor comes from a tag "armor_N", else its
+## "material:<name>" tag (MATERIAL_ARMOR), else 0; each section has 10 HP unless tagged
+## "hp_N". Columns without the tag can't be damaged: the GM waived the rule for them (Core
+## p.68 lets the GM waive it for objects characters didn't make).
 ##
 ## Attacking it: any attack or action whose target is "terrain:x,y" (Skirmish, Barrage, Ram,
 ## Improvised Attack, an ability) hits the column's top section. While that action is checked
@@ -58,8 +59,25 @@ static func floor_of(col: BattleMap.Column) -> int:
 	return _tag_value(col, "floor_", 0, 1000)
 
 
+## Armor: an explicit "armor_N" tag (0-4) wins; else the material's (Core p.68: solid rock
+## 1-2, fortified 3-4, everything else 0).
+const MATERIAL_ARMOR := {"wood": 0, "prefab": 0, "glass": 0, "metal": 1, "rock": 1, "stone": 2, "concrete": 2, "reinforced": 3, "fortified": 4}
+
+
 static func armor_of(col: BattleMap.Column) -> int:
-	return _tag_value(col, "armor_", 0, 4)
+	for t in col.tags:
+		if t.begins_with("armor_") and t.substr(6).is_valid_int():
+			return clampi(int(t.substr(6)), 0, 4)
+	for t in col.tags:
+		if t.begins_with("material:"):
+			return int(MATERIAL_ARMOR.get(t.substr(9), 0))
+	return 0
+
+
+## HP of each Size 1 section: 10 (Core p.68) unless the map says otherwise ("hp_N").
+static func section_hp(col: BattleMap.Column) -> int:
+	var v := _tag_value(col, "hp_", 0, 1000)
+	return v if v > 0 else SECTION_HP
 
 
 static func destructible(state: GameState, c: Vector2i) -> bool:
@@ -71,7 +89,7 @@ static func destructible(state: GameState, c: Vector2i) -> bool:
 
 ## HP left in the column's top section.
 static func hp_left(state: GameState, c: Vector2i) -> int:
-	return SECTION_HP - int(state.terrain_damage.get(key(c), 0))
+	return section_hp(state.map.column(c)) - int(state.terrain_damage.get(key(c), 0))
 
 
 ## Everything the HUD needs about a destructible column: {cell, ground, floor, sections,
@@ -81,7 +99,7 @@ static func info(state: GameState, c: Vector2i) -> Dictionary:
 		return {}
 	var col := state.map.column(c)
 	return {"cell": [c.x, c.y], "ground": col.ground, "floor": floor_of(col), "sections": col.ground - floor_of(col),
-		"hp": hp_left(state, c), "max_hp": SECTION_HP, "evasion": EVASION, "armor": armor_of(col), "rule_ref": REF}
+		"hp": hp_left(state, c), "max_hp": section_hp(col), "evasion": EVASION, "armor": armor_of(col), "rule_ref": REF}
 
 
 ## A temporary object standing for the top section of the column at `c`.
@@ -99,7 +117,7 @@ static func section_unit(state: GameState, c: Vector2i) -> Unit:
 	u.cell = c
 	u.size = 1.0
 	u.level = col.ground - 1
-	u.max_hp = SECTION_HP
+	u.max_hp = section_hp(col)
 	u.hp = hp_left(state, c)
 	u.evasion = EVASION
 	u.edef = 0
@@ -151,8 +169,8 @@ static func settle(state: GameState, ids: Array[String], source: String = "") ->
 		var c: Vector2i = cell_of(id)
 		if u.destroyed or u.hp <= 0:
 			events.append_array(destroy_sections(state, c, 1, source))
-		elif u.hp < SECTION_HP:
-			state.terrain_damage[key(c)] = SECTION_HP - u.hp
+		elif u.hp < u.max_hp:
+			state.terrain_damage[key(c)] = u.max_hp - u.hp
 	return events
 
 
@@ -169,7 +187,8 @@ static func damage_cell(state: GameState, c: Vector2i, amount: int, dtype: Strin
 	if dmg <= 0:
 		return events
 	var sections := col.ground - floor_of(col)
-	if all_sections and dmg >= SECTION_HP:
+	var full := section_hp(col)
+	if all_sections and dmg >= full:
 		events.append_array(destroy_sections(state, c, sections, source))
 		return events
 	var left := hp_left(state, c)
@@ -178,7 +197,7 @@ static func damage_cell(state: GameState, c: Vector2i, amount: int, dtype: Strin
 		if all_sections and sections > 1:
 			state.terrain_damage[key(c)] = dmg  # the section below took the same damage
 	else:
-		state.terrain_damage[key(c)] = SECTION_HP - left + dmg
+		state.terrain_damage[key(c)] = full - left + dmg
 	events[0]["hp_left"] = hp_left(state, c) if destructible(state, c) else 0
 	return events
 
