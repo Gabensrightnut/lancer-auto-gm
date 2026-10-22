@@ -31,26 +31,16 @@ Every key is optional. The renderer draws exactly these values; the rules engine
 }
 ```
 
-## Roll display (`RollDisplay.play_check(check, result, title)`)
+## Roll results (`RollPopups`): numbers, no dice
 
-`check` is the `Dice.check()` record plus three optional display fields:
-
-```gdscript
-{
-  "d20": 13, "bonus": 2, "total": 19, "target": 8,
-  "accuracy_roll": {"accuracy": 2, "difficulty": 1, "net": 1, "color": "blue",
-                    "dice": [4], "kept": 4, "value": 4},
-  "sources": [{"label": "Lock On", "type": "accuracy"},            # one entry per point,
-              {"label": "Soft cover", "type": "difficulty", "value": 1}],  # or "value": n
-  "bonuses": [{"label": "Grit", "value": 2}],   # breakdown of `bonus`; else shown as "Bonus"
-  "target_label": "Evasion",                    # "E-Defense", "Save Target"...
-}
-```
-
-`result`: `hit`, `miss`, `crit` (or `success` / `fail`). Missing source labels fall back to
-"Accuracy"/"Difficulty". `play_damage(damage_dealt_event)` shows a damage roll;
-`show_card(title, lines, color)` shows structure/stress outcomes. Speed: `Fx.speed`
-(1 full, 2.5 quick, 0 instant).
+Rolls are instant; results pop up as numbers over the unit (DESIGN "Roll visuals"):
+`show_check(world, check, result)` -> "20 HIT" tinted blue/red by leftover Accuracy/
+Difficulty; `show_damage(world, amount, damage_type, breakdown)` -> "7 [icon]";
+`show_text(...)` for structure/stress/heat. Hovering a pop-up shows the breakdown
+(`RollDisplay.formula_bbcode(check, result)` / `RollDisplay.damage_bbcode(damage_event)`),
+which also goes to the combat log. `check` is the `Dice.check` record plus optional
+`sources` ([{label, kind/type, value}]), `bonus_sources`/`bonuses` ([{label, value}]),
+`target_label`. Fx.speed only changes how long pop-ups linger.
 
 ## Events (`EventPlayer.play(events)`)
 
@@ -135,10 +125,9 @@ Signals: `action_pressed`, `action_hovered`, `end_turn_pressed`.
 Portraits: `TurnOrderBar.render_portrait(host, model, height)` renders a MechModel once.
 Signal `i_will_go(unit_id)` when a player picks who acts next.
 
-## Skill check popup (`SkillCheckPopup.play(check, hold)`)
+## Skill checks and saves
 
-The `skill_check` event's `check`: Dice.check plus `label`/`skill`, `bonus_sources`
-(`[{label, value}]`), `sources` (`[{label, kind: "accuracy"/"difficulty"}]`).
+`skill_check` events pop up over the roller like any other roll ("16 SUCCESS").
 
 ## Playing a turn (`PlayerTurn`, `DemoBattle`)
 
