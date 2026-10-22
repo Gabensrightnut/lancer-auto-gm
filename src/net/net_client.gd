@@ -14,6 +14,8 @@ signal view_updated(view: Dictionary, events: Array)
 ## Answer to submit(): RuleResult.to_dict() (ok, reason, rule_ref, grey_area, options).
 signal action_answered(request_id: int, result: Dictionary)
 signal seats_changed(table: Dictionary)
+## Lobby settings and seat rows from the host (LobbyModel.summary()).
+signal lobby_updated(lobby: Dictionary)
 ## Who the game is waiting on changed (NetHost.waiting_on() as this seat may know it).
 ## info["you"] is true when it's waiting on you.
 signal waiting_changed(info: Dictionary)
@@ -150,6 +152,9 @@ func _on_message(_peer: int, msg: Dictionary) -> void:
 			_set_waiting(msg.get("waiting", {}))
 		NetProtocol.RESULT:
 			action_answered.emit(int(msg.get("id", 0)), msg.get("result", {}))
+		NetProtocol.LOBBY:
+			if msg.get("lobby") is Dictionary:
+				lobby_updated.emit(msg["lobby"])
 		NetProtocol.SEATS:
 			seats_changed.emit(msg.get("seats", {}))
 			_set_waiting(msg.get("waiting", {}))
@@ -173,6 +178,11 @@ static func last_session() -> Dictionary:
 	if json.parse(FileAccess.get_file_as_string(SESSION_FILE)) != OK or not json.data is Dictionary:
 		return {}
 	return json.data if json.data.has("room") else {}
+
+
+## Lobby: tell the host we're ready (or not).
+func send_ready(is_ready: bool) -> void:
+	transport.send(NetTransport.HOST_PEER, {"t": NetProtocol.LOBBY, "ready": is_ready})
 
 
 ## "I'll go": ask to take the next turn with `unit_id` (yours, or an AI squadmate's).
