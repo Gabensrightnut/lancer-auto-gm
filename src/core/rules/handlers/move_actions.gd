@@ -13,6 +13,9 @@ static func _can_move_voluntarily(u: Unit) -> RuleResult:
 
 
 static func _plan(state: GameState, u: Unit, params: Dictionary, mode: String) -> Dictionary:
+	var carried := state.unit(String(u.counters.get("dragging", "")))
+	if carried != null and carried.size > 0.5 and (params.get("fly", false) or params.get("swing", false)):
+		return {"ok": false, "reason": "Carrying more than Size 1/2: you can't fly.", "rule_ref": Riders.REF_DRAG}
 	var plan := _plan_raw(state, u, params, mode)
 	if plan["ok"] and u.counters.has("cable") and not (plan["path"] as Array).is_empty():
 		var last: Array = (plan["path"] as Array).back()

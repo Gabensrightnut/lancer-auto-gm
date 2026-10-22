@@ -254,7 +254,7 @@ the rule (Core p.68 allows it). Attack a section with target `terrain:x,y`.
  frame traits and core systems
 marked "manual" in `data/game/frame_effects.json`, talents (beyond unlocking talent gear),
 Jockey and Reload (p.75), pilot armor and gear, zero-g
-(p.63), lifting (dragging is in: `drag` / `release_drag`),
+(p.63),
 overshield sources, Scan's other two options, the same-Size grapple contest, Engineering
 retries against a meltdown, Full Repair (p.82; rest is automated), unlicensed mechs (p.74: Impaired
 and Slowed), NHP control (p.75).

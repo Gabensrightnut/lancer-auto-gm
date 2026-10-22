@@ -250,7 +250,8 @@ class DisarmMine:
 
 class Drag:
 	extends TurnAction
-	## Start dragging (or towing on a cable) a character, wreck or object. params: {"target"}
+	## Start dragging (or towing on a cable) a character, wreck or object, or lift one of your
+	## Size or smaller overhead (Immobilized while you hold it). params: {"target", "lift": bool}
 
 	func type() -> String:
 		return "drag"
@@ -262,10 +263,10 @@ class Drag:
 		return [Unit.KIND_MECH, Unit.KIND_NPC, Unit.KIND_PILOT]
 
 	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
-		return Riders.check_drag(state, u, state.unit(String(params.get("target", ""))))
+		return Riders.check_drag(state, u, state.unit(String(params.get("target", ""))), bool(params.get("lift", false)))
 
 	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
-		return Riders.start_drag(state, u, state.unit(String(params["target"])))
+		return Riders.start_drag(state, u, state.unit(String(params["target"])), bool(params.get("lift", false)))
 
 
 class LetGoDrag:

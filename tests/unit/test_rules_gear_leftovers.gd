@@ -250,3 +250,18 @@ func test_grapple_swing() -> void:
 	expect(F.ok(out), F.reason(out))
 	expect(not a.flying, "landed on a surface")
 	expect(not F.ok(F.act(e, s, "move", "a", {"to": [3, 2], "swing": true})), "once per turn")
+
+
+func test_lifting_and_flying_carry_limit() -> void:
+	_setup([], Vector2i(1, 0))
+	t.side = "players"
+	var out := F.act(e, s, "drag", "a", {"target": "t", "lift": true})
+	expect(F.ok(out), F.reason(out))
+	expect(a.has_status("Immobilized"), "Immobilized while lifting")
+	F.act(e, s, "release_drag", "a")
+	expect(not a.has_status("Immobilized"))
+	var big := F.mech(s, "big", "players", Vector2i(0, 1), 2.0)
+	expect(not F.ok(F.act(e, s, "drag", "a", {"target": "big", "lift": true})), "lift only your Size or smaller")
+	a.flight = "flight"
+	F.act(e, s, "drag", "a", {"target": "t"})
+	expect(not F.ok(F.act(e, s, "move", "a", {"to": [0, 3], "fly": true})), "flying carries at most Size 1/2")
