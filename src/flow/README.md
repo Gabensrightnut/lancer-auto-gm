@@ -20,7 +20,14 @@ StoryClient, and each new view is copied into the objects the hub already holds)
 take AI squadmates' seats (the AI takes a seat back if its friend leaves). Their builds go to
 the host as `{"pilot_update": pilot}` and are kept only if legal and their own. Boots on the
 ground: the battle runs on the same NetHost, so friends follow the host in ("started") and
-come back to the hub for the debrief. Not yet: walking positions aren't shared at the hub.
+come back to the hub for the debrief. Walking around the hub is shared too: each screen sends
+its pilot's spot ({"hub_pos": [x, z, facing]}, `HubScreenPositions`) a few times a second and
+the host passes it on; other players' pilots glide there (cosmetic, not game state).
+
+AI squadmates in story battles: `GameFlow.apply_squad_orders` gives the AI director each
+one's stance (`Squadmate.orders`: their frame's role or persona) when the battle starts or is
+resumed, and the battle screen shows their barks (`Squadmate.barks_for`) as speech bubbles
+over their mechs (`SpeechBubbles`) and in the combat log.
 
 | File | What it does |
 |---|---|
@@ -31,6 +38,8 @@ come back to the hub for the debrief. Not yet: walking positions aren't shared a
 | `battle_screen.gd` (`scenes/flow/battle.tscn`) | The visuals work's BattleView, EventPlayer, TurnOrderBar, ActionBar, PlayerTurn, RollPopups, CombatLog on a BattleSession; plus the hot-seat "Pass to" screen, reaction prompt, in-battle menu. |
 | `debrief_screen.gd` (`scenes/flow/debrief.tscn`) | Outcome, level ups with "Spend points" (builder), next mission / main menu. |
 | `hub_screen.gd` (`scenes/flow/hub.tscn`) | A story campaign between missions: the story's HubScene, saved after every story step, a Menu (pilot builder, teaching hints, settings, save and quit). Turns the hub's "boots on the ground" into a battle. |
+| `speech_bubbles.gd` | `SpeechBubbles`: short lines over a mech's nameplate that follow it on screen and fade (squadmates' barks). |
+| `hub_screen_positions.gd` | Wire format for pilots' walking positions at the hub, checked on arrival. |
 | `story_host_engine.gd` | `StoryHostEngine`: the host's hub UI engine; every story action goes through the StorySession (friends online see it). |
 | `narration_popup.gd` | `NarrationPopup`: the GM speaking mid-battle in the story's dialogue look: a mission twist (`twist_revealed`) or narration (`gm_narration`, e.g. the squad arrived late). The AI waits while it's open. |
 

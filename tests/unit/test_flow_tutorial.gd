@@ -55,6 +55,9 @@ func test_tutorial_from_menu_to_debrief() -> void:
 	expect(store.has_mission(c.id))
 	expect(s.mission.flavor.get("hook", {}).get("tutorial", false), "the battle is the tutorial's drill")
 	expect(s.host.is_ai_seat("p2") and not s.host.is_ai_seat("p1"), "you fly p1, the AI flies your squadmate")
+	var mate_orders: Dictionary = s.director.orders.get("p2", {})
+	expect(str(mate_orders.get("stance", "")) != "", "the AI squadmate fights to its character (Squadmate.orders): %s" % str(s.director.orders))
+	expect(not s.director.orders.has("p1"), "no orders for your own mech")
 	for u: Unit in s.host.state.units_on_side(Mission.ENEMIES):
 		expect_eq(u.content_id, "training_drone", "training targets only")
 
