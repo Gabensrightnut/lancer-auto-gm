@@ -195,6 +195,24 @@ them, and they disappear when the turn moves on.
   Destructible terrain visibly breaks when destroyed.
 - The grid stays readable on top of everything (toggle-able grid lines, clear tile edges).
 
+### World art direction: beautiful but dangerous
+The feel to aim for (examples are inspiration only; nothing taken from them): the vast alien
+vistas of Halo, the lived-in worlds of Star Wars, the grim scale of Warhammer 40k.
+
+- **Vibrant cities:** dense towers, neon and holo signs, skybridges, traffic in the sky,
+  plazas and alleys to fight through; also ruined cities, half-collapsed and burning.
+- **Rolling hills and wilds:** lush grass under big skies, forests, rivers, cliffs, farmland
+  (like the Lancer Tactics countryside, but in full 3D).
+- **Alien worlds that are beautiful but scary:** strange colored skies, giant moons and
+  ringed planets overhead, bioluminescent plants, crystal fields, colossal ancient
+  structures, toxic seas, storms on the horizon, things moving in the distance.
+- **Backgrounds beyond the board:** every map sits inside a full horizon (skybox, distant
+  mountains/cities/megastructures, weather, lighting) so the battle feels like part of a
+  huge world, not a tile on a void.
+- **Lighting sets the mood:** golden-hour hills, neon night cities, eerie alien twilight,
+  stormy war zones; fog, god rays, glow.
+- Everything is ours: procedural/shader art, our own models, or CC0 assets with credit.
+
 ### Elevation and flying (3D grid)
 
 The board is a stacked 3D grid, like blocks: every hex/square column has height levels, so
