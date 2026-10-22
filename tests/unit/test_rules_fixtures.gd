@@ -30,6 +30,9 @@ static func state(shape: GridLayout.Shape = GridLayout.Shape.SQUARE, w: int = 12
 	# The table chose the suggested reading for every open rules question (tests that check a
 	# ruling clear or change it).
 	Rulings.apply_suggested(s)
+	# Rules tests run on the book's rules; the Lancer Tactics variants have their own tests.
+	for id: String in ["lt_split_barrage", "lt_brace_prompt", "lt_repeat_quick_tech"]:
+		s.rulings[id] = {"choice": "book"}
 	return s
 
 
