@@ -93,6 +93,14 @@ func _ready() -> void:
 	status_box.add_theme_constant_override("separation", 14)
 	col.add_child(status_box)
 	_refresh()
+	if "stage:corebonus" in OS.get_cmdline_user_args():
+		# Screenshots: a LL6 pilot with the core bonuses that add mounts or ask for choices.
+		model.pilot["ll"] = 6
+		model.pilot["core_bonuses"] = ["cb_integrated_weapon", "cb_mount_retrofitting"]
+		model.set_integrated_weapon("mw_tactical_knife")
+		model.set_core_bonus_choice("cb_mount_retrofitting", 1)
+		_refresh()
+		_scroll_to_end.call_deferred(mech_scroll)
 	if "stage:automation" in OS.get_cmdline_user_args():
 		_scroll_to_end.call_deferred(mech_scroll)  # screenshots
 	if MenuSession.open_creator or "stage:creator" in OS.get_cmdline_user_args():
@@ -357,6 +365,11 @@ func _refresh_mech() -> void:
 
 	for mt: Dictionary in model.mounts():
 		mech_box.add_child(_mount_panel(mt, accent))
+	if model.has_integrated_mount():
+		mech_box.add_child(_integrated_panel(accent))
+	var choices := model.core_bonus_choices()
+	if not choices.is_empty():
+		mech_box.add_child(_core_bonus_choices_panel(choices))
 	var sys_head := HBoxContainer.new()
 	sys_head.add_child(MenuTheme.heading("Systems", 18))
 	var spacer := Control.new()
@@ -527,7 +540,84 @@ func _mount_panel(mt: Dictionary, accent: Color) -> Control:
 	mod.tooltip_text = "A weapon mod goes on this mount's weapon." if not mod.disabled else "Put a weapon here first."
 	mod.pressed.connect(func() -> void: _pick({"kind": "mod", "mount": mt["index"]}))
 	h.add_child(mod)
+	if mt["mod"] != "" and (mt["weapons"] as Array).size() > 1:
+		# Two weapons on this mount: the mod goes on one of them.
+		var on := OptionButton.new()
+		for i in range((mt["weapons"] as Array).size()):
+			on.add_item("on %s" % mt["weapons"][i]["name"], i)
+		on.select(clampi(int(mt["mod_slot"]), 0, on.item_count - 1))
+		on.tooltip_text = "Which of this mount's weapons the mod is fitted to."
+		on.item_selected.connect(func(i: int) -> void: _status_why(model.set_mod_slot(mt["index"], i)))
+		h.add_child(on)
 	return p
+
+
+## The Integrated Weapon core bonus's extra mount: one Auxiliary weapon (Core p.118).
+func _integrated_panel(accent: Color) -> Control:
+	var p := PanelContainer.new()
+	var st := MenuTheme.box(MenuTheme.PANEL_2, MenuTheme.LINE, 1, 0)
+	st.border_width_left = 4
+	st.border_color = accent
+	p.add_theme_stylebox_override("panel", st)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 10)
+	p.add_child(h)
+	var head := MenuTheme.label("INTEGRATED", 15, MenuTheme.MUTED)
+	head.custom_minimum_size = Vector2(118, 0)
+	head.tooltip_text = "From the Integrated Weapon core bonus: one Auxiliary weapon, always fitted."
+	head.mouse_filter = Control.MOUSE_FILTER_PASS
+	h.add_child(head)
+	var wid := str(model.mech().get("loadout", {}).get("integrated_weapon", ""))
+	var b := Button.new()
+	b.text = str(model.db.weapon(wid).get("name", wid)) if wid != "" else "Empty slot (Auxiliary)"
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if wid == "":
+		b.add_theme_color_override("font_color", MenuTheme.MUTED)
+	if picking.get("kind") == "integrated":
+		b.add_theme_stylebox_override("normal", MenuTheme.box(MenuTheme.PANEL_2, MenuTheme.ACCENT, 2, 3))
+	b.pressed.connect(func() -> void: _pick({"kind": "integrated"}))
+	h.add_child(b)
+	if wid != "":
+		var clear := Button.new()
+		clear.text = "✕"
+		clear.tooltip_text = "Empty this slot"
+		clear.pressed.connect(func() -> void: model.set_integrated_weapon(""))
+		h.add_child(clear)
+	return p
+
+
+## Core bonuses that ask for a choice: which mount (Mount Retrofitting, Auto-Stabilizing
+## Hardpoints) or which weapon (Overpower Caliber).
+func _core_bonus_choices_panel(choices: Array) -> Control:
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	v.add_child(MenuTheme.heading("Core bonus choices", 18))
+	for c: Dictionary in choices:
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 10)
+		var l := MenuTheme.label(str(c["name"]), 16)
+		l.custom_minimum_size = Vector2(240, 0)
+		l.tooltip_text = str(c["text"])
+		l.mouse_filter = Control.MOUSE_FILTER_PASS
+		h.add_child(l)
+		var ob := OptionButton.new()
+		ob.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var opts: Array = c["options"]
+		for i in range(opts.size()):
+			ob.add_item(str(opts[i]["label"]), i)
+			if str(opts[i]["value"]) == str(c["current"]):
+				ob.select(i)
+		ob.tooltip_text = str(c["text"])
+		ob.item_selected.connect(func(i: int) -> void: _status_why(model.set_core_bonus_choice(str(c["cb"]), opts[i]["value"])))
+		h.add_child(ob)
+		v.add_child(h)
+	return v
+
+
+## A refused change: say why in the status line.
+func _status_why(why: String) -> void:
+	if why != "":
+		_popup("Not allowed", [why], MenuTheme.BAD)
 
 
 # --- Picker ------------------------------------------------------------------------------
@@ -554,6 +644,9 @@ func _refresh_picker() -> void:
 		"system":
 			picker_title.text = "ADD A SYSTEM"
 			options = model.system_options()
+		"integrated":
+			picker_title.text = "INTEGRATED MOUNT · AUXILIARY"
+			options = model.integrated_options()
 	var shown := 0
 	for o: Dictionary in options:
 		if not o["ok"] and not o["selected"] and not show_blocked:
@@ -597,6 +690,8 @@ func _choose(o: Dictionary) -> void:
 			model.set_mod(picking["mount"], o["id"])
 		"system":
 			model.add_system(o["id"])
+		"integrated":
+			model.set_integrated_weapon(o["id"])
 
 
 # --- Status, import/export, leaving ---------------------------------------------------------

@@ -78,6 +78,25 @@ func step() -> bool:
 		return true
 	if state.active_unit != "":
 		var u := state.unit(state.active_unit)
+		if u != null and NhpAi.auto(u):
+			# An AI drives this mech by its own rules; its pilot answers first (NhpAi.question).
+			var q := host.nhp_question()
+			if not q.is_empty():
+				if host.seat_present(q["seat"]):
+					return false  # the pilot decides, no time limit
+				var answer: Dictionary = q["default"]
+				_log(u.id, "%s's AI pilot: %s." % [TacticsAi._name(u), "Shut Down" if answer.get("type", "") == "shut_down" else "let it act"])
+				if answer.get("type", "") == "nhp_answer":
+					host.nhp_answered[u.id] = host.state.round_number
+					var order: Variant = answer.get("params", {}).get("order")
+					if order is Dictionary:
+						host.nhp_orders[u.id] = (order as Dictionary).duplicate()
+				else:
+					host.submit_ai(answer)
+					host.nhp_answered[u.id] = host.state.round_number
+				return true
+			play_turn(u)
+			return true
 		if u != null and host.is_ai_seat(u.controller):
 			play_turn(u)
 			return true
@@ -102,7 +121,17 @@ func step() -> bool:
 ## Plans and plays the active AI unit's whole turn, then ends it.
 func play_turn(u: Unit) -> void:
 	var know := AiKnowledge.for_side(host.state, host.view_filter, u.side)
-	var plan := ai.plan_turn(know, u.id, _orders_for(u))
+	var plan: Dictionary
+	match NhpAi.kind(u):
+		"sekhmet":
+			plan = NhpAi.plan_sekhmet(know, u.id)
+		"compcon":
+			var o: Dictionary = host.nhp_orders.get(u.id, {"stance": "defensive"}).duplicate()
+			if mission != null and not o.has("zones"):
+				o.merge(mission.objective_for(u.side))
+			plan = ai.plan_turn(know, u.id, o)
+		_:
+			plan = ai.plan_turn(know, u.id, _orders_for(u))
 	if settings.explain:
 		_log(u.id, plan["log"])
 	var steps: Array = plan["steps"]
@@ -111,10 +140,10 @@ func play_turn(u: Unit) -> void:
 	for action: Dictionary in steps:
 		if u.destroyed or host.state.active_unit != u.id:
 			break
-		var out := host.submit(u.controller, action)
+		var out := _submit(u, action)
 		var asked := String((out["result"] as RuleResult).grey_area)
 		if asked != "" and not Rulings.decided(host.state, asked) and _make_ruling(asked):
-			out = host.submit(u.controller, action)  # the AI GM decided the open question; try again
+			out = _submit(u, action)  # the AI GM decided the open question; try again
 		while _answer_reaction():
 			pass
 		if not host.state.pending.is_empty():
@@ -123,7 +152,13 @@ func play_turn(u: Unit) -> void:
 			# The real battlefield differed from what this side knew (a Hidden enemy in the way...).
 			_refused(u, action, out["result"])
 	if host.state.active_unit == u.id and host.state.pending.is_empty():
-		host.submit(u.controller, {"type": "end_turn", "actor": u.id})
+		_submit(u, {"type": "end_turn", "actor": u.id})
+
+
+## Units an AI drives by its own rules (NhpAi) act through the host's AI path; the rest
+## through their seat like anyone.
+func _submit(u: Unit, action: Dictionary) -> Dictionary:
+	return host.submit_ai(action) if NhpAi.auto(u) else host.submit(u.controller, action)
 
 
 ## After Bracing, a unit's next turn is one quick action only: no normal move, no full or

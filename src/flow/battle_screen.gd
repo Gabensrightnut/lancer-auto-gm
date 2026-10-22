@@ -43,6 +43,7 @@ var _draining := false
 var _ended := false
 var _asked := ""
 var _hud_sig := ""
+var _nhp_asked := ""
 
 
 func _ready() -> void:
@@ -153,6 +154,11 @@ func _process(delta: float) -> void:
 	if key != _asked:
 		_asked = key
 		_show_reaction(q)
+	var nq := session.nhp_question()
+	var nkey := JSON.stringify(nq)
+	if nkey != _nhp_asked:
+		_nhp_asked = nkey
+		_show_nhp(nq)
 	_update_status()
 
 
@@ -384,6 +390,42 @@ func _on_handoff(_next_seat: String, display_name: String) -> void:
 	b.add_child(ready)
 	center.add_child(p)
 	handoff_layer.visible = true
+
+
+## An AI drives one of your mechs (a cascading NHP, SEKHMET, a COMP/CON): its pilot's choice
+## at the start of its turn, with the options the rules leave to the pilot.
+func _show_nhp(q: Dictionary) -> void:
+	for c in reaction_panel.get_children():
+		c.queue_free()
+	if q.is_empty():
+		reaction_panel.visible = not session.my_reaction().is_empty()
+		if reaction_panel.visible:
+			_show_reaction(session.my_reaction())
+		return
+	reaction_panel.visible = true
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	reaction_panel.add_child(v)
+	var title: String = {"cascade": "Your NHP has cascaded", "sekhmet": "SEKHMET is in control", "compcon": "Command your COMP/CON"}.get(str(q.get("kind", "")), "Your AI")
+	v.add_child(MenuTheme.heading(title, 22, MenuTheme.BAD if q.get("kind", "") == "cascade" else MenuTheme.WARN))
+	var text := MenuTheme.label(str(q.get("text", "")), 16, MenuTheme.TEXT, true)
+	text.custom_minimum_size = Vector2(590, 0)
+	v.add_child(text)
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 10)
+	row.add_theme_constant_override("v_separation", 8)
+	row.custom_minimum_size = Vector2(590, 0)
+	for o: Dictionary in q.get("options", []):
+		var b := Button.new()
+		b.text = str(o.get("label", ""))
+		b.tooltip_text = str(o.get("tip", ""))
+		var action: Dictionary = o.get("action", {})
+		b.pressed.connect(func() -> void:
+			reaction_panel.visible = false
+			session.answer_nhp(action))
+		row.add_child(b)
+	v.add_child(row)
+	_place_reaction.call_deferred()
 
 
 func _show_reaction(q: Dictionary) -> void:

@@ -82,6 +82,9 @@ func sp() -> Dictionary:
 			used += int(db.get_entry("mods", str(mt["mod"])).get("sp", 0))
 	for sid: String in m.get("loadout", {}).get("systems", []):
 		used += int(db.system(sid).get("sp", 0))
+	var iw := str(m.get("loadout", {}).get("integrated_weapon", ""))
+	if iw != "":
+		used += int(db.weapon(iw).get("sp", 0))
 	return {"used": used, "max": UnitFactory.total_sp(db.frame(str(m.get("frame", ""))), pilot)}
 
 
@@ -157,7 +160,20 @@ func toggle_core_bonus(id: String) -> String:
 		if list.has(id):
 			list.erase(id)
 		else:
-			list.append(id))
+			list.append(id)
+		_fit_mounts(p))
+
+
+## After core bonus changes: drop a mount Improved Armament no longer gives, and the
+## integrated weapon when Integrated Weapon is gone.
+func _fit_mounts(p: Dictionary) -> void:
+	var lo: Dictionary = p["mechs"][mech_index]["loadout"]
+	var n := UnitFactory.mounts_for(db.frame(str(p["mechs"][mech_index].get("frame", ""))), p).size()
+	var mounts: Array = lo.get("mounts", [])
+	while mounts.size() > n:
+		mounts.pop_back()
+	if not (p.get("core_bonuses", []) as Array).has("cb_integrated_weapon"):
+		lo.erase("integrated_weapon")
 
 
 # --- Reallocation (Core p.18) ------------------------------------------------------------
@@ -269,7 +285,7 @@ func set_frame(frame_id: String) -> String:
 		var m: Dictionary = p["mechs"][mech_index]
 		m["frame"] = frame_id
 		var mounts: Array = []
-		for _t: Variant in frame.get("mounts", []):
+		for _t: Variant in UnitFactory.mounts_for(frame, p):
 			mounts.append({"weapons": [], "mod": ""})
 		m["loadout"]["mounts"] = mounts)
 
@@ -296,6 +312,73 @@ func set_mod(mount: int, mod_id: String) -> String:
 	if mod_id != "" and db.get_entry("mods", mod_id).is_empty():
 		return "Unknown mod."
 	return _try(func(p: Dictionary) -> void: _mount(p, mount)["mod"] = mod_id)
+
+
+## Which of the mount's weapons carries its mod (mounts with two weapons; the first by default).
+func set_mod_slot(mount: int, slot: int) -> String:
+	return _try(func(p: Dictionary) -> void: _mount(p, mount)["mod_slot"] = slot)
+
+
+## The Integrated Weapon core bonus (Core p.118): an extra mount for one Auxiliary weapon.
+func has_integrated_mount() -> bool:
+	return (pilot.get("core_bonuses", []) as Array).has("cb_integrated_weapon")
+
+
+func set_integrated_weapon(weapon_id: String) -> String:
+	if weapon_id != "" and db.weapon(weapon_id).is_empty():
+		return "Unknown weapon."
+	return _try(func(p: Dictionary) -> void:
+		var lo: Dictionary = p["mechs"][mech_index]["loadout"]
+		if weapon_id == "":
+			lo.erase("integrated_weapon")
+		else:
+			lo["integrated_weapon"] = weapon_id)
+
+
+func integrated_options() -> Array:
+	var cur := str(mech().get("loadout", {}).get("integrated_weapon", ""))
+	return _options(db.all("weapons").filter(func(e: Dictionary) -> bool: return e.get("mount", "") == "Auxiliary"),
+		func(e: Dictionary) -> String: return _preview(func() -> String: return set_integrated_weapon(e["id"])), cur,
+		func(e: Dictionary) -> String: return "%s %s · %s · %s SP" % [e.get("mount", ""), e.get("type", ""), _damage_text(e), _num(e.get("sp", 0))])
+
+
+## Core bonuses that need a choice (pilot.core_bonus_choices): Mount Retrofitting and
+## Auto-Stabilizing Hardpoints pick a mount, Overpower Caliber a weapon.
+## [{cb, name, text, options: [{value, label}], current}]
+func core_bonus_choices() -> Array:
+	var out: Array = []
+	var cbs: Array = pilot.get("core_bonuses", [])
+	var choices: Dictionary = pilot.get("core_bonus_choices", {})
+	var frame := db.frame(str(mech().get("frame", "")))
+	var base: Array = frame.get("mounts", [])
+	for cb: String in ["cb_mount_retrofitting", "cb_auto_stabilizing_hardpoints", "cb_overpower_caliber"]:
+		if not cbs.has(cb):
+			continue
+		var entry := db.get_entry("core_bonuses", cb)
+		var opts: Array = []
+		if cb == "cb_overpower_caliber":
+			var u := UnitFactory.build_mech(db, "preview", str(mech().get("frame", "")), mech().get("loadout", {}), pilot)
+			for w: Dictionary in u.loadout.get("weapons", []):
+				opts.append({"value": str(w["key"]), "label": str(w.get("name", w["key"]))})
+		else:
+			var types: Array = base if cb == "cb_mount_retrofitting" else UnitFactory.mounts_for(frame, pilot)
+			for i in range(types.size()):
+				opts.append({"value": i, "label": "Mount %d (%s)" % [i + 1, types[i]]})
+		out.append({"cb": cb, "name": str(entry.get("name", cb)), "text": _plain(str(entry.get("effect", ""))), "options": opts,
+			"current": choices.get(cb, opts[0]["value"] if not opts.is_empty() else "")})
+	return out
+
+
+func set_core_bonus_choice(cb: String, value: Variant) -> String:
+	if not (pilot.get("core_bonuses", []) as Array).has(cb):
+		return "The pilot doesn't have that core bonus."
+	return _try(func(p: Dictionary) -> void:
+		if not p.has("core_bonus_choices"):
+			p["core_bonus_choices"] = {}
+		p["core_bonus_choices"][cb] = value
+		if cb == "cb_mount_retrofitting":
+			# The mount's shape changed: its weapons may no longer fit, so it starts empty.
+			_mount(p, int(value))["weapons"] = [])
 
 
 func add_system(system_id: String) -> String:
@@ -523,14 +606,14 @@ func _mount(p: Dictionary, index: int) -> Dictionary:
 func mounts() -> Array:
 	var out: Array = []
 	var frame := db.frame(str(mech().get("frame", "")))
-	var types: Array = frame.get("mounts", [])
+	var types: Array = UnitFactory.mounts_for(frame, pilot)
 	for i in range(types.size()):
 		var mt := _mount(pilot, i)
 		var weapons: Array = []
 		for wid: String in mt["weapons"]:
 			weapons.append({"id": wid, "name": db.weapon(wid).get("name", wid), "size": db.weapon(wid).get("mount", "")})
 		out.append({"index": i, "type": str(types[i]), "slots": SLOTS.get(str(types[i]), 1), "weapons": weapons,
-			"mod": str(mt["mod"]), "mod_name": str(db.get_entry("mods", str(mt["mod"])).get("name", ""))})
+			"mod": str(mt["mod"]), "mod_name": str(db.get_entry("mods", str(mt["mod"])).get("name", "")), "mod_slot": int(mt.get("mod_slot", 0))})
 	return out
 
 

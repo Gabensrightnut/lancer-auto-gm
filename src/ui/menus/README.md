@@ -25,6 +25,10 @@ result in `pilot["portrait"]`), the visuals' `MechPreview` (turntable and paint 
 `mech["paint"]`) in `preview_area`, and "What the game handles": `BuilderModel.automation()`
 lists each trait, core system, system, weapon and talent as automatic / partly / at the table
 with what to do at the table (the rules engine's `Automation.for_build` when it's in the game;
-until then the frame's traits and core system). Lobby "+ New pilot" makes a pilot (random
+until then the frame's traits and core system). Mounts come from `UnitFactory.mounts_for` (Improved Armament, Mount Retrofitting); the
+Integrated Weapon core bonus adds an Auxiliary mount (`loadout.integrated_weapon`); a mount
+with two weapons picks which carries its mod (`mod_slot`); core bonuses that need a choice
+(Mount Retrofitting, Auto-Stabilizing Hardpoints, Overpower Caliber) get a "Core bonus choices"
+row (`pilot.core_bonus_choices`). Screenshot stage `stage:corebonus`. Lobby "+ New pilot" makes a pilot (random
 starting look) and opens the builder with the look creator first. Screenshot stages for the
 builder: `stage:creator`, `stage:automation`.

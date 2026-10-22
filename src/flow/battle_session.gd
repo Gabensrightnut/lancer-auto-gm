@@ -126,6 +126,20 @@ func my_pick() -> bool:
 	return w.get("state", "") == "pick" and w.get("you", false) and not awaiting_handoff
 
 
+## The question an AI-driven mech's pilot answers at the start of its turn ({} if none, or
+## not for this screen): {kind, text, options: [{label, action, tip}]} (NhpAi.question).
+func nhp_question() -> Dictionary:
+	var w := waiting()
+	if w.get("state", "") != "nhp" or not w.get("you", false) or awaiting_handoff:
+		return {}
+	return w.get("question", {})
+
+
+## Sends the chosen option's action (through the host, like any action).
+func answer_nhp(action: Dictionary) -> void:
+	engine.submit(mirror, action)
+
+
 ## The reaction question the engine is asking the people at this screen ({} if none):
 ## {id, unit, reaction: "brace"/"overwatch"/..., context: {weapons: [...], damage...}}.
 func my_reaction() -> Dictionary:
@@ -194,7 +208,7 @@ func _follow_waiting() -> void:
 	if busy or awaiting_handoff or hot.awaiting_handoff:
 		return
 	var w := host.waiting_on()
-	if not w.get("state", "") in ["turn", "reaction"] or (w.get("seats", []) as Array).is_empty():
+	if not w.get("state", "") in ["turn", "reaction", "nhp"] or (w.get("seats", []) as Array).is_empty():
 		return
 	var target: String = w["seats"][0]
 	if target != hot.current_seat and target in hot.seats and _local_humans.has(target):
