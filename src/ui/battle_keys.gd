@@ -33,14 +33,36 @@ const ACTIONS := {
 }
 
 
+const FILE := "res://data/game/keybinds.json"
+
+
+## The defaults: data/game/keybinds.json when present (the Settings screen reads the same
+## file), else ACTIONS. {id: [label, keycodes...]}
+static func defaults() -> Dictionary:
+	var out := {}
+	var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(FILE)) if FileAccess.file_exists(FILE) else null
+	if d is Dictionary:
+		for e: Dictionary in (d as Dictionary).get("actions", []):
+			if e.get("fixed", false):
+				continue
+			var row: Array = [String(e.get("label", e["id"]))]
+			for k: String in e.get("keys", []):
+				var code := OS.find_keycode_from_string(k)
+				if code != KEY_NONE:
+					row.append(code)
+			out[String(e["id"])] = row
+	return out if not out.is_empty() else ACTIONS
+
+
 static func ensure() -> void:
-	for a: String in ACTIONS:
+	var table := defaults()
+	for a: String in table:
 		if not InputMap.has_action(a):
 			InputMap.add_action(a)
 		if InputMap.action_get_events(a).is_empty():
-			for i in range(1, (ACTIONS[a] as Array).size()):
+			for i in range(1, (table[a] as Array).size()):
 				var ev := InputEventKey.new()
-				ev.physical_keycode = int(ACTIONS[a][i])
+				ev.physical_keycode = int(table[a][i])
 				InputMap.action_add_event(a, ev)
 
 
@@ -59,6 +81,7 @@ static func keys_text(a: String) -> String:
 static func listing() -> Array:
 	ensure()
 	var out: Array = []
-	for a: String in ACTIONS:
-		out.append([ACTIONS[a][0], keys_text(a)])
+	var table := defaults()
+	for a: String in table:
+		out.append([table[a][0], keys_text(a)])
 	return out
