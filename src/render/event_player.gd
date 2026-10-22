@@ -96,6 +96,17 @@ func play_event(e: Dictionary) -> void:
 			await Fx.wait(self, 0.8)
 		"next_side", "combat_started":
 			pass
+		"reaction_offered":
+			_log("%s can react: %s?" % [_name(e.get("unit", "")), String(e.get("reaction", "")).capitalize()])
+		"reaction":
+			var rmv := _view(e.get("unit", ""))
+			var what := String(e.get("reaction", "")).capitalize()
+			_log("%s reacts: %s." % [_name(e.get("unit", "")), what])
+			if rmv and Fx.speed > 0.0:
+				if e.get("reaction") == "brace":
+					Fx.shield_flash(battle.fx_root, rmv.body_center(), rmv.model.height * 0.6, Color(0.5, 0.8, 1.0))
+				Fx.float_text(battle.fx_root, rmv.body_center() + Vector3.UP * 0.2, what.to_upper(), Color(0.95, 0.55, 0.95), 56)
+				await Fx.wait(self, 0.5)
 		"damage_rolled":
 			# Rolled instantly; shown with the damage_dealt pop-up that follows.
 			_last_damage_roll[String(e.get("target", ""))] = e.get("roll", {})
@@ -121,7 +132,7 @@ func play_event(e: Dictionary) -> void:
 			_log("%s is marked with %d burn." % [_name(e.get("unit", "")), int(e.get("amount", 0))])
 		"movement_stopped":
 			_log("%s stops: %s" % [_name(e.get("unit", "")), e.get("reason", "")])
-		"overcharged", "stabilized", "reloaded", "scanned", "tech_action", "reaction", "disengaged", "searched", "equipment_destroyed", "system_trauma", "falling":
+		"overcharged", "stabilized", "reloaded", "scanned", "tech_action", "disengaged", "searched", "equipment_destroyed", "system_trauma", "falling":
 			_log("%s: %s" % [_name(e.get("unit", e.get("attacker", ""))), String(e["type"]).replace("_", " ")])
 		"moved":
 			await _moved(e)
@@ -474,7 +485,8 @@ func _damage(e: Dictionary) -> void:
 	var amount := int(e.get("amount", 0))
 	var dtype := String(e.get("damage_type", "Kinetic"))
 	var de := e.duplicate()
-	if not de.has("roll") or (de["roll"] as Dictionary).is_empty():
+	# `roll` may be a Dice.roll record or a plain total.
+	if not (de.get("roll") is Dictionary) or (de["roll"] as Dictionary).is_empty():
 		de["roll"] = _last_damage_roll.get(String(e["target"]), {})
 	_last_damage_roll.erase(String(e["target"]))
 	var breakdown := RollDisplay.damage_bbcode(de)

@@ -61,7 +61,7 @@ func _rebuild() -> void:
 		_banner.text = "ROUND %d  ·  %s's TURN" % [int(data.get("round", 1)), String(data["active_name"]).to_upper()]
 	_banner.add_theme_color_override("font_color", col.lightened(0.3))
 	_banner.add_theme_font_size_override("font_size", int(px * 0.24))
-	_banner.position = Vector2(0, 8 + px * 1.62)
+	_banner.position = Vector2(0, 8 + px * 1.62 + px * 0.42)  # below the "I'll go" buttons
 	_banner.size = Vector2(vp.x, px * 0.3)
 
 
