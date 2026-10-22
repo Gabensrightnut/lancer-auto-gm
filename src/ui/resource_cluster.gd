@@ -20,8 +20,8 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
-func _exit_tree() -> void:
-	if is_instance_valid(_logic):
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE and is_instance_valid(_logic):
 		_logic.free()
 
 
