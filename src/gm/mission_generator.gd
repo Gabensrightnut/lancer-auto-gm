@@ -13,6 +13,7 @@ extends RefCounted
 ##   "size": 20-40 (default: random), "shape": "hex"/"square" (default hex),
 ##   "landscape": TerrainGen.LANDSCAPES key, "culture": culture id (default: seeded pick),
 ##   "settings": GmSettings, "db": ContentDB, "npc_templates": Dictionary,
+##   "weather": a weather.json id ("clear" for none), "environments": [ids] (overrides the pick),
 ##   "squad": Campaign.squad() entries [{seat, pilot, mech}] to field the campaign's pilots}
 ## Returns {"state": GameState (setup phase, seats p1..pN + gm), "mission": Mission}.
 
@@ -47,9 +48,11 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	var names_rng := RandomNumberGenerator.new()
 	names_rng.seed = hash([mission_seed, "names"])
 	var names := NameGen.new(names_rng)
+	var weather := _pick_weather(world_rng, world[0], world[1], str(opts.get("weather", "?")))
 	m.flavor = {"operation": names.operation(), "planet": names.planet(), "faction": names.faction(),
-		"team": names.team_name(), "cargo": names.cargo(), "kit": TerrainGen.kit(world[0], world[1]) + _weather_suffix(world_rng, world[0], world[1], str(opts.get("weather", "?"))),
-		"terrain": TerrainGen.describe(world[0], world[1])}
+		"team": names.team_name(), "cargo": names.cargo(), "kit": TerrainGen.kit(world[0], world[1]) + ("+" + weather if weather != "" else ""),
+		"terrain": TerrainGen.describe(world[0], world[1]), "weather": weather}
+	_pick_environments(m, state, mission_seed, world[0], weather, settings, opts)
 	var players := clampi(int(opts.get("players", 4)), 1, 4)
 	state.seats["gm"] = {"name": "GM", "side": Mission.ENEMIES, "gm": true}
 	if opts.get("squad", []) is Array and not (opts.get("squad", []) as Array).is_empty():
@@ -141,10 +144,46 @@ static func _layout_zones(m: Mission, rng: RandomNumberGenerator, w: int, h: int
 
 # --- Terrain (TerrainGen) -------------------------------------------------------------
 
-## "+weather" for the kit (look only), from opts.weather or a pick that suits the landscape.
-static func _weather_suffix(rng: RandomNumberGenerator, landscape: String, culture: String, wanted: String) -> String:
+## The weather for the kit ("" = clear), from opts.weather or a pick that suits the landscape.
+static func _pick_weather(rng: RandomNumberGenerator, landscape: String, culture: String, wanted: String) -> String:
 	var w := wanted if wanted != "?" else TerrainGen.pick_weather(rng, landscape, culture)
-	return "+" + w if w != "" and w != "clear" else ""
+	return "" if w == "clear" else w
+
+
+const WEATHER_FILE := "res://data/game/biomes/weather.json"
+## Worlds whose own nature suggests a rules environment (weather suggests others: weather.json).
+const LANDSCAPE_ENVIRONMENTS := {"moon": "env_lowgravity", "asteroid": "env_lowgravity", "ocean": "env_oceanworld", "volcanic": "env_moltenworld"}
+
+
+## Rules environments (lancer-data environments.json) the world suggests: the weather's
+## (weather.json "environment") and the landscape's. Each comes into play with the GM dial
+## `environments` as its chance (its own seeded roll, so the rest of the mission doesn't change),
+## so not every storm has rules effects. opts.environments (an Array of ids) sets them outright.
+## Goes in mission.environments, state.environments and flavor.environments ({id, name, text}).
+static func _pick_environments(m: Mission, state: GameState, mission_seed: int, landscape: String, weather: String, settings: GmSettings, opts: Dictionary) -> void:
+	var list: Array = []
+	if opts.get("environments") is Array:
+		list = (opts["environments"] as Array).duplicate()
+	else:
+		var suggested: Array = []
+		var wdata: Dictionary = GmSettings.load_json(WEATHER_FILE).get(weather, {}) if weather != "" else {}
+		if str(wdata.get("environment", "")) != "":
+			suggested.append(str(wdata["environment"]))
+		if LANDSCAPE_ENVIRONMENTS.has(landscape) and not suggested.has(LANDSCAPE_ENVIRONMENTS[landscape]):
+			suggested.append(LANDSCAPE_ENVIRONMENTS[landscape])
+		var rng := RandomNumberGenerator.new()
+		rng.seed = hash([mission_seed, "environment"])
+		for env: String in suggested:
+			if rng.randf() < settings.environments:
+				list.append(env)
+	m.environments = list
+	state.environments = list.duplicate()
+	var db: ContentDB = opts.get("db")
+	var shown: Array = []
+	for env: String in list:
+		var e: Dictionary = db.get_entry("environments", env) if db != null else {}
+		shown.append({"id": env, "name": str(e.get("name", env)), "text": RegEx.create_from_string("<[^>]+>").sub(str(e.get("description", "")), "", true).strip_edges()})
+	m.flavor["environments"] = shown
 
 static func _tag(col: BattleMap.Column, tags: Array) -> void:
 	var have := col.tags  # Packed arrays are values: change a copy and put it back.
@@ -318,6 +357,9 @@ static func _briefing(m: Mission, w: int, h: int, players: int, state: GameState
 		if s.get("id", "") == m.sitrep_id:
 			goal = str(s.get("pcVictory", ""))
 	var f := m.flavor
-	return "%s: %s on %s, %s (%d x %d). %s, %d lancers, against %d %s units. Win: %s." % [
+	var text := "%s: %s on %s, %s (%d x %d). %s, %d lancers, against %d %s units. Win: %s." % [
 		f.get("operation", "OPERATION"), m.sitrep_name, f.get("planet", "a frontier world"), f.get("terrain", "grassy hills"), w, h,
 		f.get("team", "The squad"), players, enemies, f.get("faction", "hostile"), goal.trim_suffix(".")]
+	for e: Dictionary in f.get("environments", []):
+		text += "\nEnvironment: %s. %s" % [e["name"], e["text"]]
+	return text
