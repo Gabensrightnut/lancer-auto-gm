@@ -161,12 +161,13 @@ static func _grassy_hills(rng: RandomNumberGenerator, w: int, h: int, shape: Gri
 			if not blocked.has(cell):
 				var col := map.column(cell)
 				col.ground = mini(col.ground + 2, 5)
+				_tag(col, ["rock"])
 	# Woods: soft cover, difficult to move through.
 	for i in range(area / 110):
 		var at := cells[rng.randi_range(0, cells.size() - 1)]
 		for cell in _blob(map, rng, at, rng.randi_range(3, 7)):
 			if not blocked.has(cell):
-				_tag(map.column(cell), [Sight.TAG_SOFT_COVER, BattleMap.TAG_DIFFICULT])
+				_tag(map.column(cell), [Sight.TAG_SOFT_COVER, BattleMap.TAG_DIFFICULT, "woods"])
 	# Mud and brush: difficult terrain.
 	for i in range(area / 140):
 		var at := cells[rng.randi_range(0, cells.size() - 1)]
@@ -212,6 +213,7 @@ static func _fortify(map: BattleMap, rng: RandomNumberGenerator, zone: Array, _s
 		if rng.randf() < 0.45:
 			var col := map.column(cell)
 			col.ground += 1 if rng.randf() < 0.7 else 2
+			_tag(col, ["wall"])
 
 
 # --- Forces ------------------------------------------------------------------------------

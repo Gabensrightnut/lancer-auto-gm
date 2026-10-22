@@ -1,0 +1,204 @@
+{
+	"_about": "Landscapes for WorldStyle (src/render/world/world_style.gd). Looks only: the rules terrain is the BattleMap. ground = terrain shader palette (style: grass, sand, snow, moss, paving, ash); flora = small ground cover and woods on soft_cover cells; liquid = look of water/toxic/lava cells; horizon = land and scenery around the board; sky/light = WorldAtmosphere. A culture (cultures.json) may override any field.",
+	"grassy_hills": {
+		"name": "grassy hills",
+		"ground": {
+			"style": "grass",
+			"top_a": "#3d6420", "top_b": "#5f8a2c", "top_dry": "#a39a4e",
+			"soil": "#5e4128", "rock_a": "#8a857c", "rock_b": "#57534d", "rough": "#5e4a32",
+			"bed": "#3b3326", "hazard": "#ff6614", "wall": "#9a958a",
+			"strata": 1.0, "soil_depth": 0.3, "wetness": 0.3
+		},
+		"liquid": {"kind": "water", "shallow": "#2e6260", "deep": "#0f2d3a"},
+		"flora": {
+			"grass": 18, "grass_height": 1.0,
+			"grass_colors": ["#4a7a22", "#5c8c2a", "#76913a", "#3e6a1e", "#8a9a45"],
+			"flowers": ["#f2d84a", "#f0f0f5", "#b07ad8", "#e8664a"],
+			"woods": ["broadleaf", "broadleaf", "conifer", "bush"],
+			"leaf_colors": ["#2f5418", "#3d6620", "#47702a", "#2a4a1a", "#5a7a2a"],
+			"bark": "#4a3828",
+			"stones": "#8a857c"
+		},
+		"horizon": {
+			"land": "hills", "land_height": 9.0, "forest": 0.55, "far": "mountains",
+			"far_color": "#56677e", "far_height": 60.0, "snowcaps": true
+		},
+		"particles": "pollen",
+		"sky": {
+			"top": "#3f6fb5", "horizon": "#f0cfa2", "ground": "#4a5040", "haze_color": "#ffb36b", "haze": 0.85,
+			"clouds": 0.5, "cloud_color": "#fff2df", "cloud_shade": "#8a8fa8", "sun_glow": 1.2
+		},
+		"light": {
+			"sun_color": "#ffd29a", "sun_energy": 2.7, "sun_pitch": -24.0, "sun_yaw": -62.0,
+			"ambient": 0.55, "fill_color": "#7fa6e6", "fill_energy": 0.3,
+			"fog_color": "#d9c4a8", "fog_density": 0.0024, "fog_aerial": 0.35, "fog_sky": 0.0, "sun_scatter": 0.35,
+			"glow": 0.75, "bloom": 0.05, "saturation": 1.08, "contrast": 1.06, "exposure": 1.0
+		}
+	},
+	"desert_mesas": {
+		"name": "desert mesas",
+		"ground": {
+			"style": "sand",
+			"top_a": "#c9935a", "top_b": "#dba76a", "top_dry": "#b97d48",
+			"soil": "#a8653a", "rock_a": "#c07a4a", "rock_b": "#8a4c2e", "rough": "#a77b4c",
+			"bed": "#6b4a30", "hazard": "#ff7a1a", "wall": "#c9a27a",
+			"strata": 1.6, "soil_depth": 0.12, "wetness": 0.0
+		},
+		"liquid": {"kind": "water", "shallow": "#3a7a78", "deep": "#14404a"},
+		"flora": {
+			"grass": 3, "grass_height": 0.8,
+			"grass_colors": ["#8a8a4a", "#9a8c50", "#7a7a42"],
+			"flowers": ["#e86a4a", "#f2c84a"],
+			"woods": ["cactus", "shrub", "shrub"],
+			"leaf_colors": ["#5a7a3a", "#6a8040", "#7a7a48"],
+			"bark": "#5a4430",
+			"stones": "#b07a50"
+		},
+		"horizon": {"land": "mesas", "land_height": 14.0, "forest": 0.0, "far": "mesas", "far_color": "#b88a78", "far_height": 40.0},
+		"particles": "dust",
+		"sky": {
+			"top": "#3a78c8", "horizon": "#f5d8b0", "ground": "#8a6a4a", "haze_color": "#ffc080", "haze": 0.7,
+			"clouds": 0.2, "cloud_color": "#fff6ea", "cloud_shade": "#b0a8a8", "sun_glow": 1.4
+		},
+		"light": {
+			"sun_color": "#ffe2b8", "sun_energy": 3.0, "sun_pitch": -40.0, "sun_yaw": -50.0,
+			"ambient": 0.55, "fill_color": "#9ab6e8", "fill_energy": 0.3,
+			"fog_color": "#ead2b2", "fog_density": 0.0035, "fog_aerial": 0.6, "sun_scatter": 0.3,
+			"glow": 0.7, "bloom": 0.04, "saturation": 1.05, "contrast": 1.08, "exposure": 1.0
+		}
+	},
+	"tundra": {
+		"name": "frozen tundra",
+		"ground": {
+			"style": "snow",
+			"top_a": "#dfe8f2", "top_b": "#f4f8fc", "top_dry": "#c8d6e6",
+			"soil": "#5a5550", "rock_a": "#6e7480", "rock_b": "#3e434c", "rough": "#a8b8c8",
+			"bed": "#2a3a4a", "hazard": "#7ad8ff", "wall": "#8a929c",
+			"strata": 1.0, "soil_depth": 0.15, "wetness": 0.0
+		},
+		"liquid": {"kind": "ice", "shallow": "#9ad0e8", "deep": "#2a5a7a"},
+		"flora": {
+			"grass": 2, "grass_height": 0.7,
+			"grass_colors": ["#8a8a6a", "#9a9478", "#7a7a62"],
+			"flowers": [],
+			"woods": ["snow_conifer", "snow_conifer", "conifer"],
+			"leaf_colors": ["#24402e", "#2a4834", "#1e3828"],
+			"bark": "#3e3028",
+			"stones": "#6e7480"
+		},
+		"horizon": {"land": "hills", "land_height": 12.0, "forest": 0.35, "far": "mountains", "far_color": "#8a9ab4", "far_height": 70.0, "snowcaps": true},
+		"particles": "snow",
+		"sky": {
+			"top": "#5a7aa8", "horizon": "#d8e2ee", "ground": "#8a96a6", "haze_color": "#ffe0c8", "haze": 0.4,
+			"clouds": 0.65, "cloud_color": "#f4f6fa", "cloud_shade": "#8a94a8", "sun_glow": 0.8
+		},
+		"light": {
+			"sun_color": "#fff0e0", "sun_energy": 2.0, "sun_pitch": -18.0, "sun_yaw": -120.0,
+			"ambient": 0.7, "fill_color": "#a8c0ff", "fill_energy": 0.35,
+			"fog_color": "#d0dae6", "fog_density": 0.007, "fog_aerial": 0.5, "sun_scatter": 0.2,
+			"glow": 0.6, "bloom": 0.03, "saturation": 0.95, "contrast": 1.05, "exposure": 0.95
+		}
+	},
+	"volcanic": {
+		"name": "volcanic badlands",
+		"ground": {
+			"style": "ash",
+			"top_a": "#2e2a28", "top_b": "#3e3834", "top_dry": "#5a4e46",
+			"soil": "#2a2420", "rock_a": "#3a3430", "rock_b": "#1a1716", "rough": "#4a3a30",
+			"bed": "#1a1210", "hazard": "#ff4a0a", "wall": "#5a524c",
+			"strata": 1.3, "soil_depth": 0.08, "wetness": 0.0
+		},
+		"liquid": {"kind": "lava", "shallow": "#ff6a10", "deep": "#3a0a02"},
+		"flora": {
+			"grass": 1, "grass_height": 0.6,
+			"grass_colors": ["#3a3a2a", "#4a4232"],
+			"flowers": [],
+			"woods": ["dead_tree", "dead_tree", "shrub"],
+			"leaf_colors": ["#2a2a22", "#3a3226"],
+			"bark": "#1e1a18",
+			"stones": "#2e2a28"
+		},
+		"horizon": {"land": "mesas", "land_height": 16.0, "forest": 0.0, "far": "volcanoes", "far_color": "#3a2a2a", "far_height": 70.0},
+		"particles": "embers",
+		"sky": {
+			"top": "#2a1e22", "horizon": "#a8483a", "ground": "#1a1414", "haze_color": "#ff7a3a", "haze": 0.9,
+			"clouds": 0.75, "cloud_color": "#7a5048", "cloud_shade": "#2a1e1e", "sun_glow": 0.8
+		},
+		"light": {
+			"sun_color": "#ff9a6a", "sun_energy": 1.6, "sun_pitch": -22.0, "sun_yaw": -80.0,
+			"ambient": 0.45, "fill_color": "#ff6a3a", "fill_energy": 0.25,
+			"fog_color": "#6a3a30", "fog_density": 0.008, "fog_aerial": 0.6, "sun_scatter": 0.3,
+			"volumetric": 0.006, "volumetric_albedo": "#a87a6a", "volumetric_emission": "#2a0800", "volumetric_emission_energy": 0.5,
+			"glow": 1.0, "bloom": 0.08, "saturation": 1.1, "contrast": 1.1, "exposure": 1.1
+		}
+	},
+	"alien_wilds": {
+		"name": "alien wilds",
+		"ground": {
+			"style": "moss",
+			"top_a": "#2a1a40", "top_b": "#3e2454", "top_dry": "#4a4058",
+			"soil": "#1e1624", "rock_a": "#2a2830", "rock_b": "#121116", "rough": "#3a3640",
+			"bed": "#102010", "hazard": "#ff6a26", "wall": "#3a3842",
+			"veins": "#33f2e6", "vein_strength": 1.2, "crystal": "#59bfff",
+			"strata": 1.2, "soil_depth": 0.1, "wetness": 0.4
+		},
+		"liquid": {"kind": "toxic", "shallow": "#73ff40", "deep": "#0d2e0d"},
+		"flora": {
+			"grass": 4, "grass_height": 0.8,
+			"grass_colors": ["#4a2a6a", "#3a2a5a", "#5a3a7a"],
+			"flowers": [],
+			"glow_plants": ["#4df2e6", "#d95af2", "#80bfff"],
+			"woods": ["alien_tree", "alien_tree", "glow_fungus"],
+			"leaf_colors": ["#4df2e6", "#d95af2", "#80bfff"],
+			"bark": "#2a1e30",
+			"stones": "#2a2830"
+		},
+		"horizon": {"land": "spires", "land_height": 10.0, "forest": 0.0, "far": "megastructures", "far_color": "#2a1e30", "far_height": 60.0, "storm": true},
+		"particles": "spores",
+		"sky": {
+			"top": "#0a0820", "horizon": "#6b3862", "ground": "#0d0a12", "haze_color": "#ff8ab0", "haze": 0.5,
+			"clouds": 0.15, "cloud_color": "#7a5a90", "cloud_shade": "#201830", "sun_glow": 0.8,
+			"stars": 1.0, "nebula": 1.0, "planet": 1.0, "planet_dir": [-0.55, 0.42, -0.72], "planet_size": 0.32,
+			"planet_color": "#8c9ec7", "moon_a": 1.0, "moon_a_dir": [0.6, 0.55, -0.55], "moon_a_size": 0.045
+		},
+		"light": {
+			"sun_color": "#d9bfff", "sun_energy": 1.6, "sun_pitch": -20.0, "sun_yaw": 145.0,
+			"ambient": 0.45, "fill_color": "#6a8aff", "fill_energy": 0.3,
+			"fog_color": "#523260", "fog_density": 0.0025, "fog_aerial": 0.5, "sun_scatter": 0.1,
+			"volumetric": 0.005, "volumetric_albedo": "#8c73a6", "volumetric_anisotropy": 0.6, "sun_fog_energy": 2.5,
+			"glow": 1.0, "bloom": 0.08, "saturation": 1.05, "contrast": 1.05, "exposure": 1.05
+		}
+	},
+	"city": {
+		"name": "city",
+		"ground": {
+			"style": "paving",
+			"top_a": "#55524e", "top_b": "#6a6660", "top_dry": "#2a2a2c",
+			"soil": "#4a4440", "rock_a": "#6a6662", "rock_b": "#3a3836", "rough": "#5a5650",
+			"bed": "#22201e", "hazard": "#ff6010", "wall": "#8a857e",
+			"strata": 2.0, "soil_depth": 0.08, "wetness": 0.5
+		},
+		"liquid": {"kind": "water", "shallow": "#2a3a3a", "deep": "#0e1a1e"},
+		"flora": {
+			"grass": 0, "grass_height": 0.6,
+			"grass_colors": ["#4a5a2a", "#5a6430"],
+			"flowers": [],
+			"woods": ["broadleaf", "bush"],
+			"leaf_colors": ["#3a5a22", "#2e4a1c"],
+			"bark": "#3a2e24",
+			"stones": "#6a6662"
+		},
+		"horizon": {"land": "flat", "land_height": 0.0, "forest": 0.0, "far": "skyline", "far_color": "#6a7080", "far_height": 60.0},
+		"particles": "dust",
+		"sky": {
+			"top": "#4a6a96", "horizon": "#e8c8a8", "ground": "#3a3836", "haze_color": "#ffb878", "haze": 0.7,
+			"clouds": 0.45, "cloud_color": "#f6eadc", "cloud_shade": "#8a8a9a", "sun_glow": 1.0
+		},
+		"light": {
+			"sun_color": "#ffe0b8", "sun_energy": 2.4, "sun_pitch": -34.0, "sun_yaw": -40.0,
+			"ambient": 0.45, "fill_color": "#8cb3ff", "fill_energy": 0.3,
+			"fog_color": "#bfae9e", "fog_density": 0.0055, "fog_aerial": 0.5, "sun_scatter": 0.3,
+			"glow": 0.75, "bloom": 0.05, "saturation": 1.05, "contrast": 1.06, "exposure": 1.0
+		}
+	}
+}

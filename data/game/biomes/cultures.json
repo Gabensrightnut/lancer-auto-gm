@@ -1,0 +1,12 @@
+{
+	"_about": "Cultures/eras for WorldStyle. Each one overrides landscape fields (deep merge) and adds `architecture` for CityBuilder: palette, floors per level, window style, roof edge, signage and props.",
+	"ruins": {
+		"name": "war-torn ruins",
+		"architecture": {
+			"style": "modern", "ruined": 0.6, "floors": 3,
+			"walls": ["#a59a8a", "#8e8a84", "#9a7a66", "#b0a898", "#7e7a74"],
+			"trim": "#5e5a54", "glass": "#1a2024", "window_light": "#ffb86a", "lit_windows": 0.03,
+			"roof": "#4a4846", "signs": 0.15, "sign_colors": ["#d8c8a0", "#c04a3a", "#3a6aa0"]
+		}
+	}
+}
