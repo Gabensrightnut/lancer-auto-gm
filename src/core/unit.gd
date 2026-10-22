@@ -60,8 +60,9 @@ var destroyed: bool = false
 ## Status name (as in lancer-data statuses.json) -> extra data (source, duration...).
 var statuses: Dictionary = {}
 
-## Equipped gear. Mechs: {"mounts": [{"mount": "Main", "weapons": ["mw_assault_rifle"],
-## "mod": ""}], "systems": ["ms_..."]}. NPCs: {"features": ["npcf_..."]}.
+## Equipped gear, as built by UnitFactory. Mechs: {"frame": id, "mounts": [{"mount": "Main",
+## "weapons": ["mw_assault_rifle"], "mod": ""}], "weapons": [weapon profiles, see Weapons],
+## "systems": [{"key", "id", "name", "tags"}]}. NPCs: {"weapons": [...], "systems": []}.
 var loadout: Dictionary = {}
 
 ## Rules-engine bookkeeping for the current turn (actions taken, movement spent). Reset at

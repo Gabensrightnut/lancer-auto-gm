@@ -65,19 +65,51 @@ renderer + UI on each client (animate events, show the view)
 - Units have `cell` (footprint anchor), `level` (base height) and `size`. Size 1/2 and 1 use
   one space; larger sizes use `GridLayout.footprint`.
 
-## Event types (initial list; extend as needed, document here)
+## Event types
+
+Emitted by the rules engine (`src/core/rules/`), in the order things happen. Every event that
+applies a rule carries `rule_ref`. Rolls carry the full `Dice.check()` record plus
+`bonus_sources` ([{label, value}]) and, for attacks, `defense`; each Accuracy/Difficulty
+source in `check.sources` is `{label, kind: "accuracy"/"difficulty", value, rule_ref}`.
+Clients get events through `ViewFilter.events_for(state, seat, events)`.
 
 | type | fields |
 |---|---|
-| `turn_ended` | `unit` |
-| `moved` | `unit`, `path` (array of `[x, y, level]`), `mode` (`walk`/`boost`/`fly`/`jump`/`involuntary`) |
-| `attack_rolled` | `attacker`, `target`, `weapon`, `check` (Dice.check record), `result` (`hit`/`miss`/`crit`) |
-| `damage_dealt` | `target`, `amount`, `damage_type`, `roll`, `armor_reduced`, `resisted` |
-| `heat_changed` | `unit`, `amount`, `total` |
+| `combat_started` | `first_side` |
+| `round_started` | `round`, `side` (side that picks first) |
+| `next_side` | `side` (side that picks the next unit to act) |
+| `turn_started` / `turn_ended` | `unit` (+ `round` on start) |
+| `moved` | `unit`, `path` (array of `[x, y, level]`), `mode` (`walk`/`boost`/`fly`/`fall`/`involuntary`), `cost`, `stopped_by` |
+| `movement_stopped` | `unit`, `by` (hostile that Engaged it), `reason` |
+| `disengaged` | `unit` |
+| `attack_rolled` | `attacker`, `target`, `weapon` (loadout key), `weapon_name`, `kind` (`melee`/`ranged`), `check`, `result` (`hit`/`miss`/`crit`), `cover` (`none`/`soft`/`hard`), `cover_cells`, `invisible_miss`, `lock_on_consumed` |
+| `attack_skipped` | `attacker`, `weapon`, `target`, `reason` (an earlier attack in the same action made it impossible) |
+| `invisible_roll` | `attacker`, `target`, `roll` (d2), `missed` |
+| `damage_rolled` | `attacker`, `target`, `damage_type`, `crit`, `roll` (`expr`, `dice`, `kept`, `bonus`, `total`, `overkill_heat`) |
+| `reliable_damage` | `attacker`, `target`, `amount` |
+| `damage_dealt` | `target`, `source`, `amount` (taken), `damage_type`, `roll` (before reductions), `exposed`, `armor_reduced`, `resisted` |
+| `hp_changed` | `unit`, `hp`, `overshield`, `source` |
+| `burn_marked` / `burn_cleared` | `unit`, `amount`, `total` |
+| `heat_changed` | `unit`, `amount`, `total`, `source` |
+| `structure_lost` / `stress_lost` | `unit`, `structure` / `stress` (left) |
+| `structure_check` / `stress_check` | `unit`, `roll` (`dice`, `lowest`, `ones`), `outcome` (table result title) |
+| `system_trauma` | `unit`, `roll`, `destroys` (`mount`/`system`/``) |
+| `equipment_destroyed` | `unit`, `weapon` or `system`, `name` |
+| `skill_check` | `unit`, `check` (Dice.check + `skill`, `label`, `auto_fail`) |
+| `meltdown_started` / `reactor_meltdown` | `unit`, `turns` |
+| `unit_destroyed` | `unit`, `reason` |
+| `falling` | `unit`, `reason` (falls at the end of the turn, then a `moved` with mode `fall`) |
 | `status_added` / `status_removed` | `unit`, `status`, `source` |
-| `structure_check` / `stress_check` | `unit`, `roll`, `outcome` |
-| `deployed` | `unit`, `object` (deployable, smoke, hard light wall...) |
-| `tech_attack` | `attacker`, `target`, `check`, `result`, `effect` |
+| `knockback_blocked` | `unit` |
+| `reaction` | `unit`, `reaction` (`brace`), `trigger` (attacker) |
+| `reaction_policy` | `unit`, `reaction`, `policy` |
+| `overcharged` | `unit`, `roll`, `count` |
+| `stabilized` / `reloaded` | `unit`, `choices` |
+| `searched` | `unit`, `target`, `found`, `check`, `contest` |
+| `scanned` | `unit`, `target`, `side` |
+| `tech_attack` | `attacker`, `target`, `check`, `result` (`hit`/`miss`), `effect`, `invisible_miss`, `lock_on_consumed` |
+| `tech_action` | `unit`, `target`, `action` (`lock_on`, `invade` on an ally) |
+| `deployed` | `unit`, `object` (not emitted yet) |
 
 ## Commands
 
