@@ -101,6 +101,11 @@ book in a way that changes the setting; parked.
 | The GM sets faction standing | Not a book rule (labelled) | Our bookkeeping |
 | Fights in town: defending the hub, a standoff outside a building, talks gone wrong, being jumped before leaving town; the battle uses the hub's own layout | Canon / Consistent | Switching from narrative play to mech combat where the characters are (Core p.45); goals change mid-mission (p.43); our own jobs and text |
 | House rules (off by default, labelled "Your idea, not a book rule"): tracked wallet, printer scarcity, paid travel, fight-for-it deals, food and water | Not canon (house rules) | The user's parked ideas (DESIGN.md "House rules"); the book tracks none of them (manna exists but isn't counted, printers are everywhere, Core p.10, p.31, p.82). Only active when switched on |
+| Sneaking, following, lockpicking, pickpocketing, breaking in, knocking someone out: narrative skill checks | Canon | Skill triggers Act Unseen or Unheard, Hack or Fix, Get a Hold of Something, Apply Fists to Faces, Blow Something Up (Core p.26), Take Someone Out, Spot (p.27); difficult and risky checks (p.45-46) |
+| Who sees it and what follows (standing, bounty, the alarm, a fight on foot) | Consistent | The GM decides what failure costs (p.45); switching to mech combat (p.45); our own defaults |
+| Hub clock, waiting, NPC schedules and where things are kept | Consistent | Our own bookkeeping for narrative play |
+| Comms: a Jammed pilot can't take or answer radio calls (static) | Canon | Statuses: Jammed ("can't use comms to talk to other characters") |
+| Conversation views: pop-up, face to face, radio frame | Consistent | Presentation only |
 
 ## When canon allows more than one answer
 

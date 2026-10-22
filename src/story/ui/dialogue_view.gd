@@ -34,6 +34,10 @@ var _note_timer := 0.0
 var _skip_timer := -1.0
 var _size_btn: Button
 var _seen_btn: Button
+var _view_btn: Button
+var _radio: Control
+var _radio_head: Label
+var _flicker := 0.0
 
 
 func _init() -> void:
@@ -100,6 +104,23 @@ func _init() -> void:
 	_seen_btn.tooltip_text = "Lines you've read before go by on their own. Choices always wait for you."
 	_seen_btn.toggled.connect(func(on: bool) -> void: StorySettings.set_skip_seen(on); refresh())
 	bar.add_child(_seen_btn)
+	_view_btn = StoryStyle.button("", 13)
+	_view_btn.name = "ViewButton"
+	_view_btn.tooltip_text = "Pop-up with portraits, or face to face (first person)."
+	_view_btn.pressed.connect(func() -> void:
+		StorySettings.set_dialogue_view("third" if StorySettings.dialogue_view() == "first" else "first")
+		refresh())
+	bar.add_child(_view_btn)
+	# Comms: the portrait in a radio frame with scanlines, static and a flickering signal.
+	_radio = Control.new()
+	_radio.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_radio.draw.connect(_draw_radio)
+	_radio.visible = false
+	add_child(_radio)
+	_radio_head = StoryStyle.label("", 13, Color(0.55, 1.0, 0.7))
+	_radio_head.add_theme_constant_override("outline_size", 4)
+	_radio_head.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_radio.add_child(_radio_head)
 	_log_panel = PanelContainer.new()
 	_log_panel.add_theme_stylebox_override("panel", StoryStyle.panel())
 	_log_panel.visible = false
@@ -145,8 +166,23 @@ func refresh() -> void:
 	var expr := str(story.dialogue.get("expression", "neutral"))
 	_left.set_look(PortraitArt.look_for_pilot(pilot), expr if speaker == "pilot" else str(story.dialogue.get("pilot_expression", "neutral")))
 	_right.set_look(PortraitSpec.for_npc(npc) if not npc.is_empty() else PortraitArt.look_for_npc(npc), expr if speaker == "npc" else "neutral")
-	_right.visible = not npc.is_empty()
+	var mode := str(story.dialogue.get("mode", "talk"))
+	var radio := mode == "radio"
+	var face := not radio and StorySettings.dialogue_view() == "first"
+	# Face to face: the 3D scene shows the person; no portrait cards, subtitles at the bottom.
+	_right.visible = not npc.is_empty() and not face
 	_right_name.visible = _right.visible
+	_left.visible = not face
+	_left_name.visible = not face
+	_radio.visible = radio and _right.visible
+	if radio:
+		var chan := str(story.dialogue.get("channel", ""))
+		_radio_head.text = "◉ %s  ·  %s" % [chan if chan != "" else "Comms", "JAMMED" if bool(story.dialogue.get("jammed", false)) else str(npc.get("callsign", npc.get("name", "")))]
+		_radio_head.add_theme_color_override("font_color", StoryStyle.RED if bool(story.dialogue.get("jammed", false)) else Color(0.55, 1.0, 0.7))
+	_view_btn.text = "View: %s" % ("face to face" if StorySettings.dialogue_view() == "first" else "pop-up")
+	_bubble.add_theme_stylebox_override("panel", StoryStyle.panel(Color(0.3, 0.9, 0.55), Color(0.02, 0.08, 0.05, 0.94), 1, 6, 16) if radio
+		else (StoryStyle.panel(Color(0, 0, 0, 0), Color(0, 0, 0, 0.72), 0, 6, 16) if face else StoryStyle.panel(Color(0.85, 0.88, 0.92), Color(0.93, 0.94, 0.95, 0.97), 1, 10, 16)))
+	var dark := radio or face
 	_left.lit = speaker != "npc"
 	_right.lit = speaker != "pilot"
 	_left.queue_redraw()
@@ -162,7 +198,9 @@ func refresh() -> void:
 	_size_btn.text = "Text %d%%" % roundi(StorySettings.text_scale() * 100)
 	_seen_btn.set_pressed_no_signal(StorySettings.skip_seen())
 	_seen_btn.text = "Skip read lines: %s" % ("on" if StorySettings.skip_seen() else "off")
-	_bubble_text.add_theme_color_override("default_color", Color(0.3, 0.32, 0.36) if speaker == "narrator" else Color(0.08, 0.09, 0.11))
+	_bubble_text.add_theme_color_override("default_color", (Color(0.75, 0.8, 0.85) if speaker == "narrator" else (Color(0.7, 1.0, 0.8) if radio else Color.WHITE)) if dark
+		else (Color(0.3, 0.32, 0.36) if speaker == "narrator" else Color(0.08, 0.09, 0.11)))
+	_bubble_name.add_theme_color_override("font_color", Color(0.55, 1.0, 0.7) if radio else (StoryStyle.GOLD if face else Color(0.2, 0.35, 0.55)))
 	_bubble.visible = text != ""
 	var offered := Dialogue.offered(story)
 	_hint.visible = offered.is_empty()
@@ -273,6 +311,8 @@ func _layout() -> void:
 		l.size = Vector2(card.x, 44)
 		l.position = Vector2(p.position.x, p.position.y + card.y)
 	var bx := card.x + 60.0
+	if not _left.visible:
+		bx = 120.0
 	var bw := vp.x - 2.0 * bx
 	_bubble.size = Vector2(bw, 0)
 	_bubble.custom_minimum_size = Vector2(bw, 96)
@@ -291,13 +331,16 @@ func _layout() -> void:
 	_log_panel.position = Vector2(vp.x - 620, 56)
 	_tail.position = Vector2.ZERO
 	_tail.size = vp
+	_radio.position = _right.position - Vector2(6, 30)
+	_radio.size = _right.size + Vector2(12, 36)
+	_radio_head.position = Vector2(8, 4)
 
 
 func _draw_tail() -> void:
 	if not _bubble.visible:
 		return
 	var speaker := str(story.dialogue.get("speaker", "npc")) if story != null else "npc"
-	if speaker == "narrator":
+	if speaker == "narrator" or not _left.visible or str(story.dialogue.get("mode", "talk")) == "radio":
 		return
 	var r := Rect2(_bubble.position, _bubble.size)
 	var base_y := r.position.y + r.size.y * 0.55
@@ -308,6 +351,28 @@ func _draw_tail() -> void:
 	else:
 		var tip := Vector2(_right.position.x + 6, _right.position.y + _right.size.y * 0.45)
 		_tail.draw_colored_polygon(PackedVector2Array([Vector2(r.end.x - 2, base_y - 16), Vector2(r.end.x - 2, base_y + 16), tip]), fill)
+
+
+func _draw_radio() -> void:
+	var r := Rect2(Vector2.ZERO, _radio.size)
+	var col := StoryStyle.RED if story != null and bool(story.dialogue.get("jammed", false)) else Color(0.3, 0.95, 0.55)
+	_radio.draw_rect(r, Color(col, 0.9), false, 2.0)
+	_radio.draw_rect(Rect2(0, 0, r.size.x, 26), Color(0.0, 0.06, 0.03, 0.85))
+	# Scanlines over the portrait, and a little static.
+	var y := 30.0
+	while y < r.size.y:
+		_radio.draw_line(Vector2(4, y), Vector2(r.size.x - 4, y), Color(0, 0, 0, 0.28), 1.0)
+		y += 3.0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(_flicker * 30.0)
+	var n := 160 if story != null and bool(story.dialogue.get("jammed", false)) else 30
+	for i in range(n):
+		_radio.draw_rect(Rect2(rng.randf_range(4, r.size.x - 6), rng.randf_range(30, r.size.y - 4), 2, 1), Color(0.8, 1.0, 0.85, rng.randf_range(0.1, 0.5)))
+	# Signal strength bars, flickering.
+	var bars := 4 if story != null and not bool(story.dialogue.get("jammed", false)) else 0
+	for i in range(4):
+		var on := i < bars and (i < 3 or sin(_flicker * 9.0) > -0.2)
+		_radio.draw_rect(Rect2(r.size.x - 40 + i * 8, 20 - i * 4, 5, 2 + i * 4), Color(col, 0.95 if on else 0.18))
 
 
 func _refresh_log() -> void:
@@ -335,6 +400,14 @@ func _process(delta: float) -> void:
 	if visible:
 		_layout()  # wrapped replies only know their height once they have a width
 		_tail.queue_redraw()
+		if _radio.visible:
+			_flicker += delta
+			_radio.queue_redraw()
+			# The signal wavers; a jammed channel is mostly noise.
+			var jam := bool(story.dialogue.get("jammed", false)) if story != null else false
+			_right.modulate = Color(0.75, 1.0, 0.8, (0.25 if jam else 0.82) + 0.15 * sin(_flicker * 23.0) * sin(_flicker * 7.0))
+		elif _right.modulate != Color.WHITE:
+			_right.modulate = Color.WHITE
 	if _skip_timer >= 0.0:
 		_skip_timer -= delta
 		if _skip_timer < 0.0:

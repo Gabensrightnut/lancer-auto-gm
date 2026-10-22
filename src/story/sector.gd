@@ -205,4 +205,5 @@ static func travel(story: StoryState, campaign: Campaign, id: String) -> Array:
 	events.append({"type": "hub_entered", "hub": story.hub.duplicate(true)})
 	for h: Dictionary in MissionHooks.fill_board(story, campaign):
 		events.append({"type": "hook_added", "hook": h})
+	TownLife.seed_items(story)
 	return events
