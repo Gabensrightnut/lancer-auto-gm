@@ -91,7 +91,7 @@ to it.
 
 ## Building on your own PC
 
-Needs Godot's 4.7.2 export templates in `%APPDATA%\Godot\export_templates.7.2.stable`
+Needs Godot's 4.7.2 export templates in `%APPDATA%\Godot\export_templates\4.7.2.stable`
 (installed and checked). Use absolute output paths (a relative one is taken from the project
 folder, so the launcher's would land in `launcher/`):
 
