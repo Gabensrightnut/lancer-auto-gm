@@ -42,7 +42,10 @@ func setup(unit_dict: Dictionary, view: BattleView) -> void:
 	var frame := view.content.frame(unit.get("content_id", "")) if view.content else {}
 	if frame.is_empty():
 		frame = {"id": unit.get("content_id", ""), "source": "GMS", "mechtype": ["Balanced"], "stats": {"size": unit.get("size", 1)}}
-	model = MechBuilder.build(frame, unit.get("loadout", {}), view.content, float(unit.get("size", -1)))
+	if String(unit.get("kind", "")) == "pilot":
+		model = pilot_model(unit)
+	else:
+		model = MechBuilder.build(frame, unit.get("loadout", {}), view.content, float(unit.get("size", -1)))
 	add_child(model)
 	if unit.get("paint") is Dictionary:
 		MechPaint.apply(model, unit["paint"])  # cosmetic scheme from the customizer
@@ -59,6 +62,38 @@ func setup(unit_dict: Dictionary, view: BattleView) -> void:
 	var c: Array = unit.get("cell", [0, 0])
 	place(Vector2i(int(c[0]), int(c[1])), int(unit.get("level", 0)))
 	refresh()
+	# A pilot inside a mech isn't on the board.
+	visible = not bool(unit.get("mounted", false))
+
+
+## A pilot on foot: the creator's token figure (their portrait look, or a stable random one),
+## shown a bit larger than true scale next to the mechs so it stays readable.
+const PILOT_HEIGHT := 0.42
+
+
+static func pilot_model(u: Dictionary) -> MechModel:
+	var m := MechModel.new()
+	m.name = "Pilot_" + String(u.get("id", ""))
+	m.size = 0.5
+	m.height = PILOT_HEIGHT
+	m.gait = "tracked"  # no leg rig: the token slides; walk_amount just bobs it
+	var body := Node3D.new()
+	body.name = "Body"
+	m.add_child(body)
+	var look: Dictionary = u.get("portrait", {}) if u.get("portrait") is Dictionary else {}
+	if look.is_empty():
+		look = PortraitArt.look_for_pilot({"id": String(u.get("id", "pilot"))})
+	var token := PilotToken.new().build(look)
+	token.scale = Vector3.ONE * (PILOT_HEIGHT / 1.85)
+	body.add_child(token)
+	m.pelvis = body
+	m.torso = body
+	var eye := Marker3D.new()
+	eye.position = Vector3(0, PILOT_HEIGHT * 0.92, -0.03)
+	body.add_child(eye)
+	m.eye = eye
+	m.collect_meshes()
+	return m
 
 
 func _make_label(size: int, pos: Vector3) -> Label3D:
@@ -154,7 +189,9 @@ func _update_flight() -> void:
 	disc.material_override = MeshKit.overlay_material(Color(0, 0, 0, 0.45))
 	disc.position = Vector3(0, -up * GridLayout.LEVEL_HEIGHT / 2.0 + 0.02, 0)
 	_drop.add_child(disc)
-	_alt = _make_label(36, Vector3(0.3, -0.15, 0))
+	_alt = _make_label(18, Vector3(0.3, -0.15, 0))
+	_alt.add_to_group(LabelDeclutter.GROUP_SCREEN_SIZED)
+	_alt.outline_size = 8
 	_alt.text = "▲ %d" % up
 	_alt.modulate = side_color()
 

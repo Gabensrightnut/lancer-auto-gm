@@ -160,3 +160,21 @@ func test_action_inputs_for_gear() -> void:
 	expect_eq(ActionInputs.value_of({"count": 4, "pairs": true}, [[1, 1], [1, 2], [3, 3], [3, 4]]), [[[1, 1], [1, 2]], [[3, 3], [3, 4]]])
 	var smoke_act := {"type": smoke["type"], "actor": "me", "params": (smoke["params"] as Dictionary).merged({"aim": [5, 3]})}
 	expect((g[2] as RulesEngine).validate(s, smoke_act).ok, "the picked aim makes a legal action")
+
+
+func test_destroyed_terrain_reaches_the_board() -> void:
+	var view := BattleView.new()
+	var rules_map := DemoMap.build_showcase(GridLayout.Shape.HEX)
+	view.set_map(rules_map, "grassy_hills")
+	expect(view.map != rules_map, "the board keeps its own copy")
+	var hit: Array[Vector2i] = []
+	for c in rules_map.cells():
+		if rules_map.column(c).has_tag(BattleMap.TAG_DESTRUCTIBLE) and hit.size() < 3:
+			rules_map.column(c).ground = 0  # the rules change their map in place
+			hit.append(c)
+	expect(not hit.is_empty(), "the showcase board has destructible terrain")
+	var broke := view.refresh_map(rules_map)
+	expect_eq(broke.size(), hit.size(), "lowered columns collapse on the board")
+	expect_eq(view.map.ground_height(hit[0]), 0)
+	expect(view.refresh_map(rules_map).is_empty(), "nothing changed: nothing happens")
+	view.free()

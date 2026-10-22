@@ -170,7 +170,17 @@ static func _add_slot(slots: Array, mi: MeshInstance3D, surface: int, mat: Shade
 		role = "glow"
 	if role not in ["", "primary", "secondary", "glow"]:
 		role = "keep"
-	var size := mi.get_aabb().size * mi.global_transform.basis.get_scale() if mi.is_inside_tree() else mi.get_aabb().size
+	var size := mi.get_aabb().size
+	if surface >= 0 and mi.mesh.get_surface_count() > 1:
+		# Merged meshes: each surface (material) has its own extent.
+		var verts: PackedVector3Array = mi.mesh.surface_get_arrays(surface)[Mesh.ARRAY_VERTEX]
+		if not verts.is_empty():
+			var box := AABB(verts[0], Vector3.ZERO)
+			for v in verts:
+				box = box.expand(v)
+			size = box.size
+	if mi.is_inside_tree():
+		size *= mi.global_transform.basis.get_scale()
 	var area := size.x * size.y + size.y * size.z + size.x * size.z
 	slots.append({"mi": mi, "surface": surface, "mat": mat, "role": role, "area": area})
 

@@ -122,8 +122,10 @@ func _update_cockpit(snap: bool, delta: float = 0.0) -> void:
 		cockpit_cam.global_transform = cockpit_cam.global_transform.interpolate_with(xf, 1.0 - exp(-10.0 * delta))
 
 
+## The board keeps its own copy of the map, so a later copy of the rules' map can be
+## compared with it (refresh_map) and destroyed terrain collapses on screen.
 func set_map(battle_map: BattleMap, kit: String = "urban_ruins") -> void:
-	map = battle_map
+	map = BattleMap.from_dict(battle_map.to_dict())
 	terrain.build(map, kit)
 	apply_biome(kit)
 	var lo := Vector3(INF, 0, INF)
@@ -134,6 +136,19 @@ func set_map(battle_map: BattleMap, kit: String = "urban_ruins") -> void:
 		hi = Vector3(maxf(hi.x, p.x), 0, maxf(hi.z, p.z))
 	tactical.look_at_point((lo + hi) * 0.5 + Vector3(0, 1, 0), maxf(hi.x - lo.x, hi.z - lo.z) * 0.95)
 	tactical.snap()
+
+
+## Brings the board up to date with the rules' current map: destroyed terrain collapses
+## (TerrainRenderer.sync_map), anything else changed is rebuilt. Does nothing if nothing
+## changed. Returns the cells that broke.
+func refresh_map(current: BattleMap) -> Array:
+	if current == null or map == null:
+		return []
+	var d := current.to_dict()
+	if d == map.to_dict():
+		return []
+	map = BattleMap.from_dict(d)
+	return terrain.sync_map(BattleMap.from_dict(d))
 
 
 ## Lighting, sky and fog for the board's world style (src/render/world/atmosphere.gd).

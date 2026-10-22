@@ -66,6 +66,9 @@ func _build(frame: Dictionary, loadout: Dictionary, content: ContentDB, size_ove
 	body.scale = Vector3.ONE * _m.root_scale
 	if not sculpted:
 		_features()
+	if not MechAsset.has(_m.frame_id) and size_override <= 0.0:
+		# Same draw-call diet as the Blender frames (the body only: weapons depend on loadout).
+		MechAsset._merge(body, "code:" + String(_m.frame_id))
 	_weapons(loadout, content)
 	_m.collect_meshes()
 	return _m
