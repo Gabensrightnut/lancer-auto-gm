@@ -740,6 +740,10 @@ func _handle(events: Array) -> void:
 				hud.toast(str(e["text"]), StoryStyle.BLUE)
 			"story_hint":
 				hud.toast(str(e["text"]), StoryStyle.GOLD)
+			"chapter_started":
+				hud.toast("%s%s: %s" % [("Act %d, %s. " % [int(e["act"]), e["act_name"]]) if str(e.get("act_name", "")) != "" else "", e["title"], e["text"]], StoryStyle.GOLD)
+			"campaign_premise":
+				hud.toast(str(e["text"]), StoryStyle.TEXT)
 			"house_rule_changed", "paid", "earned", "salvage", "rations", "hungry", "mech_wrecked", "mech_reprinted", "wallet_started", "rations_started", "deal_off", "bought":
 				hud.toast(str(e["text"]), StoryStyle.GOLD if str(e["type"]) in ["house_rule_changed", "earned", "bought", "mech_reprinted"] else StoryStyle.TEXT)
 			"campaign_ended":

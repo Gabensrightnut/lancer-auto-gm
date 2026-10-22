@@ -31,6 +31,14 @@ extends RefCounted
 static func check(cond: Variant, story: StoryState, campaign: Campaign, ctx: Dictionary) -> bool:
 	if cond == null:
 		return true
+	if cond is Dictionary and (cond as Dictionary).has("trust"):
+		var who := str((cond as Dictionary)["trust"])
+		if who == "$npc":
+			who = str(ctx.get("npc", ""))
+		if not story.npcs.has(who):
+			who = CampaignScript.npc(who)
+		var t := int(story.npcs.get(who, {}).get("trust", 0))
+		return t >= int((cond as Dictionary).get("min", -99)) and t <= int((cond as Dictionary).get("max", 99))
 	if cond is Array:
 		for c: Variant in cond:
 			if not check(c, story, campaign, ctx):

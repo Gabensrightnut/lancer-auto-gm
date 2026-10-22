@@ -33,7 +33,10 @@ static var _personas: Dictionary = {}
 ## A scene from the data files, or one the GM wrote during play (GmTools, kept in the story).
 static func scene_of(story: StoryState, id: String) -> Dictionary:
 	var gm: Dictionary = story.flags.get(GmTools.SCENES, {}) if story != null else {}
-	return gm[id] if gm.has(id) else scene(id)
+	if gm.has(id):
+		return gm[id]
+	var authored := CampaignScript.find_scene(id)
+	return authored if not authored.is_empty() else scene(id)
 
 
 static func scene(id: String) -> Dictionary:

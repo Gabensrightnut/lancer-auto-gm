@@ -20,6 +20,8 @@ extends RefCounted
 ##   {"downtime": "dt_get_connected", "subject": "$npc"}  takes that downtime action now for the speaker
 ##   {"ui": "downtime", "action": "dt_get_a_damn_drink"}   asks the UI to open a panel (downtime
 ##     action with a subject to name, pilot gear picker "pilot_gear", job board "hooks")
+##   {"trust": "$npc" | npc id, "add": 1}         how much this person trusts the squad (-5..5)
+##   {"give_item": item id, "to": "speaker"}       hand over something kept in town (TownLife)
 ##   {"rival_fate": "captured" | "withdrew" | "won"}   what becomes of the enemy commander (parley)
 ##   {"end_battle": "players" | "enemies" | "none", "reason": "..."}  a parley ends the fight (Core p.60)
 ##   {"battle_refused": true}                       no terms: the fight goes on
@@ -124,6 +126,20 @@ static func apply(e: Dictionary, story: StoryState, campaign: Campaign, ctx: Dic
 			story.npcs[npc]["dead"] = true
 			return [{"type": "npc_died", "npc": npc}]
 		return []
+	if e.has("trust"):
+		var who := str(R.call(e["trust"]))
+		if not story.npcs.has(who):
+			who = CampaignScript.npc(who)
+		if story.npcs.has(who):
+			story.npcs[who]["trust"] = clampi(int(story.npcs[who].get("trust", 0)) + int(e.get("add", 0)), -5, 5)
+			return [{"type": "trust_changed", "npc": who, "trust": story.npcs[who]["trust"]}]
+		return []
+	if e.has("give_item"):
+		var it := TownLife.item(story, str(e["give_item"]))
+		if it.is_empty():
+			return []
+		it["holder"] = str(ctx.get("speaker", ""))
+		return [{"type": "item_given", "item": it["id"], "text": "You now have %s." % it["name"]}]
 	if e.has("rival_fate"):
 		return Rivals.set_fate(story, str(e["rival_fate"]))
 	if e.has("end_battle"):

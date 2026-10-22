@@ -75,6 +75,15 @@ static func build_mission(campaign: Campaign, story: StoryState, db: ContentDB, 
 		gen_opts["npc_templates"] = only if not only.is_empty() else all
 		gen_opts["size"] = int(tm.get("size", 20))
 		gen_opts["settings"] = GmSettings.from_preset(str(tm.get("gm_preset", "Teaching")))
+	# The main campaign picks who you fight (its enemy mix for the chapter).
+	if not (hook.get("npc_templates", []) as Array).is_empty() and not gen_opts.has("npc_templates"):
+		var all_t := UnitFactory.npc_templates()
+		var only_t := {}
+		for tid: String in hook["npc_templates"]:
+			if all_t.has(tid):
+				only_t[tid] = all_t[tid]
+		if not only_t.is_empty():
+			gen_opts["npc_templates"] = only_t
 	gen_opts.merge(opts, true)
 	var gen := MissionGenerator.generate(int(hook.get("seed", story.mission_number)), gen_opts)
 	var state: GameState = gen["state"]
@@ -116,9 +125,36 @@ static func build_mission(campaign: Campaign, story: StoryState, db: ContentDB, 
 				_:
 					manual.append({"pilot": pid, "callsign": p.get("callsign", ""), "reserve": r.duplicate()})
 	mission.flavor["reserves"] = manual
+	# Allies who came because of what the squad did (the main campaign's finales).
+	_add_allies(state, mission, hook.get("allies", []), int(hook.get("seed", 0)))
 	# Someone leads the enemy force (Rivals): mission.flavor["commander"].
 	Rivals.setup_battle(story, campaign, state, mission)
 	return gen
+
+
+## Allied NPC units on the squad's side, run by the AI as the "allies" seat.
+static func _add_allies(state: GameState, mission: Mission, allies: Array, seed_value: int) -> void:
+	if allies.is_empty():
+		return
+	var templates := UnitFactory.npc_templates()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([seed_value, "allies"])
+	var free := MissionGenerator._free_cells(mission.deployment.get(Mission.PLAYERS, []), rng)
+	state.seats["allies"] = {"name": "Allies", "side": Mission.PLAYERS}
+	var n := 0
+	var names: Array = []
+	for a: Dictionary in allies:
+		if not templates.has(str(a.get("template", ""))):
+			continue
+		for i in range(int(a.get("count", 1))):
+			n += 1
+			var u := MissionGenerator.build_enemy({"template": str(a["template"])}, templates, "ally%d" % n, n)
+			u.name = "%s %d" % [a.get("name", "Ally"), i + 1]
+			u.side = Mission.PLAYERS
+			u.controller = "allies"
+			if MissionGenerator._place(state, u, free):
+				names.append(u.name)
+	mission.flavor["allies"] = names
 
 
 ## A parley that ended the fight (the story event "battle_end_requested", Core p.60) as the
