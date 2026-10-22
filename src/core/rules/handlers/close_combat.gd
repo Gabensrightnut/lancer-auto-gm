@@ -208,7 +208,16 @@ class Grapple:
 		var t := state.unit(String(params["target"]))
 		var events := Attacks.attack(state, u, CloseCombat.grapple_attack(u), t, {"improvised": true})
 		CoreBonuses.after_hit_ram_grapple(state, u, t, CloseCombat._hit(events))
-		if not CloseCombat._hit(events) or not Combat.is_present(t) or t.counters.has("grapple"):
+		if not CloseCombat._hit(events) or not Combat.is_present(t):
+			return events
+		if t.counters.has("grapple"):
+			# Joining a grapple (actions: Grapple): add the Sizes on each side together.
+			var g: Dictionary = t.counters["grapple"]
+			u.counters["grapple"] = {"with": t.id, "attacker": true, "group": String(g.get("group", t.id)),
+				"team": "b" if String(g.get("team", "a")) == "a" else "a"}
+			events.append({"type": "grappled", "unit": u.id, "target": t.id, "joined": true, "rule_ref": CloseCombat.REF_GRAPPLE})
+			events.append_array(CloseCombat.regroup(state, String(u.counters["grapple"]["group"])))
+			events.append_array(Combat.refresh_engagement(state))
 			return events
 		if Sight.unit_distance(state, u, t) > 1:
 			# Blackbeard Grapple Cable: pulled adjacent by the most direct path, or the grapple
@@ -224,8 +233,9 @@ class Grapple:
 			events.append_array(Abilities.check_mines(state, u, path))
 			events.append_array(Zones.check_path(state, u, path))
 			events.append_array(Combat.after_movement(state))
-		u.counters["grapple"] = {"with": t.id, "attacker": true}
-		t.counters["grapple"] = {"with": u.id, "attacker": false}
+		var gid := u.id + ">" + t.id
+		u.counters["grapple"] = {"with": t.id, "attacker": true, "group": gid, "team": "a"}
+		t.counters["grapple"] = {"with": u.id, "attacker": false, "group": gid, "team": "b"}
 		events.append({"type": "grappled", "unit": u.id, "target": t.id, "rule_ref": CloseCombat.REF_GRAPPLE})
 		var us := GearSystems.grapple_size(u, t)
 		var ts := GearSystems.grapple_size(t, u)
@@ -236,19 +246,77 @@ class Grapple:
 		return events
 
 
-## Ends a grapple involving `u`.
+## Everyone in grapple `gid`.
+static func group_members(state: GameState, gid: String) -> Array[Unit]:
+	var out: Array[Unit] = []
+	for x: Unit in state.units.values():
+		if x.counters.has("grapple") and String(x.counters["grapple"].get("group", "")) == gid:
+			out.append(x)
+	return out
+
+
+## A grapple with more than two characters: the Sizes on each side add together; the smaller
+## side is Immobilized (actions: Grapple). Equal sides: nobody (a contest decides).
+static func regroup(state: GameState, gid: String) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var members := group_members(state, gid)
+	var totals := {"a": 0.0, "b": 0.0}
+	for x in members:
+		var foe := state.unit(String(x.counters["grapple"]["with"]))
+		totals[String(x.counters["grapple"].get("team", "a"))] += GearSystems.grapple_size(x, foe) if foe != null else x.size
+	var smaller := "a" if totals["a"] < totals["b"] else ("b" if totals["b"] < totals["a"] else "")
+	for x in members:
+		var held: bool = x.has_status("Immobilized") and x.statuses["Immobilized"].get("source", "") == "Grapple"
+		var should := String(x.counters["grapple"].get("team", "a")) == smaller
+		if should and not held:
+			events.append_array(Combat.add_status(state, x, "Immobilized", "Grapple"))
+		elif held and not should and members.size() > 2:
+			events.append_array(Combat.remove_status(x, "Immobilized", "the grapple's sides changed"))
+	return events
+
+
+## Ends `u`'s part in a grapple. Two characters: the grapple ends. More: `u` lets go (or is
+## let go) and the rest keep grappling if both sides still have someone.
 static func end_grapple(state: GameState, u: Unit, why: String) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if not u.counters.has("grapple"):
 		return events
+	var gid := String(u.counters["grapple"].get("group", ""))
 	var other := state.unit(String(u.counters["grapple"]["with"]))
-	for x: Unit in [u, other]:
+	var members := group_members(state, gid) if gid != "" else ([] as Array[Unit])
+	var leaving: Array[Unit] = [u]
+	if members.size() <= 2:
+		leaving = [u, other]
+	else:
+		# Anyone tied only to `u` lets go too.
+		for x in members:
+			if x != u and String(x.counters["grapple"]["with"]) == u.id:
+				var foe_left := false
+				for y in members:
+					if y != u and y != x and String(y.counters["grapple"].get("team", "")) != String(x.counters["grapple"].get("team", "")):
+						foe_left = true
+						x.counters["grapple"]["with"] = y.id
+						break
+				if not foe_left:
+					leaving.append(x)
+	for x: Unit in leaving:
 		if x == null:
 			continue
 		x.counters.erase("grapple")
 		if x.has_status("Immobilized") and x.statuses["Immobilized"].get("source", "") == "Grapple":
 			events.append_array(Combat.remove_status(x, "Immobilized", why))
 	events.append({"type": "grapple_ended", "unit": u.id, "other": other.id if other else "", "reason": why, "rule_ref": REF_GRAPPLE})
+	var rest := group_members(state, gid) if gid != "" else ([] as Array[Unit])
+	var teams := {}
+	for x in rest:
+		teams[String(x.counters["grapple"].get("team", ""))] = true
+	if teams.size() < 2:
+		for x in rest:
+			x.counters.erase("grapple")
+			if x.has_status("Immobilized") and x.statuses["Immobilized"].get("source", "") == "Grapple":
+				events.append_array(Combat.remove_status(x, "Immobilized", why))
+	elif not rest.is_empty():
+		events.append_array(regroup(state, gid))
 	return events
 
 

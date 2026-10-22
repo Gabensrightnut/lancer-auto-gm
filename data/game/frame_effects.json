@@ -706,7 +706,7 @@
         {
           "kind": "free_action",
           "id": "invert_cockpit",
-          "action": "dismount",
+          "action": "mount_or_dismount",
           "per": "round"
         }
       ],

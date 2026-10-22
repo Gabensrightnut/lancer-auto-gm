@@ -117,6 +117,10 @@ class Mount:
 	func type() -> String:
 		return "mount"
 
+	func grant_holder(state: GameState, u: Unit, params: Dictionary) -> Unit:
+		var m := state.unit(String(params.get("mech", "")))
+		return m if m != null else u  # Minotaur Invert Cockpit: the mech's free Mount
+
 	func cost() -> String:
 		return TurnRules.FULL
 
@@ -147,7 +151,12 @@ class Mount:
 		return events
 
 	func resolve(state: GameState, action: Dictionary) -> Array[Dictionary]:
-		return apply(state, state.unit(action["actor"]), action.get("params", {}))
+		var params: Dictionary = action.get("params", {})
+		var u := state.unit(action["actor"])
+		if params.has("free_via"):
+			var holder := grant_holder(state, u, params)
+			Effects.use_grant(holder, Effects.grant(holder, String(params["free_via"]), type(), false))
+		return apply(state, u, params)
 
 
 class Fight:
