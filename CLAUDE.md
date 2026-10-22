@@ -1,4 +1,4 @@
-# Lancer Auto-GM
+# Lancer TTRPG
 
 Fan-made 3D LANCER tactics game in Godot 4.7 (typed GDScript). Read [DESIGN.md](DESIGN.md) for
 what the game must do and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how code is split.
@@ -36,6 +36,9 @@ Run the tests before every commit. For visual work, take a screenshot and look a
   screenshots, devlogs only). If Lancer Tactics handles a rule differently from the book, follow
   the book and add a row to DESIGN.md's "Rule differences" table for the user to decide.
 - **Never commit rulebook text or PDFs** (repo is public). Put them in `/local/` (gitignored).
+- Official icons: `assets/icons/lancer/` (from COMP/CON, GPL-3.0). Use them for every damage
+  type, range/area, action type, status and manufacturer. COMP/CON name lists:
+  `data/compcon/generators/`. Never edit either; COMP/CON's fonts are NOT free, don't use them.
 - `data/lancer-data/` is Massif's data: never edit it. Our own data goes in `data/game/`.
 - Don't read or use anything from other projects on this machine (e.g. MechFortress).
 
@@ -46,5 +49,5 @@ choices to them in plain language, not engine jargon.
 
 ## Git
 
-Repo: https://github.com/Gabensrightnut/lancer-auto-gm (public, GPL-3.0-or-later).
+Repo: https://github.com/Gabensrightnut/lancer-ttrpg (public, GPL-3.0-or-later).
 End commit messages with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.

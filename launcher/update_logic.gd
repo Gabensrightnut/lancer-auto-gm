@@ -4,15 +4,15 @@ extends RefCounted
 ## current + previous version on disk for rollback.
 ##
 ## On disk (inside the launcher's own user data folder, never the game's saves):
-##   <root>/versions/<version>/LancerAutoGM.exe   one folder per installed version
+##   <root>/versions/<version>/LancerTTRPG.exe   one folder per installed version
 ##   <root>/installs.json                         {"current": "1.2.0", "previous": "1.1.0"}
 ##   <root>/downloads/                            temporary downloads
 
-const REPO := "Gabensrightnut/lancer-auto-gm"
+const REPO := "Gabensrightnut/lancer-ttrpg"
 const LATEST_RELEASE_URL := "https://api.github.com/repos/" + REPO + "/releases/latest"
-const GAME_ZIP_PREFIX := "LancerAutoGM-windows-"
+const GAME_ZIP_PREFIX := "LancerTTRPG-windows-"
 const SUMS_NAME := "SHA256SUMS.txt"
-const GAME_EXE := "LancerAutoGM.exe"
+const GAME_EXE := "LancerTTRPG.exe"
 
 var root: String
 

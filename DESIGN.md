@@ -1,4 +1,4 @@
-# Lancer Auto-GM: Design Notes
+# Lancer TTRPG: Design Notes
 
 Status: foundation built (grid, state, dice, rules engine skeleton, data loader, tests).
 Parallel work on rules engine, 3D visuals, and online/launcher in progress.
@@ -33,6 +33,38 @@ Code layout and contracts: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - **Players:** online multiplayer (one host, others join remotely), hot-seat at one table, or
   solo: one person runs a full squad with AI squadmates flying any pilots they don't control.
 - **Scope:** full campaign play: missions, combat, downtime, licenses, leveling, campaign arc.
+
+## Play feel: player-driven, not an auto battler
+Inspiration: Baldur's Gate 3's pacing and agency (feel only; nothing taken from it). What
+you've seen so far are automated tests and scripted demos running at test speed; the real
+game waits for people.
+
+- **Every human makes their own choices.** Nothing a human controls ever acts on its own.
+  The game waits on your turn as long as you need; AI only plays seats set to AI (enemies,
+  and squadmates you hand over).
+- **Turn order the Lancer way, shown like BG3:** a portrait bar across the top shows every
+  unit, who has acted this round, and whose side picks next. Lancer has players and enemies
+  alternate, and the players decide among themselves which of them goes next (anyone
+  clicks "I'll go"; in solo you pick).
+- **Your turn:** the camera moves to your mech, the action bar and resources come up
+  (section 1), you plan freely (movement arrow, targets, previews), and nothing happens until
+  you confirm each action. End turn is a button you press.
+- **Watching other turns:** enemy and ally turns play at a readable pace. The camera
+  follows each action, there's a short pause before attacks resolve, and the roll is shown.
+  Speed setting (cinematic / normal / fast) and a "skip to my turn" option; never faster
+  than you can follow unless you choose it.
+- **Scenes, not just fights (like BG3's exploration vs. combat):**
+  - **Exploration and story scenes:** walk your pilot or mech around a location in real time,
+    talk to people (dialogue scenes, section 10), inspect things, find intel and supplies.
+  - **Skill checks shown big:** a d20 roll pops up center screen with your skill trigger
+    bonus and Accuracy/Difficulty (blue/red) against the target, BG3-style, with outcomes
+    that branch the scene.
+  - **Combat starts from the scene:** ambushes, failed sneaking, or a dialogue choice drop
+    everyone into turn-based combat on the same map. Surprise follows the book.
+  - **Downtime between missions** as its own scene (section 10).
+- **Multiplayer:** in exploration everyone moves freely; in combat each player acts on their
+  own pilot's turn while others watch (and can ping and chat); dialogue choices go to the
+  speaking pilot's player or a vote.
 
 ## 1. Animations and visual feedback
 
@@ -72,6 +104,44 @@ Every effect gets an animation, a combat-log line, and floating text (damage, MI
     rule reference);
   - greyed out with the reason when it can't be used ("Already used your Quick actions",
     "Jammed: can't take tech actions").
+- **Action bar, BG3-style:** one bar along the bottom center holding every attack, ability,
+  dash/Boost, tech action, system, weapon, reaction, protocol and core power: anything that
+  isn't a basic move. Basic movement stays click-to-move on the board.
+  - Grouped into tabs or sections (Weapons, Quick, Full, Tech, Systems, Reactions/Protocols,
+    Core) so it stays tidy; a small resource cluster sits beside it (HP, heat, structure,
+    stress, actions left).
+  - Icon buttons with cost badges (Quick/Full/Free/Reaction icons, heat, charges); hover for
+    the description card described above; number-key shortcuts.
+  - **Size:** big enough to read and click comfortably, never a skinny strip, never so big it
+    hides the battlefield. Start around 9% of screen height on 1080p, with a bar-size slider
+    in settings so we can tune it together; it scales with resolution.
+  - Players can rearrange buttons; the layout is saved per pilot.
+  - **Cooldowns shown WoW-style:** an unusable button greys out with a dark radial sweep and
+    the reason on it. Like a clock hand, the grey slice shrinks as the wait runs down,
+    un-greying the button bit by bit (it animates smoothly to the new size each time a turn
+    or round passes) until it's fully lit and usable. Waits with no fixed length (Recharge,
+    Loading) stay fully grey with their label until they're ready. Lancer doesn't have many plain cooldowns, so the overlay shows what
+    actually applies:
+    - a **number of turns/rounds** when the wait is fixed (e.g. an effect lasting "until the
+      end of your next turn", 1/round abilities until the next round);
+    - **Recharge X+** (NPC abilities that come back on a d6 roll) shows the die and target
+      number, and lights back up when the roll succeeds;
+    - **Loading** weapons show "Reload" until reloaded;
+    - **1/scene, 1/mission, Limited X** show the uses left, or "used this scene";
+    - **status lockouts** (Jammed, Shut Down...) show the status icon and how long it lasts.
+- **Hover cards say what will happen to you, in plain words,** worked out by the rules
+  engine from your current state, not just the item's text:
+  - costs and results as a number followed by the official icon, e.g. **+2 [heat icon]**,
+    **1d6+2 [energy icon]**, **3 [burn icon]**, **Range 10 [range icon]**;
+  - warnings when it crosses a line: *"This will overheat you (8/8 → 10): you'll take
+    stress damage and roll an overheating check"*, *"This puts you in the Danger Zone"*,
+    *"Last charge"*, *"You're Engaged: +1 Difficulty"*, *"Moving away provokes from 2 enemies"*;
+  - expected outcome vs. the hovered target: hit chance, cover, likely damage after Armor.
+- **Official icons everywhere:** damage types (kinetic, energy, explosive, heat, burn,
+  variable), ranges and areas (range, threat, blast, burst, cone, line), action types
+  (quick, full, free, reaction, protocol, overcharge, tech), statuses and conditions,
+  manufacturers, size, structure, stress, repairs. They're Massif's own icons from COMP/CON
+  (GPL-3.0) in `assets/icons/lancer/`, so they look exactly like the book.
 - **Cost preview:** hovering a button shows what it will spend on the resource bars (e.g. the
   heat bar previews +2), and warns if it would push you into the Danger Zone or overheat.
 - Enemies show only what the view rules allow (section 6): unscanned enemies show "??".
@@ -206,6 +276,23 @@ vistas of Halo, the lived-in worlds of Star Wars, the grim scale of Warhammer 40
 - **Alien worlds that are beautiful but scary:** strange colored skies, giant moons and
   ringed planets overhead, bioluminescent plants, crystal fields, colossal ancient
   structures, toxic seas, storms on the horizon, things moving in the distance.
+- **Every kind of world, because Lancer's galaxy is huge and no two planets are alike:**
+  the Core Worlds (Cradle and other Union core worlds) look polished and similar; out in the
+  diaspora, every planet is its own place. Settings to build, each with its own architecture,
+  props, people, lighting and sky:
+  - **Medieval-tech worlds:** castles, walled towns, banners and stone bridges next to
+    mech hangars (low-tech colonies, feudal Karrakin-style baronies).
+  - **Old West frontier:** dusty boomtowns, mesas, rail lines, mining camps, saloons with
+    satellite dishes.
+  - **Retrofuturistic:** chrome, tail fins, atomic-age domes and monorails.
+  - **Cyberpunk sci-fi:** neon megacities, rain, holo-ads, stacked slums, corporate towers.
+  - **East Asian-inspired sci-fi:** pagoda-towers and shrine gates mixed with high tech,
+    terraced cities, lantern-lit streets, bamboo and cherry forests.
+  - **Clean high sci-fi:** gleaming Union architecture, orbital elevators, white and glass.
+  - plus the natural and alien landscapes above (hills, deserts, ice, jungle, ocean,
+    volcanic, crystal, toxic, gas-giant moons, ancient ruins, space stations).
+- **Biome + culture mix:** the map generator combines a landscape (e.g. desert mesas) with a
+  culture/era (e.g. Old West), so the same rules terrain can look completely different.
 - **Backgrounds beyond the board:** every map sits inside a full horizon (skybox, distant
   mountains/cities/megastructures, weather, lighting) so the battle feels like part of a
   huge world, not a tile on a void.
@@ -475,6 +562,10 @@ differently without an AI. Each game has a **seed**: share it to replay the same
   GM (section 9) can assemble scenes from it and new story content can be added without code.
 
 ### Progression
+- **Everyone starts at the bottom, like D&D level 1:** by the book, new pilots start at
+  **License Level 0** with only GMS starter gear (the Everest frame and GMS weapons/systems).
+  Every other manufacturer's frames and gear are unlocked rank by rank as you level up
+  after missions. (A campaign option lets you start higher, as the book allows GMs to do.)
 - License level up after missions, unlocking manufacturer gear by license rank, talent ranks,
   core bonuses, pilot rank; the builder enforces it.
 
@@ -600,5 +691,5 @@ each with a narrow, self-contained brief, and a new piece only starts once one f
       rulebook text stays local and is never committed.
 - [x] Online connection method: **peer-to-peer (WebRTC)**. Note: some strict networks may
       need a TURN relay as a fallback.
-- [x] GitHub repo: https://github.com/Gabensrightnut/lancer-auto-gm (public)
+- [x] GitHub repo: https://github.com/Gabensrightnut/lancer-ttrpg (public)
 - [x] Project license: **GPL-3.0-or-later** (matches Massif's data license)

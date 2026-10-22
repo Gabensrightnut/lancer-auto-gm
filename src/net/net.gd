@@ -11,11 +11,19 @@ extends Node
 ##   Join a friend:         var client := Net.join_online(code, "Name")
 ##                          client.joined / view_updated / action_answered / refused /
 ##                          join_failed / connection_lost; client.submit(action)
+##   AI GM + squadmates:    var gm := Net.attach_ai(GmSettings.from_preset("Teaching"), mission)
+##                          gm.ai_log(unit, text) -> battle log; host.set_seat_ai(seat, on)
 ## See src/net/README.md for the full API.
 
 var host: NetHost
 var hot_seat: HotSeat
 var client: NetClient
+## Plays AI seats (GM enemies, AI squadmates) on the host. See attach_ai().
+var director: AiDirector
+## Seconds between AI steps, so the board can animate each one.
+var ai_step_interval := 0.6
+
+var _ai_wait := 0.0
 
 
 ## True if online play works in this build (the WebRTC add-on loaded).
@@ -52,6 +60,13 @@ func join_online(room_code: String, player_name: String, seat: String = "") -> N
 	return client
 
 
+## Lets the procedural GM and AI squadmates play on the host started above. Which seats the
+## AI plays: host.set_seat_ai(seat, true), host.set_fill_empty_with_ai(true); "gm" by default.
+func attach_ai(gm_settings: GmSettings = null, mission: Mission = null) -> AiDirector:
+	director = AiDirector.new(host, gm_settings, mission)
+	return director
+
+
 func leave() -> void:
 	if client != null:
 		client.leave()
@@ -60,6 +75,7 @@ func leave() -> void:
 	client = null
 	host = null
 	hot_seat = null
+	director = null
 
 
 func _process(delta: float) -> void:
@@ -67,3 +83,7 @@ func _process(delta: float) -> void:
 		host.poll()
 	if client != null:
 		client.poll(delta)
+	if director != null:
+		_ai_wait -= delta
+		if _ai_wait <= 0.0 and director.step():
+			_ai_wait = ai_step_interval
