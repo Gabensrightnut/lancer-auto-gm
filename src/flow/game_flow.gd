@@ -245,8 +245,9 @@ const ARC_CHOICES := {1: "Short: 1 story", 2: "2 stories", 3: "Standard: 3 stori
 ## take their seats online). `arcs` = campaign length. Session zero comes first (Core p.40-41,
 ## the hub shows SessionZeroScreen): the job board fills only after it, so the table's choices
 ## (focus, content left out) shape the first jobs. Saved before it returns.
-static func start_story_campaign(store: SaveStore, db: ContentDB, campaign_name: String, pilots: int, start_ll: int, preset: String, arcs: int = DEFAULT_ARCS, campaign_id: String = "") -> Campaign:
+static func start_story_campaign(store: SaveStore, db: ContentDB, campaign_name: String, pilots: int, start_ll: int, preset: String, arcs: int = DEFAULT_ARCS, campaign_id: String = "", fight_length: String = "standard") -> Campaign:
 	var c := Campaign.create(campaign_name, {"start_ll": start_ll, "gm_preset": preset})
+	c.gm_settings["fight_length"] = fight_length
 	if campaign_id != "":
 		c.id = campaign_id  # a fixed id gives the same story every time (tests, balance runs)
 	c.options["story"] = true
@@ -369,7 +370,7 @@ static func start_mission(lobby: LobbyModel, store: SaveStore) -> BattleSession:
 		lobby.messages.append({"kind": "error", "text": r["error"]})
 		return null
 	store.save_campaign(lobby.campaign)
-	var settings := GmSettings.from_preset(str(lobby.options.get("preset", "Standard")))
+	var settings := LobbyModel.gm_settings_for(str(lobby.options.get("preset", "Standard")), str(lobby.options.get("fight_length", "standard")))
 	var save := MissionAutosave.new(r["host"], r["mission"], store, lobby.campaign.id, settings)
 	local_seats = []
 	for seat: String in lobby.modes:
