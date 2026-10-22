@@ -19,6 +19,8 @@ var sun: DirectionalLight3D
 var world_env: WorldEnvironment
 ## Keeps nameplates apart and out from under the HUD (set active_unit / hover_unit on it).
 var labels: LabelDeclutter
+## 0 in daylight, up to 1 on night maps: how much mechs are lit up to stay readable.
+var mech_lift := 0.0
 var _units_root: Node3D
 
 
@@ -69,6 +71,7 @@ func add_unit(u: Dictionary) -> MechView:
 	_units_root.add_child(mv)
 	units[String(u.get("id", ""))] = mv
 	mv.setup(u, self)
+	mv.model.set_fx("lift", mech_lift)
 	return mv
 
 
@@ -132,6 +135,11 @@ func set_map(battle_map: BattleMap, kit: String = "urban_ruins") -> void:
 ## Lighting, sky and fog for the board's world style (src/render/world/atmosphere.gd).
 func apply_biome(_kit: String = "") -> void:
 	terrain.apply_environment(world_env.environment, sun, get_node_or_null("Fill") as DirectionalLight3D)
+	var env := world_env.environment
+	var light := sun.light_energy * sun.light_color.get_luminance() + env.ambient_light_energy * env.ambient_light_color.get_luminance() * 1.5
+	mech_lift = clampf((1.9 - light) / 1.3, 0.0, 1.0)
+	for mv: MechView in units.values():
+		mv.model.set_fx("lift", mech_lift)
 
 
 ## World position of a cell's floor at a level.
