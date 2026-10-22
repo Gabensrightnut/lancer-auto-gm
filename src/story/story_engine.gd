@@ -20,6 +20,8 @@ extends RefCounted
 ##   session_zero {identity, patron, history: [{question, a, b}], tone, focus, content_off: []}
 ##   battle_events {events: [battle events]}  (host, each batch: the enemy commander may offer terms)
 ##   parley {}                                        the squad calls on the enemy commander to stand down
+##   gm_scene / gm_twist / gm_standing / gm_reserve / gm_job / gm_edit_job / gm_remove_job / gm_npc
+##                                                    a human GM's story tools (GmTools; gm seat)
 ##   travel {world}                                   go to another world of the sector (between missions; Sector)
 ## "seat" "gm" (the host / procedural GM) may act for anyone.
 
@@ -61,6 +63,10 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 	var seat := str(action.get("seat", "gm"))
 	var p: Dictionary = action.get("params", {})
 	var me := story.pilot_of_seat(seat)
+	# A human GM's story tools (GmTools): gm seat only.
+	if GmTools.handles(type):
+		var why_gm := GmTools.refusal(story, campaign, type, p, seat)
+		return _no(why_gm) if why_gm != "" else {}
 	match type:
 		"set_seat":
 			if not campaign.pilots.has(str(p.get("pilot", ""))):
@@ -237,6 +243,8 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 	var seat := str(action.get("seat", "gm"))
 	var p: Dictionary = action.get("params", {})
 	var me := story.pilot_of_seat(seat)
+	if GmTools.handles(str(action["type"])):
+		return GmTools.apply(story, campaign, str(action["type"]), p, _first_alive(story, campaign))
 	match str(action["type"]):
 		"set_seat":
 			# An AI squadmate without a chosen persona gets the one their triggers and background suggest.
@@ -313,7 +321,7 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 			story.phase = "reserves"
 			var events: Array = [{"type": "hook_chosen", "hook": story.current_hook.duplicate(true), "rule_ref": "Core p.40: briefing"}]
 			var brief := str(story.current_hook.get("briefing_scene", "briefing"))
-			if not Dialogue.is_open(story) and not Dialogue.scene(brief).is_empty():
+			if not Dialogue.is_open(story) and not Dialogue.scene_of(story, brief).is_empty():
 				events.append_array(Dialogue.start(story, campaign, brief, {"speaker": _first_alive(story, campaign), "npc": str(story.current_hook.get("patron_id", "")), "hook": story.current_hook,
 					"vars": StoryText.briefing_vars(story, campaign)}))
 			return events
