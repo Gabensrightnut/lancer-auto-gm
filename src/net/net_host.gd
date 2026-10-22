@@ -137,6 +137,16 @@ func waiting_on(for_seat: String = "") -> Dictionary:
 	if state.phase == GameState.PHASE_ENDED:
 		info["state"] = "ended"
 		info["text"] = "The mission is over."
+	elif not state.pending.is_empty():
+		# The rules engine is paused for a reaction (Overwatch, Brace...): only that unit's
+		# controller can answer, with {"type": "react", "actor": unit, "params": {"take": ...}}.
+		var r := state.unit(String(state.pending.get("unit", "")))
+		info["state"] = "reaction"
+		info["unit"] = r.id if r != null else ""
+		info["ai"] = r != null and is_ai_seat(r.controller)
+		info["seats"] = [] if info["ai"] or r == null else [r.controller]
+		var reaction := String(state.pending.get("reaction", "")).capitalize()
+		info["text"] = "%s is deciding whether to %s." % [(r.name if r != null and r.name != "" else "A unit"), reaction]
 	elif state.phase != GameState.PHASE_COMBAT:
 		info["state"] = "setup"
 		info["ai"] = is_ai_seat(GM_SEAT)

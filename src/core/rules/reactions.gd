@@ -52,6 +52,30 @@ static func offer(state: GameState, u: Unit, reaction: String, context: Dictiona
 	return {"take": false}
 
 
+## A sensible answer to the reaction the engine is waiting on (for AI seats and defaults):
+## Overwatch with the first listed weapon, take prepared actions, Brace only if the hit would
+## take the last HP. Returns the params for a "react" action, or {} if nothing is pending.
+static func suggested_answer(state: GameState) -> Dictionary:
+	var p := state.pending
+	if p.is_empty():
+		return {}
+	var ctx: Dictionary = p.get("context", {})
+	match String(p.get("reaction", "")):
+		"overwatch":
+			var weapons: Array = ctx.get("weapons", [])
+			return {"take": not weapons.is_empty(), "weapon": weapons[0] if not weapons.is_empty() else ""}
+		"brace":
+			var u := state.unit(String(p.get("unit", "")))
+			var dmg := 0
+			for part: Dictionary in ctx.get("damage", []):
+				if part.get("type", "") != "Heat":
+					dmg += int(part.get("amount", 0))
+			if not ctx.get("ap", false) and u != null and not u.has_status("Shredded"):
+				dmg -= u.armor
+			return {"take": u != null and dmg >= u.hp + u.overshield}
+	return {"take": true}
+
+
 static func can_react(u: Unit, reaction: String) -> RuleResult:
 	if not Combat.is_present(u):
 		return RuleResult.deny("Not on the field.", "")

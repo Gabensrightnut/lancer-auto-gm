@@ -26,6 +26,8 @@ var mission: Mission
 var orders: Dictionary = {}
 ## Every refused AI action ({unit, action, reason}): should stay empty; kept for debugging.
 var refusals: Array = []
+## unit id -> steps left in its planned turn, when a human's reaction question paused it.
+var _resume: Dictionary = {}
 var log_lines: PackedStringArray = PackedStringArray()
 
 var _reinforced_round := 0
@@ -58,6 +60,13 @@ func step() -> bool:
 	var state := host.state
 	if state.phase == GameState.PHASE_ENDED:
 		return false
+	if not state.pending.is_empty():
+		# The rules engine is asking a unit whether to react (Overwatch, Brace...).
+		var r := state.unit(String(state.pending.get("unit", "")))
+		if r == null or not host.is_ai_seat(r.controller):
+			return false  # A human decides.
+		var out := host.submit(r.controller, {"type": "react", "actor": r.id, "params": Reactions.suggested_answer(state)})
+		return (out["result"] as RuleResult).ok
 	if mission != null and mission.outcome != "" and not mission.ended:
 		var out := host.submit(NetHost.GM_SEAT, mission.end_action())
 		mission.ended = true
@@ -74,7 +83,10 @@ func step() -> bool:
 	if state.active_unit != "":
 		var u := state.unit(state.active_unit)
 		if u != null and host.is_ai_seat(u.controller):
-			play_turn(u)
+			if _resume.has(u.id):
+				_play_steps(u, _resume[u.id])
+			else:
+				play_turn(u)
 			return true
 		return false
 	if not host.waiting_on()["ai"]:
@@ -100,14 +112,29 @@ func play_turn(u: Unit) -> void:
 	var plan := ai.plan_turn(know, u.id, _orders_for(u))
 	if settings.explain:
 		_log(u.id, plan["log"])
-	for action: Dictionary in plan["steps"]:
+	_play_steps(u, plan["steps"])
+
+
+## Submits planned steps in order, then ends the turn. When an action pauses for a reaction
+## (Overwatch, Brace...), an AI-played reactor answers at once; a human's question stops here
+## and the remaining steps resume once it's answered (the paused action completes then).
+func _play_steps(u: Unit, steps: Array) -> void:
+	_resume.erase(u.id)
+	for i in range(steps.size()):
+		var action: Dictionary = steps[i]
 		if u.destroyed or host.state.active_unit != u.id:
 			break
 		var out := host.submit(u.controller, action)
 		if not (out["result"] as RuleResult).ok:
 			# The real battlefield differed from what this side knew (a Hidden enemy in the way...).
 			_refused(u, action, out["result"])
-	if host.state.active_unit == u.id:
+		while not host.state.pending.is_empty():
+			var r := host.state.unit(String(host.state.pending.get("unit", "")))
+			if r == null or not host.is_ai_seat(r.controller):
+				_resume[u.id] = steps.slice(i + 1)
+				return
+			host.submit(r.controller, {"type": "react", "actor": r.id, "params": Reactions.suggested_answer(host.state)})
+	if host.state.active_unit == u.id and host.state.pending.is_empty():
 		host.submit(u.controller, {"type": "end_turn", "actor": u.id})
 
 
