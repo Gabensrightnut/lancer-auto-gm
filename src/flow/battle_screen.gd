@@ -470,15 +470,6 @@ func _refresh_hud() -> void:
 	var active: Dictionary = v.get("units", {}).get(v.get("active_unit", ""), {})
 	order_bar.set_data({"round": maxi(1, int(v.get("round", 1))), "picking_side": v.get("turn_side", ""),
 		"local_side": my_side if session.my_pick() else "", "active_name": str(active.get("name", "")), "units": list})
-	# Workaround (docs/qa/milestone1.md): the bar centers itself while its old portraits are
-	# still counted, sliding it off the left edge; center it again once they're gone.
-	if not get_tree().process_frame.is_connected(_recenter_order_bar):
-		get_tree().process_frame.connect(_recenter_order_bar, CONNECT_ONE_SHOT)
-
-
-func _recenter_order_bar() -> void:
-	if is_instance_valid(order_bar) and order_bar.has_method("_center_box"):
-		order_bar._center_box()
 
 
 func _render_portraits(v: Dictionary) -> void:
