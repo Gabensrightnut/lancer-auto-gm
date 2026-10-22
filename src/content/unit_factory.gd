@@ -313,6 +313,9 @@ static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dic
 			prof["no_attack"] = true
 		weapons.append(prof)
 		integ += 1
+	var proto := _prototype_weapon(db, pilot)
+	if not proto.is_empty():
+		weapons.append(proto)
 	var systems: Array = []
 	var n := 0
 	for sid: String in loadout.get("systems", []):
@@ -701,6 +704,39 @@ static func weapon_effects_data() -> Dictionary:
 		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(WEAPON_EFFECTS))
 		_weapon_data = d if d is Dictionary else {}
 	return _weapon_data
+
+
+## Engineer's prototype weapon (talents: Engineer), an integrated Main weapon built from the
+## pilot record's choices made at the last Full Repair: pilot.engineer = {"type": Melee | CQB |
+## Rifle | Cannon | Launcher | Nexus, "damage_type", "limited": rolled 1d6+2 (2d6 at rank 3),
+## "revisions": two of "optics" (+1 Accuracy: Accurate), "computer" (Smart), "shielding"}.
+## PROVISIONAL: without a recorded roll, Limited is the roll's average rounded down (5, or 7).
+## Stripped reactor shielding's area option is the table's.
+static func _prototype_weapon(db: ContentDB, pilot: Dictionary) -> Dictionary:
+	var rank := int(pilot.get("talents", {}).get("t_engineer", 0))
+	if rank <= 0:
+		return {}
+	var w := db.weapon("mw_prototype_%d" % mini(rank, 3))
+	if w.is_empty():
+		return {}
+	var choice: Dictionary = pilot.get("engineer", {})
+	var prof := weapon_profile(w, "proto:0", -1)
+	prof["integrated"] = true
+	var wtype := String(choice.get("type", "Rifle"))
+	prof["type"] = wtype
+	prof["range"] = [{"type": "Threat", "val": 1}] if wtype == "Melee" else [{"type": "Range", "val": 10}]
+	for d: Dictionary in prof.get("damage", []):
+		d["type"] = String(choice.get("damage_type", "Kinetic"))
+	var limited := int(choice.get("limited", 7 if rank >= 3 else 5))
+	var tags: Array = (prof.get("tags", []) as Array).filter(func(t: Dictionary) -> bool: return not String(t.get("id", "")) in ["tg_limited", "tg_set_max_uses", "tg_set_damage_type"])
+	tags.append({"id": "tg_limited", "val": limited})
+	var rev: Array = choice.get("revisions", []) if rank >= 2 else []
+	if rev.has("optics"):
+		tags.append({"id": "tg_accurate"})
+	if rev.has("computer"):
+		tags.append({"id": "tg_smart"})
+	prof["tags"] = tags
+	return prof
 
 
 ## An NPC from NPC class data (a content pack's, or our placeholder pack): see NPCBuilder.

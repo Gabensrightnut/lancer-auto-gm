@@ -130,6 +130,8 @@ static func skill_check(state: GameState, u: Unit, skill: String, label: String,
 	if u.kind == Unit.KIND_PILOT:
 		bonus = u.grit  # unmounted characters add GRIT to attacks and saves (Core p.74)
 	var record := state.dice.check(bonus, acc, diff, target, all_sources)
+	if u.kind == Unit.KIND_MECH:
+		record = TalentRules.nhp_reroll(state, u, record, func() -> Dictionary: return state.dice.check(bonus, acc, diff, target, all_sources))
 	record["bonus_sources"] = [{"label": "Grit" if u.kind == Unit.KIND_PILOT else skill.capitalize(), "value": bonus}]
 	record["bonuses"] = record["bonus_sources"]
 	record["target_label"] = "Save Target" if target != CHECK_TARGET else "Check (10+)"
@@ -338,12 +340,12 @@ static func structure_check(state: GameState, u: Unit) -> Array[Dictionary]:
 static func _direct_hit(state: GameState, u: Unit) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if u.structure >= 3:
-		events.append_array(add_status(state, u, "Stunned", "Direct Hit", u.id))
+		events.append_array(_direct_hit_stun(state, u))
 	elif u.structure == 2:
 		var check := skill_check(state, u, "hull", "Direct Hit: Hull check")
 		events.append({"type": "skill_check", "unit": u.id, "check": check, "rule_ref": REF_STRUCTURE})
 		if check["success"]:
-			events.append_array(add_status(state, u, "Stunned", "Direct Hit", u.id))
+			events.append_array(_direct_hit_stun(state, u))
 		else:
 			events.append_array(destroy(state, u, "Direct Hit: failed the Hull check."))
 	else:
@@ -532,7 +534,27 @@ static func stress_check(state: GameState, u: Unit) -> Array[Dictionary]:
 				events.append_array(_start_meltdown(state, u, -1))
 		"Irreversible Meltdown":
 			events.append_array(_start_meltdown(state, u, -1))
+	overheated_check(state, u)  # house rule: Overheated
 	return events
+
+
+## A Direct Hit's Stun, or with the "hr_structure_no_stun" house rule Brace's penalties instead:
+## no reactions and one quick action until the end of its next turn.
+static func _direct_hit_stun(state: GameState, u: Unit) -> Array[Dictionary]:
+	if not HouseRuleSwitches.on(state, "hr_structure_no_stun"):
+		return add_status(state, u, "Stunned", "Direct Hit", u.id)
+	u.counters["brace_next_turn"] = true
+	var events: Array[Dictionary] = Effects.activate(state, u, [{"kind": "no_reactions", "label": "Direct Hit"}], "Direct Hit (house rule)", "end_next_turn")
+	events.append({"type": "effect_triggered", "unit": u.id, "effect": "Direct Hit: shaken (house rule)", "target": u.id,
+		"text": "No reactions and only one quick action until the end of your next turn.", "rule_ref": "House rule: No Stun from a Direct Hit"})
+	return events
+
+
+## House rule "hr_overheated" (community): Exposed from overheating also makes it Overheated:
+## no Heat (Self) weapons or systems and no Overkill until it cools down with Stabilize.
+static func overheated_check(state: GameState, u: Unit) -> void:
+	if HouseRuleSwitches.on(state, "hr_overheated") and u.has_status("Exposed"):
+		u.counters["overheated"] = true
 
 
 ## Reactor meltdown after `turns` of the unit's turns; -1 = at the end of its next turn.
@@ -657,8 +679,21 @@ static func fall_unit(state: GameState, u: Unit, max_drop: int = -1) -> Array[Di
 	var dmg := mini(9, (total / 3) * 3)
 	if Environments.no_fall_damage(state):
 		dmg = 0  # low gravity
+	if dmg > 0 and HouseRuleSwitches.on(state, "hr_brace_fall") and Reactions.can_react(u, "brace_fall", state).ok:
+		# House rule (your idea): brace for the fall with your reaction, taking half.
+		var d := Reactions.offer(state, u, "brace_fall", {"damage": dmg, "suggested": {"take": true}}, {"take": true})
+		if d.get("take", false):
+			Reactions._mark_used(u, "brace_fall", state)
+			dmg -= dmg / 2
+			events.append({"type": "effect_triggered", "unit": u.id, "effect": "Brace for the fall", "target": u.id, "rule_ref": "House rule: Brace for the fall"})
 	if dmg > 0:
 		events.append_array(deal_damage(state, u, [{"type": "Kinetic", "amount": dmg}], {"ap": true, "source": "fall"}))
+		if HouseRuleSwitches.on(state, "hr_fall_stun") and not u.destroyed:
+			# House rule (your idea): Hull save or Stunned until the end of its next turn.
+			var save := skill_check(state, u, "hull", "Hard fall: Hull save", CHECK_TARGET, 0, 0, [], true)
+			events.append({"type": "skill_check", "unit": u.id, "check": save, "rule_ref": "House rule: Stunned by a hard fall"})
+			if not save["success"]:
+				events.append_array(add_status(state, u, "Stunned", "fall", u.id))
 	return events
 
 
@@ -785,6 +820,8 @@ static func can_hide(state: GameState, u: Unit) -> RuleResult:
 		return RuleResult.deny("You can't Hide while Engaged.", "actions: Hide")
 	if u.has_status("Invisible") or TalentRules.prowling(state, u):
 		return RuleResult.allow()  # Infiltrator Prowl: Hide even in plain sight on its turn
+	if HouseRuleSwitches.on(state, "hr_hide_hard_cover") and hard_covered(state, u):
+		return RuleResult.allow()  # house rule: hard cover from everyone who can see you
 	var me := Sight.body_of(state, u)
 	if Sight.fully_in_soft_cover(state, me):
 		return RuleResult.allow()
@@ -797,6 +834,17 @@ static func can_hide(state: GameState, u: Unit) -> RuleResult:
 	return RuleResult.allow()
 
 
+## Every hostile that can see `u` sees it in hard cover (house rule "hr_hide_hard_cover").
+static func hard_covered(state: GameState, u: Unit) -> bool:
+	for o: Unit in state.units.values():
+		if o.side == u.side or not _is_character(o):
+			continue
+		var cov := Sight.unit_cover(state, o, u)
+		if cov["los"] and cov["cover"] != "hard":
+			return false
+	return true
+
+
 ## Hidden characters lose HIDDEN if their cover disappears or an enemy gains line of sight
 ## (actions: Hide).
 static func refresh_hidden(state: GameState) -> Array[Dictionary]:
@@ -806,6 +854,8 @@ static func refresh_hidden(state: GameState) -> Array[Dictionary]:
 			continue  # Infiltrator Prowl: checked again when its turn ends
 		var me := Sight.body_of(state, u)
 		if Sight.fully_in_soft_cover(state, me):
+			continue
+		if HouseRuleSwitches.on(state, "hr_hide_hard_cover") and hard_covered(state, u):
 			continue
 		for o: Unit in state.units.values():
 			if o.side == u.side or not _is_character(o):

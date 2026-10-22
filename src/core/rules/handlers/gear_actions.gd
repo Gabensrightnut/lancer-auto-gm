@@ -184,6 +184,107 @@ class ShakeOff:
 		return events
 
 
+class Drag:
+	extends TurnAction
+	## Start dragging (or towing on a cable) a character, wreck or object. params: {"target"}
+
+	func type() -> String:
+		return "drag"
+
+	func cost() -> String:
+		return TurnRules.FREE
+
+	func kinds() -> Array:
+		return [Unit.KIND_MECH, Unit.KIND_NPC, Unit.KIND_PILOT]
+
+	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		return Riders.check_drag(state, u, state.unit(String(params.get("target", ""))))
+
+	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+		return Riders.start_drag(state, u, state.unit(String(params["target"])))
+
+
+class LetGoDrag:
+	extends TurnAction
+	## Stop dragging.
+
+	func type() -> String:
+		return "release_drag"
+
+	func cost() -> String:
+		return TurnRules.FREE
+
+	func kinds() -> Array:
+		return [Unit.KIND_MECH, Unit.KIND_NPC, Unit.KIND_PILOT]
+
+	func check(_state: GameState, u: Unit, _params: Dictionary) -> RuleResult:
+		return RuleResult.allow() if u.counters.has("dragging") else RuleResult.deny("You aren't dragging anything.", Riders.REF_DRAG)
+
+	func apply(_state: GameState, u: Unit, _params: Dictionary) -> Array[Dictionary]:
+		return Riders.stop_drag(u, "let go")
+
+
+class IssueOrder:
+	extends TurnAction
+	## Leader: 1/turn on your turn, free: an order to an allied player character and one of your
+	## Leadership Dice (an ally holds one at a time). params: {"target", "order": text}
+
+	func type() -> String:
+		return "issue_order"
+
+	func cost() -> String:
+		return TurnRules.FREE
+
+	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		var ref := "talents: Leader"
+		if not Effects.has(u, "leadership"):
+			return RuleResult.deny("Issuing orders needs the Leader talent.", ref)
+		if u.turn.get("ordered", false):
+			return RuleResult.deny("One order per turn.", ref)
+		if TalentRules.leadership_left(u) <= 0:
+			return RuleResult.deny("No Leadership Dice left.", ref)
+		var t := state.unit(String(params.get("target", "")))
+		if t == null or t == u or t.side != u.side or not Combat.is_present(t) or t.kind == Unit.KIND_NPC or t.kind == Unit.KIND_DEPLOYABLE:
+			return RuleResult.deny("Choose an allied player character.", ref)
+		if t.counters.has("leader_die"):
+			return RuleResult.deny("They already hold a Leadership Die.", ref)
+		return RuleResult.allow()
+
+	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+		var t := state.unit(String(params["target"]))
+		u.turn["ordered"] = true
+		u.counters["leadership"] = TalentRules.leadership_left(u) - 1
+		t.counters["leader_die"] = u.id
+		return [{"type": "order_issued", "unit": u.id, "target": t.id, "order": String(params.get("order", "")),
+			"text": "Spend the Leadership Die (params.leadership) for +1 Accuracy on an action that follows from the order.", "rule_ref": "talents: Leader"}] as Array[Dictionary]
+
+
+class AceBurst:
+	extends TurnAction
+	## Ace 2: while flying, before a Boost, roll 1d6: the Boost may go that many spaces further,
+	## and you take heat equal to half that (rounded up).
+
+	func type() -> String:
+		return "ace_burst"
+
+	func cost() -> String:
+		return TurnRules.FREE
+
+	func check(_state: GameState, u: Unit, _params: Dictionary) -> RuleResult:
+		if not Effects.has(u, "ace_burst") or not u.flying:
+			return RuleResult.deny("Only while flying, with Ace rank 2.", "talents: Ace")
+		if u.turn.has("ace_extra"):
+			return RuleResult.deny("Already rolled for this turn's Boost.", "talents: Ace")
+		return RuleResult.allow()
+
+	func apply(state: GameState, u: Unit, _params: Dictionary) -> Array[Dictionary]:
+		var roll := state.dice.die(6)
+		u.turn["ace_extra"] = roll
+		var events: Array[Dictionary] = [{"type": "effect_triggered", "unit": u.id, "effect": "Ace: afterburners", "target": u.id, "roll": roll, "rule_ref": "talents: Ace"}]
+		events.append_array(Combat.apply_heat(state, u, ceili(roll / 2.0), "Ace"))
+		return events
+
+
 class FixHack:
 	extends TurnAction
 	## Hacker 2: undo an Invade. params: {"what": "life_support" | "hack_slash" (quick, Systems

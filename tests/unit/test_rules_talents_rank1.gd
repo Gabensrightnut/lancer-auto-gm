@@ -319,3 +319,51 @@ func test_collateral_damage() -> void:
 	var out := F.act(e, s, "skirmish", "a", {"weapon": "0:0", "target": "t"})
 	expect(F.ok(out), F.reason(out))
 	expect(near.has_status("Prone"), "dropped Prone to avoid the blast")
+
+
+func test_leader_orders() -> void:
+	_setup({"t_leader": 3}, [{"weapons": ["mw_assault_rifle"]}], Vector2i(3, 0))
+	var ally := F.mech(s, "ally", "players", Vector2i(0, 2))
+	var out := F.act(e, s, "issue_order", "a", {"target": "ally", "order": "Shoot the Goblin"})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(TalentRules.leadership_left(a), 5)
+	expect(not F.ok(F.act(e, s, "issue_order", "a", {"target": "ally"})), "one order per turn")
+	F.act(e, s, "end_turn", "a")
+	s.turn_side = "players"
+	F.act(e, s, "start_turn", "ally")
+	expect_eq(RulesQueries.attack_preview(s, "ally", "0:0", "t")["accuracy"], 0)
+	F.load_dice(s, [5, 3, 2, 4])
+	out = F.act(e, s, "skirmish", "ally", {"weapon": "0:0", "target": "t", "leadership": true})
+	expect_eq(F.events_of(out, "attack_rolled")[0]["check"]["accuracy_roll"]["value"], 3, "+1 Accuracy from the die")
+	expect(not ally.counters.has("leader_die"), "spent")
+
+
+func test_ace_afterburners() -> void:
+	_setup({"t_ace": 2}, [{"weapons": ["mw_assault_rifle"]}], Vector2i(9, 9))
+	a.flight = "flight"
+	a.flying = true
+	a.level = 2
+	F.load_dice(s, [5])
+	var out := F.act(e, s, "ace_burst", "a")
+	expect(F.ok(out), F.reason(out))
+	expect_eq(a.heat, 3, "half of 5, rounded up")
+	expect_eq(Movement.budget(a, Movement.MODE_BOOST), a.speed + 5)
+
+
+func test_grease_monkey_supply_drop() -> void:
+	_setup({"t_grease_monkey": 3}, [{"weapons": ["mw_assault_rifle"]}], Vector2i(9, 9))
+	s.units.erase("t")
+	s.phase = GameState.PHASE_SETUP
+	a.structure = 2
+	var out := e.submit(s, {"type": "rest", "actor": "a", "params": {"supply_drop": true}})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(a.structure, 3, "+1 Structure, no Repairs")
+	expect(not F.ok(e.submit(s, {"type": "rest", "actor": "a", "params": {"supply_drop": true}})), "once per mission")
+
+
+func test_engineer_prototype() -> void:
+	var u := UnitFactory.build_mech(db(), "e", "mf_standard_pattern_i_everest", {"mounts": [], "systems": []},
+		{"ll": 6, "talents": {"t_engineer": 2}, "engineer": {"type": "Cannon", "damage_type": "Energy", "limited": 6, "revisions": ["optics", "computer"]}})
+	var w := Weapons.find(u, "proto:0")
+	expect_eq([w["type"], w["damage"][0]["type"], Weapons.tag_value(w, "tg_limited")], ["Cannon", "Energy", 6])
+	expect(Weapons.has_tag(w, "tg_smart") and Weapons.has_tag(w, "tg_accurate"), "Revision: optics and computer")

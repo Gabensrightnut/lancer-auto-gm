@@ -82,22 +82,6 @@ const CATALOG := {
 		"options": {"own_turn": "Each character at the end of its own turn (like the other environments that hurt 'at the end of their turns').",
 			"every_turn": "Every character out of shade, at the end of every character's turn."},
 		"suggested": "own_turn", "rule_ref": "Core: Environments, Extreme Sun"},
-	# Lancer Tactics variants (DESIGN.md "Rule differences"): the book is the default; the
-	# user can switch to how Lancer Tactics plays it.
-	"lt_split_barrage": {
-		"question": "Firing two weapons in a turn: the book's Barrage (a full action, both shots together) or Lancer Tactics' two separate shots?",
-		"options": {"book": "Book: two weapons only as a Barrage (full action); Skirmish once per turn.",
-			"lancer_tactics": "Lancer Tactics: Skirmish twice with weapons on different mounts, moving in between."},
-		"suggested": "book", "rule_ref": "Core p.60, p.64 Skirmish and Barrage", "variant": "lancer_tactics"},
-	"lt_repeat_quick_tech": {
-		"question": "Quick Tech twice in a turn: must the second be a different option?",
-		"options": {"book": "Book: a different option each time.", "lancer_tactics": "Lancer Tactics: the same option may be used twice (e.g. two Invades)."},
-		"suggested": "book", "rule_ref": "Core p.69 Quick Tech", "variant": "lancer_tactics"},
-	"lt_brace_prompt": {
-		"question": "When is Brace offered?",
-		"options": {"book": "Book: whenever an attack hits and deals damage.",
-			"lancer_tactics": "Lancer Tactics: only when the hit would take you to 0 HP, overheat you, or deal more than half your HP."},
-		"suggested": "book", "rule_ref": "Core p.73 Brace", "variant": "lancer_tactics"},
 }
 
 
@@ -141,9 +125,10 @@ static func ask(state: GameState, id: String) -> String:
 	return suggested(id)
 
 
-## Is the Lancer Tactics version of rule `id` switched on (an "lt_" ruling)? Never pauses.
+## Is the Lancer Tactics option `id` switched on? They live with the house rules now
+## (HouseRuleSwitches; state.house_rules).
 static func lancer_tactics(state: GameState, id: String) -> bool:
-	return choice_or_suggested(state, id) == "lancer_tactics"
+	return HouseRuleSwitches.on(state, id)
 
 
 ## Every ruling, for a "table rules" screen. `variant` "lancer_tactics" marks the switches

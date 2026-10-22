@@ -48,7 +48,33 @@ static func _plan_raw(state: GameState, u: Unit, params: Dictionary, mode: Strin
 	if Effects.has(u, "teleport_moves") and mode != Movement.MODE_BONUS:
 		# "You teleport when you Boost or make a standard move" (Mourning Cloak core).
 		return Movement.plan_teleport(state, u, to, int(params.get("level", -1)), mode)
+	if params.get("swing", false) and mode == Movement.MODE_MOVE:
+		return _swing_plan(state, u, to, params)
 	return Movement.plan(state, u, to, int(params.get("level", -1)), mode, bool(params.get("fly", false)))
+
+
+## Grapple Swing (Reinforced Cabling): 1/turn, a standard move flown in a straight line with a
+## clear path. It must end on a surface or object, or the mech begins falling.
+static func _swing_plan(state: GameState, u: Unit, to: Vector2i, params: Dictionary) -> Dictionary:
+	var ref := "systems: Reinforced Cabling"
+	if not Effects.has(u, "grapple_swing"):
+		return {"ok": false, "reason": "Grapple Swing needs Reinforced Cabling.", "rule_ref": ref}
+	if u.turn.get("swung", false):
+		return {"ok": false, "reason": "Grapple Swing only once per turn.", "rule_ref": ref}
+	u.turn["swing_now"] = true
+	var plan := Movement.plan(state, u, to, int(params.get("level", -1)), Movement.MODE_MOVE, true)
+	u.turn.erase("swing_now")
+	if not plan["ok"]:
+		return plan
+	var line := state.map.grid.line(u.cell, to)
+	var cells: Array = []
+	for p: Array in plan["path"]:
+		var c := Vector2i(p[0], p[1])
+		if cells.is_empty() or cells.back() != c:
+			cells.append(c)
+	if cells != Array(line):
+		return {"ok": false, "reason": "Grapple Swing needs a straight, clear path.", "rule_ref": ref}
+	return plan
 
 
 static func _plan_result(plan: Dictionary) -> RuleResult:
@@ -121,6 +147,7 @@ static func _do_move(state: GameState, u: Unit, plan: Dictionary, mode: String, 
 	events.append_array(Abilities.check_mines(state, u, path))
 	events.append_array(Zones.check_path(state, u, path))
 	events.append_array(CloseCombat.drag_partner(state, u, from, from_level))
+	events.append_array(Riders.drag_along(state, u))
 	events.append_array(Combat.after_movement(state))
 	events.append_array(Reactions.prepared_triggers(state, u))
 	return events
@@ -166,7 +193,14 @@ class Move:
 			u.turn["move_spent"] = u.speed  # lose any unused movement (statuses: Engaged)
 		if teleport and Rulings.ask(state, "teleport_move_cost") == "whole_move":
 			u.turn["move_spent"] = u.speed
-		events.append_array(MoveActions._do_move(state, u, plan, "walk", bool(params.get("fly", false))))
+		var swing: bool = params.get("swing", false)
+		if swing:
+			u.turn["swung"] = true
+		events.append_array(MoveActions._do_move(state, u, plan, "walk", bool(params.get("fly", false)) or swing))
+		if swing and u.flying and u.flight == "":
+			# It must end on a surface or object, or it begins falling.
+			events.append_array(Combat.begin_falling(u, "Grapple Swing: didn't end on a surface."))
+			events.append_array(Combat.fall_unit(state, u))
 		return events
 
 

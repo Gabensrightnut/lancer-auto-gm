@@ -21,7 +21,7 @@ func _find(report: Array, id: String) -> Dictionary:
 func test_report_for_a_build() -> void:
 	var loadout := {"mounts": [{"weapons": ["mw_assault_rifle"]}, {}, {"weapons": ["mw_pinaka_missiles"]}],
 		"systems": ["ms_pattern_b_hex_charges", "ms_tesseract", "ms_ramjet"]}
-	var report := RulesQueries.automation_for_build(db(), "mf_standard_pattern_i_everest", loadout, {"ll": 6, "talents": {"t_brutal": 1, "t_leader": 1}})
+	var report := RulesQueries.automation_for_build(db(), "mf_standard_pattern_i_everest", loadout, {"ll": 6, "talents": {"t_brutal": 1, "t_leader": 2}})
 	expect_eq(_find(report, "Initiative")["status"], "automated")
 	expect_eq(_find(report, "ms_pattern_b_hex_charges")["status"], "automated")
 	var comp := _find(report, "ms_tesseract")
@@ -30,9 +30,10 @@ func test_report_for_a_build() -> void:
 	var ram := _find(report, "ms_ramjet")
 	expect_eq(ram["status"], "partial")
 	expect(String(ram["guidance"]).contains("straight lines"))
-	expect_eq(_find(report, "mw_pinaka_missiles")["status"], "partial")
+	expect_eq(_find(report, "mw_pinaka_missiles")["status"], "automated", "the delayed strike is automated too")
 	expect_eq(_find(report, "t_brutal:1")["status"], "automated")
-	expect_eq(_find(report, "t_leader:1")["status"], "manual")
+	expect_eq(_find(report, "t_leader:1")["status"], "automated")
+	expect_eq(_find(report, "t_leader:2")["status"], "partial", "Issue Command as a reaction is the table's")
 	expect(Automation.needs_table(report).size() >= 3)
 
 

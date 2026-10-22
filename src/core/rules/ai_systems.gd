@@ -81,7 +81,7 @@ static func check_take_back(state: GameState, u: Unit) -> RuleResult:
 ## Called on structure damage and overheating checks.
 static func cascade_check(state: GameState, u: Unit) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
-	if not has_ai(u) or not u.loadout["ai"].get("cascade", true) or cascading(u) or u.destroyed:
+	if not has_ai(u) or not u.loadout["ai"].get("cascade", true) or cascading(u) or u.destroyed or Effects.has(u, "no_cascade"):
 		return events
 	var roll := state.dice.die(20)
 	events.append({"type": "cascade_check", "unit": u.id, "roll": roll, "cascade": roll == 1, "rule_ref": REF})

@@ -755,8 +755,7 @@ Sources: the Lancer Tactics developers' public FAQ and comments on itch.io
 ([NPC Rebake](https://wick.itch.io/lancer-tactics/devlog/937132/npc-rebake-rests-repairs-community-maps),
 [talents](https://wick.itch.io/lancer-tactics/devlog/960548/keeping-the-fire-lit-more-talents)).
 Lancer Tactics says it keeps "extremely close" to the book, so the list is short. Rows with
-an option name can already be switched in the game's table rules (`state.rulings`,
-`Rulings.catalog()` entries with `variant: "lancer_tactics"`); the book is the default.
+an option name are switches on the House Rules page (`HouseRuleSwitches`, `state.house_rules`).
 
 | Rule | Book | Lancer Tactics | Why LT might do it | Your pick |
 |---|---|---|---|---|

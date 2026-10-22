@@ -38,6 +38,8 @@ class Rest:
 			var payer := state.unit(id)
 			if payer == null or payer.repairs < int(cost[id]):
 				return RuleResult.deny("Not enough Repairs (needs %d)." % int(cost[id]), REF)
+		if p.get("supply_drop", false) and (not Effects.has(u, "supply_drop") or u.counters.get("supply_drop_used", false)):
+			return RuleResult.deny("A supply drop needs Grease Monkey rank 3, once per mission.", "talents: Grease Monkey")
 		if p.has("castigation") and not Effects.has(u, "castigation_state"):
 			return RuleResult.deny("Only the Manticore has a Castigation State.", "frames: Manticore")
 		if p.has("orochi") and RestActions._drone(u, String(p["orochi"])) == "":
@@ -70,6 +72,31 @@ class Rest:
 			events.append({"type": "hp_changed", "unit": pilot.id, "hp": pilot.hp, "overshield": pilot.overshield, "source": "rest"})
 		for s: Dictionary in p.get("spend", []):
 			events.append_array(RestActions.apply_spend(state, u, s))
+		if Effects.has(u, "leadership") and TalentRules.leadership_left(u) == 0:
+			u.counters["leadership"] = 1  # Leader: 1 Leadership Die back at a rest when you have none
+		if p.get("supply_drop", false):
+			# Grease Monkey 3: you and your allies regain 1 use of every Limited weapon and system
+			# and 1 Structure, without Repairs.
+			u.counters["supply_drop_used"] = true
+			events.append({"type": "effect_triggered", "unit": u.id, "effect": "Supply drop", "target": u.id, "rule_ref": "talents: Grease Monkey"})
+			for o: Unit in state.units.values():
+				if o.side != u.side or o.destroyed or o.kind != Unit.KIND_MECH:
+					continue
+				for w: Dictionary in o.loadout.get("weapons", []):
+					if Weapons.has_tag(w, "tg_limited"):
+						Weapons.state_of(o, w)["uses"] = int(Weapons.state_of(o, w)["uses"]) + 1
+				var seen := {}
+				for ab: Dictionary in Abilities.all(o):
+					var key := String(ab["source_key"])
+					if seen.has(key):
+						continue
+					seen[key] = true
+					var st := Abilities.source_state(o, key)
+					if int(st.get("uses", -1)) >= 0:
+						st["uses"] = int(st["uses"]) + 1
+				if o.structure < o.max_structure:
+					o.structure += 1
+					events.append({"type": "repaired", "unit": o.id, "what": "structure", "structure": o.structure, "rule_ref": "talents: Grease Monkey"})
 		if p.has("castigation"):
 			u.counters["castigation"] = bool(p["castigation"])
 			events.append({"type": "effect_triggered", "unit": u.id, "effect": "Castigation State", "target": u.id, "on": bool(p["castigation"]), "rule_ref": "frames: Manticore"})

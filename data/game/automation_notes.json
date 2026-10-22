@@ -10,9 +10,8 @@
   "ms_asura_class_nhp": "Taking one extra full action instead of two quick actions isn't supported: take the quick actions.",
   "ms_repulser_field": "You're immune to the mines it sets off; the GM undoes their effects on you.",
   "ms_aegis_shield_generator": "It only reduces attack damage here; damage from other sources is reduced at the table.",
-  "ms_reinforced_cabling": "Grapple Swing (a straight flying move on your standard move) is done at the table.",
+  "ms_reinforced_cabling": "Grapple Swing is params.swing on a standard move; securing yourself to a wall or ceiling is the table's.",
   "ms_webjaw_snare": "Set it off by moving over its space; the GM tracks snares on paths the game doesn't check.",
-  "mw_pinaka_missiles": "Delaying the strike to the end of the next round (3d6, you're Slowed) is done at the table.",
   "mw_raleigh_integrated": "Its free shot when you reload any weapon (1/round) is taken by hand.",
   "t_centimane:3": "Tidal Suppression lets you pick the extra effect; the game uses Harrying Swarm (Impaired and Slowed). Ask your GM to swap it.",
   "t_siege_specialist:2": "Afterwards you're pushed 1 space in a direction of your choice; move yourself.",
@@ -25,5 +24,11 @@
   "ms_scylla_class_nhp": "The second trigger (a hostile attacking or using an object you chose) is the table's.",
   "ms_osiris_class_nhp": "The First Gate (you control the target's next standard move) is played out at the table.",
   "ms_oasis_wall": "While it's on you can only move in straight lines, and nobody may end a turn inside the barrier; keep to that at the table.",
-  "ms_blinkshield": "Time flows differently inside, so characters inside and outside can't affect each other at all; the game blocks attacks, sight and movement across the edge."
+  "ms_blinkshield": "Time flows differently inside, so characters inside and outside can't affect each other at all; the game blocks attacks, sight and movement across the edge.",
+  "t_engineer:1": "Your Full Repair choices go in the pilot record (engineer: type, damage type, the Limited roll).",
+  "t_engineer:2": "Stripped reactor shielding (2 heat for a Cone, Line, Blast or Burst attack) is the table's.",
+  "t_technophile:1": "Install the Servant-Class NHP system to get its AI tag; how it acts alone is roleplay.",
+  "t_technophile:3": "Unshackled NHPs treating you as significant is roleplay.",
+  "t_leader:2": "Issue Command at the start of another player's turn: use issue_order then (the game allows it only on your turn for now).",
+  "t_leader:3": "Spending a die to reduce damage by 1d6 is the table's; +1d6 bonus damage is params.leadership_damage."
 }

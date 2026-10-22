@@ -382,6 +382,7 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 			if int(again["total"]) > int(check["total"]):
 				check = again
 		TalentRules.used_sources(state, attacker, p["sources"])
+		TalentRules.used_leadership(attacker, opts)
 		check["bonus_sources"] = p["bonus_sources"]
 		check["bonuses"] = p["bonus_sources"]
 		check["defense"] = p["defense_name"]
@@ -592,7 +593,7 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 		var b := BonusDamage.roll(state, attacker, w, target, {"kind": pv.get("kind", ""), "crit": crit,
 			"cover": (cover as Dictionary).get("cover", "none") if cover is Dictionary else "none",
 			"distance": int(pv.get("distance", 0)), "targets": int(opts.get("area_targets", 1)), "shared": shared,
-			"momentum": opts.get("momentum", false), "dz_fusion": opts.get("dz_fusion", false), "zero_in": opts.get("zero_in", false), "max": maximum,
+			"momentum": opts.get("momentum", false), "dz_fusion": opts.get("dz_fusion", false), "zero_in": opts.get("zero_in", false), "leadership_damage": opts.get("leadership_damage", false), "max": maximum,
 			"thermal_charge": opts.get("thermal_charge", false)})
 		events.append_array(b["events"])
 		parts.append_array(b["parts"])
