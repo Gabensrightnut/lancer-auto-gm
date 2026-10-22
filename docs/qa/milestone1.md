@@ -116,7 +116,7 @@ in the window (covered by `test_gm_sitreps`).
 | C1 | story / visuals | New story campaign, walk the hub; camera close to NPCs. | Readable name labels. | NPC name and title labels are huge at close range ("Antonia Wiltsey-Bauswell / Commissioner") and cover a third of the screen. | qa2_story_b/story_14_job_board.png |
 | C2 | story | New story campaign with 4 pilots. | "Start the campaign" visible. | It's below the fold of the session zero page; nothing says to scroll. | qa2_story/story_09_talk_stuck.png |
 | C3 | visuals | Story battle with 6+ enemies. | Readable enemy names in the turn-order bar. | Still clipped at the start ("eholder Contr"): pass-1 B4 is open. | qa2_story_f/story_27_my_turn_2.png |
-| C4 | visuals | Any battle. | Bar stays centered. | Pass-1 B2 workaround still in the battle screen; please fix `TurnOrderBar._rebuild` so it can go. | — |
+| C4 | visuals | Any battle. | Bar stays centered. | Fixed by visuals (the bar centers itself); the battle-screen workaround is removed. | — |
 | C5 | story | Talk to an NPC. | Clear way out. | Questions loop back to the same menu; the way out is the last option only (fine, but a "Leave" label or Esc to leave would help new players). | qa2_story_f/story_08_talk_choice.png |
 
 Pass-1 B1 (damage roll SCRIPT ERROR on every hit) no longer happens: 0 script errors in pass 2.
