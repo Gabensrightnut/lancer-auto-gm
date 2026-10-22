@@ -832,5 +832,490 @@
 			"contrast": 1.05,
 			"exposure": 1.15
 		}
+	},
+	"station": {
+		"name": "space station",
+		"interior": true,
+		"ground": {
+			"style": "deck",
+			"top_a": "#5a5e64",
+			"top_b": "#6a6e74",
+			"top_dry": "#3a3c40",
+			"soil": "#2a2c30",
+			"rock_a": "#5a5e64",
+			"rock_b": "#2a2c30",
+			"rough": "#4a4c50",
+			"bed": "#101418",
+			"hazard": "#40c8ff",
+			"wall": "#7a7e84",
+			"metal_a": "#6e737a",
+			"metal_b": "#3a3e44",
+			"stripe": "#e8a020",
+			"strip_light": "#8ad8ff",
+			"cargo_a": "#a85a2a",
+			"cargo_b": "#2a5a8a",
+			"cargo_c": "#c8a83a",
+			"strata": 1.0,
+			"soil_depth": 0.05,
+			"wetness": 0.2,
+			"rim": "#a8d8ff",
+			"rim_strength": 0.4,
+			"rim_glow": 0.4,
+			"backdrop_fade": 0.9
+		},
+		"liquid": {
+			"kind": "water",
+			"shallow": "#20404a",
+			"deep": "#081418"
+		},
+		"flora": {
+			"grass": 0,
+			"grass_colors": [
+				"#3a3c40"
+			],
+			"flowers": [],
+			"woods": [
+				"bush"
+			],
+			"leaf_colors": [
+				"#3a6a2a"
+			],
+			"bark": "#3a2e24",
+			"stones": "#5a5e64",
+			"rough": "rubble"
+		},
+		"horizon": {
+			"land": "flat",
+			"land_height": 0.0,
+			"forest": 0.0,
+			"far": "station",
+			"far_color": "#2a3038",
+			"haze_color": "#101828"
+		},
+		"particles": "motes",
+		"grid_color": [
+			0.75,
+			0.9,
+			1.0,
+			0.35
+		],
+		"sky": {
+			"top": "#020308",
+			"horizon": "#0a1020",
+			"ground": "#020306",
+			"haze_color": "#4060a0",
+			"haze": 0.15,
+			"clouds": 0.0,
+			"sun_glow": 1.5,
+			"stars": 1.4,
+			"nebula": 0.5,
+			"nebula_color": "#203a70",
+			"planet": 1.0,
+			"planet_dir": [
+				0.5,
+				-0.08,
+				-0.86
+			],
+			"planet_size": 0.9,
+			"planet_color": "#4a7ab0",
+			"planet_rings": 0.0,
+			"moon_a": 1.0,
+			"moon_a_dir": [
+				-0.6,
+				0.45,
+				-0.66
+			],
+			"moon_a_size": 0.03,
+			"moon_a_color": "#c8c0b0"
+		},
+		"light": {
+			"sun_color": "#fff4e8",
+			"sun_energy": 2.4,
+			"sun_pitch": -55.0,
+			"sun_yaw": -30.0,
+			"ambient": 0.55,
+			"ambient_color": "#5a6a80",
+			"sky_ambient": 0.3,
+			"fill_color": "#6a9aff",
+			"fill_energy": 0.4,
+			"fog_color": "#0a1020",
+			"fog_density": 0.0015,
+			"fog_aerial": 0.2,
+			"sun_scatter": 0.0,
+			"glow": 0.9,
+			"bloom": 0.06,
+			"saturation": 1.0,
+			"contrast": 1.1,
+			"exposure": 1.1
+		}
+	},
+	"starship": {
+		"base": "station",
+		"name": "starship interior",
+		"ground": {
+			"metal_a": "#7a7268",
+			"metal_b": "#3e3a36",
+			"stripe": "#d8402a",
+			"strip_light": "#ffb070",
+			"wall": "#8a8278",
+			"rim": "#ffc898",
+			"hazard": "#ff6a30"
+		},
+		"horizon": {
+			"far": "ship",
+			"far_color": "#2a2622"
+		},
+		"sky": {
+			"planet": 0.0,
+			"nebula": 0.8,
+			"nebula_color": "#5a2a40"
+		},
+		"light": {
+			"fill_color": "#ff9a6a",
+			"ambient_color": "#6a5a50"
+		}
+	},
+	"moon": {
+		"name": "airless moon",
+		"low_gravity": true,
+		"ground": {
+			"style": "regolith",
+			"top_a": "#7a7874",
+			"top_b": "#8e8c88",
+			"top_dry": "#5a5854",
+			"soil": "#4a4844",
+			"rock_a": "#6a6864",
+			"rock_b": "#3a3836",
+			"rough": "#5e5c58",
+			"bed": "#2a2826",
+			"hazard": "#ff8a3a",
+			"wall": "#8a8a8a",
+			"strata": 0.8,
+			"soil_depth": 0.06,
+			"wetness": 0.0,
+			"rim": "#e8e4dc",
+			"rim_strength": 0.4,
+			"backdrop_fade": 0.8
+		},
+		"liquid": {
+			"kind": "ice",
+			"shallow": "#a8c8d8",
+			"deep": "#2a4a5a"
+		},
+		"flora": {
+			"grass": 0,
+			"grass_colors": [
+				"#6a6864"
+			],
+			"flowers": [],
+			"woods": [
+				"shrub"
+			],
+			"leaf_colors": [
+				"#5a5854"
+			],
+			"bark": "#3a3836",
+			"stones": "#7a7874",
+			"rough": "scree"
+		},
+		"horizon": {
+			"land": "craters",
+			"land_height": 6.0,
+			"forest": 0.0,
+			"far": "mountains",
+			"far_color": "#4a4a4c",
+			"far_height": 40.0,
+			"haze_color": "#3a3a40",
+			"haze_mountains": [
+				0.05,
+				0.2
+			],
+			"haze_foothills": [
+				0.02,
+				0.1
+			],
+			"landmarks": []
+		},
+		"particles": "lowg_dust",
+		"grid_color": [
+			0.95,
+			0.97,
+			1.0,
+			0.4
+		],
+		"sky": {
+			"top": "#020308",
+			"horizon": "#0a1020",
+			"ground": "#020306",
+			"haze_color": "#4060a0",
+			"haze": 0.0,
+			"clouds": 0.0,
+			"sun_glow": 1.5,
+			"stars": 1.4,
+			"nebula": 0.5,
+			"nebula_color": "#203a70",
+			"planet": 1.0,
+			"planet_dir": [
+				0.35,
+				0.28,
+				-0.89
+			],
+			"planet_size": 0.5,
+			"planet_color": "#5a8ac0",
+			"planet_rings": 0.0,
+			"moon_a": 1.0,
+			"moon_a_dir": [
+				-0.6,
+				0.45,
+				-0.66
+			],
+			"moon_a_size": 0.03,
+			"moon_a_color": "#c8c0b0"
+		},
+		"light": {
+			"sun_color": "#ffffff",
+			"sun_energy": 3.0,
+			"sun_pitch": -30.0,
+			"sun_yaw": -70.0,
+			"ambient": 0.25,
+			"ambient_color": "#303440",
+			"sky_ambient": 0.2,
+			"fill_color": "#6a8ac0",
+			"fill_energy": 0.25,
+			"fog_color": "#000000",
+			"fog_density": 0.0005,
+			"fog_aerial": 0.0,
+			"sun_scatter": 0.0,
+			"glow": 0.6,
+			"bloom": 0.03,
+			"saturation": 0.9,
+			"contrast": 1.2,
+			"exposure": 1.0,
+			"sun_softness": 0.1
+		}
+	},
+	"asteroid": {
+		"base": "moon",
+		"name": "asteroid",
+		"ground": {
+			"top_a": "#5a524a",
+			"top_b": "#6a6056",
+			"top_dry": "#4a4038",
+			"rock_a": "#5a5048",
+			"rock_b": "#2a2420",
+			"strata": 1.6
+		},
+		"horizon": {
+			"land": "spires",
+			"land_height": 8.0,
+			"far": "asteroids",
+			"far_color": "#3a3430"
+		},
+		"sky": {
+			"planet_dir": [
+				-0.4,
+				0.2,
+				-0.9
+			],
+			"planet_size": 0.7,
+			"planet_color": "#c89a6a",
+			"planet_rings": 1.0,
+			"nebula": 0.9,
+			"nebula_color": "#5a3a6a"
+		}
+	},
+	"ocean": {
+		"name": "ocean platforms",
+		"ground": {
+			"style": "sand",
+			"top_a": "#d8c49a",
+			"top_b": "#e4d2aa",
+			"top_dry": "#c8b088",
+			"soil": "#a88a60",
+			"rock_a": "#8a8478",
+			"rock_b": "#4a4a48",
+			"rough": "#a89878",
+			"bed": "#1e4a50",
+			"hazard": "#ff6a20",
+			"wall": "#9aa0a6",
+			"metal_a": "#8a9098",
+			"metal_b": "#4a5058",
+			"stripe": "#f0c020",
+			"strip_light": "#ffe0a0",
+			"cargo_a": "#c85a2a",
+			"cargo_b": "#2a6a9a",
+			"cargo_c": "#e8c83a",
+			"strata": 1.0,
+			"soil_depth": 0.2,
+			"wetness": 0.6,
+			"rim": "#ffffff",
+			"rim_strength": 0.35
+		},
+		"liquid": {
+			"kind": "water",
+			"shallow": "#2a8a9a",
+			"deep": "#0a3a5a"
+		},
+		"flora": {
+			"grass": 6,
+			"grass_height": 1.0,
+			"grass_colors": [
+				"#6a8a3a",
+				"#7a9a40",
+				"#8a9a4a"
+			],
+			"flowers": [
+				"#f0d040"
+			],
+			"woods": [
+				"palm",
+				"palm",
+				"bush"
+			],
+			"leaf_colors": [
+				"#3a7a2a",
+				"#4a8a30",
+				"#2a6a24"
+			],
+			"bark": "#6a5038",
+			"stones": "#8a8478"
+		},
+		"horizon": {
+			"land": "sea",
+			"land_height": 0.0,
+			"forest": 0.0,
+			"far": "islands",
+			"far_color": "#3a6a5a",
+			"far_height": 14.0,
+			"landmarks": [
+				"rig",
+				"rig"
+			],
+			"haze_color": "#bcd8e8"
+		},
+		"particles": "spray",
+		"sky": {
+			"top": "#3a7ad0",
+			"horizon": "#cde4f2",
+			"ground": "#2a5a70",
+			"haze_color": "#fff0d8",
+			"haze": 0.5,
+			"clouds": 0.45,
+			"cloud_color": "#ffffff",
+			"cloud_shade": "#9aa8c0",
+			"sun_glow": 1.2
+		},
+		"light": {
+			"sun_color": "#fff2dc",
+			"sun_energy": 2.6,
+			"sun_pitch": -42.0,
+			"sun_yaw": -40.0,
+			"ambient": 0.6,
+			"fill_color": "#8ab8ff",
+			"fill_energy": 0.3,
+			"fog_color": "#c8dcea",
+			"fog_density": 0.0018,
+			"fog_aerial": 0.5,
+			"sun_scatter": 0.25,
+			"glow": 0.7,
+			"bloom": 0.05,
+			"saturation": 1.08,
+			"contrast": 1.05,
+			"exposure": 1.0
+		}
+	},
+	"jungle": {
+		"base": "grassy_hills",
+		"name": "dense jungle",
+		"ground": {
+			"top_a": "#2a4a16",
+			"top_b": "#3a5a1c",
+			"top_dry": "#5a6a2a",
+			"soil": "#4a3020",
+			"rock_a": "#5a6050",
+			"rock_b": "#2e3228",
+			"rough": "#3e3020",
+			"bed": "#2a2a18",
+			"wetness": 0.9,
+			"strata": 0.8
+		},
+		"liquid": {
+			"kind": "water",
+			"shallow": "#3a5a3a",
+			"deep": "#14281e"
+		},
+		"flora": {
+			"grass": 22,
+			"grass_height": 1.1,
+			"grass_colors": [
+				"#2e5a18",
+				"#3a6a20",
+				"#24481a",
+				"#4a7a24"
+			],
+			"flowers": [
+				"#e84a6a",
+				"#f0a030",
+				"#c84ad8"
+			],
+			"woods": [
+				"jungle_tree",
+				"jungle_tree",
+				"palm",
+				"bush"
+			],
+			"leaf_colors": [
+				"#1e4a14",
+				"#2a5a18",
+				"#244a1c",
+				"#346a20"
+			],
+			"bark": "#4a3a28",
+			"stones": "#5a6050"
+		},
+		"horizon": {
+			"land": "hills",
+			"land_height": 12.0,
+			"forest": 1.4,
+			"far": "mountains",
+			"far_color": "#2a4a3a",
+			"far_height": 50.0,
+			"snowcaps": false,
+			"haze_color": "#a8c0a0"
+		},
+		"particles": [
+			"pollen",
+			"mist"
+		],
+		"sky": {
+			"top": "#4a7ab0",
+			"horizon": "#d8e4d0",
+			"haze_color": "#fff0c8",
+			"haze": 0.6,
+			"clouds": 0.6,
+			"cloud_color": "#f8f8f0",
+			"cloud_shade": "#8a9aa0"
+		},
+		"light": {
+			"sun_color": "#fff0c8",
+			"sun_energy": 2.4,
+			"sun_pitch": -50.0,
+			"sun_yaw": -60.0,
+			"ambient": 0.6,
+			"fog_color": "#b8c8b0",
+			"fog_density": 0.006,
+			"fog_aerial": 0.6,
+			"fog_height": 1.5,
+			"fog_height_density": 0.08,
+			"volumetric": 0.012,
+			"volumetric_albedo": "#d0e0c8",
+			"volumetric_anisotropy": 0.7,
+			"sun_fog_energy": 1.5,
+			"glow": 0.8,
+			"bloom": 0.06,
+			"saturation": 1.1,
+			"contrast": 1.05,
+			"exposure": 1.0
+		}
 	}
 }

@@ -29,8 +29,9 @@ func _init() -> void:
 	WorldQuality.set_preset(quality, root)
 	print("quality %s, %s, %s" % [quality, root.size, RenderingServer.get_video_adapter_name()])
 	for kit: String in kits:
-		var parts := kit.split("/")
-		var g := MissionGenerator.generate(40, {"db": db, "size": 40, "landscape": parts[0], "culture": parts[1] if parts.size() > 1 else ""})
+		var weather := kit.get_slice("+", 1) if "+" in kit else "clear"
+		var parts := kit.get_slice("+", 0).split("/")
+		var g := MissionGenerator.generate(40, {"db": db, "size": 40, "landscape": parts[0], "culture": parts[1] if parts.size() > 1 else "", "weather": weather})
 		var state: GameState = g["state"]
 		_view.set_map(state.map, g["mission"].flavor["kit"])
 		_view.clear_units()

@@ -85,6 +85,83 @@ static func _make(kind: String, b: Rect2) -> CPUParticles3D:
 			color = Color(0.55, 0.53, 0.5, 0.7)
 			size = 0.035
 			height = 7.0
+		"motes":
+			p.amount = int(area * 0.08)
+			p.lifetime = 16.0
+			p.direction = Vector3(0.2, 0.1, 0.1)
+			p.spread = 180.0
+			p.initial_velocity_min = 0.02
+			p.initial_velocity_max = 0.08
+			color = Color(0.8, 0.9, 1.0, 0.5)
+			size = 0.025
+			height = 3.0
+		"lowg_dust":
+			# Low-gravity look: dust kicked up hangs and drifts down very slowly.
+			p.amount = int(area * 0.1)
+			p.lifetime = 18.0
+			p.direction = Vector3(0.1, 1, 0.05)
+			p.spread = 60.0
+			p.gravity = Vector3(0, -0.02, 0)
+			p.initial_velocity_min = 0.05
+			p.initial_velocity_max = 0.15
+			color = Color(0.85, 0.83, 0.8, 0.35)
+			size = 0.06
+			height = 2.0
+		"spray":
+			p.amount = int(area * 0.15)
+			p.lifetime = 5.0
+			p.direction = Vector3(1, 0.3, 0.3)
+			p.spread = 30.0
+			p.initial_velocity_min = 0.6
+			p.initial_velocity_max = 1.2
+			color = Color(1, 1, 1, 0.35)
+			size = 0.05
+			height = 1.2
+		"mist":
+			p.amount = int(area * 0.02)
+			p.lifetime = 20.0
+			p.direction = Vector3(1, 0, 0.3)
+			p.spread = 20.0
+			p.initial_velocity_min = 0.05
+			p.initial_velocity_max = 0.15
+			p.scale_amount_min = 1.0
+			p.scale_amount_max = 2.0
+			color = Color(0.9, 0.95, 0.9, 0.07)
+			size = 2.5
+			height = 1.2
+		"snow_heavy":
+			p.amount = int(area * 2.0)
+			p.lifetime = 8.0
+			p.direction = Vector3(0.5, -1, 0.2)
+			p.spread = 15.0
+			p.gravity = Vector3(0.2, -0.3, 0)
+			p.initial_velocity_min = 0.6
+			p.initial_velocity_max = 1.1
+			color = Color(1, 1, 1, 0.9)
+			size = 0.05
+			height = 8.0
+		"blizzard":
+			p.amount = int(area * 4.0)
+			p.lifetime = 3.0
+			p.direction = Vector3(1, -0.25, 0.3)
+			p.spread = 12.0
+			p.gravity = Vector3(1.0, -0.2, 0)
+			p.initial_velocity_min = 4.0
+			p.initial_velocity_max = 6.0
+			color = Color(1, 1, 1, 0.75)
+			size = 0.045
+			height = 6.0
+		"sandstorm":
+			p.amount = int(area * 3.0)
+			p.lifetime = 2.5
+			p.direction = Vector3(1, 0.05, 0.25)
+			p.spread = 8.0
+			p.gravity = Vector3.ZERO
+			p.initial_velocity_min = 5.0
+			p.initial_velocity_max = 8.0
+			color = Color(0.85, 0.68, 0.45, 0.45)
+			size = 0.07
+			height = 5.0
 		"rain":
 			p.amount = int(area * 2.5)
 			p.lifetime = 0.9
@@ -101,6 +178,9 @@ static func _make(kind: String, b: Rect2) -> CPUParticles3D:
 	p.preprocess = p.lifetime
 	p.emission_box_extents = Vector3(b.size.x * 0.5, height * 0.5, b.size.y * 0.5)
 	p.position = Vector3(b.get_center().x, height * 0.5 + 0.5, b.get_center().y)
+	if kind in ["sandstorm", "blizzard"]:
+		p.emission_box_extents.x *= 1.3
+		p.position.x -= b.size.x * 0.25
 	p.visibility_aabb = AABB(Vector3(-b.size.x, -height * 2.0, -b.size.y), Vector3(b.size.x * 2.0, height * 4.0, b.size.y * 2.0))
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -113,6 +193,11 @@ static func _make(kind: String, b: Rect2) -> CPUParticles3D:
 		m.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
 		m.billboard_keep_scale = true
 		q.size = Vector2(0.006, 0.3)
+	elif kind == "sandstorm":
+		m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+		m.albedo_texture = Fx.soft_texture()
+		q.size = Vector2(0.9, 0.09)
+		p.particle_flag_align_y = false
 	else:
 		m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
 		m.albedo_texture = Fx.soft_texture()
