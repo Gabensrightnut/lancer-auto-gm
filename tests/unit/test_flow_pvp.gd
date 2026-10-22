@@ -96,3 +96,52 @@ func test_a_story_split_hot_seat() -> void:
 	GameFlow.session = null
 	GameFlow.story = null
 	preload("res://tests/unit/test_campaign_saves.gd")._remove(store.dir)
+
+
+## Online: the host and two friends, split by a story choice. Each friend's client gets only
+## its own side's picture, and nobody can command the other group.
+func test_online_split_two_friends() -> void:
+	var store := SaveStore.new("user://test_pvp_net_%d" % Time.get_ticks_usec())
+	var db := MissionTest.db()
+	GameFlow.story = null
+	GameFlow.session = null
+	var c := GameFlow.start_story_campaign(store, db, "Split", 3, 0, "Standard")
+	var host := GameFlow.host_story_online(c, db, store, ["p1"])
+	var hub := LoopbackTransport.Hub.new()
+	host.open_room(LoopbackTransport.new(hub), "SPLIT1")
+	var rin := NetClient.new(LoopbackTransport.new(hub))
+	var kai := NetClient.new(LoopbackTransport.new(hub))
+	rin.join("SPLIT1", "Rin", "p2")
+	kai.join("SPLIT1", "Kai", "p3")
+	for i in range(10):
+		host.poll()
+		rin.poll(0.1)
+		kai.poll(0.1)
+	expect(rin.seat == "p2" and kai.seat == "p3")
+	GameFlow.story_client = null
+	var hs := GameFlow.start_pvp_mission(c, db, store, {"a": ["p1", "p3"], "b": ["p2"]}, {}, "mutiny", ["p1"])
+	expect(hs != null)
+	if hs == null:
+		return
+	hs.start()
+	for i in range(10):
+		hs.poll(0.0)
+		rin.poll(0.1)
+		kai.poll(0.1)
+	var st := hs.host.state
+	var mine := func(seat: String) -> String:
+		for u: Unit in st.units.values():
+			if u.controller == seat:
+				return u.id
+		return ""
+	var p1_unit: String = mine.call("p1")
+	var p2_unit: String = mine.call("p2")
+	expect((rin.view["units"][p1_unit] as Dictionary).size() <= ViewFilter.PUBLIC_FIELDS.size(), "Rin (the other group) can't see the host's stats")
+	expect((kai.view["units"][p1_unit] as Dictionary).size() > ViewFilter.PUBLIC_FIELDS.size(), "Kai (the host's group) can")
+	expect((kai.view["units"][p2_unit] as Dictionary).size() <= ViewFilter.PUBLIC_FIELDS.size(), "and Kai can't see Rin's")
+	var r := hs.host.submit("p2", {"type": "start_turn", "actor": p1_unit})
+	expect(not (r["result"] as RuleResult).ok, "Rin can't send the host's mech")
+	GameFlow.leave_story_online()
+	GameFlow.session = null
+	GameFlow.story = null
+	preload("res://tests/unit/test_campaign_saves.gd")._remove(store.dir)
