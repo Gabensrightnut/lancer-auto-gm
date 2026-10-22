@@ -1,11 +1,15 @@
 class_name TerrainRenderer
 extends Node3D
-## Draws a BattleMap as terraced blocks in a terrain kit's style, with grid lines on every
-## surface a unit can stand on, some low props, and a city skyline beyond the board.
+## Draws a BattleMap as terraced blocks in a terrain kit's (biome's) style, with grid lines
+## on every surface a unit can stand on, low decorative props, and scenery beyond the board.
+## Kits: "urban_ruins", "grassy_hills". Anything that looks like cover or an obstacle comes
+## from the map data (raised columns, tags); decoration stays small and flat.
 ## Works on any GridLayout: cell outlines come from MeshKit.cell_shape().
 ## Call build() again whenever the map changes.
 
 const TERRAIN_SHADER := preload("res://src/render/shaders/terrain.gdshader")
+const HILLS_SHADER := preload("res://src/render/shaders/terrain_hills.gdshader")
+const KITS := ["urban_ruins", "grassy_hills"]
 ## How far the board slab extends below level 0.
 const BASE_DEPTH := 0.6
 ## Surface kinds, stored in vertex color red for the terrain shader.
@@ -13,6 +17,11 @@ const KIND_STREET := 0
 const KIND_CONCRETE := 1
 const KIND_BUILDING := 2
 const KIND_HAZARD := 3
+## Grassy hills kinds.
+const KIND_GRASS := 0
+const KIND_ROUGH := 1
+const KIND_ROCK := 2
+const KIND_RIVERBED := 4
 
 var map: BattleMap
 var kit := "urban_ruins"
@@ -29,14 +38,17 @@ func build(battle_map: BattleMap, kit_name: String = "urban_ruins") -> void:
 		c.queue_free()
 	_shape = MeshKit.cell_shape(map.grid)
 	material = ShaderMaterial.new()
-	material.shader = TERRAIN_SHADER
+	material.shader = HILLS_SHADER if kit == "grassy_hills" else TERRAIN_SHADER
 	_build_blocks()
 	_build_grid_lines()
 	_props = Node3D.new()
 	_props.name = "Props"
 	add_child(_props)
-	_build_props()
-	_build_backdrop()
+	if kit == "grassy_hills":
+		HillsDressing.build(self, _props)
+	else:
+		_build_props()
+		_build_backdrop()
 
 
 func set_grid_visible(on: bool) -> void:
@@ -72,6 +84,8 @@ func _solid(cell: Vector2i, level: int) -> bool:
 
 func _kind(cell: Vector2i) -> int:
 	var col := map.column(cell)
+	if kit == "grassy_hills":
+		return hills_kind(cell)
 	if col.has_tag(BattleMap.TAG_DANGEROUS):
 		return KIND_HAZARD
 	if col.ground >= 2:
@@ -79,6 +93,25 @@ func _kind(cell: Vector2i) -> int:
 	if col.ground == 1 or col.has_tag(BattleMap.TAG_DIFFICULT):
 		return KIND_CONCRETE
 	return KIND_STREET
+
+
+## Grassy hills: water tag = riverbed, rock tag or a lone raised column = bare rock.
+func hills_kind(cell: Vector2i) -> int:
+	var col := map.column(cell)
+	if col.has_tag("water"):
+		return KIND_RIVERBED
+	if col.has_tag(BattleMap.TAG_DANGEROUS):
+		return KIND_HAZARD
+	if col.has_tag("rock"):
+		return KIND_ROCK
+	if col.has_tag(BattleMap.TAG_DIFFICULT):
+		return KIND_ROUGH
+	return KIND_GRASS
+
+
+func _drops(cell: Vector2i, edge: int, y_level: int) -> bool:
+	var other: Vector2i = cell + (_shape["edge_neighbors"] as Array)[edge]
+	return not map.has_cell(other) or map.ground_height(other) < y_level
 
 
 func _build_blocks() -> void:
@@ -91,14 +124,25 @@ func _build_blocks() -> void:
 		var center := map.grid.to_world(cell)
 		var kind := _kind(cell)
 		var variation := MeshKit.hash01(str(cell))
-		st.set_color(Color(kind / 4.0 + 0.01, variation, 0.0))
-		# Tops: the ground surface, plus the floor under an overhang.
+		var base_col := Color(kind / 4.0 + 0.01 if kind < 4 else 1.0, variation, 0.0, 1.0)
+		st.set_color(base_col)
+		st.set_uv2(Vector2(0, col.ground * GridLayout.LEVEL_HEIGHT))
+		# Tops: the ground surface, plus the floor under an overhang. Alpha marks edges that
+		# drop away so the shader can wear them (dirt lip on grass).
 		var tops: Array[int] = [col.ground]
 		if col.gap_top > 0:
 			tops.append(col.gap_bottom)
 		for t in tops:
 			var y := t * GridLayout.LEVEL_HEIGHT
-			_fan(st, center, corners, y, Vector3.UP)
+			var n := corners.size()
+			var c3 := Vector3(center.x, y, center.z)
+			for i in range(n):
+				var j := (i + 1) % n
+				var ai := 0.0 if (_drops(cell, (i + n - 1) % n, t) or _drops(cell, i, t)) else 1.0
+				var aj := 0.0 if (_drops(cell, i, t) or _drops(cell, j, t)) else 1.0
+				_tri_colored(st, [c3, c3 + Vector3(corners[i].x, 0, corners[i].y), c3 + Vector3(corners[j].x, 0, corners[j].y)],
+					[1.0, ai, aj], base_col)
+			st.set_color(base_col)
 		if col.gap_top > 0 and col.gap_top < col.ground:
 			_fan(st, center, corners, col.gap_top * GridLayout.LEVEL_HEIGHT, Vector3.DOWN)
 		# Sides: every run of levels that is solid here but open next door.
@@ -122,6 +166,23 @@ func _build_blocks() -> void:
 	mi.mesh = st.commit()
 	mi.material_override = material
 	add_child(mi)
+
+
+## An upward triangle with a per-vertex alpha (edge wear), front face up.
+func _tri_colored(st: SurfaceTool, v: Array, alphas: Array, base: Color) -> void:
+	var a: Vector3 = v[0]
+	var b: Vector3 = v[1]
+	var c: Vector3 = v[2]
+	var order := [0, 1, 2]
+	if (b - a).cross(c - a).dot(Vector3.UP) > 0.0:
+		order = [0, 2, 1]
+	for k: int in order:
+		var col := base
+		col.a = alphas[k]
+		st.set_color(col)
+		st.set_normal(Vector3.UP)
+		st.set_uv(Vector2((v[k] as Vector3).x, (v[k] as Vector3).z))
+		st.add_vertex(v[k])
 
 
 func _fan(st: SurfaceTool, center: Vector3, corners: PackedVector2Array, y: float, facing: Vector3) -> void:

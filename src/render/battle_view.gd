@@ -114,6 +114,7 @@ func _update_cockpit(snap: bool, delta: float = 0.0) -> void:
 func set_map(battle_map: BattleMap, kit: String = "urban_ruins") -> void:
 	map = battle_map
 	terrain.build(map, kit)
+	apply_biome(kit)
 	var lo := Vector3(INF, 0, INF)
 	var hi := Vector3(-INF, 0, -INF)
 	for cell in map.cells():
@@ -122,6 +123,37 @@ func set_map(battle_map: BattleMap, kit: String = "urban_ruins") -> void:
 		hi = Vector3(maxf(hi.x, p.x), 0, maxf(hi.z, p.z))
 	tactical.look_at_point((lo + hi) * 0.5 + Vector3(0, 1, 0), maxf(hi.x - lo.x, hi.z - lo.z) * 0.95)
 	tactical.snap()
+
+
+## Lighting, sky and fog per biome.
+func apply_biome(kit: String) -> void:
+	var env := world_env.environment
+	var sm := env.sky.sky_material as ProceduralSkyMaterial
+	match kit:
+		"grassy_hills":
+			sm.sky_top_color = Color(0.22, 0.42, 0.75)
+			sm.sky_horizon_color = Color(0.72, 0.8, 0.88)
+			sm.ground_horizon_color = Color(0.55, 0.62, 0.55)
+			sm.ground_bottom_color = Color(0.15, 0.2, 0.12)
+			env.fog_light_color = Color(0.7, 0.78, 0.86)
+			env.fog_density = 0.0045
+			env.ambient_light_energy = 0.55
+			env.adjustment_saturation = 1.0
+			sun.light_color = Color(1.0, 0.93, 0.8)
+			sun.light_energy = 2.3
+			sun.rotation_degrees = Vector3(-38, -55, 0)
+		_:
+			sm.sky_top_color = Color(0.28, 0.37, 0.5)
+			sm.sky_horizon_color = Color(0.78, 0.66, 0.55)
+			sm.ground_horizon_color = Color(0.5, 0.44, 0.4)
+			sm.ground_bottom_color = Color(0.12, 0.11, 0.1)
+			env.fog_light_color = Color(0.62, 0.58, 0.55)
+			env.fog_density = 0.006
+			env.ambient_light_energy = 0.4
+			env.adjustment_saturation = 1.05
+			sun.light_color = Color(1.0, 0.88, 0.74)
+			sun.light_energy = 2.2
+			sun.rotation_degrees = Vector3(-42, -38, 0)
 
 
 ## World position of a cell's floor at a level.

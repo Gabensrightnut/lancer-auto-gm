@@ -46,3 +46,64 @@ static func build(shape: GridLayout.Shape) -> BattleMap:
 ## The cell nearest a world-space point (for placing demo units).
 static func cell_at(map: BattleMap, x: float, z: float) -> Vector2i:
 	return map.grid.from_world(Vector3(x, 0, z))
+
+
+# --- Grassy hills ----------------------------------------------------------------------
+
+const HILLS_SIZE := 30
+
+
+## A rolling grassy hills board with a river, rocky outcrops and rough slopes. Heights come
+## from deterministic noise in world space, so hex and square boards match.
+static func build_hills(shape: GridLayout.Shape, size: int = HILLS_SIZE) -> BattleMap:
+	var map := BattleMap.flat(shape, size, size)
+	for cell in map.cells():
+		var p := map.grid.to_world(cell)
+		var x := p.x
+		var z := p.z
+		var n := fbm(x * 0.07 + 3.0, z * 0.07 + 7.0)
+		var h := n * 6.5 - 1.6
+		# A ridge across the north, a gentle valley in the middle.
+		h += 1.5 * exp(-pow((z - 5.0) / 4.0, 2.0))
+		var river_z := size * 0.48 + 3.2 * sin(x * 0.2 + 1.0)
+		var dr := absf(z - river_z)
+		if dr < 2.6:
+			h = minf(h, 0.0 if dr < 1.1 else 1.0)
+		var ground := clampi(floori(h), 0, 4)
+		var tags := PackedStringArray()
+		if dr < 1.1:
+			tags = PackedStringArray(["difficult", "water"])
+		else:
+			# Rock outcrops: small clusters one level above the ground (real cover).
+			var rocky := fbm(x * 0.5 + 40.0, z * 0.5 + 9.0)
+			if rocky > 0.78 and ground < 4:
+				ground += 1
+				tags = PackedStringArray(["rock"])
+			elif fbm(x * 0.25 + 11.0, z * 0.25) > 0.66:
+				tags = PackedStringArray(["difficult"])
+		map.set_column(cell, ground, tags)
+	return map
+
+
+## Deterministic value noise in [0, 1] (no RNG: same map every time).
+static func noise2(x: float, z: float) -> float:
+	var ix := floorf(x)
+	var iz := floorf(z)
+	var fx := x - ix
+	var fz := z - iz
+	var ux := fx * fx * (3.0 - 2.0 * fx)
+	var uz := fz * fz * (3.0 - 2.0 * fz)
+	var h := func(a: float, b: float) -> float:
+		return fposmod(sin(a * 127.1 + b * 311.7) * 43758.5453, 1.0)
+	return lerpf(lerpf(h.call(ix, iz), h.call(ix + 1, iz), ux), lerpf(h.call(ix, iz + 1), h.call(ix + 1, iz + 1), ux), uz)
+
+
+static func fbm(x: float, z: float) -> float:
+	var v := 0.0
+	var a := 0.5
+	for i in range(4):
+		v += a * noise2(x, z)
+		x = x * 2.03 + 1.7
+		z = z * 2.03 + 1.7
+		a *= 0.5
+	return v / 0.9375

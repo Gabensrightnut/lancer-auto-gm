@@ -14,6 +14,8 @@ var hud: CockpitHUD
 var resources: ResourceHUD
 var action_bar: ActionBar
 var shape := GridLayout.Shape.HEX
+## "urban_ruins" or "grassy_hills" (B switches).
+var biome := "urban_ruins"
 var _ui: CanvasLayer
 var _help: Label
 var _speed_i := 0
@@ -78,18 +80,23 @@ func _build_ui() -> void:
 
 
 func _update_help() -> void:
-	_help.text = "SPACE replay demo   G grid: %s   C camera: %s   V speed: %s   1 move plan  2 sky layer  3 line of sight\nRight-drag / Q E rotate   wheel zoom   WASD pan" % [
-		"HEX" if shape == GridLayout.Shape.HEX else "SQUARE", view.camera_mode.to_upper(), ["FULL", "QUICK", "INSTANT"][_speed_i]]
+	_help.text = "SPACE replay   G grid: %s   B biome: %s   L grid lines   C camera: %s   V speed: %s   1 move plan  2 sky layer  3 line of sight\nRight-drag / Q E rotate   wheel zoom   WASD pan" % [
+		"HEX" if shape == GridLayout.Shape.HEX else "SQUARE", biome.replace("_", " ").to_upper(), view.camera_mode.to_upper(), ["FULL", "QUICK", "INSTANT"][_speed_i]]
+
+
+## Where the demo roster stands on each biome's board (added to ROSTER positions).
+const BIOME_OFFSET := {"urban_ruins": Vector2.ZERO, "grassy_hills": Vector2(6.0, 6.5)}
 
 
 func _build_board() -> void:
-	var map := DemoMap.build(shape)
-	view.set_map(map)
+	var map := DemoMap.build(shape) if biome == "urban_ruins" else DemoMap.build_hills(shape)
+	view.set_map(map, biome)
+	var off: Vector2 = BIOME_OFFSET[biome]
 	view.clear_units()
 	for id: String in ROSTER:
 		var r: Array = ROSTER[id]
 		var frame := content.frame(r[0])
-		var cell := DemoMap.cell_at(map, r[2], r[3])
+		var cell := DemoMap.cell_at(map, r[2] + off.x, r[3] + off.y)
 		var mounts: Array = []
 		for m: Array in r[6]:
 			mounts.append({"mount": m[0], "weapons": m[1], "mod": ""})
@@ -105,8 +112,8 @@ func _build_board() -> void:
 		view.add_unit(u)
 	# Face everyone toward the other side.
 	for mv: MechView in view.units.values():
-		mv.face(Vector3(8, 0, 6) if mv.unit["side"] == "players" else Vector3(8, 0, 11))
-	view.tactical.look_at_point(Vector3(7.5, 0.8, 7.0), 15.0)
+		mv.face(Vector3(8 + off.x, 0, 6 + off.y) if mv.unit["side"] == "players" else Vector3(8 + off.x, 0, 11 + off.y))
+	view.tactical.look_at_point(Vector3(7.5 + off.x, 0.8, 7.0 + off.y), 15.0)
 	view.tactical.snap()
 	_update_help()
 	resources.set_data(sample_resources())
@@ -127,6 +134,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("toggle_grid_shape") and not _running:
 		shape = GridLayout.Shape.SQUARE if shape == GridLayout.Shape.HEX else GridLayout.Shape.HEX
 		_build_board()
+	elif event.is_action_pressed("toggle_biome") and not _running:
+		biome = "grassy_hills" if biome == "urban_ruins" else "urban_ruins"
+		_build_board()
+	elif event.is_action_pressed("toggle_grid_lines"):
+		view.terrain.set_grid_visible(not view.terrain.grid_lines.visible)
 	elif event.is_action_pressed("cam_toggle"):
 		_toggle_camera()
 	elif event.is_action_pressed("roll_speed"):
@@ -391,7 +403,7 @@ func _focus_for(key: String) -> void:
 func screenshot_setup(args: PackedStringArray) -> Array:
 	var tags: Array = Array(args)
 	if tags.is_empty() or tags[0] == "all":
-		tags = ["board", "square", "move", "sky", "los", "roll", "kinetic", "beam", "missile", "melee", "tech", "deploy", "heat", "vent", "destroy", "cockpit", "hud"]
+		tags = ["board", "square", "move", "sky", "los", "roll", "kinetic", "beam", "missile", "melee", "tech", "deploy", "heat", "vent", "destroy", "cockpit", "hud", "hills", "hills_close", "hills_nogrid", "hills_square"]
 	return tags
 
 
@@ -406,8 +418,11 @@ func screenshot_stage(tag: String) -> void:
 	for c in view.fx_root.get_children():
 		c.queue_free()
 	player.lasting.clear()
-	shape = GridLayout.Shape.SQUARE if tag == "square" else GridLayout.Shape.HEX
+	shape = GridLayout.Shape.SQUARE if tag in ["square", "hills_square"] else GridLayout.Shape.HEX
+	biome = "grassy_hills" if tag.begins_with("hills") else "urban_ruins"
 	_build_board()
+	resources.visible = tag == "hud"
+	action_bar.visible = tag == "hud"
 	var ev := demo_events()
 	match tag:
 		"board":
@@ -469,6 +484,21 @@ func screenshot_stage(tag: String) -> void:
 			view.tactical.snap()
 			player.play(ev["structure"] + ev["destroy"])
 			await Fx.wait(self, 3.4)
+		"hills", "hills_square":
+			view.tactical.look_at_point(Vector3(15.0, 1.0, 13.5), 30.0)
+			view.tactical.pitch = -46
+			view.tactical.snap()
+		"hills_close":
+			view.tactical.look_at_point(Vector3(13.0, 1.2, 14.0), 11.0)
+			view.tactical.pitch = -32
+			view.tactical.yaw = -20
+			view.tactical.snap()
+		"hills_nogrid":
+			view.terrain.set_grid_visible(false)
+			view.tactical.look_at_point(Vector3(13.0, 1.2, 14.0), 11.0)
+			view.tactical.pitch = -32
+			view.tactical.yaw = -20
+			view.tactical.snap()
 		"hud":
 			view.overlays.show_plan(move_plan())
 			view.tactical.look_at_point(Vector3(5.5, 0.8, 8.0), 9.5)
