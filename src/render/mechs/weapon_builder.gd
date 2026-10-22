@@ -81,9 +81,12 @@ static func build(w: Dictionary) -> Node3D:
 		"hazard": MeshKit.mech_material(Color(0.9, 0.5, 0.08), 0.2, 0.6, Color.BLACK, false),
 		"bevel": 0.012 if mfr == "HORUS" or mfr == "SSC" else 0.02,
 		"taper": 0.8 if mfr == "SSC" else 1.0,
+		"blade": MeshKit.mech_material(Color(0.24, 0.27, 0.28), 0.75, 0.4),
+		"rust": MeshKit.mech_material(Color(0.32, 0.14, 0.11), 0.5, 0.6),
+		"wrap": MeshKit.mech_material(Color(0.7, 0.14, 0.09), 0.1, 0.7, Color.BLACK, false),
 	}
 	var muzzle := Vector3(0, 0, -0.3 * k)
-	var signature := {"mw_assault_cannon": _gatling, "mw_variable_sword": _katana}
+	var signature := {"mw_assault_cannon": _gatling, "mw_variable_sword": _katana, "mw_chain_axe": _chain_axe, "mw_war_pike": _war_pike}
 	var type := String(w.get("type", "")) if not signature.has(id) else "signature"
 	match type:
 		"signature":
@@ -272,6 +275,47 @@ static func _gatling(ctx: Dictionary) -> Vector3:
 	for i in range(9):
 		_box(ctx, Vector3(0.03, 0.012, 0.02), Vector3(-0.04, -0.06 - i * 0.022, -0.02 + sin(i * 0.7) * 0.02), "hazard" if i % 2 else "body")
 	return Vector3(0, 0, -0.09 - len)
+
+
+## Signature: IPS-N chain axe as in the Blackbeard art: a long dark haft with a red-wrapped
+## grip and a big hooked axe head.
+static func _chain_axe(ctx: Dictionary) -> Vector3:
+	_box(ctx, Vector3(0.022, 0.022, 0.42), Vector3(0, 0, -0.1), "body")
+	_box(ctx, Vector3(0.03, 0.03, 0.09), Vector3(0, 0, 0.0), "wrap")
+	# Axe head: a wide blade flaring to one side with a hook at the back.
+	var head := Node3D.new()
+	head.position = Vector3(0, 0, -0.27) * float(ctx["k"])
+	(ctx["root"] as Node3D).add_child(head)
+	var k: float = ctx["k"]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var pts := [Vector2(0.0, 0.07), Vector2(0.06, 0.09), Vector2(0.17, 0.16), Vector2(0.15, -0.06), Vector2(0.06, -0.04), Vector2(0.0, -0.05)]
+	var th := 0.008
+	var c := Vector2(0.08, 0.03)
+	for i in range(pts.size()):
+		var a: Vector2 = pts[i]
+		var b: Vector2 = pts[(i + 1) % pts.size()]
+		for sgn: float in [-1.0, 1.0]:
+			MeshKit.add_tri(st, Vector3(c.x, sgn * th, c.y) * k, Vector3(a.x, sgn * th, a.y) * k, Vector3(b.x, sgn * th, b.y) * k, Vector3(0, sgn, 0))
+		MeshKit.add_quad(st, Vector3(a.x, -th, a.y) * k, Vector3(b.x, -th, b.y) * k, Vector3(b.x, th, b.y) * k, Vector3(a.x, th, a.y) * k, Vector3((a + b).x * 0.5 - c.x, 0, (a + b).y * 0.5 - c.y))
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = ctx["blade"]
+	head.add_child(mi)
+	head.rotation_degrees = Vector3(0, 0, 90)
+	_box(ctx, Vector3(0.04, 0.012, 0.05), Vector3(0.0, 0.0, -0.06), "blade", Vector3(0, 0, 0), 0.4)
+	return Vector3(0.12, 0, -0.33)
+
+
+## Signature: IPS-N war pike as in the Blackbeard art: a very long, slightly tapering dark
+## red-brown blade-staff with a thin spike and a ragged pennant at the top, held mid-shaft.
+static func _war_pike(ctx: Dictionary) -> Vector3:
+	_box(ctx, Vector3(0.012, 0.045, 0.74), Vector3(0, 0, 0.43), "rust", Vector3.ZERO, 0.85)
+	_box(ctx, Vector3(0.016, 0.016, 0.26), Vector3(0, 0, -0.07), "body")
+	_box(ctx, Vector3(0.03, 0.03, 0.07), Vector3(0, 0, 0.02), "wrap")
+	_box(ctx, Vector3(0.006, 0.028, 0.06), Vector3(0, 0, -0.22), "blade", Vector3.ZERO, 0.2)
+	_box(ctx, Vector3(0.004, 0.06, 0.07), Vector3(0, 0.035, -0.16), "body", Vector3(0, 0, 0), 0.6)
+	return Vector3(0, 0, -0.25)
 
 
 ## Signature: SSC variable sword as a long slender katana with a wrapped hilt.

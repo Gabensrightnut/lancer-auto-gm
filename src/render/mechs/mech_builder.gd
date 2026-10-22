@@ -9,7 +9,7 @@ extends RefCounted
 ## Weapon mount priority for placing weapons on the body, by weapon type.
 const SLOT_PREFS := {
 	"Launcher": ["shoulder_r", "shoulder_l", "back_r", "back_l", "hand_r", "hand_l"],
-	"Melee": ["hand_l", "hand_r", "forearm_l", "forearm_r"],
+	"Melee": ["hand_r", "hand_l", "forearm_r", "forearm_l"],
 	"Nexus": ["shoulder_l", "shoulder_r", "hand_l", "hand_r", "back_l"],
 	"_aux": ["forearm_r", "forearm_l", "hand_l", "hand_r", "shoulder_r", "shoulder_l"],
 	"_heavy": ["hand_r", "shoulder_r", "hand_l", "shoulder_l", "back_r"],
@@ -308,8 +308,9 @@ func _weapons(loadout: Dictionary, content: ContentDB) -> void:
 		_m.slot_weapon[slot] = w["id"]
 		if not _m.weapons.has(w["id"]):
 			_m.weapons[w["id"]] = model
-		# Hand-held guns: hold the forearm forward, ready to fire.
-		if slot.begins_with("hand_"):
+		# Hand-held guns: hold the forearm forward, ready to fire. Sculpted frames with their
+		# own pose (from their art) keep it.
+		if slot.begins_with("hand_") and not _m.has_meta("custom_pose") and type != "Melee":
 			var arm: Dictionary = _m.arms[slot.substr(5)]
 			arm["rest_shoulder"] = Vector3(8, 0, 0)
 			arm["rest_elbow"] = Vector3(78, 0, 0)

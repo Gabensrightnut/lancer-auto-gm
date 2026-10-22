@@ -5,6 +5,10 @@ extends RefCounted
 
 const MECH_SHADER := preload("res://src/render/shaders/mech.gdshader")
 const FX_SHADER := preload("res://src/render/shaders/fx_additive.gdshader")
+const OUTLINE_SHADER := preload("res://src/render/shaders/outline.gdshader")
+## Ink outlines on hand-modeled mech parts (like the book art's line work).
+static var outlines := true
+static var _outline_mat: ShaderMaterial
 
 static var _mesh_cache: Dictionary = {}
 static var _mat_cache: Dictionary = {}
@@ -215,6 +219,11 @@ static func paint(color: Color, metallic: float = 0.45, roughness: float = 0.45,
 	m.set_shader_parameter("roughness_value", roughness)
 	m.set_shader_parameter("emission_color", emit)
 	m.set_shader_parameter("panel_strength", panel_strength)
+	if outlines:
+		if _outline_mat == null:
+			_outline_mat = ShaderMaterial.new()
+			_outline_mat.shader = OUTLINE_SHADER
+		m.next_pass = _outline_mat
 	_mat_cache[key] = m
 	return m
 

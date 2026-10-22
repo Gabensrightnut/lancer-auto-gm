@@ -114,3 +114,52 @@ static func rounded_box(size: Vector3, r: float, seg: int = 4) -> ArrayMesh:
 	var e := clampf(r / (minf(size.x, minf(size.y, size.z)) * 0.5), 0.05, 1.0)
 	# A superellipsoid with small exponents is a good rounded box at this scale.
 	return blob(size, 0.15 + 0.6 * e, 0.15 + 0.6 * e, 1.0, 12 + seg * 4)
+
+
+## A tube following a path of points (hoses, cables, pipes). `radii` is one radius or one
+## per point. Smooth normals; ends are left open (cap them with a blob if needed).
+static func tube(points: Array, radii: Variant, sides: int = 10) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var n := points.size()
+	var up := Vector3.UP
+	var prev_side := Vector3.ZERO
+	for i in range(n):
+		var p: Vector3 = points[i]
+		var t: Vector3 = ((points[mini(i + 1, n - 1)] as Vector3) - (points[maxi(i - 1, 0)] as Vector3)).normalized()
+		var side: Vector3
+		if i == 0:
+			side = t.cross(up)
+			if side.length() < 0.01:
+				side = t.cross(Vector3.RIGHT)
+		else:
+			# Parallel transport: keep the frame from twisting along the tube.
+			side = (prev_side - t * prev_side.dot(t))
+		side = side.normalized()
+		prev_side = side
+		var bin := t.cross(side).normalized()
+		var r: float = radii[i] if radii is Array else float(radii)
+		for j in range(sides):
+			var a := TAU * j / sides
+			var nrm := side * cos(a) + bin * sin(a)
+			st.set_normal(nrm)
+			st.set_uv(Vector2(float(j) / sides, float(i) / (n - 1)))
+			st.add_vertex(p + nrm * r)
+	for i in range(n - 1):
+		for j in range(sides):
+			var jn := (j + 1) % sides
+			var a := i * sides + j
+			var b := (i + 1) * sides + j
+			for k: int in [a, b, i * sides + jn, i * sides + jn, b, (i + 1) * sides + jn]:
+				st.add_index(k)
+	return st.commit()
+
+
+## Points along a cubic Bezier from a to d with handles b, c.
+static func bezier(a: Vector3, b: Vector3, c: Vector3, d: Vector3, steps: int = 16) -> Array:
+	var out: Array = []
+	for i in range(steps + 1):
+		var t := float(i) / steps
+		var u := 1.0 - t
+		out.append(a * u * u * u + b * 3.0 * u * u * t + c * 3.0 * u * t * t + d * t * t * t)
+	return out
