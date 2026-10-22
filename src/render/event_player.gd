@@ -12,6 +12,8 @@ signal event_finished(event: Dictionary)
 const SPEED_FULL := 1.0
 const SPEED_QUICK := 2.5
 const SPEED_INSTANT := 0.0
+## Player-facing speed settings (DESIGN "Play feel"); "debug" is for tests and demos only.
+const SPEEDS := {"cinematic": 0.7, "normal": 1.0, "fast": 1.8, "debug": 4.0, "instant": 0.0}
 
 var battle: BattleView
 var rolls: RollDisplay
@@ -23,6 +25,19 @@ var playing := false
 ## Persistent effects by id (smoke clouds, walls, lock-on reticles), so they can be removed.
 var lasting: Dictionary = {}
 var _generation := 0
+## Camera that follows each action (null = leave the camera alone).
+var camera: TacticalCamera
+## Pause before an attack resolves, so you see who shoots whom before the dice (seconds).
+var pre_attack_pause := 0.7
+## "Skip to my turn": play everything instantly until one of `local_units` starts a turn.
+var skip_to_my_turn := false
+## Called with (text) for big banners ("Goblin's turn", "Round 2").
+var on_banner: Callable
+## Called with (unit_id) when a unit's turn starts.
+var on_turn_started: Callable
+var popup: SkillCheckPopup
+var _saved_speed := 1.0
+var _skipping := false
 
 
 func _init(view: BattleView, roll_display: RollDisplay, log_panel: CombatLog) -> void:
@@ -50,7 +65,60 @@ func cancel() -> void:
 
 func play_event(e: Dictionary) -> void:
 	event_started.emit(e)
+	if skip_to_my_turn and not _skipping:
+		_skipping = true
+		_saved_speed = Fx.speed
+		Fx.speed = 0.0
+	if _skipping and e.get("type") == "turn_started" and String(e.get("unit", "")) in local_units:
+		_skipping = false
+		skip_to_my_turn = false
+		Fx.speed = _saved_speed
+	_follow(e)
 	match String(e.get("type", "")):
+		"turn_started":
+			_log("[b]%s's turn.[/b]" % _name(e.get("unit", "")))
+			var mv := _view(e.get("unit", ""))
+			if on_banner.is_valid() and mv:
+				on_banner.call("%s's turn" % mv.unit.get("name", e["unit"]))
+			if on_turn_started.is_valid():
+				on_turn_started.call(String(e.get("unit", "")))
+			await Fx.wait(self, 0.6)
+		"round_started":
+			_log("[b]Round %d.[/b]" % int(e.get("round", 1)))
+			if on_banner.is_valid():
+				on_banner.call("Round %d" % int(e.get("round", 1)))
+			await Fx.wait(self, 0.8)
+		"next_side", "combat_started":
+			pass
+		"damage_rolled":
+			if rolls and Fx.speed > 0.0 and Fx.speed <= 1.0:
+				var r: Dictionary = e.get("roll", {})
+				var rolls_list: Array = []
+				for d: Variant in r.get("dice", []):
+					rolls_list.append({"sides": 6, "value": int(d)})
+				await rolls.play_damage({"damage_type": e.get("damage_type", "Kinetic"), "amount": int(r.get("total", 0)),
+					"roll": {"rolls": rolls_list, "bonus": int(r.get("bonus", 0))}})
+		"hp_changed":
+			_set_stat(e.get("unit", ""), "hp", int(e.get("hp", 0)))
+			_set_stat(e.get("unit", ""), "overshield", int(e.get("overshield", 0)))
+		"structure_lost", "stress_lost":
+			var key := "structure" if e["type"] == "structure_lost" else "stress"
+			_set_stat(e.get("unit", ""), key, int(e.get(key, 0)))
+			_log("%s loses 1 %s (%d left)." % [_name(e.get("unit", "")), key, int(e.get(key, 0))])
+		"unit_destroyed":
+			await _destroyed(e)
+		"skill_check":
+			var c: Dictionary = (e.get("check", {}) as Dictionary).duplicate()
+			_log("%s: %s check, %d vs %d: %s" % [_name(e.get("unit", "")), c.get("skill", ""), int(c.get("total", 0)), int(c.get("target", 10)), "success" if c.get("success", false) else "failure"])
+			if popup and Fx.speed > 0.0:
+				await popup.play(c)
+		"burn_marked":
+			_set_stat(e.get("unit", ""), "burn", int(e.get("total", 0)))
+			_log("%s is marked with %d burn." % [_name(e.get("unit", "")), int(e.get("amount", 0))])
+		"movement_stopped":
+			_log("%s stops: %s" % [_name(e.get("unit", "")), e.get("reason", "")])
+		"overcharged", "stabilized", "reloaded", "scanned", "tech_action", "reaction", "disengaged", "searched", "equipment_destroyed", "system_trauma", "falling":
+			_log("%s: %s" % [_name(e.get("unit", e.get("attacker", ""))), String(e["type"]).replace("_", " ")])
 		"moved":
 			await _moved(e)
 		"attack_rolled":
@@ -79,6 +147,35 @@ func play_event(e: Dictionary) -> void:
 
 
 # --- helpers ---------------------------------------------------------------------------
+
+## Point the camera at what this event is about.
+func _follow(e: Dictionary) -> void:
+	if camera == null or Fx.speed <= 0.0:
+		return
+	var a := _view(e.get("attacker", e.get("unit", "")))
+	var b := _view(e.get("target", ""))
+	if a == null:
+		return
+	if b and b != a:
+		camera.frame_pair(a.global_position, b.global_position, 6.0)
+	elif e.get("type") == "moved":
+		var path: Array = e.get("path", [])
+		if not path.is_empty():
+			var last: Array = path.back()
+			var end := battle.map.grid.to_world(Vector2i(int(last[0]), int(last[1])), int(last[2]) if last.size() > 2 else 0)
+			camera.frame_pair(a.global_position, end, 6.0)
+	elif e.get("type") in ["turn_started", "heat_changed", "status_added", "structure_check", "stress_check", "unit_destroyed", "destroyed"]:
+		camera.look_at_point(a.global_position + Vector3.UP * 0.6, 7.0)
+
+
+## The weapon's content id for a loadout key (rules events name weapons by key).
+func _weapon_id(unit_id: Variant, key: String) -> String:
+	var mv := _view(unit_id)
+	if mv:
+		for w: Dictionary in (mv.unit.get("loadout", {}) as Dictionary).get("weapons", []):
+			if String(w.get("key", "")) == key:
+				return String(w.get("id", key))
+	return key
 
 func _view(id: Variant) -> MechView:
 	return battle.units.get(String(id))
@@ -183,21 +280,27 @@ func _attack(e: Dictionary) -> void:
 	var tgt := _view(e["target"])
 	if att == null or tgt == null:
 		return
-	var w := battle.content.weapon(String(e.get("weapon", ""))) if battle.content else {}
-	var wname := String(w.get("name", e.get("weapon", "attack")))
+	var wid := _weapon_id(e["attacker"], String(e.get("weapon", "")))
+	var w := battle.content.weapon(wid) if battle.content else {}
+	var wname := String(e.get("weapon_name", w.get("name", e.get("weapon", "attack"))))
 	var style := WeaponBuilder.attack_style(w) if not w.is_empty() else WeaponBuilder.STYLE_KINETIC
 	var result := String(e.get("result", "hit"))
 	var check: Dictionary = e.get("check", {})
 	var hit := result != "miss"
 	_log("%s attacks %s with %s: %s" % [_name(e["attacker"]), _name(e["target"]), wname, RollDisplay.formula_bbcode(check, result)])
 	await _turn_to(att, tgt.global_position)
-	var arm := att.model.arm_for(String(e.get("weapon", "")))
+	var arm := att.model.arm_for(wid)
 	if arm != "" and style != WeaponBuilder.STYLE_MELEE:
 		att.model.aim_arm(arm, tgt.body_center())
+	await Fx.wait(self, pre_attack_pause)
+	if not is_instance_valid(att) or not is_instance_valid(tgt):
+		return
 	if rolls and not check.is_empty():
 		await rolls.play_check(check, result, "%s  →  %s" % [wname.to_upper(), String(tgt.unit.get("name", "")).to_upper()])
+	if not is_instance_valid(att) or not is_instance_valid(tgt):
+		return
 	if Fx.speed > 0.0:
-		await _attack_anim(att, tgt, String(e.get("weapon", "")), w, style, hit, result == "crit")
+		await _attack_anim(att, tgt, wid, w, style, hit, result == "crit")
 	if not is_instance_valid(tgt) or not is_instance_valid(att):
 		return
 	if not hit:
@@ -339,7 +442,7 @@ func _damage(e: Dictionary) -> void:
 	var amount := int(e.get("amount", 0))
 	var dtype := String(e.get("damage_type", "Kinetic"))
 	_log("%s takes %d %s damage." % [_name(e["target"]), amount, dtype.to_lower()])
-	if rolls and Fx.speed >= SPEED_FULL and (e.get("roll", {}) as Dictionary).has("rolls"):
+	if rolls and Fx.speed > 0.0 and Fx.speed <= SPEED_FULL and (e.get("roll", {}) as Dictionary).has("rolls"):
 		await rolls.play_damage(e)
 	if mv == null:
 		return
@@ -348,6 +451,8 @@ func _damage(e: Dictionary) -> void:
 		return
 	if e.has("hp"):
 		mv.set_stat("hp", int(e["hp"]))
+	elif e.has("source"):
+		pass  # rules engine format: an hp_changed event follows
 	elif mv.unit.has("hp"):
 		mv.set_stat("hp", maxi(0, int(mv.unit["hp"]) - amount))
 	await Fx.wait(self, 0.4)
@@ -498,6 +603,7 @@ func _tech(e: Dictionary) -> void:
 		check["target_label"] = "E-Defense"
 	_log("%s hacks %s (%s): %s" % [_name(e["attacker"]), _name(e["target"]), effect, RollDisplay.formula_bbcode(check, result)])
 	await _turn_to(att, tgt.global_position)
+	await Fx.wait(self, pre_attack_pause)
 	if rolls and not check.is_empty():
 		await rolls.play_check(check, result, "TECH ATTACK: %s  →  %s" % [effect.to_upper(), String(tgt.unit.get("name", "")).to_upper()])
 	var color := Color(0.35, 1.0, 0.55)

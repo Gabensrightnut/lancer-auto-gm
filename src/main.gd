@@ -1,9 +1,9 @@
 extends Node3D
-## Visual demo: an urban ruins board with mechs, turn overlays and a scripted event sequence.
-## Space replays the sequence, G switches hex/square, C switches camera (tactical/cockpit),
-## V cycles playback speed (full / quick / instant), 1-3 show overlay examples.
-## The events here are hand-written samples in the rules engine's event format; in the game
-## they come from RulesEngine.
+## Demo. By default a playable battle on the real rules engine (DemoBattle): pick who goes
+## with "I'll go", plan and confirm your actions, End Turn, watch the enemy turn.
+## N starts a new battle. Space plays the scripted effects showcase (hand-written events in
+## the rules engine's format). G hex/square, B biome, C camera, V speed, K skip to my turn,
+## F1-F3 overlay examples.
 
 var content: ContentDB
 var view: BattleView
@@ -11,14 +11,16 @@ var player: EventPlayer
 var rolls: RollDisplay
 var combat_log: CombatLog
 var hud: CockpitHUD
-var resources: ResourceHUD
+var resources: ResourceCluster
 var action_bar: ActionBar
+var battle: DemoBattle
 var shape := GridLayout.Shape.HEX
 ## "urban_ruins" or "grassy_hills" (B switches).
 var biome := "urban_ruins"
 var _ui: CanvasLayer
 var _help: Label
-var _speed_i := 0
+var _speed_i := 1
+const SPEED_NAMES := ["cinematic", "normal", "fast", "debug"]
 var _running := false
 
 ## Demo roster: id -> [frame id, side, world x, world z, level offset, name, loadout].
@@ -30,7 +32,7 @@ const ROSTER := {
 	"drake": ["mf_drake", "players", 1.2, 7.4, 0, "Drake", [["Main", ["mw_assault_cannon"]], ["Main", []], ["Heavy", ["mw_daisy_cutter"]]]],
 	"goblin": ["mf_goblin", "enemies", 8.0, 4.8, 0, "Goblin", [["Flex", ["mw_autopod"]]]],
 	"sherman": ["mf_sherman", "enemies", 12.6, 3.4, 0, "Sherman", [["Flex", ["mw_stub_cannon"]], ["Main", ["mw_sol_pattern_laser_rifle"]], ["Heavy", ["mw_andromeda_pattern_heavy_laser_rifle"]]]],
-	"tokugawa": ["mf_tokugawa", "enemies", 10.3, 5.6, 0, "Tokugawa", [["Flex", ["mw_torch"]], ["Main", ["mw_annihilator"]]]],
+	"tokugawa": ["mf_tokugawa", "enemies", 11.2, 4.4, 0, "Tokugawa", [["Flex", ["mw_torch"]], ["Main", ["mw_annihilator"]]]],
 	"barbarossa": ["mf_barbarossa", "enemies", 2.6, 4.6, 0, "Barbarossa", [["Main", ["mw_shatterhead_colony_missiles"]], ["Heavy", ["mw_siege_cannon"]]]],
 }
 
@@ -48,7 +50,7 @@ func _ready() -> void:
 	add_child(player)
 	_build_board()
 	if OS.get_cmdline_user_args().is_empty():
-		_run_demo.call_deferred()
+		start_battle.call_deferred()
 
 
 func _build_ui() -> void:
@@ -62,16 +64,12 @@ func _build_ui() -> void:
 	combat_log = CombatLog.new()
 	combat_log.position = Vector2(1600 - 496, 70)
 	_ui.add_child(combat_log)
-	resources = ResourceHUD.new()
-	_ui.add_child(resources)
 	action_bar = ActionBar.new()
-	action_bar.resources = resources
-	action_bar.position = Vector2(412, 900 - 2 * 84 - 10)
-	action_bar.size = Vector2(1600 - 412 - 16, 2 * 84)
 	_ui.add_child(action_bar)
+	resources = action_bar.resources
 	_help = Label.new()
-	_help.position = Vector2(16, 12)
-	_help.add_theme_font_size_override("font_size", 15)
+	_help.position = Vector2(12, 8)
+	_help.add_theme_font_size_override("font_size", 13)
 	_help.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95, 0.85))
 	_help.add_theme_constant_override("outline_size", 4)
 	_help.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
@@ -79,9 +77,25 @@ func _build_ui() -> void:
 	_update_help()
 
 
+var _help_open := false
+
+
 func _update_help() -> void:
-	_help.text = "SPACE replay   G grid: %s   B biome: %s   L grid lines   C camera: %s   V speed: %s   1 move plan  2 sky layer  3 line of sight\nRight-drag / Q E rotate   wheel zoom   WASD pan" % [
-		"HEX" if shape == GridLayout.Shape.HEX else "SQUARE", biome.replace("_", " ").to_upper(), view.camera_mode.to_upper(), ["FULL", "QUICK", "INSTANT"][_speed_i]]
+	if not _help_open:
+		_help.text = "H: controls"
+		return
+	_help.text = "N new battle   SPACE effects showcase   G grid: %s   B biome: %s   L grid lines   C camera: %s   V speed: %s   K skip to my turn\nRight-drag / Q E rotate   wheel zoom   WASD pan   1-0 actions   F1-F3 overlay examples" % [
+		"HEX" if shape == GridLayout.Shape.HEX else "SQUARE", biome.replace("_", " ").to_upper(), view.camera_mode.to_upper(), String(SPEED_NAMES[_speed_i]).to_upper()]
+
+
+## Battle loadouts that differ from the showcase. Avoids weapons whose lancer-data damage is
+## a number (rules engine bug, reported: Attacks._hit does String(val)).
+const BATTLE_LOADOUTS := {
+	"goblin": [["Flex", ["mw_nexus_light"]]],
+	"sherman": [["Flex", ["mw_pistol"]], ["Main", ["mw_thermal_rifle"]], ["Heavy", ["mw_heavy_machine_gun"]]],
+	"tokugawa": [["Flex", ["mw_charged_blade"]], ["Main", ["mw_annihilator"]], ["Main", []]],
+	"barbarossa": [["Main", ["mw_shatterhead_colony_missiles"]], ["Main", ["mw_assault_rifle"]], ["Heavy", ["mw_howitzer"]]],
+}
 
 
 ## Where the demo roster stands on each biome's board (added to ROSTER positions).
@@ -125,8 +139,8 @@ func _build_board() -> void:
 	view.tactical.snap()
 	_update_help()
 	resources.set_data(sample_resources())
-	resources.position = Vector2(16, 900 - 314)
-	action_bar.set_actions(sample_actions())
+	action_bar.set_actions(sample_actions(), "demo_everest")
+	action_bar.visible = false
 	hud.battle = view
 	hud.unit_id = "everest"
 	hud.target_id = "goblin"
@@ -136,9 +150,16 @@ func _build_board() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("demo_replay") and not _running:
+		_stop_battle()
 		_build_board()
 		combat_log.clear_log()
 		_run_demo()
+	elif event is InputEventKey and event.pressed and (event as InputEventKey).keycode == KEY_N and not _running:
+		start_battle()
+	elif event is InputEventKey and event.pressed and (event as InputEventKey).keycode == KEY_H:
+		_help_open = not _help_open
+	elif event is InputEventKey and event.pressed and (event as InputEventKey).keycode == KEY_K:
+		player.skip_to_my_turn = true
 	elif event.is_action_pressed("toggle_grid_shape") and not _running:
 		shape = GridLayout.Shape.SQUARE if shape == GridLayout.Shape.HEX else GridLayout.Shape.HEX
 		_build_board()
@@ -150,17 +171,17 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("cam_toggle"):
 		_toggle_camera()
 	elif event.is_action_pressed("roll_speed"):
-		_speed_i = (_speed_i + 1) % 3
-		Fx.speed = [EventPlayer.SPEED_FULL, EventPlayer.SPEED_QUICK, EventPlayer.SPEED_INSTANT][_speed_i]
+		_speed_i = (_speed_i + 1) % SPEED_NAMES.size()
+		Fx.speed = EventPlayer.SPEEDS[SPEED_NAMES[_speed_i]]
 	elif event is InputEventKey and event.pressed and not event.echo:
 		match (event as InputEventKey).keycode:
-			KEY_1:
+			KEY_F1:
 				view.overlays.show_plan(move_plan())
-			KEY_2:
+			KEY_F2:
 				view.overlays.show_plan(sky_plan(3))
-			KEY_3:
+			KEY_F3:
 				view.overlays.show_plan(los_plan())
-			KEY_0:
+			KEY_F4:
 				view.overlays.clear()
 	_update_help()
 
@@ -172,7 +193,38 @@ func _toggle_camera() -> void:
 	else:
 		view.set_camera_mode("tactical")
 	hud.visible = cockpit
-	resources.visible = not cockpit
+
+
+# --- playable battle ----------------------------------------------------------------------
+
+func _stop_battle() -> void:
+	if battle:
+		battle.queue_free()
+		battle = null
+	player.cancel()
+
+
+## Starts a playable battle on the grassy hills board (hex).
+func start_battle() -> void:
+	_stop_battle()
+	combat_log.clear_log()
+	view.overlays.clear()
+	biome = "grassy_hills"
+	shape = GridLayout.Shape.HEX
+	var map := DemoMap.build_hills(shape)
+	view.set_map(map, biome)
+	var off: Vector2 = BIOME_OFFSET[biome]
+	battle = DemoBattle.new()
+	add_child(battle)
+	battle.setup(content, view, player, _ui)
+	var roster := ROSTER.duplicate(true)
+	for id: String in BATTLE_LOADOUTS:
+		(roster[id] as Array)[6] = BATTLE_LOADOUTS[id]
+	battle.load_battle(map, roster, off)
+	view.tactical.look_at_point(Vector3(7.5 + off.x, 0.8, 7.0 + off.y), 15.0)
+	view.tactical.snap()
+	_update_help()
+	await battle.start()
 
 
 # --- sample data -------------------------------------------------------------------------
@@ -405,17 +457,122 @@ func _focus_for(key: String) -> void:
 
 # --- screenshots -----------------------------------------------------------------------
 
+func _battle_stage(tag: String) -> void:
+	rolls.hold_result = false
+	Fx.speed = 4.0
+	await start_battle()
+	if tag == "turn_order":
+		Fx.speed = 1.0
+		var off: Vector2 = BIOME_OFFSET[biome]
+		view.tactical.look_at_point(Vector3(7.5 + off.x, 0.8, 7.5 + off.y), 15.0)
+		view.tactical.pitch = -50.0
+		view.tactical.snap()
+		return
+	if tag == "skill":
+		Fx.speed = 1.0
+		battle.popup.play({"label": "Engineering check: hold the reactor together", "skill": "Engineering", "d20": 14, "total": 16, "target": 10,
+			"success": true, "bonus_sources": [{"label": "Engineering", "value": 2}], "sources": [{"label": "Trained (trigger)", "kind": "accuracy"}],
+			"accuracy_roll": {"accuracy": 1, "difficulty": 0, "net": 1, "color": "blue", "dice": [3], "kept": 3, "value": 3}}, true)
+		await get_tree().create_timer(3.0).timeout
+		return
+	battle._on_i_will_go("everest")
+	while not battle.turn.active:
+		await get_tree().process_frame
+	Fx.speed = 1.0
+	await get_tree().create_timer(0.8).timeout
+	var t := battle.turn
+	var me: Unit = battle.state.unit("everest")
+	match tag:
+		"my_turn", "bar_small", "bar_large":
+			if tag == "bar_small":
+				battle.bar.bar_scale = 0.75
+			elif tag == "bar_large":
+				battle.bar.bar_scale = 1.4
+			# Plan a move three spaces toward the enemy and show the confirm prompt.
+			var goal := battle.state.unit("goblin").cell
+			var line := view.map.grid.line(me.cell, goal)
+			var best: Vector2i = line[1]
+			for i in range(1, line.size()):
+				if RulesQueries.preview_move(battle.state, "everest", line[i]).get("ok", false):
+					best = line[i]
+			t.plan_move(best)
+		"target":
+			for a: Dictionary in battle.bar.actions:
+				if a.get("kind") == "attack":
+					t._on_action(a)
+					break
+			t.hover_target("goblin")
+			view.tactical.frame_pair(view.units["everest"].global_position, view.units["goblin"].global_position, 7.0)
+			view.tactical.snap()
+		"cooldowns":
+			t.cancel()
+			battle.bar.set_actions(lockout_samples(), "demo_cooldowns")
+			battle.bar.resources.set_data(sample_resources())
+			await get_tree().process_frame
+			battle.bar.hover("act_overcharge")
+		"enemy_turn":
+			t.end_turn()
+			# Wait for an enemy attack roll to be on screen.
+			var seen := [false]
+			player.event_started.connect(func(e: Dictionary) -> void:
+				if e.get("type") == "attack_rolled" or e.get("type") == "tech_attack":
+					seen[0] = true)
+			var waited := 0.0
+			while not seen[0] and waited < 40.0:
+				await get_tree().process_frame
+				waited += get_process_delta_time()
+			await get_tree().create_timer(2.2).timeout
+
 ## tools/screenshot.gd hook. Pass "all" (or tag names) after the frame count; out path
 ## must contain %s. Tags: board square move sky los roll kinetic beam missile melee tech
 ## deploy heat vent destroy cockpit.
 func screenshot_setup(args: PackedStringArray) -> Array:
 	var tags: Array = Array(args)
 	if tags.is_empty() or tags[0] == "all":
-		tags = ["board", "square", "move", "sky", "los", "roll", "kinetic", "beam", "missile", "melee", "tech", "deploy", "heat", "vent", "destroy", "cockpit", "hud", "hills", "hills_close", "hills_nogrid", "hills_square", "alien", "alien_close", "alien_vista"]
+		tags = ["board", "square", "move", "sky", "los", "roll", "kinetic", "beam", "missile", "melee", "tech", "deploy", "heat", "vent", "destroy", "cockpit", "hud", "hills", "hills_close", "hills_nogrid", "hills_square", "alien", "alien_close", "alien_vista",
+			"turn_order", "my_turn", "target", "cooldowns", "enemy_turn", "skill"]
 	return tags
 
 
+## Sample actions with one of each lockout kind, for the cooldown screenshot.
+func lockout_samples() -> Array:
+	var list := sample_actions()
+	list.append({"id": "lk_turns", "group": "systems", "cost": "quick", "icon": "system", "name": "Pattern-A Jericho", "short": "Jericho",
+		"enabled": false, "reason": "Deployed: back in 1 round.", "lockout": {"kind": "turns", "left": 1, "total": 3},
+		"text": "Sample: a timed wait shrinks like a clock hand as rounds pass."})
+	list.append({"id": "lk_recharge", "group": "systems", "cost": "quick", "icon": "npc_feature", "name": "Seismic Ripper (Recharge 5+)", "short": "Ripper",
+		"enabled": false, "reason": "Recharge 5+: roll a 5 or 6 at the start of the turn.", "lockout": {"kind": "recharge", "target": 5},
+		"text": "Sample NPC ability with Recharge 5+."})
+	list.append({"id": "lk_ready", "group": "systems", "cost": "quick", "icon": "npc_feature", "name": "Shock Wave (Recharge 4+)", "short": "Shock",
+		"enabled": true, "lockout": {"kind": "recharge", "target": 4, "ready": true}, "text": "Recharge roll succeeded: ready again."})
+	list.append({"id": "lk_uses", "group": "systems", "cost": "quick", "icon": "grenade", "name": "Smoke Charges (Limited 2)", "short": "Smoke",
+		"enabled": false, "reason": "Limited 2: used this mission.", "lockout": {"kind": "uses", "left": 0, "total": 2}, "text": "Sample Limited system."})
+	list.append({"id": "lk_status", "group": "tech", "cost": "quick", "icon": "tech_quick", "name": "Invade", "short": "Invade",
+		"enabled": false, "reason": "Jammed: can't take tech actions until the end of your next turn.", "lockout": {"kind": "status", "status": "Jammed", "turns": 1},
+		"text": "Status lockout sample."})
+	var groups := {"w_assault_rifle": "weapons", "w_howitzer": "weapons", "act_barrage": "full", "act_stabilize": "full",
+		"act_lockon": "tech", "act_brace": "reactions", "act_overwatch": "reactions", "core": "core"}
+	var icons := {"w_assault_rifle": "kinetic", "w_howitzer": "explosive", "act_lockon": "condition_lockon", "act_hide": "status_hidden",
+		"act_barrage": "barrage", "act_stabilize": "repair", "act_overwatch": "threat", "core": "corebonus", "act_overcharge": "overcharge"}
+	for a: Dictionary in list:
+		a["group"] = groups.get(a.get("id"), a.get("group", "quick"))
+		if icons.has(a.get("id")):
+			a["icon"] = icons[a["id"]]
+		if a.get("id") == "w_howitzer":
+			a["lockout"] = {"kind": "loading"}
+			a["reason"] = "Loading: reload it (Stabilize) before firing again."
+		if a.get("id") == "act_overcharge":
+			a["text"] = "Take any quick action as a free action, even one you've already taken this turn. Costs heat: 1, then 1d3, 1d6, then 1d6+4."
+			a["extras"] = [{"icon": "heat", "value": "+1d3"}]
+			a["warnings"] = [{"text": "This can put you in the Danger Zone {icon:status_dangerzone} (2/6 {icon:heat} → up to 5)."}]
+	return list
+
+
 func screenshot_stage(tag: String) -> void:
+	if tag in ["turn_order", "my_turn", "target", "cooldowns", "enemy_turn", "skill", "bar_small", "bar_large"]:
+		await _battle_stage(tag)
+		return
+	_stop_battle()
 	view.overlays.clear()
 	player.cancel()
 	rolls.clear_now()

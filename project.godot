@@ -84,6 +84,7 @@ toggle_grid_lines={
 anti_aliasing/quality/msaa_3d=2
 lights_and_shadows/directional_shadow/size=8192
 lights_and_shadows/directional_shadow/soft_shadow_filter_quality=3
+limits/global_shader_variables/buffer_size=524288
 
 [autoload]
 

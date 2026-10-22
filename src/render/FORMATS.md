@@ -69,6 +69,7 @@ The ARCHITECTURE.md event types, plus the fields the animations use:
 | **`structure_changed`** (new) | `unit`, `amount`, `total` |
 | **`destroyed`** (new) | `unit` (explosion, then a wreck that stays) |
 | `turn_ended` | `unit` |
+| rules engine events | also handled: `turn_started`, `round_started`, `damage_rolled`, `hp_changed`, `structure_lost`, `stress_lost`, `unit_destroyed`, `skill_check`, `burn_marked`, logs for the rest. Weapons are named by loadout key; the player maps keys to ids from the unit's `loadout.weapons`. |
 
 Weapon animation comes from the weapon's data (`WeaponBuilder.attack_style`): Melee → lunge and
 swing, Nexus → drone swarm, Burn + Cone → flamethrower, Launcher → arcing missiles, Explosive →
@@ -90,22 +91,65 @@ shell (arcing with a warning ring if it has Blast), Energy → charge + beam, el
 Any missing pool shows "??" (enemies the seat hasn't scanned). Hovering an action calls
 `set_preview(action.preview)`.
 
-## Action buttons (`ActionBar.set_actions(list)`, `ActionBar.resources = hud`)
+## Action bar (`ActionBar.set_actions(list, pilot_id)`), BG3-style
+
+One bar at the bottom center (height 9% of the screen x `bar_scale`, a settings slider; it
+shrinks to fit the width), with tabs by `group`, number-key shortcuts (1-0 in the shown
+order), drag-to-swap buttons (order saved per pilot in `user://action_layouts/`), a compact
+`ResourceCluster` on its left and an End Turn button on its right. `ActionCatalog.for_unit()`
+builds this list from a real Unit with the rules engine (host side).
 
 ```gdscript
 {
-  "id": "act_overcharge", "name": "Overcharge",
-  "cost": "quick" | "full" | "free" | "reaction" | "protocol" | "move",
-  "desc": "short text on the button", "text": "full rule text (hover)", "rule_ref": "Core rules: ...",
-  "extras": [{"kind": "heat" | "charges" | "overcharge", "value": "1d3"}],   # badges with numbers
-  "enabled": false, "reason": "Already used a Quick action this turn",      # greyed with reason
-  "preview": {"heat": [1, 3], "quick": 1, "full": 1, "reaction": 1, "overcharge": 1,
-              "core_power": 1, "repairs": 1, "hp": -2, "overshield": 3},    # shown on the HUD bars
+  "id": "w:0:0", "name": "Assault Rifle", "short": "Assault",            # short = button label
+  "group": "weapons" | "quick" | "full" | "tech" | "systems" | "reactions" | "core",
+  "cost": "quick" | "full" | "free" | "reaction" | "protocol",
+  "icon": "kinetic",                       # official icon name (assets/icons/lancer/)
+  "stats": "Range 10 {icon:range}   1d6 {icon:kinetic}",   # numbers + icons for the card
+  "text": "full rule text", "rule_ref": "Core rules, actions: Skirmish",
+  "extras": [{"icon": "heat", "value": "+2"}, {"icon": "generic_item", "value": "1/2"}],
+  "enabled": false, "reason": "Loading: reload it before firing again.",
+  "lockout": {"kind": "turns", "left": 1, "total": 2}     # clock-hand sweep shrinks per turn
+           | {"kind": "recharge", "target": 5, "ready": false}   # d6 "5+", glows when ready
+           | {"kind": "loading"}                          # "Reload"
+           | {"kind": "uses", "left": 0, "total": 2}      # "Used" / "1/2"
+           | {"kind": "status", "status": "Jammed", "turns": 1},
+  "warnings": [{"text": "This will overheat you (8/8 {icon:heat} → 10): ...", "level": "danger"}],
+  "outcome": {"target": "Goblin", "hit_chance": 0.55, "cover": "soft", "damage": "1–6",
+              "damage_type": "Kinetic", "armor": 1},        # shown while a target is hovered
+  "preview": {"heat": [1, 3], "quick": 1, ...},            # previewed on the resource bars
 }
 ```
 
-Signals: `action_pressed(action)`, `action_hovered(action)`. Heat previews warn when they
-would reach `danger_zone` or exceed the heat cap.
+Text fields may contain `{icon:name}` or `{icon:name:RRGGBB}`; `Icons.write()` draws the
+official icon inline. `update_actions(list)` updates in place so lockout sweeps animate.
+Signals: `action_pressed`, `action_hovered`, `end_turn_pressed`.
+
+## Turn order bar (`TurnOrderBar.set_data(d)`)
+
+```gdscript
+{"round": 1, "picking_side": "players", "local_side": "players", "active_name": "Everest",
+ "units": [{"id", "name", "side", "acted": bool, "active": bool, "hp": [cur, max] (optional)}]}
+```
+
+Portraits: `TurnOrderBar.render_portrait(host, model, height)` renders a MechModel once.
+Signal `i_will_go(unit_id)` when a player picks who acts next.
+
+## Skill check popup (`SkillCheckPopup.play(check, hold)`)
+
+The `skill_check` event's `check`: Dice.check plus `label`/`skill`, `bonus_sources`
+(`[{label, value}]`), `sources` (`[{label, kind: "accuracy"/"difficulty"}]`).
+
+## Playing a turn (`PlayerTurn`, `DemoBattle`)
+
+`PlayerTurn.begin(unit_id)`: camera to the mech, bar up; board hover -> `RulesQueries.preview_move`
+drawn as a move plan; click -> Confirm prompt; actions -> target pick (hover shows
+`RulesQueries.attack_preview` hit chance and `RulesQueries.cover` cells) -> Confirm; End Turn
+button. Everything is submitted to `RulesEngine`; the events go to `EventPlayer`.
+
+`EventPlayer` options: `camera` (follows each action), `pre_attack_pause` (0.7 s),
+`skip_to_my_turn`, `on_banner`, `on_turn_started`, `popup`. Speeds: `EventPlayer.SPEEDS`
+(cinematic 0.7, normal 1.0, fast 1.8; debug 4.0 and instant 0 for tests and demos).
 
 ## Cameras
 

@@ -77,7 +77,7 @@ func _init() -> void:
 func _center() -> void:
 	_panel.reset_size()
 	var vp := get_viewport_rect().size
-	_panel.position = Vector2((vp.x - _panel.size.x) / 2.0 - position.x, 24)
+	_panel.position = Vector2((vp.x - _panel.size.x) / 2.0 - position.x, vp.y * 0.17)
 
 
 func _clear() -> void:
@@ -157,7 +157,7 @@ static func expand_sources(check: Dictionary) -> Dictionary:
 		var e: Dictionary = s if s is Dictionary else {"label": str(s), "type": "accuracy"}
 		var n := int(e.get("value", 1))
 		for i in range(absi(n)):
-			if String(e.get("type", "accuracy")) == "difficulty":
+			if String(e.get("kind", e.get("type", "accuracy"))) == "difficulty":
 				diff.append(e.get("label", "Difficulty"))
 			else:
 				acc.append(e.get("label", "Accuracy"))
@@ -192,6 +192,8 @@ static func formula_bbcode(check: Dictionary, result: String) -> String:
 static func _bonuses(check: Dictionary) -> Array:
 	if check.has("bonuses"):
 		return check["bonuses"]
+	if check.has("bonus_sources"):
+		return check["bonus_sources"]
 	var b := int(check.get("bonus", 0))
 	return [] if b == 0 else [{"label": "Bonus", "value": b}]
 
