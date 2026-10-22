@@ -492,6 +492,21 @@ func _update_near() -> void:
 
 func _update_camera(delta: float) -> void:
 	var me: PilotFigure = avatars.get(local_seat)
+	# Face to face (first-person conversation): the camera holds on the person's face.
+	var npc_id := str(story.dialogue.get("ctx", {}).get("npc", "")) if dialogue != null and dialogue.visible else ""
+	if npc_id != "" and npc_nodes.has(npc_id) and me != null and StorySettings.dialogue_view() == "first" and str(story.dialogue.get("mode", "talk")) != "radio":
+		var fig := npc_nodes[npc_id] as PilotFigure
+		var face_at := fig.position + Vector3(0, 1.62, 0)
+		var from := me.position + Vector3(0, 1.6, 0)
+		var eye := face_at + (from - face_at).normalized() * 1.25 + Vector3(0, -0.02, 0)
+		_cam.position = _cam.position.lerp(eye, clampf(delta * 6.0, 0.0, 1.0))
+		_cam.look_at(face_at + Vector3(0, -0.12, 0), Vector3.UP)
+		# Face animation, when the figure supports it (visuals' people: expressions, blinks, talking).
+		if fig.has_method("set_expression"):
+			fig.call("set_expression", str(story.dialogue.get("expression", "neutral")))
+		if fig.has_method("set_talking"):
+			fig.call("set_talking", str(story.dialogue.get("speaker", "")) == "npc")
+		return
 	var focus := me.position if me != null else Vector3.ZERO
 	if dialogue != null and dialogue.visible and npc_nodes.has(str(story.dialogue.get("ctx", {}).get("npc", ""))):
 		focus = focus.lerp((npc_nodes[str(story.dialogue["ctx"]["npc"])] as PilotFigure).position, 0.5)
@@ -559,6 +574,14 @@ func _unhandled_input(ev: InputEvent) -> void:
 			KEY_M:
 				if not dialogue.visible and not map.visible:
 					open_map()
+			KEY_T:
+				if not dialogue.visible:
+					var wr := engine.submit(story, campaign, {"type": "wait", "seat": "gm", "params": {"periods": 1}})
+					_handle(wr["events"])
+					for e: Dictionary in wr["events"]:
+						if str(e.get("type", "")) == "time_passed":
+							hud.toast(str(e["text"]), StoryStyle.BLUE)
+					rebuild()
 			KEY_B:
 				if MarketPanel.available(campaign) and not dialogue.visible:
 					market.visible = not market.visible
@@ -782,6 +805,9 @@ func screenshot_setup(args: Array) -> Array:
 		return ["codex"]
 	if args.has("map"):
 		return ["map"]
+	if args.has("modes"):
+		StorySettings.persist = false
+		return ["face", "radio", "jammed"]
 	if args.has("house"):
 		StorySettings.persist = false
 		for id: String in ["hr_wallet", "hr_printers", "hr_paid_travel", "hr_fight_for_it", "hr_survival"]:
@@ -835,6 +861,18 @@ func screenshot_stage(tag: String) -> void:
 			codex.open("engaged")
 		"map":
 			open_map()
+		"face":
+			StorySettings.set_dialogue_view("first")
+			screenshot_stage("talk")
+		"radio":
+			StorySettings.set_dialogue_view("third")
+			screenshot_stage("parley")
+		"jammed":
+			var ctx: Dictionary = story.dialogue.get("ctx", {}).duplicate(true)
+			_handle(Dialogue.close(story))
+			story.flags[Dialogue.JAMMED] = [str(ctx.get("speaker", ""))]
+			_handle(Dialogue.start(story, campaign, "parley", ctx))
+			dialogue.refresh()
 		"house_hud":
 			pass
 		"house_market":

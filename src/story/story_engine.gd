@@ -25,6 +25,8 @@ extends RefCounted
 ##   house_rule {id, on}  (host / GM: switch one of the story's house rules, StoryHouseRules)
 ##   buy {item, pilot} / sell_salvage {} / use_printer {pilot} / restock {} / fight_for_it {item, pilot}
 ##                                                    the money-and-supplies house rules (Economy)
+##   wait / go / follow / sneak / pick_lock / break_in / pickpocket / take_out / take / slip_away
+##                                                    doing things yourself in town (TownLife)
 ##   travel {world}                                   go to another world of the sector (between missions; Sector)
 ## "seat" "gm" (the host / procedural GM) may act for anyone.
 
@@ -66,6 +68,13 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 	var seat := str(action.get("seat", "gm"))
 	var p: Dictionary = action.get("params", {})
 	var me := story.pilot_of_seat(seat)
+	# Doing things yourself in town (TownLife): waiting, sneaking, following, picking locks...
+	if TownLife.handles(type):
+		var tpid := str(p.get("pilot", me))
+		if type != "wait" and seat != "gm" and not _controls(story, seat, tpid):
+			return _no("That isn't your pilot.")
+		var why_t := TownLife.refusal(story, campaign, type, p, tpid)
+		return _no(why_t) if why_t != "" else {}
 	# A human GM's story tools (GmTools): gm seat only.
 	if GmTools.handles(type):
 		var why_gm := GmTools.refusal(story, campaign, type, p, seat)
@@ -277,6 +286,8 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 	var seat := str(action.get("seat", "gm"))
 	var p: Dictionary = action.get("params", {})
 	var me := story.pilot_of_seat(seat)
+	if TownLife.handles(str(action["type"])):
+		return TownLife.apply(story, campaign, str(action["type"]), p, str(p.get("pilot", me)))
 	if GmTools.handles(str(action["type"])):
 		return GmTools.apply(story, campaign, str(action["type"]), p, _first_alive(story, campaign))
 	match str(action["type"]):
@@ -298,6 +309,7 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 				Sector.adopt_hub(story)
 				events.append({"type": "hub_entered", "hub": story.hub.duplicate(true)})
 			Sector.ensure(story, campaign)
+			TownLife.seed_items(story)
 			if not bool(p.get("no_jobs", false)):
 				for h: Dictionary in MissionHooks.fill_board(story, campaign):
 					events.append({"type": "hook_added", "hook": h})

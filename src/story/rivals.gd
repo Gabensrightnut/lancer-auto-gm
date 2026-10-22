@@ -193,6 +193,7 @@ static func squad_losing(b: Dictionary) -> bool:
 ## Reads a batch of battle events (StoryEngine "battle_events"): keeps count, and opens the
 ## parley when the commander's personality says it's time to talk.
 static func observe(story: StoryState, campaign: Campaign, events: Array) -> Array:
+	_track_jammed(story, events)
 	var b := battle(story)
 	if b.is_empty() or str(b["ended"]) != "":
 		return []
@@ -233,6 +234,24 @@ static func observe(story: StoryState, campaign: Campaign, events: Array) -> Arr
 	var out: Array = [{"type": "parley_offered", "rival": b["rival"], "kind": kind, "rule_ref": REF}]
 	out.append_array(_open(story, campaign, kind, ""))
 	return out
+
+
+## Jammed squad pilots, for comms (Dialogue.is_jammed): mech unit ids are the seats.
+static func _track_jammed(story: StoryState, events: Array) -> void:
+	var j: Array = (story.flags.get(Dialogue.JAMMED, []) as Array).duplicate()
+	for e: Dictionary in events:
+		var t := str(e.get("type", ""))
+		if (t == "status_added" or t == "status_removed") and str(e.get("status", "")) == "Jammed":
+			var pid := story.pilot_of_seat(str(e.get("unit", "")))
+			if pid == "":
+				continue
+			if t == "status_added" and not j.has(pid):
+				j.append(pid)
+			elif t == "status_removed":
+				j.erase(pid)
+		elif t == "mission_ended":
+			j.clear()
+	story.flags[Dialogue.JAMMED] = j
 
 
 ## Why the squad can't call for a parley right now ("" if it can).
@@ -277,7 +296,8 @@ static func _open(story: StoryState, campaign: Campaign, kind: String, speaker: 
 		"yield_line": fill(_line(story, talk.get("yield", [])), r), "withdraw_line": fill(_line(story, talk.get("withdraw", [])), r),
 		"deal_line": fill(_line(story, talk.get("deal", [])), r), "retreat_line": fill(_line(story, talk.get("offer_retreat", [])), r),
 		"defiant_line": fill(_line(story, talk.get("demand_fight", [])), r), "refused_line": fill(_line(story, p.get("refused", ["So be it."])), r)}
-	return Dialogue.start(story, campaign, "parley", {"speaker": speaker, "npc": str(b["rival"]), "vars": vars})
+	# Mid-battle, terms are talked over the open channel (radio mode).
+	return Dialogue.start(story, campaign, "parley", {"speaker": speaker, "npc": str(b["rival"]), "vars": vars, "mode": "radio", "channel": "Open channel"})
 
 
 static func _lead_pilot(story: StoryState, campaign: Campaign) -> String:
@@ -354,6 +374,7 @@ static func barks_for(story: StoryState, e: Dictionary) -> Array:
 		return []
 	var faces := {"start": "determined", "start_return": "smug", "hurt": "hurt", "ally_down": "worried", "gloat": "smug", "defeated": "shouting"}
 	return [{"unit": str(b["unit"]), "pilot": str(b["rival"]), "who": str(r.get("callsign", "")), "rival": true,
+		"mode": "radio", "channel": "Open channel", "jammed": (story.flags.get(Dialogue.JAMMED, []) as Array).duplicate(),
 		"face": {"portrait": PortraitSpec.for_npc(r), "expression": str(faces.get(moment, "neutral"))},
 		"text": fill(str(lines[rng.randi_range(0, lines.size() - 1)]), r)}]
 
@@ -367,6 +388,7 @@ static func after_mission(story: StoryState, outcome: String, hook: Dictionary) 
 	var b := battle(story)
 	story.flags.erase(BATTLE)
 	story.flags.erase(DEBRIEF)
+	story.flags.erase(Dialogue.JAMMED)
 	if b.is_empty() or not story.npcs.has(str(b["rival"])):
 		return []
 	var id := str(b["rival"])

@@ -1,0 +1,42 @@
+{
+  "_note": "Our own data. Life in a hub: a clock (dawn, day, evening, night), where each kind of person is at each time and where they sleep, which rooms each building has, how many people are about, and how sneaking, following, lockpicking, pickpocketing, breaking in and knocking someone out are rolled: as narrative skill checks with the book's triggers (Core p.26-27: Act Unseen or Unheard, Hack or Fix, Get a Hold of Something, Apply Fists to Faces, Blow Something Up, Take Someone Out, Spot, Get Somewhere Quickly). Who notices, and what happens when someone does, is the GM's call by the book; these are our own defaults.",
+  "periods": ["dawn", "day", "evening", "night"],
+  "period_names": {"dawn": "Dawn", "day": "Day", "evening": "Evening", "night": "Night"},
+  "rooms": {
+    "bar": {"main": {"name": "the bar room", "public": true}, "back": {"name": "the back room", "lock": 1}, "upstairs": {"name": "the rooms upstairs", "lock": 1}},
+    "office": {"front": {"name": "the front office", "public": true}, "back": {"name": "the back office", "lock": 1}, "safe": {"name": "the safe", "lock": 2, "container": true}},
+    "market": {"floor": {"name": "the market floor", "public": true}, "store": {"name": "the storeroom", "lock": 1}},
+    "workshop": {"floor": {"name": "the shop floor", "public": true}, "loft": {"name": "the loft", "lock": 0}},
+    "printer": {"floor": {"name": "the printer floor", "public": true}, "control": {"name": "the control room", "lock": 1}},
+    "plaza": {"square": {"name": "the square", "public": true}},
+    "landing": {"pads": {"name": "the pads", "public": true}},
+    "house": {"front": {"name": "the front room", "lock": 1}, "bedroom": {"name": "the bedroom", "lock": 0}}
+  },
+  "schedules": {
+    "bartender": {"dawn": ["bar", "upstairs", "asleep"], "day": ["bar", "main"], "evening": ["bar", "main"], "night": ["bar", "upstairs", "asleep"]},
+    "company_rep": {"dawn": ["office", "back"], "day": ["office", "front"], "evening": ["bar", "main"], "night": ["office", "back", "asleep"]},
+    "faction_agent": {"dawn": ["plaza", "square"], "day": ["office", "front"], "evening": ["bar", "main"], "night": ["bar", "upstairs", "asleep"]},
+    "quartermaster": {"dawn": ["printer", "floor"], "day": ["printer", "floor"], "evening": ["printer", "control"], "night": ["printer", "control", "asleep"]},
+    "mechanic": {"dawn": ["workshop", "floor"], "day": ["workshop", "floor"], "evening": ["bar", "main"], "night": ["workshop", "loft", "asleep"]},
+    "fixer": {"dawn": ["market", "store", "asleep"], "day": ["market", "floor"], "evening": ["bar", "main"], "night": ["market", "floor"]},
+    "local": {"dawn": ["plaza", "square"], "day": ["market", "floor"], "evening": ["bar", "main"], "night": ["house", "bedroom", "asleep"]},
+    "instructor": {"dawn": ["plaza", "square"], "day": ["plaza", "square"], "evening": ["office", "front"], "night": ["office", "back", "asleep"]},
+    "default": {"dawn": ["plaza", "square"], "day": ["plaza", "square"], "evening": ["bar", "main"], "night": ["bar", "upstairs", "asleep"]}
+  },
+  "crowd": {"dawn": 1, "day": 3, "evening": 3, "night": 0},
+  "actions": {
+    "sneak": {"label": "Slip in unseen", "skills": ["sk_act_unseen_or_unheard", "sk_get_somewhere_quickly"], "ref": "Core p.26: Act Unseen or Unheard", "consequence": "Someone sees you where you shouldn't be."},
+    "follow": {"label": "Follow them without being noticed", "skills": ["sk_act_unseen_or_unheard", "sk_spot"], "ref": "Core p.26: Act Unseen or Unheard", "consequence": "They notice the tail."},
+    "pick_lock": {"label": "Pick the lock", "skills": ["sk_hack_or_fix", "sk_invent_or_create"], "ref": "Core p.26: Hack or Fix", "consequence": "It takes too long, and someone hears."},
+    "pickpocket": {"label": "Lift it without them noticing", "skills": ["sk_act_unseen_or_unheard", "sk_get_a_hold_of_something"], "risky": true, "ref": "Core p.26: Act Unseen or Unheard, Get a Hold of Something", "consequence": "They catch your hand."},
+    "break_in": {"label": "Force your way in", "skills": ["sk_apply_fists_to_faces", "sk_blow_something_up"], "loud": true, "ref": "Core p.26: Apply Fists to Faces, Blow Something Up", "consequence": "The whole street hears it."},
+    "take_out": {"label": "Put them down quietly", "skills": ["sk_take_someone_out", "sk_apply_fists_to_faces"], "risky": true, "ref": "Core p.27: Take Someone Out", "consequence": "They get a shout out first."},
+    "slip_away": {"label": "Get out before anyone stops you", "skills": ["sk_get_somewhere_quickly", "sk_act_unseen_or_unheard"], "ref": "Core p.26: Get Somewhere Quickly", "consequence": "They block the way out."}
+  },
+  "witness": {"guards": ["faction_agent", "company_rep", "instructor"], "bounty_per_value": 1},
+  "lines": {
+    "wait": ["Time passes. It's {period} now.", "You wait. {period} comes on slowly.", "The town turns over into {period}."],
+    "seen": ["{witness} sees it happen.", "A shout: {witness} saw you.", "{witness} is staring right at you."],
+    "alarm": ["Someone's raising the alarm.", "Doors open up and down the street.", "Boots on the boardwalk. They're coming."]
+  }
+}
