@@ -220,3 +220,22 @@ func test_mission_objectives_follow_the_phase() -> void:
 	view.set_phase(GameState.PHASE_COMBAT)
 	expect(not bool(view.terrain.objectives[2]), "and go away once combat starts")
 	view.free()
+
+
+func test_out_of_range_reason_and_turn_bar_names() -> void:
+	var s := F.state(GridLayout.Shape.SQUARE, 30, 6)
+	var me := F.mech(s, "me", "players", Vector2i(1, 2))
+	me.loadout["weapons"] = [F.weapon("gun", "Short Gun", "Main", "Rifle", "1d6", 5)]
+	F.mech(s, "foe", "enemies", Vector2i(20, 2))
+	var engine := RulesEngine.new()
+	F.begin(engine, s, me)
+	var db := ContentDB.new()
+	db.load_all()
+	var gun: Array = ActionCatalog.for_unit(s, engine, db, "me").filter(func(a: Dictionary) -> bool: return a.get("id") == "w:gun")
+	expect(String(gun[0].get("reason", "")).begins_with("Out of range (19 > 5)"), "real distance and reach: %s" % gun[0].get("reason", ""))
+	var bar := TurnOrderBar.new()
+	bar.set_data({"units": [{"id": "x", "name": "Placeholder Controller", "side": "enemies"}], "round": 1})
+	var labels := bar.find_children("*", "Label", true, false).filter(func(l: Label) -> bool: return l.text == "Placeholder Controller")
+	expect(not labels.is_empty() and (labels[0] as Label).text_overrun_behavior == TextServer.OVERRUN_TRIM_ELLIPSIS, "long names end in an ellipsis")
+	expect_eq((labels[0] as Label).tooltip_text, "Placeholder Controller", "full name on hover")
+	bar.free()

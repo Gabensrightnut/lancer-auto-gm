@@ -101,6 +101,10 @@ static func for_unit(state: GameState, engine: RulesEngine, db: ContentDB, unit_
 			"stats": stats, "text": "Skirmish: attack with this weapon (quick action).",
 			"rule_ref": "Core rules, actions: Skirmish", "kind": "attack", "weapon": key, "preview": {"quick": 1}}
 		a.merge(_vs_enemies(state, engine, u, "skirmish", {"weapon": key}), true)
+		if not a.get("enabled", true):
+			var oor := _out_of_range(state, u, key, w)
+			if oor != "":
+				a["reason"] = oor
 		var ws := Weapons.state_of(u, w)
 		var extras: Array = []
 		var warns: Array = []
@@ -313,6 +317,28 @@ static func _short(name: String) -> String:
 		if name.begins_with(drop):
 			return drop.strip_edges() + " " + name.trim_prefix(drop).split(" ")[0]
 	return name.split(" ")[0] if name.length() > 12 else name
+
+
+## "Out of range (12 > 10): move closer or Boost" when every enemy is just too far (the
+## nearest one's real distance from the rules' attack preview); "" otherwise.
+static func _out_of_range(state: GameState, u: Unit, key: String, w: Dictionary) -> String:
+	var reach := 0
+	for r: Dictionary in w.get("range", []):
+		if String(r.get("type", "")) in ["Range", "Threat"]:
+			reach = maxi(reach, int(r.get("val", 0)))
+	var nearest := -1
+	for o in _enemies(state, u):
+		var p := RulesQueries.attack_preview(state, u.id, key, o.id)
+		if p.get("ok", false):
+			return ""
+		if not String(p.get("reason", "")).begins_with("Out of"):
+			continue
+		var d := int(p.get("distance", 0))
+		if nearest < 0 or d < nearest:
+			nearest = d
+	if nearest < 0:
+		return ""
+	return "Out of %s (%d > %d): move closer or Boost." % ["threat" if Weapons.is_melee(w) else "range", nearest, reach]
 
 
 static func _validate_self(state: GameState, engine: RulesEngine, u: Unit, type: String, params: Dictionary = {}) -> Dictionary:

@@ -43,6 +43,8 @@ func set_data(d: Dictionary) -> void:
 
 func _rebuild() -> void:
 	for c in _box.get_children():
+		# Out of the box now, so centering below measures only the new portraits.
+		_box.remove_child(c)
 		c.queue_free()
 	var vp := get_viewport_rect().size if is_inside_tree() else Vector2(1920, 1080)
 	var px := clampf(vp.y * 0.065, 48, 110)
@@ -131,6 +133,9 @@ func _portrait(u: Dictionary, px: float, can_pick: bool) -> Control:
 	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name.custom_minimum_size = Vector2(px, 0)
 	name.clip_text = true
+	name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS  # cut at the end, never the start
+	name.tooltip_text = String(u.get("name", ""))
+	name.mouse_filter = Control.MOUSE_FILTER_PASS
 	name.add_theme_font_size_override("font_size", int(px * 0.16))
 	name.add_theme_color_override("font_color", col.lightened(0.35) if not acted else Color(0.5, 0.5, 0.55))
 	name.add_theme_constant_override("outline_size", 4)
