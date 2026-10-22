@@ -11,15 +11,88 @@
     "environments": "Chance that weather or a world that suggests a rules environment (sandstorm, blizzard, low gravity...) brings that environment's rules into the mission."
   },
   "presets": {
-    "Standard": {"aggression": 0.7, "caution": 0.55, "focus_fire": 0.8, "reinforcements": 0.25, "difficulty": 1.4, "randomness": 0.15, "environments": 0.5, "approach": 14,
-      "description": "A real fight: about one and a half enemies per pilot that use cover, gang up on whoever is hurt, and call in reinforcements. Expect to lose mechs."},
-    "Ruthless": {"aggression": 0.9, "caution": 0.45, "focus_fire": 1.0, "reinforcements": 0.4, "difficulty": 1.75, "randomness": 0.05, "environments": 0.75, "approach": 12,
-      "description": "Enemies gang up on the weakest pilot and press every advantage."},
-    "Cautious": {"aggression": 0.3, "caution": 0.9, "focus_fire": 0.6, "reinforcements": 0.15, "difficulty": 1.25, "randomness": 0.2, "environments": 0.5, "approach": 18,
-      "description": "Enemies hug cover, keep their distance and pull back when hurt."},
-    "Chaotic": {"aggression": 0.65, "caution": 0.3, "focus_fire": 0.1, "reinforcements": 0.4, "difficulty": 1.25, "randomness": 1.0, "environments": 0.75, "approach": 12,
-      "description": "Unpredictable: wild moves, scattered attacks, surprise reinforcements."},
-    "Teaching": {"aggression": 0.4, "caution": 0.4, "focus_fire": 0.0, "reinforcements": 0.0, "difficulty": 0.75, "randomness": 0.3, "environments": 0.0, "approach": 12,
-      "description": "Gentle: smaller fights, spread-out attacks, and every enemy move explained.", "explain": true}
+    "Standard": {
+      "aggression": 0.7,
+      "caution": 0.55,
+      "focus_fire": 0.8,
+      "reinforcements": 0.25,
+      "difficulty": 1.4,
+      "randomness": 0.15,
+      "environments": 0.5,
+      "approach": 14,
+      "description": "A real fight: about one and a half enemies per pilot that use cover, gang up on whoever is hurt, and call in reinforcements. Expect to lose mechs."
+    },
+    "Ruthless": {
+      "aggression": 0.9,
+      "caution": 0.45,
+      "focus_fire": 1.0,
+      "reinforcements": 0.4,
+      "difficulty": 1.75,
+      "randomness": 0.05,
+      "environments": 0.75,
+      "approach": 12,
+      "description": "Enemies gang up on the weakest pilot and press every advantage."
+    },
+    "Cautious": {
+      "aggression": 0.3,
+      "caution": 0.9,
+      "focus_fire": 0.6,
+      "reinforcements": 0.15,
+      "difficulty": 1.25,
+      "randomness": 0.2,
+      "environments": 0.5,
+      "approach": 18,
+      "description": "Enemies hug cover, keep their distance and pull back when hurt."
+    },
+    "Chaotic": {
+      "aggression": 0.65,
+      "caution": 0.3,
+      "focus_fire": 0.1,
+      "reinforcements": 0.4,
+      "difficulty": 1.25,
+      "randomness": 1.0,
+      "environments": 0.75,
+      "approach": 12,
+      "description": "Unpredictable: wild moves, scattered attacks, surprise reinforcements."
+    },
+    "Teaching": {
+      "aggression": 0.4,
+      "caution": 0.4,
+      "focus_fire": 0.0,
+      "reinforcements": 0.0,
+      "difficulty": 0.75,
+      "randomness": 0.3,
+      "environments": 0.0,
+      "approach": 12,
+      "description": "Gentle: smaller fights, spread-out attacks, and every enemy move explained.",
+      "explain": true
+    }
+  },
+  "fight_lengths_note": "Fight length (GM dial, separate from the preset): scales only the GM's choices the book leaves to the GM: encounter size (multiplies the enemy budget), deployment distance (rows added to the approach dial) and how early an enemy commander considers yielding (fraction of their force down; Core p.60 lets the GM end a fight once its outcome isn't in question). Never HP, damage or any rule. Times are rough solo estimates.",
+  "fight_lengths": {
+    "short": {
+      "label": "Short",
+      "encounter": 0.7,
+      "approach": -4,
+      "yield_at": 0.33,
+      "minutes": "15-25",
+      "description": "About 15-25 minutes solo: fewer enemies, closer deployment, and enemy commanders give up sooner."
+    },
+    "standard": {
+      "label": "Standard",
+      "encounter": 1.0,
+      "approach": 0,
+      "yield_at": 0.5,
+      "minutes": "20-40",
+      "description": "About 20-40 minutes solo: the GM style's usual fight."
+    },
+    "long": {
+      "label": "Long",
+      "encounter": 1.35,
+      "approach": 4,
+      "yield_at": 0.67,
+      "minutes": "40-60+",
+      "description": "About 40-60 minutes or more solo: bigger forces, a longer approach, and commanders who hold out longer."
+    }
   }
 }

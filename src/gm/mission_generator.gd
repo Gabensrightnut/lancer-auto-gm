@@ -13,6 +13,7 @@ extends RefCounted
 ##   "size": 20-40 (default: random), "shape": "hex"/"square" (default hex),
 ##   "landscape": TerrainGen.LANDSCAPES key, "culture": culture id (default: seeded pick),
 ##   "settings": GmSettings, "db": ContentDB, "npc_templates": Dictionary,
+##   "map_doc": MapDoc (a saved/edited map: its terrain, kit and zones; sitrep defaults to its own),
 ##   "weather": a weather.json id ("clear" for none), "environments": [ids] (overrides the pick),
 ##   "squad": Campaign.squad() entries [{seat, pilot, mech}] to field the campaign's pilots}
 ## Returns {"state": GameState (setup phase, seats p1..pN + gm), "mission": Mission,
@@ -29,16 +30,23 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	var w := size
 	var h := clampi(int(size * rng.randf_range(0.75, 1.0)), 20, 40)
 
+	# A saved or edited map (MapDoc) replaces the generated battlefield.
+	var doc: MapDoc = opts.get("map_doc") if opts.get("map_doc") is MapDoc else null
+	if doc:
+		shape = doc.map.grid.shape
+		w = doc.w
+		h = doc.h
+
 	var m := Mission.new()
 	m.mission_seed = mission_seed
 	m.max_rounds = int(cfg.get("max_rounds", 12))
-	_pick_sitrep(m, rng, cfg, str(opts.get("sitrep", "")))
+	_pick_sitrep(m, rng, cfg, str(opts.get("sitrep", doc.sitrep if doc else "")))
 
 	var state := GameState.new(mission_seed, shape)
 	# The world uses its own RNG so terrain changes never shift the rest of the mission.
 	var world_rng := RandomNumberGenerator.new()
 	world_rng.seed = hash([mission_seed, "world"])
-	var bf := battlefield(rng, world_rng, m.sitrep_id, w, h, shape, str(opts.get("landscape", "")), str(opts.get("culture", "")), int(settings.approach))
+	var bf := battlefield(rng, world_rng, m.sitrep_id, w, h, shape, str(opts.get("landscape", "")), str(opts.get("culture", "")), maxi(0, int(settings.approach) + int(settings.fight("approach", 0)))) \n		if doc == null else _doc_battlefield(doc, m.sitrep_id, rng)
 	state.map = bf["map"]
 	var layout: Dictionary = bf["layout"]
 	var fairness: Dictionary = bf["fairness"]
@@ -52,7 +60,7 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	var names_rng := RandomNumberGenerator.new()
 	names_rng.seed = hash([mission_seed, "names"])
 	var names := NameGen.new(names_rng)
-	var weather := _pick_weather(world_rng, world[0], world[1], str(opts.get("weather", "?")))
+	var weather := _pick_weather(world_rng, world[0], world[1], str(opts.get("weather", doc.weather if doc and doc.weather != "" else ("clear" if doc else "?"))))
 	m.flavor = {"operation": names.operation(), "planet": names.planet(), "faction": names.faction(),
 		"team": names.team_name(), "cargo": names.cargo(), "kit": TerrainGen.kit(world[0], world[1]) + ("+" + weather if weather != "" else ""),
 		"terrain": TerrainGen.describe(world[0], world[1]), "weather": weather}
@@ -132,6 +140,16 @@ static func battlefield(rng: RandomNumberGenerator, world_rng: RandomNumberGener
 		_fortify(map, rng, layout["zones"]["zone"], shape)
 	var fairness := MapFairness.repair(map, layout, w, h, shape, blocked, world_rng, TerrainGen.cover_tags(world[0]))
 	return {"map": map, "layout": layout, "fairness": fairness, "world": world}
+
+
+## The battlefield from a MapDoc: its own terrain and zones. If the mission's sitrep differs
+## from the one the map was laid out for, the zones are laid out afresh for it.
+static func _doc_battlefield(doc: MapDoc, sitrep_id: String, rng: RandomNumberGenerator) -> Dictionary:
+	var layout := doc.layout()
+	if sitrep_id != doc.sitrep:
+		layout = SitrepLayout.layout(sitrep_id, doc.w, doc.h, doc.map.grid.shape, rng)
+	var map := BattleMap.from_dict(doc.map.to_dict())
+	return {"map": map, "layout": layout, "fairness": MapFairness.check(map, layout, doc.h), "world": [doc.landscape, doc.culture]}
 
 
 # --- Terrain (TerrainGen) -------------------------------------------------------------
@@ -257,7 +275,7 @@ static func _add_campaign_squad(state: GameState, m: Mission, rng: RandomNumberG
 static func _add_enemies(state: GameState, m: Mission, rng: RandomNumberGenerator, cfg: Dictionary, players: int, settings: GmSettings, templates: Dictionary) -> void:
 	var pool := _enemy_pool(cfg, templates)
 	m.reinforcement_pool = pool.duplicate(true)
-	var budget := players * float(cfg.get("per_player", 1.5)) * settings.difficulty
+	var budget := players * float(cfg.get("per_player", 1.5)) * settings.difficulty * float(settings.fight("encounter", 1.0))
 	var free := _free_cells(m.deployment[Mission.ENEMIES], rng)
 	var n := 0
 	var guard := 0

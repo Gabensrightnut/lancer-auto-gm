@@ -4,7 +4,8 @@ extends SceneTree
 ## with four AI pilots per GM preset and reports the squad's win rate, mechs lost and pilot
 ## deaths. Story missions, so pilots ride in their mechs and can die.
 ##
-##   godot --headless --path . -s res://tools/gm_balance.gd -- [missions per preset] [preset,...]
+##   godot --headless --path . -s res://tools/gm_balance.gd -- [missions per preset] [preset,...] [fight length,...]
+## (fight lengths: short, standard, long; each preset is run at each length)
 
 const PRESETS := ["Teaching", "Standard", "Cautious", "Chaotic", "Ruthless"]
 
@@ -13,16 +14,23 @@ func _init() -> void:
 	var args := OS.get_cmdline_user_args()
 	var n := int(args[0]) if args.size() > 0 else 10
 	var presets: Array = Array(args[1].split(",")) if args.size() > 1 else PRESETS
+	var lengths: Array = Array(args[2].split(",")) if args.size() > 2 else ["standard"]
 	StorySettings.persist = false
 	var db := ContentDB.new()
 	db.load_all()
 	var store := SaveStore.new("user://gm_balance")
 	var rows: Array = []
+	var combos: Array = []
 	for preset: String in presets:
-		var res := {"preset": preset, "missions": 0, "wins": 0, "losses": 0, "draws": 0, "mechs_lost": 0, "pilots_dead": 0, "rounds": 0, "ms": 0}
+		for fl: String in lengths:
+			combos.append([preset, fl])
+	for combo: Array in combos:
+		var preset: String = combo[0]
+		var fl: String = combo[1]
+		var res := {"preset": "%s/%s" % [preset, fl], "missions": 0, "wins": 0, "losses": 0, "draws": 0, "mechs_lost": 0, "pilots_dead": 0, "rounds": 0, "ms": 0}
 		for i in range(n):
 			var t0 := Time.get_ticks_msec()
-			var r := _one(db, store, preset, 1000 + i)
+			var r := _one(db, store, preset, 1000 + i, fl)
 			res["ms"] += Time.get_ticks_msec() - t0
 			if r.is_empty():
 				continue
@@ -42,15 +50,15 @@ func _init() -> void:
 	print("\npreset     missions  win%  loss%  draw%  mechs lost/mission  pilot deaths/mission  avg rounds  s/mission")
 	for res: Dictionary in rows:
 		var m := maxi(1, int(res["missions"]))
-		print("%-10s %8d  %4d  %5d  %5d  %18.2f  %20.2f  %10.1f  %9.1f" % [res["preset"], res["missions"], 100 * res["wins"] / m, 100 * res["losses"] / m,
+		print("%-18s %8d  %4d  %5d  %5d  %18.2f  %20.2f  %10.1f  %9.1f" % [res["preset"], res["missions"], 100 * res["wins"] / m, 100 * res["losses"] / m,
 			100 * res["draws"] / m, float(res["mechs_lost"]) / m, float(res["pilots_dead"]) / m, float(res["rounds"]) / m, res["ms"] / 1000.0 / m])
 	quit()
 
 
 ## One story mission: a new campaign with four LL0 pilots, all AI, the first job on the board.
-func _one(db: ContentDB, store: SaveStore, preset: String, seed_value: int) -> Dictionary:
+func _one(db: ContentDB, store: SaveStore, preset: String, seed_value: int, fight_length: String = "standard") -> Dictionary:
 	GameFlow.story = null
-	var c := GameFlow.start_story_campaign(store, db, "Balance %d" % seed_value, 4, 0, preset, GameFlow.DEFAULT_ARCS, "c_balance_%d" % seed_value)
+	var c := GameFlow.start_story_campaign(store, db, "Balance %d" % seed_value, 4, 0, preset, GameFlow.DEFAULT_ARCS, "c_balance_%d" % seed_value, fight_length)
 	var story := GameFlow.story
 	GameFlow.story_engine.submit(story, c, {"type": "session_zero", "seat": "gm", "params": {}})
 	GameFlow.finish_session_zero(c, store)

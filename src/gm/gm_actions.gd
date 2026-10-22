@@ -17,6 +17,7 @@ static func register(engine: RulesEngine) -> void:
 		if not engine.has_action(h.type()):
 			engine.register(h)
 	SitrepActions.register(engine)
+	GmMapActions.register(engine)
 
 
 class Spawn:

@@ -53,6 +53,7 @@ keeps the choices. An AI GM answers with the suggested reading and logs it. Code
 
 | Rule | Current state | Where in code |
 |---|---|---|
+| When a beaten enemy commander offers terms (story parley) | PROVISIONAL reading of Core p.60's "no questions as to the outcome": from round 2, once a share of the enemy force is down (the GM's fight length dial: a third on Short, half on Standard, two thirds on Long) or the commander is badly hurt with half that share down. The book leaves the moment to the GM | `src/story/rivals.gd` `enemy_losing`, `data/game/gm/presets.json` `fight_lengths` |
 | Prepare triggers | Only movement triggers so far (a character moves adjacent / within a range); the book allows any "When X, then Y" (p.72) | `pilot_actions.gd`, `reactions.gd` |
 | After-attack moves | Taken right away, on your own turn only; the Skirmisher talent's "before" option and its use after Overwatch aren't supported yet | `move_actions.gd`, `effects.gd` |
 | Multi-character grapples | Sizes add up on each side (p.69): not supported, only two-character grapples | `close_combat.gd` |
