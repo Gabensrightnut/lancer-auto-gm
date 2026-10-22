@@ -684,24 +684,30 @@ pixel art).
 4. **Campaign:** the full narrative loop, progression, saves, procedural missions.
 5. **Polish:** effects coverage, animations, audio, accessibility, customization, human GM.
 
-## Parked: your own story additions (not built until you say)
+## House rules (toggles, all off by default)
 
-Ideas that are fun but not canon LANCER. Kept here so they're not lost; the game stays canon
-until you decide to turn any of these on as your own campaign rules.
+A **House Rules** page in settings lists optional rules as on/off switches that can be flipped
+at any time, even mid-campaign. The game stays canon until someone turns one on.
 
-- Tracked wallet: manna and local currency with prices for food, drinks, lodging, travel,
-  information, pilot supplies and repair kits; mission pay; selling salvage.
-- Printer scarcity: frontier worlds without printers, paying for printer access, a destroyed
-  mech staying destroyed until you reach a printer.
-- Paid travel: company/patron members ride free, independents buy passage.
-- "Can't afford it? Fight for it": an unaffordable deal turns into a generated combat job;
-  lose and the deal is off, but you can come back and pay with scrap, a spare mech, manna or
-  local money.
-- Buying food and water as a survival need.
-- A saving roll to see whether a hit building collapses (the book uses HP, Armor and AP
-  instead, Core p.68).
-- Being Stunned after falling, and a general "brace for the fall" reaction (the book gives
-  falls damage only, 3 AP per 3 spaces, max 9; only specific systems like flight avoid a fall).
+- **Who decides:** a human GM's settings win. If the GM is the AI, the host's settings are used.
+  Other players see which house rules are on (and the change is announced when one is flipped).
+- **Clearly labeled:** every house rule shows where it comes from ("Your idea", "Community",
+  "Lancer Tactics") and that it isn't a book rule. The codex marks them the same way.
+- **Your ideas** (from this design, previously parked):
+  - Tracked wallet: manna and local currency with prices for food, drinks, lodging, travel,
+    information, pilot supplies and repair kits; mission pay; selling salvage.
+  - Printer scarcity: frontier worlds without printers, paying for printer access, a destroyed
+    mech staying destroyed until you reach a printer.
+  - Paid travel: company/patron members ride free, independents buy passage.
+  - "Can't afford it? Fight for it": an unaffordable deal becomes a generated combat job; lose
+    and the deal is off, but you can come back and pay with scrap, a spare mech, manna or money.
+  - Food and water as a survival need.
+  - Building collapse saving roll after big hits (instead of only HP/Armor/AP, Core p.68).
+  - Stunned after a fall, and a "brace for the fall" reaction.
+- **Lancer Tactics options** (see the table below): split barrage and the big-hit Brace prompt
+  are ON by your pick; repeating quick tech stays OFF.
+- **Community house rules:** popular ones researched from the Lancer community (forums, Reddit,
+  Discord write-ups, GM blogs), each with its source.
 
 ## Rule differences: Lancer Tactics vs. the book
 
