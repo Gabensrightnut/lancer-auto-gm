@@ -702,6 +702,8 @@ static func _is_character(u: Unit) -> bool:
 
 ## On the battlefield: not destroyed, and not a pilot riding inside a mech.
 static func is_present(u: Unit) -> bool:
+	if u != null and u.counters.has("extracted"):
+		return false  # Escort/Extraction sitreps: extracted, off the battlefield for good
 	if u != null and u.counters.has("folded"):
 		return false  # Fold Space: off the battlefield until the start of its next turn
 	if u == null or u.destroyed:

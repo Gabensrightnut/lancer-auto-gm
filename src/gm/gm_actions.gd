@@ -16,6 +16,7 @@ static func register(engine: RulesEngine) -> void:
 	for h: ActionHandler in [Spawn.new(), EndMission.new(), Narrate.new()]:
 		if not engine.has_action(h.type()):
 			engine.register(h)
+	SitrepActions.register(engine)
 
 
 class Spawn:

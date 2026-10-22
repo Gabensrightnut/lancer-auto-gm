@@ -72,6 +72,11 @@ func step() -> bool:
 			return false  # A human GM starts the fight.
 		var first := mission.first_side if mission != null else Mission.PLAYERS
 		return (host.submit(NetHost.GM_SEAT, {"type": "start_combat", "params": {"first_side": first}})["result"] as RuleResult).ok
+	if mission != null:
+		var carry := mission.carry_action()
+		if not carry.is_empty():
+			host.submit(NetHost.GM_SEAT, carry)
+			return true
 	if _maybe_narrate():
 		return true
 	if _maybe_reinforce():

@@ -54,7 +54,7 @@ func knows_stats(unit_id: String) -> bool:
 func enemies_of(u: Unit) -> Array[Unit]:
 	var out: Array[Unit] = []
 	for o: Unit in state.units.values():
-		if o.side != u.side and not o.destroyed and o.kind != Unit.KIND_DEPLOYABLE:
+		if o.side != u.side and not o.destroyed and o.kind != Unit.KIND_DEPLOYABLE and not o.counters.has("extracted"):
 			out.append(o)
 	return out
 
@@ -62,6 +62,6 @@ func enemies_of(u: Unit) -> Array[Unit]:
 func allies_of(u: Unit) -> Array[Unit]:
 	var out: Array[Unit] = []
 	for o: Unit in state.units.values():
-		if o.side == u.side and o.id != u.id and not o.destroyed and o.kind != Unit.KIND_DEPLOYABLE:
+		if o.side == u.side and o.id != u.id and not o.destroyed and o.kind != Unit.KIND_DEPLOYABLE and not o.counters.has("extracted"):
 			out.append(o)
 	return out

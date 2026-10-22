@@ -64,6 +64,7 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	else:
 		_add_squad(state, m, rng, players, opts.get("db"), names)
 	_add_enemies(state, m, rng, cfg, players, settings, opts.get("npc_templates", UnitFactory.npc_templates()))
+	_setup_objectives(m, state, rng, cfg)
 	m.briefing = _briefing(m, w, h, players, state)
 	return {"state": state, "mission": m, "fairness": fairness, "layout": layout}
 
@@ -339,6 +340,57 @@ static func _place(state: GameState, u: Unit, free: Array) -> bool:
 			return true
 	push_warning("No room to deploy %s." % u.id)
 	return false
+
+
+## What the sitrep puts on the field, into state.objectives (SitrepActions, ViewFilter):
+## the zones; Escort and Extraction's Objective (a Size 1 object: 10 HP per Size, Evasion 10,
+## E-Defense 10, no Armor; Escort's in the Allied Deployment Zone, Extraction's placed by the
+## GM in the Objective Zone) and Extraction Zone; Recon's True Control Zone, picked secretly.
+static func _setup_objectives(m: Mission, state: GameState, rng: RandomNumberGenerator, cfg: Dictionary) -> void:
+	var o := {"sitrep": m.sitrep_id, "zones": m.zones.duplicate(true)}
+	match m.sitrep_id:
+		"sitrep_escort", "sitrep_extraction":
+			o["extraction"] = (m.zones.get("extraction", m.deployment.get(Mission.PLAYERS, [])) as Array).duplicate(true)
+			var size := float(cfg.get("sitreps", {}).get(m.sitrep_id, {}).get("objective_size", 1))
+			var obj := objective_unit(size)
+			var where: Array = m.deployment.get(Mission.PLAYERS, []) if m.sitrep_id == "sitrep_escort" else m.zones.get("objective", [])
+			if _place(state, obj, _free_cells(where, rng)):
+				o["objective"] = obj.id
+		"sitrep_recon":
+			var names: Array = m.zones.keys().filter(func(z: String) -> bool: return z.begins_with("zone"))
+			names.sort()
+			if not names.is_empty():
+				o["true_zone"] = names[rng.randi_range(0, names.size() - 1)]
+				m.flavor["true_zone"] = o["true_zone"]  # host-only, for the GM's own forces
+	state.objectives = o
+
+
+## The Objective of Escort and Extraction (sitreps: Extraction): an object or person of Size
+## 1/2-2 with 10 HP per level of Size, Evasion 10, E-Defense 10 and no Armor. It doesn't take
+## turns or move on its own; enemy forces want it and won't willingly damage it (the AI never
+## targets objects).
+static func objective_unit(size: float = 1.0) -> Unit:
+	var u := Unit.new()
+	u.id = "objective"
+	u.name = "Objective"
+	u.kind = Unit.KIND_DEPLOYABLE
+	u.content_id = "objective"
+	u.side = Mission.PLAYERS
+	u.controller = NetHost.GM_SEAT
+	u.size = size
+	u.max_hp = int(10 * maxf(size, 1.0))
+	u.hp = u.max_hp
+	u.evasion = 10
+	u.edef = 10
+	u.armor = 0
+	u.structure = 1
+	u.max_structure = 1
+	u.stress = 1
+	u.max_stress = 1
+	u.speed = 0
+	u.counters["objective"] = true
+	u.counters["deploy_type"] = "Object"
+	return u
 
 
 static func _briefing(m: Mission, w: int, h: int, players: int, state: GameState) -> String:

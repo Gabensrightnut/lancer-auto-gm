@@ -43,6 +43,7 @@ var ended := false
 func observe(state: GameState, events: Array) -> void:
 	if outcome != "":
 		return
+	var obj_id := str(state.objectives.get("objective", ""))
 	for e: Dictionary in events:
 		match e.get("type", ""):
 			"round_started":
@@ -50,16 +51,95 @@ func observe(state: GameState, events: Array) -> void:
 					_end_of_round(state, int(e["round"]) - 1)
 			"mission_ended":
 				ended = true
+			"objective_extracted":
+				_decide(PLAYERS, "The Objective is safely extracted.")
+			"unit_destroyed":
+				if obj_id != "" and str(e.get("unit", "")) == obj_id:
+					_decide("none", "The Objective was destroyed: there's nothing left to fight over, and both sides withdraw.")
+			"turn_started":
+				_carry_start(state, str(e.get("unit", "")))
+			"moved":
+				if str(e.get("mode", "")) in ["walk", "fly"]:  # a standard move (a Boost is "boost")
+					_carry_move(state, str(e.get("unit", "")))
+			"turn_ended":
+				if str(flavor.get("carrier", "")) == str(e.get("unit", "")):
+					flavor.erase("carrier")
 		if outcome != "":
 			return
 	var alive := {PLAYERS: 0, ENEMIES: 0}
+	var extracted := 0
 	for u: Unit in state.units.values():
 		if _counts(u) and alive.has(u.side):
 			alive[u.side] += 1
-	if alive[PLAYERS] == 0:
+		if u.counters.has("extracted") and u.side == PLAYERS and u.id != obj_id:
+			extracted += 1
+	if alive[PLAYERS] == 0 and extracted > 0:
+		# Everyone got out, but not with the Objective: nobody is left to bring it (the enemy
+		# wins when time runs out, so the GM calls it now).
+		_decide(ENEMIES, "The squad extracted without the Objective.")
+	elif alive[PLAYERS] == 0:
 		_decide(ENEMIES, "The squad has been defeated.")
 	elif alive[ENEMIES] == 0:
 		_decide(PLAYERS, "All enemy forces have been defeated.")
+
+
+# --- The Objective (Escort, Extraction) ---------------------------------------------------
+
+## "When a character starts their turn adjacent to the Objective, it moves with them when they
+## make their regular move" (sitreps: Extraction; Escort's Objective moves the same way,
+## PROVISIONAL). Not while it's next to characters of both sides.
+func _carry_start(state: GameState, unit_id: String) -> void:
+	var obj := SitrepActions.objective(state)
+	var u := state.unit(unit_id)
+	if obj == null or u == null or not Combat.is_present(obj) or u.kind == Unit.KIND_DEPLOYABLE:
+		return
+	if Sight.unit_distance(state, u, obj) <= 1 and not SitrepActions.contested(state, obj, u.side):
+		flavor["carrier"] = u.id
+		flavor["carry_offset"] = [obj.cell.x - u.cell.x, obj.cell.y - u.cell.y]
+
+
+## The carrier made their regular move: the Objective follows to the free space next to them
+## closest to where it was relative to them (AiDirector submits gm_carry_objective).
+func _carry_move(state: GameState, unit_id: String) -> void:
+	if str(flavor.get("carrier", "")) != unit_id:
+		return
+	var obj := SitrepActions.objective(state)
+	var u := state.unit(unit_id)
+	if obj == null or u == null or not Combat.is_present(obj) or not Combat.is_present(u):
+		return
+	if SitrepActions.contested(state, obj, u.side) and Sight.unit_distance(state, u, obj) <= 1:
+		return  # next to characters of both sides: it stops moving
+	var off: Array = flavor.get("carry_offset", [0, 1])
+	var want := Vector2i(u.cell.x + int(off[0]), u.cell.y + int(off[1]))
+	var taken := {}
+	for o: Unit in state.units.values():
+		if o != obj and Combat.is_present(o):
+			for c in state.map.grid.footprint(o.cell, o.size):
+				taken[c] = true
+	var best := Vector2i(-9999, -9999)
+	var best_d := 99999
+	for dx in range(-3, 4):
+		for dy in range(-3, 4):
+			var c := u.cell + Vector2i(dx, dy)
+			if taken.has(c) or not state.map.has_cell(c) or c == u.cell:
+				continue
+			if state.map.grid.distance(c, u.cell) > int(ceil(u.size)):
+				continue
+			var d := state.map.grid.distance(c, want)
+			if d < best_d:
+				best_d = d
+				best = c
+	if best_d < 99999:
+		flavor["carry_to"] = [best.x, best.y, u.id]
+
+
+## A pending Objective move for the director to submit: {"type": "gm_carry_objective"...} or {}.
+func carry_action() -> Dictionary:
+	if not flavor.has("carry_to"):
+		return {}
+	var to: Array = flavor["carry_to"]
+	flavor.erase("carry_to")
+	return {"type": "gm_carry_objective", "params": {"to": [to[0], to[1]], "by": to[2]}}
 
 
 func _end_of_round(state: GameState, r: int) -> void:
@@ -88,6 +168,17 @@ func _end_of_round(state: GameState, r: int) -> void:
 					_decide(PLAYERS, "The squad held: score %d (%d enemies in the zone)." % [scores[PLAYERS], inside])
 				else:
 					_decide(ENEMIES, "The zone fell: score %d (%d enemies in the zone)." % [scores[PLAYERS], inside])
+		"sitrep_escort", "sitrep_extraction":
+			if r >= rounds and not state.objectives.get("objective_extracted", false):
+				_decide(ENEMIES, "The Objective wasn't extracted by the end of round %d. Anyone still on the field is captured or overrun." % r)
+		"sitrep_recon":
+			if r >= rounds:
+				var true_zone := str(state.objectives.get("true_zone", ""))
+				var held := _controller(state, true_zone) if true_zone != "" else ""
+				if held == PLAYERS:
+					_decide(PLAYERS, "The squad holds the True Control Zone at the end of round %d." % r)
+				else:
+					_decide(ENEMIES, "The squad doesn't control the True Control Zone at the end of round %d%s." % [r, " (it's contested)" if held == "contested" else ""])
 		"sitrep_gauntlet":
 			if r >= rounds:
 				var pcs := _count_in(state, "zone", PLAYERS)
@@ -144,7 +235,7 @@ static func _weight(u: Unit) -> float:
 
 
 static func _counts(u: Unit) -> bool:
-	return not u.destroyed and u.kind != Unit.KIND_DEPLOYABLE
+	return not u.destroyed and u.kind != Unit.KIND_DEPLOYABLE and not u.counters.has("extracted")
 
 
 func _decide(winner: String, why: String) -> void:
@@ -172,6 +263,20 @@ func objective_for(side: String) -> Dictionary:
 		"sitrep_gauntlet":
 			cells = zones.get("zone", [])
 			weight = 2.5 if side == PLAYERS else 1.5
+		"sitrep_recon":
+			# The GM's side knows the True Control Zone; the squad heads for the zones.
+			if side == ENEMIES and flavor.has("true_zone"):
+				cells = zones.get(str(flavor["true_zone"]), [])
+				weight = 2.0
+			else:
+				for name: String in zones:
+					cells.append_array(zones[name])
+				weight = 1.5
+		"sitrep_escort", "sitrep_extraction":
+			# Both sides go for the Objective; the squad then heads for extraction (the player
+			# moves it: AI squadmates don't carry it yet).
+			cells = zones.get("objective", zones.get("extraction", []))
+			weight = 1.2
 	return {"zones": cells, "zone_weight": weight}
 
 

@@ -64,7 +64,24 @@ func view_for(state: GameState, seat: String) -> Dictionary:
 			visible[key] = d[key]
 		units[id] = visible
 	full["units"] = units
+	full["objectives"] = objectives_for(state, seat)
 	return full
+
+
+## The sitrep objectives a seat may know: Recon's True Control Zone only once its side has
+## found it (the GM always knows), and only its own side's surveys.
+func objectives_for(state: GameState, seat: String) -> Dictionary:
+	var o := state.objectives.duplicate(true)
+	if _is_gm(state, seat):
+		return o
+	var side := _side(state, seat)
+	var mine: Dictionary = (o.get("surveyed", {}) as Dictionary).get(side, {})
+	o["surveyed"] = {side: mine} if side != "" else {}
+	o.erase("true_zone")
+	for z: String in mine:
+		if bool(mine[z]):
+			o["true_zone"] = z
+	return o
 
 
 ## The events `seat` may see: hostile Hidden units' movement is dropped, events with a

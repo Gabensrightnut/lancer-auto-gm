@@ -40,6 +40,10 @@ var terms_button: Button
 var story_engine: StoryEngine
 var dlg_story: StoryState
 var dlg_campaign: Campaign
+## Sitrep actions the turn UI doesn't offer (SitrepActions): Extract, Survey this zone.
+var sitrep_box: VBoxContainer
+var _sitrep_sig := ""
+var _objectives_sig := ""
 ## The campaign's story (host), for the tutorial's lessons and which tips were shown. A friend
 ## in someone else's game gets a fresh one (tips only; the host keeps the campaign).
 var story: StoryState
@@ -93,6 +97,7 @@ func _ready() -> void:
 	tutorial.bind(campaign)
 	session.events_seen.connect(_on_events_seen)
 	_setup_story_battle()
+	SitrepActions.register(session.engine)
 	var speed := MenuSession.settings().animation_speed
 	session.ai_interval = {"cinematic": 0.9, "normal": 0.45, "fast": 0.1}.get(speed, 0.45)
 	if not session.view.is_empty():
@@ -168,6 +173,7 @@ func _process(delta: float) -> void:
 	if nkey != _nhp_asked:
 		_nhp_asked = nkey
 		_show_nhp(nq)
+	_update_sitrep_buttons()
 	_update_status()
 
 
@@ -218,6 +224,63 @@ func _barks(events: Array) -> void:
 			var who := str(line.get("who", c.pilots.get(str(line.get("pilot", "")), {}).get("callsign", "")))
 			bubbles.say(str(line["unit"]), who, str(line["text"]))
 			combat_log.add_line("[color=#9fc3e8]%s:[/color] %s" % [who, line["text"]])
+
+
+# --- Sitrep objectives -----------------------------------------------------------------------
+
+## The sitrep's zones on the board, as this seat knows them (ViewFilter.objectives_for): Recon's
+## four zones (the True one named once found), Escort/Extraction's Extraction Zone.
+func _show_objectives(v: Dictionary) -> void:
+	var o: Dictionary = v.get("objectives", {})
+	var sig := JSON.stringify([o.get("zones", {}).keys(), o.get("true_zone", ""), o.get("surveyed", {})])
+	if sig == _objectives_sig or view.terrain == null:
+		return
+	_objectives_sig = sig
+	var zones := {}
+	var src: Dictionary = o.get("zones", {})
+	for name: String in src:
+		var label := name
+		if name.begins_with("zone_") and str(o.get("sitrep", "")) == "sitrep_recon":
+			var known: Dictionary = (o.get("surveyed", {}) as Dictionary).get(_my_side(), {})
+			label = ("TRUE ZONE" if name == str(o.get("true_zone", "")) else ("not it" if known.has(name) else name.replace("_", " ")))
+		zones[label] = src[name]
+	view.terrain.show_objectives(zones, {}, false)
+
+
+## Extract / Survey this zone, when the rules allow them for the unit whose turn it is here.
+func _update_sitrep_buttons() -> void:
+	var uid: String = turn.unit_id if turn.active else ""
+	var offers: Array = []
+	if uid != "" and session.mirror != null and session.mirror.unit(uid) != null:
+		for t: String in ["extract", "survey_zone"]:
+			var r := session.engine.validate(session.mirror, {"type": t, "actor": uid, "params": {}})
+			if r.ok:
+				offers.append(t)
+	var sig := "%s|%s" % [uid, ",".join(PackedStringArray(offers))]
+	if sig == _sitrep_sig:
+		return
+	_sitrep_sig = sig
+	for c in sitrep_box.get_children():
+		c.queue_free()
+	for t: String in offers:
+		var b := Button.new()
+		b.theme = MenuTheme.theme()
+		b.custom_minimum_size = Vector2(300, 46)
+		if t == "extract":
+			b.text = "Extract (ends your turn)"
+			b.tooltip_text = "Free action at the end of your turn while in the Extraction Zone: your mech leaves the battlefield. An adjacent Objective that no enemy is next to goes with you (sitreps: Escort, Extraction)."
+		else:
+			b.text = "Survey this zone (full action)"
+			b.tooltip_text = "Find out whether this is the True Control Zone. Only your side learns the answer (sitreps: Recon)."
+		var action := {"type": t, "actor": uid, "params": {}}
+		b.pressed.connect(func() -> void:
+			if t == "extract":
+				turn.cancel()
+				turn.active = false
+				bar.visible = false
+			session.engine.submit(session.mirror, action)
+			_sitrep_sig = "")
+		sitrep_box.add_child(b)
 
 
 # --- Story campaigns: the enemy commander and parley -------------------------------------
@@ -329,6 +392,7 @@ func _load(v: Dictionary) -> void:
 	view.tactical.snap()
 	player.local_units = mine
 	_render_portraits(v)
+	_show_objectives(v)
 	_refresh_hud()
 
 
@@ -351,7 +415,8 @@ func _sync(v: Dictionary) -> void:
 	var units: Dictionary = v.get("units", {})
 	for id: String in units:
 		var u: Dictionary = units[id]
-		if u.get("hidden", false):
+		if u.get("hidden", false) or (u.get("counters", {}) as Dictionary).has("extracted"):
+			# Hidden from this seat, or extracted (off the battlefield for good).
 			if view.units.has(id):
 				(view.units[id] as MechView).queue_free()
 				view.units.erase(id)
@@ -365,6 +430,7 @@ func _sync(v: Dictionary) -> void:
 			if u.has(k):
 				mv.unit[k] = u[k]
 		mv.refresh()
+	_show_objectives(v)
 	_refresh_hud()
 
 
@@ -374,8 +440,8 @@ func _refresh_hud() -> void:
 	var my_side := _my_side()
 	for id: String in v.get("units", {}):
 		var u: Dictionary = v["units"][id]
-		if u.get("hidden", false):
-			continue
+		if u.get("hidden", false) or str(u.get("kind", "")) == Unit.KIND_DEPLOYABLE or (u.get("counters", {}) as Dictionary).has("extracted"):
+			continue  # objects (the Objective, deployables) take no turns; extracted mechs are gone
 		var e := {"id": id, "name": u.get("name", id), "side": u.get("side", ""), "frame": u.get("content_id", ""),
 			"acted": (v.get("acted", []) as Array).has(id) or u.get("destroyed", false), "active": v.get("active_unit", "") == id}
 		if u.has("hp"):
@@ -662,6 +728,10 @@ func _build_ui() -> void:
 	bubbles = SpeechBubbles.new()
 	ui.add_child(bubbles)
 	ui.move_child(bubbles, 0)
+	sitrep_box = VBoxContainer.new()
+	sitrep_box.add_theme_constant_override("separation", 8)
+	sitrep_box.position = Vector2(1920 - 320, 1080 - 330)
+	ui.add_child(sitrep_box)
 	narration = NarrationPopup.new()
 	narration.theme = MenuTheme.theme()
 	ui.add_child(narration)
@@ -817,6 +887,10 @@ func _example_session() -> BattleSession:
 	var lobby := LobbyModel.for_host(MenuSession.campaign, MenuSession.content(), 4242)
 	if "stage:hotseat" in OS.get_cmdline_user_args():
 		lobby.set_mode("p2", "you")
+	for a: String in OS.get_cmdline_user_args():
+		if a.begins_with("sitrep:"):  # screenshots: a given sitrep
+			lobby.options["sitrep"] = "sitrep_" + a.substr(7)
+			lobby.set_shape(str(lobby.options["shape"]))
 	lobby.set_local_ready(true)
 	var s := GameFlow.start_mission(lobby, SaveStore.new("user://example_saves"))
 	return s
