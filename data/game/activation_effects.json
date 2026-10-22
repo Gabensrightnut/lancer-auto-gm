@@ -730,5 +730,23 @@
     {
       "op": "enclave"
     }
+  ],
+  "wm_uncle_class_comp_con:UNCLE": [
+    {
+      "op": "uncle_attack"
+    }
+  ],
+  "actions:wm_shock_wreath": [
+    {
+      "name": "Shock Wreath",
+      "activation": "Quick",
+      "frequency": "1/round",
+      "detail": "When you've hit a character with this weapon: it takes 1d6 burn; if it was already burning, it can only see adjacent spaces until the end of its next turn.",
+      "ops": [
+        {
+          "op": "shock_wreath"
+        }
+      ]
+    }
   ]
 }

@@ -212,6 +212,18 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				events.append_array(Zones.add(state, {"kind": "interdiction", "owner": u.id, "anchor": u.id, "radius": 3, "cells": [], "center": [u.cell.x, u.cell.y],
 					"label": "Interdiction Field", "rule_ref": "systems: Interdiction Field"}))
 				events.append_array(Combat.add_status(state, u, "Slowed", "Interdiction Field"))
+			"uncle_attack":
+				# UNCLE: a free attack at +2 Difficulty with its weapon; that weapon then can't be
+				# used again until the start of your next turn.
+				var uw := Weapons.find(u, String(a["source_key"]).trim_prefix("mod:"))
+				events.append_array(Attacks.attack(state, u, uw, target, {"extra_difficulty": 2, "extra_label": "UNCLE"}))
+				Weapons.state_of(u, uw)["uncle_lock"] = true
+			"shock_wreath":
+				var had_burn := target.burn > 0
+				var roll := state.dice.roll("1d6")
+				events.append_array(Combat.deal_damage(state, target, [{"type": "Burn", "amount": int(roll["total"])}], {"source": u.id}))
+				if had_burn:
+					events.append_array(Combat.add_status(state, target, "Blinded", u.id, target.id))
 			"fire_weapon":
 				var fw := Weapons.find(u, String(a["source_key"]).trim_prefix("w:"))
 				events.append_array(Attacks.attack(state, u, fw, target, {"fired_by_rule": true}))
@@ -413,6 +425,17 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 				any = any or (m.counters.get("owner", "") == u.id and m.name == String(op.get("deployable", "")) and not m.destroyed and m.counters.get("armed", false))
 			if not any:
 				return RuleResult.deny("No armed %s to detonate." % op.get("deployable", ""), "tags: Mine")
+		if op.get("op", "") == "uncle_attack":
+			var uw := Weapons.find(u, String(a["source_key"]).trim_prefix("mod:"))
+			if (u.turn.get("fired", []) as Array).has(String(uw.get("key", ""))):
+				return RuleResult.deny("UNCLE can't use a weapon that was already used this turn.", "mods: UNCLE-Class COMP/CON")
+			var pv := Attacks.preview(state, u, uw, state.unit(String(params.get("target", ""))), {"extra_difficulty": 2})
+			if not pv["ok"]:
+				return RuleResult.deny(pv["reason"], pv["rule_ref"])
+		if op.get("op", "") == "shock_wreath":
+			var ww := String(a["source_key"]).trim_prefix("mod:")
+			if not (u.turn.get("hits", {}).get(ww, []) as Array).has(String(params.get("target", ""))):
+				return RuleResult.deny("Only right after hitting that character with the wreathed weapon this turn.", "mods: Shock Wreath")
 		if op.get("op", "") == "fire_weapon":
 			var fw := Weapons.find(u, String(a["source_key"]).trim_prefix("w:"))
 			var pv := Attacks.preview(state, u, fw, state.unit(String(params.get("target", ""))), {"fired_by_rule": true})

@@ -118,6 +118,8 @@ static func begin_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 	events.append_array(Abilities.expire(state, u, "start"))
 	events.append_array(Abilities.recharge_roll(state, u))
 	u.counters.erase("no_holograms")  # Dusk Wing: new holograms again from the start of its turn
+	for ws: Variant in (u.counters.get("weapons", {}) as Dictionary).values():
+		(ws as Dictionary).erase("uncle_lock")
 	events.append_array(Effects.turn_started(state, u))
 	events.append_array(Zones.turn_started(state, u))
 	events.append_array(FrameSystems.host_turn_started(state, u))

@@ -93,7 +93,8 @@ static func check_loadout(db: ContentDB, frame_id: String, loadout: Dictionary, 
 			else:
 				sp_used += int(mod.get("sp", 0))
 				_license(problems, mod, pilot)
-				var w0 := db.weapon(String(ids[0])) if not ids.is_empty() else {}
+				var mslot := int(m.get("mod_slot", 0))
+				var w0 := db.weapon(String(ids[mslot])) if mslot < ids.size() else {}
 				if w0.is_empty():
 					problems.append({"reason": "Mount %d has a mod but no weapon to put it on." % (i + 1), "rule_ref": "tags: Mod"})
 				elif not (mod.get("allowed_types", []) as Array).is_empty() and not (mod["allowed_types"] as Array).has(w0.get("type", "")):
@@ -259,7 +260,10 @@ static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dic
 		for wid: String in m.get("weapons", []):
 			var w := db.weapon(wid)
 			if not w.is_empty():
-				weapons.append(weapon_profile(w, "%d:%d" % [i, slot], i))
+				var prof := weapon_profile(w, "%d:%d" % [i, slot], i)
+				if String(m.get("mod", "")) != "" and slot == int(m.get("mod_slot", 0)):
+					apply_mod(db, prof, String(m["mod"]), u)
+				weapons.append(prof)
 			slot += 1
 	# Integrated mounts: the frame's own weapons, always included, never destroyed, removed or
 	# modified (Core p.32).
@@ -335,6 +339,11 @@ static func _abilities(db: ContentDB, u: Unit, frame: Dictionary, system_ids: Ar
 				acts.append({"name": "Spin Down " + String(raw.get("name", "")), "activation": "Protocol", "detail": "End Spin-Up mode.", "ops": [{"op": "spin_down", "weapon": w["key"]}]})
 				src["actions"] = acts
 			_add_source(out, src, "w:" + String(w["key"]), raw.get("name", ""), String(raw.get("id", "")), true)
+		if w.has("mod"):
+			# The mod's own actions (UNCLE, Shock Wreath), tied to this weapon.
+			var mod := db.get_entry("mods", String(w["mod"]["id"]))
+			var msrc := {"actions": (mod.get("actions", []) as Array).duplicate(true) if mod.get("actions") is Array else []}
+			_add_source(out, msrc, "mod:" + String(w["key"]), String(w["mod"]["name"]), String(w["mod"]["id"]))
 	var core: Dictionary = frame.get("core_system", {})
 	var core_src := {"actions": [], "deployables": core.get("deployables", [])}
 	for a: Dictionary in core.get("passive_actions", []):
@@ -531,6 +540,40 @@ static func _frame_effects(u: Unit, frame: Dictionary) -> void:
 
 ## The fields of a lancer-data weapon the rules use. Weapons with several profiles use the
 ## first one (choosing a profile isn't supported yet).
+## A weapon mod (tags: Mod, Core p.106) on a weapon: its added tags, range and damage, and our
+## encoding of its special rules (weapon_effects.json, keyed by the mod id).
+static func apply_mod(db: ContentDB, w: Dictionary, mod_id: String, u: Unit) -> void:
+	var mod := db.get_entry("mods", mod_id)
+	if mod.is_empty():
+		return
+	w["mod"] = {"id": mod_id, "name": String(mod.get("name", mod_id))}
+	var targets: Array = [w]
+	targets.append_array(w.get("profiles", []))
+	for t: Dictionary in targets:
+		for tag: Dictionary in mod.get("added_tags", []):
+			if not Weapons.has_tag(t, String(tag.get("id", ""))):
+				(t["tags"] as Array).append(tag.duplicate())
+		for r: Dictionary in mod.get("added_range", []):
+			var done := false
+			for own: Dictionary in t.get("range", []):
+				if own.get("type", "") == r.get("type", ""):
+					own["val"] = int(own.get("val", 0)) + int(r.get("val", 0))
+					done = true
+			if not done:
+				(t["range"] as Array).append(r.duplicate())
+		for d: Dictionary in mod.get("added_damage", []):
+			(t["damage"] as Array).append(d.duplicate())
+	var r: Variant = weapon_effects_data().get(mod_id)
+	if r is Dictionary:
+		var rules: Dictionary = w.get("rules", {})
+		rules.merge((r as Dictionary).duplicate(true), true)
+		w["rules"] = rules
+	for tag: Dictionary in mod.get("tags", []):
+		if tag.get("id", "") == "tg_limited":
+			# The mod's own charges (+1 per 2 Engineering, Core p.34).
+			w["mod_uses"] = int(tag.get("val", 1)) + u.engineering / 2
+
+
 static func _with_profile(w: Dictionary, i: int) -> Dictionary:
 	var src := w.duplicate(true)
 	src.erase("profiles")

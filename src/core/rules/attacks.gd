@@ -62,6 +62,10 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 		if not ready.ok:
 			return fail.call(ready.reason, ready.rule_ref)
 	var a_body := Sight.body_of(state, attacker)
+	if opts.get("origin_cell") is Vector2i:
+		# Throughbolt: range, cover and line of sight from the end of its path.
+		var oc: Vector2i = opts["origin_cell"]
+		a_body = Sight.make_body(state, oc, state.map.ground_height(oc), 0.5)
 	var t_body := Sight.body_of(state, target)
 	var dist := Sight.distance(state, a_body, t_body)
 	out["distance"] = dist
@@ -92,7 +96,10 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 		# Seeking, consumes the Lock On, and its damage can't be reduced.
 		seeking = true
 		out["seeking_payload"] = true
-	var ignores_los := Weapons.has_tag(w, "tg_arcing") or seeking
+	var phase: bool = opts.get("phase", false) and WeaponRules.rules(w).get("phase_ready", false)
+	if phase:
+		out["phase"] = true  # Phase-Ready: through walls, no line of sight, no cover; target counts as Invisible
+	var ignores_los := Weapons.has_tag(w, "tg_arcing") or seeking or phase
 	# Area attacks take cover and line of sight from the area's origin (glossary: Blast, Burst).
 	var cover := FrameSystems.extra_cover(state, target, Sight.cover(state, area_origin if area_origin != null else a_body, t_body, Effects.guardians(state, target)), attacker)
 	out["los"] = cover["los"]
@@ -174,6 +181,13 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 		cover = cover.duplicate()
 		cover["cover"] = "none"  # Markerlight: no soft cover while Locked On
 		cover["difficulty"] = 0
+	if phase:
+		cover = cover.duplicate()
+		cover["cover"] = "none"
+		cover["difficulty"] = 0
+	if int(opts.get("extra_difficulty", 0)) > 0:
+		sources.append(_src(String(opts.get("extra_label", "")), "difficulty", Effects.REF, int(opts["extra_difficulty"])))
+		diff += int(opts["extra_difficulty"])
 	if ranged_like and not seeking and int(cover["difficulty"]) > 0:
 		sources.append(_src("Hard cover" if cover["cover"] == "hard" else "Soft cover", "difficulty", Sight.REF_COVER, cover["difficulty"]))
 		diff += int(cover["difficulty"])
@@ -213,6 +227,8 @@ static func seeking_payload(attacker: Unit, w: Dictionary, target: Unit, opts: D
 
 ## Can this weapon be fired at all right now (Jammed, destroyed, Loading, Limited)?
 static func weapon_ready(attacker: Unit, w: Dictionary, improvised: bool = false) -> RuleResult:
+	if Weapons.state_of(attacker, w).get("uncle_lock", false):
+		return RuleResult.deny("UNCLE used %s: it can't be used again until the start of your next turn." % w.get("name", ""), "mods: UNCLE-Class COMP/CON")
 	if attacker.has_status("Jammed") and not improvised and not (Effects.has(attacker, "jammed_ranged") and not Weapons.is_melee(w)):
 		return RuleResult.deny("Jammed: you can only make Improvised Attacks, Grapple or Ram.", "statuses: Jammed")
 	var ws := Weapons.state_of(attacker, w)
@@ -267,7 +283,7 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		return events
 	if attacker.counters.has("shrike_code"):
 		events.append_array(Combat.apply_heat(state, attacker, 2, "Shrike Code"))  # 2 heat whenever it attacks
-	var invisible: bool = target.has_status("Invisible") or afterimage or opts.get("target_invisible", false) or Zones.hidden_by_smoke(state, target, attacker) \
+	var invisible: bool = target.has_status("Invisible") or afterimage or opts.get("target_invisible", false) or p.get("phase", false) or Zones.hidden_by_smoke(state, target, attacker) \
 		or GearSystems.seen_as_invisible(state, attacker, target) or GearSystems.cloaked(state, target)
 	if invisible and GearSystems.sees_through(state, attacker, target):
 		invisible = false  # Tracking Bug, Lotus Projector
@@ -376,6 +392,16 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 			events[events.size() - 1 - (par["events"] as Array).size()]["parried"] = true
 	if kind == KIND_RANGED and not invisible_miss:
 		attacker.counters["neurolink_round"] = state.round_number
+	if state.active_unit == attacker.id:
+		var fired: Array = attacker.turn.get("fired", [])
+		fired.append(String(w.get("key", "")))
+		attacker.turn["fired"] = fired
+		if result != "miss":
+			var hits: Dictionary = attacker.turn.get("hits", {})
+			var list: Array = hits.get(String(w.get("key", "")), [])
+			list.append(target.id)
+			hits[String(w.get("key", ""))] = list
+			attacker.turn["hits"] = hits
 	if not opts.get("skip_spend", false):
 		events.append_array(_spend_weapon(state, attacker, w))
 	if check.get("paralysis", false):
@@ -499,7 +525,8 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 		var b := BonusDamage.roll(state, attacker, w, target, {"kind": pv.get("kind", ""), "crit": crit,
 			"cover": (cover as Dictionary).get("cover", "none") if cover is Dictionary else "none",
 			"distance": int(pv.get("distance", 0)), "targets": int(opts.get("area_targets", 1)), "shared": shared,
-			"momentum": opts.get("momentum", false), "dz_fusion": opts.get("dz_fusion", false), "zero_in": opts.get("zero_in", false), "max": maximum})
+			"momentum": opts.get("momentum", false), "dz_fusion": opts.get("dz_fusion", false), "zero_in": opts.get("zero_in", false), "max": maximum,
+			"thermal_charge": opts.get("thermal_charge", false)})
 		events.append_array(b["events"])
 		parts.append_array(b["parts"])
 	var burn := Weapons.tag_value(w, "tg_burn")
@@ -511,7 +538,7 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 	if overkill_heat > 0 and not shared.get("overkill_paid", false):
 		shared["overkill_paid"] = true
 		events.append_array(Combat.apply_heat(state, attacker, overkill_heat, "Overkill"))
-	events.append_array(_apply(state, attacker, target, parts, ap, opts.has("area_origin"), pv.get("seeking_payload", false), opts.get("resist_all", false)))
+	events.append_array(_apply(state, attacker, target, parts, ap, opts.has("area_origin"), pv.get("seeking_payload", false) or Weapons.has_tag(w, "tg_irreducible"), opts.get("resist_all", false)))
 	if chambers >= 4 and Combat.is_present(target):
 		events.append_array(Combat.add_status(state, target, "Shredded", attacker.id, target.id))
 	events.append_array(WeaponRules.on_hit(state, attacker, w, target, crit))

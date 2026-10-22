@@ -21,5 +21,7 @@
   "t_centimane:3": "Tidal Suppression lets you pick the extra effect; the game uses Harrying Swarm (Impaired and Slowed). Ask your GM to swap it.",
   "t_siege_specialist:2": "Afterwards you're pushed 1 space in a direction of your choice; move yourself.",
   "t_drone_commander:1": "The Shepherd Drone protocol is resolved at the table.",
-  "t_skirmisher:1": "Forcing another character to make a save also ends the chaff; drop it yourself when that happens."
+  "t_skirmisher:1": "Forcing another character to make a save also ends the chaff; drop it yourself when that happens.",
+  "wm_shock_wreath": "A character already burning can only draw line of sight to adjacent spaces until the end of its next turn; the GM keeps to that.",
+  "wm_phase_ready_mod": "You must know roughly where the target is; check that with the GM before attacking through walls."
 }
