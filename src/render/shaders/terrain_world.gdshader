@@ -342,7 +342,7 @@ void fragment() {
 			} else if (road_style == 3) {
 				vec2 g = abs(fract(p * vec2(1.0, 2.0)) - 0.5);
 				float seam = smoothstep(0.47, 0.49, max(g.x, g.y));
-				col = vec3(0.78, 0.8, 0.83) * (0.95 + 0.08 * n3) * (1.0 - 0.25 * seam);
+				col = vec3(0.52, 0.54, 0.57) * (0.95 + 0.08 * n3) * (1.0 - 0.3 * seam);
 				float guide = smoothstep(0.03, 0.0, abs(across)) * (crossing ? 0.0 : 1.0);
 				emit = strip_light * guide * 1.2;
 				rough = 0.35;

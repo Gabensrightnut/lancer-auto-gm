@@ -50,6 +50,8 @@ static func build(t: TerrainRenderer, root: Node3D, b: Rect2) -> void:
 				var lo := lerpf(float(near[0]), float(far[0]), tnear)
 				var hi := lerpf(float(near[1]), float(far[1]), pow(tnear, 0.7))
 				var h := roundf(lerpf(lo, hi, pow(WorldRand.f(key, 60 + k), 1.6)) * 3.0) / 3.0
+				if lot.get_center().y > b.end.y and dd < 40.0:
+					h = minf(h, float(near[1]))  # the camera's side: nothing tall in the way
 				var type: int = CityBuilder.TYPES.get(str(mats[int(WorldRand.f(key, 70 + k) * mats.size()) % mats.size()]), 0)
 				if h > 15.0 and WorldRand.f(key, 75 + k) < 0.5:
 					type = CityBuilder.TYPES["glass"]

@@ -171,6 +171,8 @@ static func generate(rng: RandomNumberGenerator, w: int, h: int, shape: GridLayo
 ## Evasion and 10 HP per Size 1 section (Core p.68); "solid rock" and tough places 1-2 Armor,
 ## fortified places 3-4; flimsy wood or prefab none. The rules read "armor_N"
 ## (TerrainDamage); "material_*" picks how it looks when hit and when it breaks.
+## Cities that build towers; the rest stay low like a city on modern Earth.
+const MEGA_CITIES := ["cyberpunk", "union"]
 const MATERIALS := {
 	"old_west": ["wood", 0], "": ["wood", 0], "east_asian": ["wood", 0], "medieval": ["stone", 1],
 	"cyberpunk": ["concrete", 1], "retro": ["concrete", 1], "ruins": ["concrete", 1], "burning": ["concrete", 1],
@@ -541,7 +543,10 @@ func _city(culture: String) -> void:
 	_fill(func(_c: int, _r: int) -> int: return 0)
 	var block := rng.randi_range(5, 7)
 	var street := 2
-	var tall: int = {"cyberpunk": 6, "union": 6, "ruins": 5, "burning": 5, "retro": 4, "east_asian": 4, "industrial": 3, "port": 2}.get(culture, 3)
+	# Only the mega-cities (neon sprawl, Union core) build towers; everywhere else is a city like
+	# modern Earth: mostly one or two storeys, a few taller.
+	var tall: int = {"cyberpunk": 6, "union": 6, "ruins": 3, "burning": 3, "retro": 3, "east_asian": 3, "industrial": 2, "port": 2}.get(culture, 2)
+	var mega := culture in MEGA_CITIES
 	var dock := _dock() if culture == "port" else Rect2i()
 	var ruined := culture in ["ruins", "burning"]
 	var bx := 0
@@ -561,10 +566,17 @@ func _city(culture: String) -> void:
 			if kind < 0.18:
 				_plaza(c0, r0, block)
 				continue
-			# Split the block into lots; each lot is a building of its own height.
-			var lots := _split_block(c0, r0, block)
-			for lot: Rect2i in lots:
-				var height := rng.randi_range(1, tall)
+			# Split the block into lots; each lot is a building of its own height. Outside the
+			# mega-cities some lots stay empty (yards, car parks) and buildings leave alleys.
+			var lots := _split_block(c0, r0, block, not mega)
+			for lot_in: Rect2i in lots:
+				if rng.randf() < (0.12 if mega else 0.3):
+					continue
+				var lot := lot_in
+				if not mega:
+					lot = Rect2i(lot.position, Vector2i(maxi(1, lot.size.x - (1 if lot.size.x >= 3 else 0)), maxi(1, lot.size.y - (1 if lot.size.y >= 3 else 0))))
+				# Low buildings are the rule; towers are rare even in a mega-city.
+				var height := 1 + int(floor(pow(rng.randf(), 2.2 if mega else 1.6) * tall))
 				var lot_breakable := rng.randf() < (0.8 if ruined else 0.6)
 				if ruined and rng.randf() < 0.25:
 					height = 0  # collapsed: rubble lot
@@ -705,11 +717,11 @@ func _tag_streets() -> void:
 				built[cell] = true
 
 
-func _split_block(c0: int, r0: int, block: int) -> Array[Rect2i]:
+func _split_block(c0: int, r0: int, block: int, no_monoliths: bool = false) -> Array[Rect2i]:
 	var out: Array[Rect2i] = []
 	var cut_c := c0 + rng.randi_range(2, block - 2)
 	var cut_r := r0 + rng.randi_range(2, block - 2)
-	match rng.randi_range(0, 2):
+	match rng.randi_range(1 if no_monoliths else 0, 2):
 		0:
 			out.append(Rect2i(c0, r0, block, block))
 		1:
