@@ -231,6 +231,49 @@ def add_shape_keys(ob):
             return c
         return f
 
+    # Face: eyes, brows and mouth move for expressions and speech (regions from the head's
+    # feature positions).
+    def eye_zone(c):
+        return c.y > 0.11 and 1.665 < c.z < 1.695 and 0.028 < abs(c.x) < 0.063
+
+    def brow_zone(c):
+        return c.y > 0.11 and 1.704 < c.z < 1.722 and 0.02 < abs(c.x) < 0.075
+
+    def mouth_zone(c):
+        return c.y > 0.112 and 1.603 < c.z < 1.623 and abs(c.x) < 0.034
+
+    def blink(c):
+        if eye_zone(c):
+            c.z = 1.68 + (c.z - 1.68) * 0.12
+        return c
+
+    def brows(inner, outer):
+        def f(c):
+            if brow_zone(c):
+                t = (abs(c.x) - 0.022) / 0.05
+                c.z += inner * (1.0 - t) + outer * t
+            return c
+        return f
+
+    def mouth_open(c):
+        if mouth_zone(c):
+            c.z = 1.613 + (c.z - 1.613) * 5.0
+        return c
+
+    def corners(d):
+        def f(c):
+            if mouth_zone(c):
+                c.z += d * (abs(c.x) / 0.03) ** 2
+            return c
+        return f
+
+    key("blink", blink)
+    key("brow_angry", brows(-0.016, 0.006))
+    key("brow_worried", brows(0.016, -0.004))
+    key("brow_up", brows(0.016, 0.016))
+    key("mouth_open", mouth_open)
+    key("smile", corners(0.016))
+    key("frown", corners(-0.014))
     key("female", female)
     key("heavy", heavy)
     key("slim", slim)
@@ -466,6 +509,7 @@ def main():
         parts.append(prim("cube", "brow", (0.047 * s, 0.122, 1.712), (0.024, 0.007, 0.006), hair, rot=(0, -8 * s, 0)))
         parts.append(prim("sphere", "ear", (0.115 * s, 0.0, 1.668), (0.013, 0.027, 0.035), skin, seg=10, rings=6))
     parts.append(prim("cone", "nose", (0, 0.14, 1.648), (0.014, 0.014, 0.032), skin, rot=(-75, 0, 0), seg=10))
+    parts.append(prim("sphere", "mouth", (0, 0.128, 1.613), (0.033, 0.009, 0.0065), eye, seg=14, rings=6))
     body = join(parts, "Body")
     split_by(body, [(skin, lambda c: True)])
     # Keep the face parts' own materials: re-split by original material order is lost on
@@ -477,6 +521,8 @@ def main():
         c = p.center
         if c.y > 0.11 and 1.665 < c.z < 1.695 and 0.028 < abs(c.x) < 0.063:
             p.material_index = 1
+        elif c.y > 0.118 and 1.604 < c.z < 1.622 and abs(c.x) < 0.033:
+            p.material_index = 1  # mouth
         elif c.y > 0.11 and 1.704 < c.z < 1.72 and 0.02 < abs(c.x) < 0.073:
             p.material_index = 2
     add_shape_keys(body)

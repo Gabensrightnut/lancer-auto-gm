@@ -26,6 +26,19 @@ var flip := false:
 		flip = v
 		queue_redraw()
 
+## Alive: blinks every few seconds (dialogue cards and comms pop-ups turn it on).
+var animate := false:
+	set(v):
+		animate = v
+		set_process(v or _talk_left > 0.0)
+## 0..1 while speaking (set by speak()).
+var mouth_open := 0.0
+var _blinking := false
+var _blink_in := 2.5
+var _blink_t := -1.0
+var _talk_left := 0.0
+var _talk_t := 0.0
+
 var _o := Vector2.ZERO  # canvas origin (head center line)
 var _s := 1.0  # canvas scale: 1 unit = portrait width
 var _skin := Color("c68d66")
@@ -36,6 +49,7 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clip_contents = true
 	resized.connect(queue_redraw)
+	set_process(false)  # on only while blinking/talking
 
 
 ## `l` = a v2 portrait or an older flat look; `expr` = an expression id from portraits.json.
@@ -67,6 +81,52 @@ static func _seeded(key: String) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(key)
 	return PortraitSpec.randomize(rng)
+
+
+## Says a line: swaps to `expr` (if given) and flaps the mouth for `duration` seconds (about
+## the time to read the text when -1). Returns the duration.
+func speak(text: String, expr: String = "", duration: float = -1.0) -> float:
+	if expr != "":
+		set_look(look, expr)
+	_talk_left = duration if duration > 0.0 else 0.5 + text.length() * 0.055
+	_talk_t = 0.0
+	set_process(true)
+	return _talk_left
+
+
+func stop_speaking() -> void:
+	_talk_left = 0.0
+	mouth_open = 0.0
+	set_process(animate)
+	queue_redraw()
+
+
+func _process(delta: float) -> void:
+	var redraw := false
+	_blink_in -= delta
+	if _blink_in <= 0.0:
+		_blink_in = randf_range(2.0, 5.0)
+		_blink_t = 0.0
+	if _blink_t >= 0.0:
+		_blink_t += delta
+		var b := _blink_t < 0.13
+		if b != _blinking:
+			_blinking = b
+			redraw = true
+		if not b:
+			_blink_t = -1.0
+	if _talk_left > 0.0:
+		_talk_t += delta
+		_talk_left -= delta
+		var m := absf(sin(_talk_t * 11.0)) * (0.6 + 0.4 * sin(_talk_t * 3.7))
+		m = snappedf(m, 0.25)  # a few mouth shapes, like flap animation
+		if m != mouth_open:
+			mouth_open = m
+			redraw = true
+		if _talk_left <= 0.0:
+			stop_speaking()
+	if redraw:
+		queue_redraw()
 
 
 func _part(id: String) -> Dictionary:
@@ -531,7 +591,7 @@ func _eyes() -> void:
 	for sx: float in [-1.0, 1.0]:
 		var c := Vector2(sx * 0.068, -0.062)
 		var cyber := opt == "cyber_both" or (opt == "cyber_left" and sx < 0.0)
-		if shape["wink"] and sx > 0.0:
+		if (shape["wink"] and sx > 0.0) or _blinking:
 			_line(_bez(c + Vector2(-w * 0.9, 0), c + Vector2(0, h * 0.7), c + Vector2(w * 0.9, 0), 8), Color(0.12, 0.08, 0.07), 0.009)
 			continue
 		var o: float = h * float(shape["open"])
@@ -638,6 +698,15 @@ func _mouth() -> void:
 	var y := 0.07
 	var dark := Color(0.18, 0.06, 0.06)
 	var teeth := Color(0.95, 0.93, 0.88)
+	if mouth_open > 0.05 and expression not in ["shouting", "surprised", "hurt"]:
+		# Talking: an open mouth that flaps with the line.
+		var oh := 0.008 + 0.022 * mouth_open
+		var inner := _ell(Vector2(0, y + oh * 0.4), w * (0.75 + 0.1 * mouth_open), oh, 18)
+		_fill(inner, dark, 0.0, 0.0)
+		if mouth_open > 0.4:
+			_fill(_ell(Vector2(0, y + oh * 0.4), w * 0.6, oh * 0.9, 14, PI, TAU), teeth, 0.0, 0.0)
+		_line(inner + [inner[0]], lip.darkened(0.15), lt * 0.8 + 0.003)
+		return
 	match expression:
 		"shouting", "surprised", "hurt":
 			var ow := w * (1.0 if expression == "shouting" else (0.55 if expression == "surprised" else 0.9))

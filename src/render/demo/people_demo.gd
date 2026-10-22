@@ -66,6 +66,41 @@ func screenshot_stage(tag: String) -> void:
 				var f := _person(100 + i * 7, Vector3((i - 2.5) * 1.1, 0, 0), anims[i], {"gear": {"pack": i % 2 == 0, "rifle": i in [3, 4]}})
 				f.rotation_degrees.y = 160.0 + i * 8.0
 			_look(Vector3(0, 1.0, 0), Vector3(0, 1.55, 7.8))
+		"faces":
+			# The 10 expressions, heads close up.
+			var ex: Array = HumanFigure.EXPRESSIONS.keys()
+			for i in range(ex.size()):
+				var rng := RandomNumberGenerator.new()
+				rng.seed = 700 + i
+				var lk := PortraitSpec.randomize(rng)
+				for part: String in ["hats", "glasses", "beard", "mustache", "scarves"]:
+					lk["parts"][part]["option"] = "none"
+				var f := HumanFigure.new().build(lk)
+				f.position = Vector3((i - 4.5) * 0.5, 0, 0)
+				add_child(f)
+				_crowd.append(f)
+				f.rotation_degrees.y = 180
+				f.set_expression(ex[i])
+				f.set_process(false)  # hold the face still (no blinks) for the shot
+				f._face_now = (HumanFigure.EXPRESSIONS[ex[i]] as Dictionary).duplicate()
+				for k: String in HumanFigure.FACE_KEYS:
+					var idx := f._face_mesh.find_blend_shape_by_name(k)
+					if idx >= 0:
+						f._face_mesh.set_blend_shape_value(idx, float(f._face_now.get(k, 0.0)))
+			_look(Vector3(0, 1.66, 0), Vector3(0, 1.68, 2.6))
+		"dialogue":
+			# Two people talking: the speaker turns to the listener, mouth moving.
+			var a := _person(41, Vector3(-0.8, 0, 0), "idle")
+			var b := _person(42, Vector3(0.8, 0, 0.3), "idle")
+			a.rotation_degrees.y = 210
+			b.rotation_degrees.y = 150
+			a.look_at_target(b)
+			b.look_at_target(a)
+			b.set_expression("worried")
+			a.speak("We hold the ridge until the convoy is through. No arguments.", "determined", 10.0)
+			for i in range(20):
+				await get_tree().process_frame
+			_look(Vector3(0, 1.45, 0.1), Vector3(0.2, 1.65, 3.6))
 		"portrait_match":
 			# Portrait next to its figure, for the "looks like their portrait" check.
 			var f := _person(5, Vector3(0.6, 0, 0), "idle", {"gear": {"pack": true}})

@@ -18,6 +18,15 @@ const LOOPS := ["idle", "walk", "run", "talk", "sneak"]
 const HEIGHT := 1.82
 
 static var _paint_cache: Dictionary = {}
+## Face shape-key mixes for the 10 expressions in portraits.json.
+const EXPRESSIONS := {
+	"neutral": {}, "smiling": {"smile": 0.9}, "angry": {"brow_angry": 1.0, "frown": 0.4},
+	"worried": {"brow_worried": 1.0, "frown": 0.3}, "shouting": {"mouth_open": 0.8, "brow_angry": 0.7},
+	"sad": {"brow_worried": 0.8, "frown": 0.8}, "surprised": {"brow_up": 1.0, "mouth_open": 0.45},
+	"determined": {"brow_angry": 0.5, "frown": 0.15}, "smug": {"smile": 0.5, "brow_up": 0.25},
+	"hurt": {"brow_worried": 0.8, "mouth_open": 0.25, "blink": 0.4},
+}
+const FACE_KEYS := ["blink", "brow_angry", "brow_worried", "brow_up", "mouth_open", "smile", "frown"]
 
 var look: Dictionary = {}
 var anim: AnimationPlayer
@@ -34,6 +43,16 @@ var walking := 0.0:
 		set_speed(v * 1.4)
 var _label: Label3D
 var _ring: MeshInstance3D
+## Face: current expression, speech and blinking.
+var expression := "neutral"
+var _face_goal: Dictionary = {}
+var _face_now: Dictionary = {}
+var _talk_left := 0.0
+var _talk_t := 0.0
+var _blink_in := 2.5
+var _blink_t := -1.0
+var _look: HeadLook
+var _face_mesh: MeshInstance3D
 
 
 func build(portrait: Dictionary, opts_or_title: Variant = {}, subtitle: String = "", pilot_suit: bool = false) -> HumanFigure:
@@ -56,6 +75,14 @@ func build(portrait: Dictionary, opts_or_title: Variant = {}, subtitle: String =
 	_paint()
 	_shape(opts)
 	play("idle")
+	for m in _meshes:
+		if m.name == "Body":
+			_face_mesh = m
+	var sk := _root.find_child("Skeleton3D", true, false) as Skeleton3D
+	if sk:
+		_look = HeadLook.new()
+		sk.add_child(_look)
+	set_expression("neutral")
 	_ring = MeshKit.part(self, MeshKit.cylinder(0.36, 0.01, 20), MeshKit.overlay_material(Color(0, 0, 0, 0.28)), Vector3(0, 0.01, 0))
 	if title != "":
 		_label = Label3D.new()
@@ -171,6 +198,84 @@ func _guess_female() -> bool:
 	if _o("beard") != "none" or _o("mustache") != "none":
 		return false
 	return int(hash(JSON.stringify(look.get("parts", {})))) % 2 == 0
+
+
+# --- face ----------------------------------------------------------------------------------
+
+## Any expression id from portraits.json (unknown ones use their placeholder face).
+func set_expression(e: String) -> void:
+	expression = e if EXPRESSIONS.has(e) else PortraitSpec.draw_as(e)
+	if not EXPRESSIONS.has(expression):
+		expression = "neutral"
+	_face_goal = EXPRESSIONS[expression]
+
+
+## Says a line: the expression, mouth movement for `duration` seconds (about the time to read
+## the text when -1), and the talk gesture if standing idle. Returns the duration.
+func speak(text: String, expr: String = "", duration: float = -1.0) -> float:
+	if expr != "":
+		set_expression(expr)
+	_talk_left = duration if duration > 0.0 else 0.5 + text.length() * 0.055
+	_talk_t = 0.0
+	if state == "idle":
+		play("talk")
+	return _talk_left
+
+
+func stop_speaking() -> void:
+	_talk_left = 0.0
+	if state == "talk":
+		play("idle")
+
+
+## Turn the head toward a person or point (a Node3D, a Vector3), or null to look ahead.
+func look_at_target(target: Variant) -> void:
+	if _look == null:
+		return
+	if target is Node3D:
+		var n := target as Node3D
+		var h: float = HEIGHT * 0.92 * n.scale.y if n is HumanFigure else 1.6
+		_look.target = n.global_position + Vector3.UP * h
+	elif target is Vector3:
+		_look.target = target
+	else:
+		_look.target = null
+
+
+func _process(delta: float) -> void:
+	if _face_mesh == null:
+		return
+	# Blink every few seconds.
+	_blink_in -= delta
+	if _blink_in <= 0.0:
+		_blink_t = 0.0
+		_blink_in = randf_range(2.0, 5.0)
+	var blink := 0.0
+	if _blink_t >= 0.0:
+		_blink_t += delta
+		blink = sin(clampf(_blink_t / 0.16, 0.0, 1.0) * PI)
+		if _blink_t > 0.16:
+			_blink_t = -1.0
+	# Mouth: syllable-like flaps while speaking.
+	var talk := 0.0
+	if _talk_left > 0.0:
+		_talk_t += delta
+		_talk_left -= delta
+		talk = 0.25 + 0.55 * absf(sin(_talk_t * 11.0)) * (0.6 + 0.4 * sin(_talk_t * 3.7))
+		if _talk_left <= 0.0:
+			stop_speaking()
+	var k := clampf(delta * 12.0, 0.0, 1.0)
+	for key: String in FACE_KEYS:
+		var goal := float(_face_goal.get(key, 0.0))
+		if key == "blink":
+			goal = maxf(goal, blink)
+		elif key == "mouth_open":
+			goal = maxf(goal, talk)
+		var now := lerpf(float(_face_now.get(key, 0.0)), goal, 1.0 if key == "blink" else k)
+		_face_now[key] = now
+		var idx := _face_mesh.find_blend_shape_by_name(key)
+		if idx >= 0:
+			_face_mesh.set_blend_shape_value(idx, now)
 
 
 func play(name: String, blend: float = 0.2) -> void:
