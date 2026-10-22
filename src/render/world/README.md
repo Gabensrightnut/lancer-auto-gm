@@ -310,3 +310,22 @@ with the signs still on. `WorldKits.set_hub_time(world, period)` switches the bu
 lamps, lanterns and fires (lights with meta `hub_night_light`) burn at dawn, evening and night,
 and more windows are lit the later it gets. The hub scene calls both on every rebuild (waiting
 rebuilds it). Preview: `hub-<culture>~<period>[@close]`.
+
+## Interiors (`interiors.gd`, `data/game/interiors.json`)
+
+One shared kit for walking inside key buildings. A kind is data: rooms (rect, floor, `use`),
+doors (rooms, position, width, lock 0-2, kind door/hatch/bars/arch), stairs and extra
+containers. Furniture comes from the room's use (bar, bedroom, storage, office, study, cell,
+bridge, captain, bunks, commons, engineering, cargo, sleepers, control), placed clear of doors
+and stairs. `Interiors.layout(kind, culture, seed)` returns plain data for story: rooms (ids
+match TownLife's), doors with locks, containers (lock, `contents` for story to fill), sleep
+spots, and stand/sit/work/hide points. `Interiors.build(layout)` builds it: walls merged per line
+with doorways and frames, floors with stair openings, a "Ceiling" node a camera can hide, one
+light per room, doors that `set_door()` swings or slides. Culture picks materials (planks,
+stone, plaster, neon-dark, white); ship kinds are metal with strip lights.
+Kinds now: `bar` (saloon: bar room, back room with the safe, stairs, upstairs corridor, three
+rooms and the owner's), `marshal` (front office, three barred cells, the marshal's office with
+a safe), `ship_deck` (bridge, captain's quarters, crew bunks, commons with stalls, engineering
+with the reactor and the NHP casing, cargo bay), `sleeper_vault` (rows of cryo pods, control
+gallery). Inn, office, warehouse, workshop, house, chapel and clinic are only data to add.
+Preview: `in-<kind>[~culture]@eye|top|up|<room id>`.

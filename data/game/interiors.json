@@ -1,0 +1,109 @@
+{
+	"_about": "Interiors of key buildings, walked through on foot (Interiors in src/render/world/interiors.gd). Meters; origin at the footprint center, the front door toward +Z, floor 0 at y 0, each floor `floor_height` higher. rect = [x0, z0, width, depth]. Room ids match story's TownLife rooms (town_life.json: bar main/back/upstairs, office front/back/safe). `use` picks the furniture (Interiors.FURNISH). Doors: rooms [a, b] ('outside' for the street), at [x, z] on the shared wall, `lock` 0 open latch, 1 key or pick, 2 hard; `kind` door, hatch, bars, arch. `containers` adds lockable containers to a room beyond what its use places. Culture sets materials only (wood, stone, metal...); ship kinds are always metal. Our own layouts: no names, signage or lore.",
+	"bar": {
+		"name": "saloon",
+		"size": [14.0, 10.0],
+		"floors": 2,
+		"floor_height": 3.2,
+		"rooms": {
+			"main": {"name": "the bar room", "floor": 0, "rect": [-7.0, -1.0, 14.0, 6.0], "use": "bar", "public": true},
+			"back": {"name": "the back room", "floor": 0, "rect": [-7.0, -5.0, 7.0, 4.0], "use": "storage"},
+			"hall": {"name": "the stairs", "floor": 0, "rect": [0.0, -5.0, 7.0, 4.0], "use": "stairs", "public": true},
+			"upstairs": {"name": "the rooms upstairs", "floor": 1, "rect": [-7.0, -1.0, 14.0, 2.0], "use": "corridor"},
+			"landing": {"name": "the landing", "floor": 1, "rect": [0.0, -5.0, 7.0, 4.0], "use": "landing"},
+			"room_1": {"name": "a room upstairs", "floor": 1, "rect": [-7.0, 1.0, 4.6, 4.0], "use": "bedroom"},
+			"room_2": {"name": "a room upstairs", "floor": 1, "rect": [-2.4, 1.0, 4.8, 4.0], "use": "bedroom"},
+			"room_3": {"name": "a room upstairs", "floor": 1, "rect": [2.4, 1.0, 4.6, 4.0], "use": "bedroom"},
+			"owner": {"name": "the owner's room", "floor": 1, "rect": [-7.0, -5.0, 7.0, 4.0], "use": "bedroom"}
+		},
+		"doors": [
+			{"rooms": ["outside", "main"], "at": [0.0, 5.0], "width": 1.8, "lock": 1, "kind": "door"},
+			{"rooms": ["main", "back"], "at": [-3.5, -1.0], "lock": 1},
+			{"rooms": ["main", "hall"], "at": [3.5, -1.0], "width": 2.0, "lock": 0, "kind": "arch"},
+			{"rooms": ["back", "outside"], "at": [-7.0, -3.0], "lock": 1},
+			{"rooms": ["landing", "upstairs"], "at": [3.5, -1.0], "lock": 1},
+			{"rooms": ["upstairs", "room_1"], "at": [-4.7, 1.0], "lock": 1},
+			{"rooms": ["upstairs", "room_2"], "at": [0.0, 1.0], "lock": 1},
+			{"rooms": ["upstairs", "room_3"], "at": [4.7, 1.0], "lock": 1},
+			{"rooms": ["upstairs", "owner"], "at": [-3.5, -1.0], "lock": 1}
+		],
+		"stairs": [{"from": "hall", "to": "landing", "start": [0.8, -4.2], "end": [5.6, -4.2], "width": 1.2}],
+		"containers": [
+			{"id": "safe", "room": "back", "kind": "safe", "lock": 2},
+			{"id": "till", "room": "main", "kind": "till", "lock": 1},
+			{"id": "owner_chest", "room": "owner", "kind": "chest", "lock": 1}
+		]
+	},
+	"marshal": {
+		"name": "marshal's office",
+		"size": [12.0, 9.0],
+		"floors": 1,
+		"floor_height": 3.2,
+		"rooms": {
+			"front": {"name": "the front office", "floor": 0, "rect": [-6.0, -0.5, 12.0, 5.0], "use": "office", "public": true},
+			"cell_1": {"name": "a cell", "floor": 0, "rect": [-6.0, -4.5, 3.0, 4.0], "use": "cell"},
+			"cell_2": {"name": "a cell", "floor": 0, "rect": [-3.0, -4.5, 3.0, 4.0], "use": "cell"},
+			"cell_3": {"name": "a cell", "floor": 0, "rect": [0.0, -4.5, 3.0, 4.0], "use": "cell"},
+			"back": {"name": "the marshal's office", "floor": 0, "rect": [3.0, -4.5, 3.0, 4.0], "use": "study"}
+		},
+		"doors": [
+			{"rooms": ["outside", "front"], "at": [0.0, 4.5], "width": 1.6, "lock": 1},
+			{"rooms": ["front", "cell_1"], "at": [-4.5, -0.5], "lock": 1, "kind": "bars"},
+			{"rooms": ["front", "cell_2"], "at": [-1.5, -0.5], "lock": 1, "kind": "bars"},
+			{"rooms": ["front", "cell_3"], "at": [1.5, -0.5], "lock": 1, "kind": "bars"},
+			{"rooms": ["front", "back"], "at": [4.5, -0.5], "lock": 1}
+		],
+		"containers": [
+			{"id": "safe", "room": "back", "kind": "safe", "lock": 2},
+			{"id": "evidence", "room": "front", "kind": "cabinet", "lock": 1},
+			{"id": "gun_rack", "room": "front", "kind": "rack", "lock": 1}
+		]
+	},
+	"ship_deck": {
+		"name": "ship's deck",
+		"size": [30.0, 14.0],
+		"floors": 1,
+		"floor_height": 3.0,
+		"ship": true,
+		"rooms": {
+			"corridor": {"name": "the main corridor", "floor": 0, "rect": [-15.0, -1.0, 24.0, 2.0], "use": "corridor", "public": true},
+			"bridge": {"name": "the bridge", "floor": 0, "rect": [9.0, -7.0, 6.0, 14.0], "use": "bridge"},
+			"captain": {"name": "the captain's quarters", "floor": 0, "rect": [3.0, -7.0, 6.0, 6.0], "use": "captain"},
+			"crew": {"name": "the crew deck", "floor": 0, "rect": [-5.0, -7.0, 8.0, 6.0], "use": "bunks"},
+			"commons": {"name": "the commons", "floor": 0, "rect": [-15.0, -7.0, 10.0, 6.0], "use": "commons", "public": true},
+			"engineering": {"name": "engineering", "floor": 0, "rect": [-15.0, 1.0, 12.0, 6.0], "use": "engineering"},
+			"cargo": {"name": "the cargo bay", "floor": 0, "rect": [-3.0, 1.0, 12.0, 6.0], "use": "cargo"}
+		},
+		"doors": [
+			{"rooms": ["corridor", "bridge"], "at": [9.0, 0.0], "width": 1.6, "lock": 2, "kind": "hatch"},
+			{"rooms": ["corridor", "captain"], "at": [6.0, -1.0], "lock": 2, "kind": "hatch"},
+			{"rooms": ["corridor", "crew"], "at": [-1.0, -1.0], "lock": 0, "kind": "hatch"},
+			{"rooms": ["corridor", "commons"], "at": [-10.0, -1.0], "width": 2.4, "lock": 0, "kind": "hatch"},
+			{"rooms": ["corridor", "engineering"], "at": [-9.0, 1.0], "lock": 1, "kind": "hatch"},
+			{"rooms": ["corridor", "cargo"], "at": [3.0, 1.0], "width": 2.4, "lock": 1, "kind": "hatch"},
+			{"rooms": ["outside", "corridor"], "at": [-15.0, 0.0], "width": 1.8, "lock": 1, "kind": "hatch"}
+		],
+		"containers": [
+			{"id": "captain_locker", "room": "captain", "kind": "locker", "lock": 2},
+			{"id": "arms_locker", "room": "bridge", "kind": "locker", "lock": 2}
+		]
+	},
+	"sleeper_vault": {
+		"name": "sleeper vault",
+		"size": [22.0, 14.0],
+		"floors": 1,
+		"floor_height": 4.0,
+		"ship": true,
+		"rooms": {
+			"vault": {"name": "the sleeper vault", "floor": 0, "rect": [-11.0, -5.0, 22.0, 12.0], "use": "sleepers"},
+			"control": {"name": "the vault control room", "floor": 0, "rect": [-11.0, -7.0, 22.0, 2.0], "use": "control"}
+		},
+		"doors": [
+			{"rooms": ["outside", "vault"], "at": [0.0, 7.0], "width": 2.4, "lock": 2, "kind": "hatch"},
+			{"rooms": ["vault", "control"], "at": [-8.0, -5.0], "lock": 1, "kind": "hatch"}
+		],
+		"containers": [
+			{"id": "medical_stores", "room": "control", "kind": "locker", "lock": 1}
+		]
+	}
+}
