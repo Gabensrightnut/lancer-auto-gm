@@ -4,9 +4,8 @@ extends RefCounted
 ## builder → GM-generated mission → battle → mission end → debrief and level up → save → next
 ## mission. Screens call these; tests drive them directly.
 ##
-## Leveling: every pilot in the squad gains a License Level after each mission (CANON.md
-## "Mission structure ... debrief, level up", Core p.40). PROVISIONAL (docs/RULES_TODO.md
-## "Leveling pace"): one LL per mission played to the end, win or lose.
+## Leveling: every pilot in the squad gains a License Level after every mission, whether it
+## succeeded or failed (Core p.18 "Leveling Up"), and may reallocate once (BuilderModel).
 
 ## The battle in progress (screens hand it to each other).
 static var session: BattleSession

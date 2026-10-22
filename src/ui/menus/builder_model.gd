@@ -5,11 +5,18 @@ extends RefCounted
 ## whether it can be picked and, if not, why. Legality comes from UnitFactory (mounts, SP,
 ## licenses, License Level) plus the pilot's point budgets below.
 ##
-## PROVISIONAL (docs/RULES_TODO.md "Pilot progression"): budgets per License Level, from the
-## starting numbers in rules.json plus one point per LL: skill trigger points 4 + LL (rank 1-3,
-## each rank +2), talent ranks 3 + LL (rank 1-3), mech skill (HASE) points 2 + LL (max 6 each),
-## license ranks = LL, one core bonus per 3 LL. Non-GMS core bonuses need 3 license ranks in
-## that manufacturer for each one taken.
+## Pilot progression (Core p.18 "Leveling Up", p.35 core bonuses; starting numbers from
+## rules.json): skill trigger points 4 + LL (a trigger is +2 per rank, up to +6), talent ranks
+## 3 + LL (rank 1-3), mech skill (HASE) points 2 + LL (max 6 each), license ranks = LL, a core
+## bonus at every third LL (3, 6, 9, 12). Core bonuses from a manufacturer other than GMS need
+## 3 more license ranks with that manufacturer for each one taken (1st: 3, 2nd: 6...), spread
+## over any of its licenses.
+##
+## Points spent at earlier License Levels stay spent (Campaign.level_up records them in
+## pilot["locked"]). At each LL increase the pilot may make one reallocation (Core p.18): move
+## all ranks from one talent to another, all ranks from one license to another, or swap one
+## core bonus for another they qualify for. A license move that breaks a core bonus's
+## requirement means that bonus must be replaced.
 ##
 ## Works on a copy of the pilot record (Compcon layout); `pilot` is the edited version.
 
@@ -18,7 +25,8 @@ signal changed
 const HASE := ["hull", "agility", "systems", "engineering"]
 ## How many weapons each mount type holds (UnitFactory.MOUNT_SLOTS).
 const SLOTS := {"Main": 1, "Heavy": 1, "Flex": 2, "Main/Aux": 2, "Aux/Aux": 2}
-const REF := "PROVISIONAL Core: Pilot progression (docs/RULES_TODO.md)"
+const REF := "Core p.18: Leveling Up"
+const REF_CORE_BONUS := "Core p.35: Core Bonuses"
 
 var db: ContentDB
 var pilot: Dictionary
@@ -130,6 +138,104 @@ func toggle_core_bonus(id: String) -> String:
 			list.erase(id)
 		else:
 			list.append(id))
+
+
+# --- Reallocation (Core p.18) ------------------------------------------------------------
+
+## True if this pilot gained a License Level and hasn't used its one reallocation yet.
+func can_reallocate() -> bool:
+	return bool(pilot.get("realloc_pending", false))
+
+
+## One reallocation per LL increase. kind: "talent" (move all ranks from one talent to one you
+## don't have), "license" (move all ranks from one license to one you don't have) or
+## "core_bonus" (swap one for another you qualify for). Returns "" or why not.
+func reallocate(kind: String, from_id: String, to_id: String) -> String:
+	if not can_reallocate():
+		return "You can reallocate once each time the pilot gains a License Level (Core p.18)."
+	var key: String = {"talent": "talents", "license": "licenses"}.get(kind, "")
+	match kind:
+		"talent", "license":
+			var have: Dictionary = pilot[key]
+			if int(have.get(from_id, 0)) <= 0:
+				return "Pick a %s the pilot has." % kind
+			if have.has(to_id):
+				return "Move the ranks to a %s the pilot doesn't have yet." % kind
+			if (db.get_entry("talents", to_id) if kind == "talent" else db.frame(to_id)).is_empty():
+				return "Unknown %s." % kind
+			var why := _try(func(p: Dictionary) -> void:
+				_move_rank(p[key], from_id, to_id)
+				var locked: Dictionary = p.get("locked", {}).get(key, {})
+				_move_rank(locked, from_id, to_id),
+				func(w: String) -> bool: return kind == "license" and "core bonus" in w)
+			if why == "":
+				pilot["realloc_pending"] = false
+			return why
+		"core_bonus":
+			if not pilot["core_bonuses"].has(from_id):
+				return "Pick a core bonus the pilot has."
+			if pilot["core_bonuses"].has(to_id) or db.get_entry("core_bonuses", to_id).is_empty():
+				return "Pick a core bonus the pilot doesn't have."
+			var why := _try(func(p: Dictionary) -> void:
+				_swap(p["core_bonuses"], from_id, to_id)
+				_swap(p.get("locked", {}).get("core_bonuses", []), from_id, to_id))
+			if why == "":
+				pilot["realloc_pending"] = false
+			return why
+	return "Choose talent, license or core bonus."
+
+
+func _move_rank(d: Dictionary, from_id: String, to_id: String) -> void:
+	if d.has(from_id):
+		var talent := db.get_entry("talents", to_id)
+		var cap := (talent.get("ranks", []) as Array).size() if not talent.is_empty() else UnitFactory.MAX_LICENSE_RANK
+		d[to_id] = mini(int(d[from_id]), maxi(cap, 1))
+		d.erase(from_id)
+
+
+static func _swap(list: Array, from_id: String, to_id: String) -> void:
+	var i := list.find(from_id)
+	if i >= 0:
+		list[i] = to_id
+
+
+## Spent points can't be taken back (Core p.18), except through reallocation.
+func _locked_problems(p: Dictionary) -> Array:
+	var out: Array = []
+	var locked: Dictionary = p.get("locked", {})
+	if locked.is_empty():
+		return out
+	for pair in [["skills", "skill trigger"], ["talents", "talent"], ["licenses", "license"]]:
+		var was: Dictionary = locked.get(pair[0], {})
+		for id: String in was:
+			if int(p[pair[0]].get(id, 0)) < int(was[id]):
+				var name := str((db.get_entry("frames", id) if pair[0] == "licenses" else db.get_entry(pair[0], id)).get("name", id))
+				var tail := " (or use this level's reallocation)" if pair[0] != "skills" and can_reallocate() else ""
+				out.append("%s ranks were spent at an earlier License Level and stay spent%s." % [name, tail])
+	for k in HASE:
+		if int(p.get(k, 0)) < int(locked.get("hase", {}).get(k, 0)):
+			out.append("%s points were spent at an earlier License Level and stay spent." % k.capitalize())
+	for cb: String in locked.get("core_bonuses", []):
+		if not p["core_bonuses"].has(cb) and not _core_bonus_broken(p, cb):
+			out.append("%s was taken at an earlier License Level; swap it with this level's reallocation instead." % db.get_entry("core_bonuses", cb).get("name", cb))
+	return out
+
+
+## A core bonus whose manufacturer license requirement is no longer met (after a license
+## reallocation): it must be replaced, so dropping it is allowed.
+func _core_bonus_broken(p: Dictionary, cb: String) -> bool:
+	var src := str(db.get_entry("core_bonuses", cb).get("source", "GMS"))
+	if src == "GMS":
+		return false
+	var count := 1
+	for other: String in p["core_bonuses"]:
+		if str(db.get_entry("core_bonuses", other).get("source", "")) == src:
+			count += 1
+	var ranks := 0
+	for fid: String in p["licenses"]:
+		if db.frame(fid).get("source", "") == src:
+			ranks += int(p["licenses"][fid])
+	return ranks < 3 * count
 
 
 # --- Mech changes ------------------------------------------------------------------------
@@ -272,14 +378,14 @@ func core_bonus_options() -> Array:
 # --- Internals ---------------------------------------------------------------------------
 
 ## Applies `change` to the pilot if it adds no new problem; otherwise undoes it and returns
-## the first new problem.
-func _try(change: Callable) -> String:
+## the first new problem. `allowed` (optional) lets some new problems through.
+func _try(change: Callable, allowed: Callable = Callable()) -> String:
 	var before := _problems(pilot, mech_index)
 	var backup := pilot.duplicate(true)
 	change.call(pilot)
 	var after := _problems(pilot, mech_index)
 	for why: String in after:
-		if not before.has(why):
+		if not before.has(why) and not (allowed.is_valid() and allowed.call(why)):
 			pilot = backup
 			return why
 	_changed()
@@ -333,7 +439,9 @@ func _problems(p: Dictionary, index: int) -> Array:
 			if db.frame(fid).get("source", "") == src:
 				ranks += int(p["licenses"][fid])
 		if ranks < 3 * int(per_maker[src]):
-			out.append("Each %s core bonus needs 3 %s license ranks (you have %d)." % [src, src, ranks])
+			out.append("%d %s core bonus%s need %d %s license ranks in total, 3 per bonus (you have %d)." % [
+				per_maker[src], src, "" if per_maker[src] == 1 else "es", 3 * int(per_maker[src]), src, ranks])
+	out.append_array(_locked_problems(p))
 	if index < p["mechs"].size():
 		var m: Dictionary = p["mechs"][index]
 		var res := UnitFactory.check_loadout(db, str(m.get("frame", "")), m.get("loadout", {}), p)

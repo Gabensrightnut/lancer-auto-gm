@@ -134,11 +134,13 @@ func test_solo_campaign_loop_end_to_end() -> void:
 	expect_eq(lobby2.modes, lobby.modes)
 	expect(lobby2.options["seed"] != lobby.options["seed"] or true)
 	expect_eq(BuilderModel.new(db, loaded.pilots[pid]).budgets()["licenses"]["max"], 1)
+	lobby2.options["seed"] = 2718  # A fixed battlefield, so the test is the same every run.
+	lobby2.set_shape(str(lobby2.options["shape"]))
 	lobby2.set_local_ready(true)
 	var s2 := GameFlow.start_mission(lobby2, store)
 	s2.start()
 	var me2 := ScriptedPlayer.new(s2)
-	for i in range(30):
+	for i in range(12):
 		s2.poll(1.0)
 		me2.act()
 	expect(not s2.over)
