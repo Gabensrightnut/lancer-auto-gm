@@ -54,6 +54,10 @@ var broken_cells: Dictionary = {}
 ## Sitrep objectives shown on the board ([zones, deployment, show_deployment]), redrawn on
 ## every rebuild. Set with show_objectives().
 var objectives: Array = []
+## The facade material of this board's buildings (CityBuilder), for collapse pieces.
+var building_material: Material
+## Building look per structure cell from the last build: cell -> {color, type, top}.
+var building_looks: Dictionary = {}
 var _props: Node3D
 var _shape: Dictionary
 var _bottom := -BASE_DEPTH

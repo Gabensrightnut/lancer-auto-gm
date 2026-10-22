@@ -30,20 +30,27 @@ static func check(map: BattleMap, layout: Dictionary, h: int) -> Dictionary:
 	hidden[Mission.ENEMIES] = hidden_fraction(map, dep[Mission.ENEMIES], dep[Mission.PLAYERS])
 	var unreachable := unreachable_objectives(map, layout)
 	var ratio := _ratio(cover)
+	# Destructible cover: when a map has a fair amount, neither side should hold most of it.
+	var breakable := cover_counts(map, layout, h, true)
+	var breakable_ok := maxi(breakable[0], breakable[1]) < 8 or _ratio(breakable) >= MIN_COVER_RATIO
 	# Holdout puts the squad in the middle with the enemy on three sides by design (the book
 	# protects them with fortifications instead), so only the attackers need hiding places.
 	var players_need := 0.0 if str(layout.get("sitrep", "")) == "sitrep_holdout" else MIN_HIDDEN
 	var ok := (ratio >= MIN_COVER_RATIO or maxi(cover[0], cover[1]) < 6) and float(hidden[Mission.PLAYERS]) >= players_need \
-		and float(hidden[Mission.ENEMIES]) >= MIN_HIDDEN and unreachable.is_empty()
-	return {"ok": ok, "cover": cover, "cover_ratio": ratio, "hidden": hidden, "unreachable": unreachable}
+		and float(hidden[Mission.ENEMIES]) >= MIN_HIDDEN and unreachable.is_empty() and breakable_ok
+	return {"ok": ok, "cover": cover, "cover_ratio": ratio, "hidden": hidden, "unreachable": unreachable,
+		"destructible": breakable, "destructible_ratio": _ratio(breakable)}
 
 
 ## Cover cells in the players' half and the enemy's half (outside deployment zones).
-static func cover_counts(map: BattleMap, layout: Dictionary, h: int) -> Array:
+## destructible_only: count only cover that can be destroyed.
+static func cover_counts(map: BattleMap, layout: Dictionary, h: int, destructible_only: bool = false) -> Array:
 	var skip := _cells_of_deployment(layout)
 	var counts := [0, 0]
 	for c in map.cells():
 		if skip.has(c) or not is_cover(map, c):
+			continue
+		if destructible_only and not map.column(c).has_tag(BattleMap.TAG_DESTRUCTIBLE):
 			continue
 		var row := c.y
 		if row * 2 + 1 == h:
@@ -262,6 +269,31 @@ static func repair(map: BattleMap, layout: Dictionary, w: int, h: int, shape: Gr
 				dst = SitrepLayout.cell_of(rng.randi_range(0, w - 1), row, shape)
 			_copy_cover(map, src, dst, blocked)
 		counts = cover_counts(map, layout, h)
+	# Destructible balance: mark cover destructible in the poorer half, mirroring the richer.
+	var guard3 := 0
+	var br := cover_counts(map, layout, h, true)
+	while guard3 < 40 and maxi(br[0], br[1]) >= 8 and _ratio(br) < MIN_COVER_RATIO:
+		guard3 += 1
+		var rich_players: bool = br[0] > br[1]
+		var picks: Array[Vector2i] = []
+		for cell in map.cells():
+			if (cell.y * 2 >= h) == rich_players and is_cover(map, cell) and map.column(cell).has_tag(BattleMap.TAG_DESTRUCTIBLE):
+				picks.append(cell)
+		if picks.is_empty():
+			break
+		for i in range(3):
+			var src := picks[rng.randi_range(0, picks.size() - 1)]
+			var col_row := _col_row(src, shape)
+			var dst := SitrepLayout.cell_of(w - 1 - col_row.x, h - 1 - col_row.y, shape)
+			if map.has_cell(dst) and is_cover(map, dst) and not map.column(dst).has_tag(BattleMap.TAG_IMPASSABLE):
+				_tag_destructible(map, dst)
+			else:
+				# No cover there: knock the tag off the richer side instead.
+				var tags := map.column(src).tags
+				if tags.has(BattleMap.TAG_DESTRUCTIBLE):
+					tags.remove_at(tags.find(BattleMap.TAG_DESTRUCTIBLE))
+					map.column(src).tags = tags
+		br = cover_counts(map, layout, h, true)
 	# Reachability: open a path for whatever Size is stuck.
 	var result := check(map, layout, h)
 	if not (result["unreachable"] as Array).is_empty():
@@ -288,6 +320,13 @@ static func repair(map: BattleMap, layout: Dictionary, w: int, h: int, shape: Gr
 
 static func _ratio(counts: Array) -> float:
 	return float(mini(counts[0], counts[1])) / maxf(1.0, maxi(counts[0], counts[1]))
+
+
+static func _tag_destructible(map: BattleMap, c: Vector2i) -> void:
+	var tags := map.column(c).tags
+	if not tags.has(BattleMap.TAG_DESTRUCTIBLE):
+		tags.append(BattleMap.TAG_DESTRUCTIBLE)
+		map.column(c).tags = tags
 
 
 static func _col_row(cell: Vector2i, shape: GridLayout.Shape) -> Vector2i:

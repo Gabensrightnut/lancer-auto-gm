@@ -142,7 +142,9 @@ void fragment() {
 	vec3 fn = normalize(cross(dFdx(wpos), dFdy(wpos)));
 	if (dot(fn, wnrm) < 0.0) { fn = -fn; }
 	int type = int(cu.w + 0.5);
-	float seed = vc.a;
+	// Quantized: interpolation leaves tiny per-pixel differences that the hashes below would
+	// turn into speckle.
+	float seed = floor(vc.a * 256.0 + 0.5) / 256.0;
 	vec3 col;
 	float rough = 0.9;
 	float metal = 0.0;
@@ -278,7 +280,7 @@ void fragment() {
 			col = mix(col, wc, win);
 			rough = mix(rough, mix(0.06, 1.0, broken), win);
 			metal = mix(metal, 0.0, win);
-			h -= win * 0.8;
+			h = mix(h, -0.8, win);  // flat glass, no wall pattern showing through
 			float is_lit = step(1.0 - lit, hash(cell_id + 11.0));
 			vec3 lamp = (ground_floor && storefront > 0.5) ? shop_light : window_light;
 			emit += lamp * win * is_lit * (1.0 - broken) * (0.6 + 0.6 * hash(cell_id + 17.0)) * (1.0 - 0.5 * fy);
@@ -340,8 +342,10 @@ void fragment() {
 	// Bump from the height pattern.
 	vec3 dpx = dFdx(wpos);
 	vec3 dpy = dFdy(wpos);
-	float dhx = dFdx(h);
-	float dhy = dFdy(h);
+	float lx = max(length(dpx), 1e-5);
+	float ly = max(length(dpy), 1e-5);
+	float dhx = clamp(dFdx(h) / lx, -25.0, 25.0) * lx;
+	float dhy = clamp(dFdy(h) / ly, -25.0, 25.0) * ly;
 	vec3 r1v = cross(dpy, fn);
 	vec3 r2v = cross(fn, dpx);
 	float det = dot(dpx, r1v);

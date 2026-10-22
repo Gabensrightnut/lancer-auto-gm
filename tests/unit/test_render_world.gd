@@ -200,3 +200,27 @@ func test_weather_is_look_only() -> void:
 		expect_eq(a.surface(c), b.surface(c))
 	_free(a)
 	_free(b)
+
+
+func test_destroyed_buildings_come_down_to_the_new_data() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 2
+	var wr := RandomNumberGenerator.new()
+	wr.seed = 3
+	var bf := MissionGenerator.battlefield(rng, wr, "sitrep_standardcombat", 24, 22, GridLayout.Shape.HEX, "city", "ruins")
+	var map: BattleMap = bf["map"]
+	var t := _build(map, "city/ruins")
+	var newer := BattleMap.from_dict(map.to_dict())
+	var knocked: Array[Vector2i] = []
+	for c in newer.cells():
+		if t.structure_cells.has(c) and newer.column(c).has_tag(BattleMap.TAG_DESTRUCTIBLE) and knocked.size() < 6:
+			newer.column(c).ground = 0
+			newer.column(c).tags = PackedStringArray([BattleMap.TAG_DIFFICULT])
+			knocked.append(c)
+	expect(knocked.size() > 0, "the city has breakable buildings")
+	var broke := t.sync_map(newer)
+	expect_eq(broke.size(), knocked.size(), "each knocked-down building cell breaks")
+	for c in knocked:
+		expect(not t.structure_cells.has(c), "%s is no longer drawn as a building" % c)
+		expect_eq(t.surface(c), TerrainRenderer.KIND_ROUGH, "%s is rubble (difficult)" % c)
+	_free(t)

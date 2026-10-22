@@ -12,6 +12,7 @@ Godot is at `A:/godot/Godot_v4.7.2-stable_win64_console.exe` (not on PATH). Blen
 G=A:/godot/Godot_v4.7.2-stable_win64_console.exe
 $G --headless --path . --import                                      # after adding class_name scripts
 $G --headless --path . -s res://tests/run_tests.gd                   # all tests, exit 1 on failure
+LANCER_SLOW_TESTS=1 $G --headless --path . -s res://tests/run_tests.gd -- fairness   # full 50-seed map fairness (slow)
 $G --path . -s res://tools/screenshot.gd -- res://scenes/main.tscn out.png   # check visuals
 ```
 

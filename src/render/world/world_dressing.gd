@@ -295,7 +295,7 @@ static func _rocks(t: TerrainRenderer, root: Node3D) -> void:
 			var y := low + (k + 0.5) * (top - low) / layers
 			var rad := 0.58 + 0.06 * WorldRand.f(key, k)
 			var basis := Basis(Vector3.UP, WorldRand.f(key, k + 10) * TAU) * Basis(Vector3.RIGHT, (WorldRand.f(key, k + 20) - 0.5) * 0.5)
-			var b := Flora.blob(rad, key + str(k), 0.22, 1.0, 9)
+			var b := Flora.blob(rad, key + str(k), 0.2, 1.0, 16)
 			var verts: PackedVector3Array = b[0]
 			var idx: PackedInt32Array = b[2]
 			var half := (top - low) / layers * 0.5 + 0.35
@@ -320,10 +320,12 @@ static func _rocks(t: TerrainRenderer, root: Node3D) -> void:
 					nrm = -nrm
 					pts = [pts[0], pts[2], pts[1]]
 				var flat_top := absf(mid.y - (top - 0.004)) < 0.001
-				st.set_color(Color(TerrainRenderer.KIND_ROCK / 16.0, WorldRand.f(str(c)) if flat_top else WorldRand.f(key, tri), 0.0, 1.0))
+				st.set_color(Color(TerrainRenderer.KIND_ROCK / 16.0, WorldRand.f(str(c)) if flat_top else WorldRand.f(key, k), 0.0, 1.0))
 				st.set_uv2(Vector2(0, top))
 				for q in [0, 2, 1]:
-					st.set_normal(Vector3.UP if flat_top else nrm)
+					# Rounded shading: normals point away from the boulder's core.
+					var round := (pts[q] - Vector3(center.x, y, center.z)).normalized()
+					st.set_normal(Vector3.UP if flat_top else (round * 0.7 + nrm * 0.3).normalized())
 					st.add_vertex(pts[q])
 	if not any:
 		return
