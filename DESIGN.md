@@ -675,6 +675,12 @@ pixel art).
 - Optional: a person can run the game instead of the procedural GM: sees everything, spawns
   units, edits the map, triggers events, makes rulings. The procedural GM can still run the
   enemies while the human GM handles story.
+- Built so far: "Who is the GM" (the AI, a person at the host's computer, or a friend online who
+  joins as the GM). The human GM sees the whole battle and story (secrets included), has the
+  story GM tools (G) in the hub and over battles, and reveals the mission twist themselves.
+  The AI still flies the enemies, starts the fight, answers rules questions and calls
+  reinforcements. Still to come: spawning units, the map editor, making rulings and flying
+  enemies by hand.
 
 ### Milestones
 1. **First playable:** one full mission start to finish, hot-seat, core frames vs.

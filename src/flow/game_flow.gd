@@ -77,6 +77,12 @@ static func host_story_online(campaign: Campaign, db: ContentDB, store: SaveStor
 		state.seats[seat] = {"name": str(p.get("callsign", seat)), "side": Mission.PLAYERS, "callsign": str(p.get("callsign", "")),
 			"pilot": str(p.get("name", "")), "pilot_id": pid}
 	story_host = NetHost.new(state, RulesEngine.new())
+	if bool(campaign.options.get("human_gm", false)):
+		# A human GM: their seat is open to join online (or played here).
+		state.seats[NetHost.GM_SEAT] = {"name": "GM", "side": "", "gm": true}
+		story_host.human_gm = true
+		if str(campaign.options.get("gm_where", "local")) == "local":
+			story_host.add_local_seat(NetHost.GM_SEAT)
 	for seat: String in story.seats:
 		if seat in local:
 			story_host.add_local_seat(seat)
@@ -376,6 +382,8 @@ static func start_mission(lobby: LobbyModel, store: SaveStore) -> BattleSession:
 	for seat: String in lobby.modes:
 		if lobby.modes[seat] == "you":
 			local_seats.append(seat)
+	if lobby.gm_status() == "here":
+		local_seats.append(NetHost.GM_SEAT)  # a human GM at this screen watches from the GM seat
 	local_seats.sort()
 	session = BattleSession.for_host(r["host"], r["director"], r["mission"], local_seats, save)
 	(r["host"] as NetHost).ai_squad_auto = bool(lobby.options.get("ai_squad_auto", true))

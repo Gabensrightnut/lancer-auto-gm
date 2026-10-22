@@ -154,6 +154,6 @@ The walkable hub is in `src/explore/` (`HubScene`, `scenes/explore/hub.tscn`).
 - **Menus / settings**: a "Story text" section: text size (`StorySettings.set_text_scale`, 0.8-1.6) and "Skip lines I've read" (`StorySettings.set_skip_seen`).
 - **Flow / menus**: a `CampaignMap` can be opened anywhere between missions (`bind(engine, story, campaign)`, `open()`); on `travelled(events)` rebuild whatever shows the hub (HubScene does this itself). Multiplayer: `travel` is a host (gm seat) action.
 - **World/maps**: a hub now carries `hub["landscape"]` (its world's), and every job on it uses that landscape.
-- **Flow / battle screen**: show a `GmPanel` (`bind(engine, story, campaign)`, `open()`, G) over the battle for a human GM; its `story_events` may include `twist_revealed` (already narrated by the battle screen) and dialogue lines (show the `DialogueView`).
-- **Net**: a human GM on a remote machine needs its story actions accepted as the "gm" seat by `StorySession` (today remote seats can never act as the GM); everyone else keeps getting `StoryView` views.
-- **Menus**: a "Human GM" campaign option (`campaign.options.human_gm`), which turns on the GM tools in the hub.
+- **Flow / battle screen** (done): a `GmPanel` over the battle (G) when the GM seat is at that screen; a `twist_revealed` from the GM tools is narrated in the battle by the host (`BattleSession.gm_reveal_twist`), and the AI GM no longer reveals the twist itself.
+- **Net** (done): a friend who joins as the GM (only when the host set up a human GM) acts as "gm" in `StorySession` and gets `StoryView.view_for(..., "gm")` (secrets and twists); everyone else keeps the players' view.
+- **Menus** (done): "Who is the GM" (The AI / A person here / A friend online) on the new campaign form and in the lobby: `campaign.options.human_gm` and `gm_where` ("local" / "remote"); Join online has "Join as the GM".

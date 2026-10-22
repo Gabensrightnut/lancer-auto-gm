@@ -149,6 +149,17 @@ func _show_new() -> void:
 	for p in LobbyModel.PRESETS:
 		preset.add_item(p)
 	body.add_child(_field("GM style", preset))
+	var gm := OptionButton.new()
+	for opt: Array in LobbyModel.GM_CHOICES:
+		gm.add_item(opt[1])
+	body.add_child(_field("Who is the GM", gm))
+	var gm_note := MenuTheme.label(LobbyModel.GM_CHOICES[0][2], 15, MenuTheme.MUTED, true)
+	gm.item_selected.connect(func(i: int) -> void: gm_note.text = LobbyModel.GM_CHOICES[i][2])
+	body.add_child(gm_note)
+	var set_gm := func(c: Campaign) -> void:
+		c.options["human_gm"] = gm.selected > 0
+		c.options["gm_where"] = "remote" if gm.selected == 2 else "local"
+		MenuSession.store.save_campaign(c)
 	var length := OptionButton.new()
 	var fl: Dictionary = GmSettings.fight_lengths()
 	var length_ids := ["short", "standard", "long"]
@@ -203,11 +214,12 @@ func _show_new() -> void:
 			MenuSession.campaign = null
 			MenuSession.campaign = GameFlow.start_story_campaign(MenuSession.store, MenuSession.content(), name_edit.text.strip_edges(), pilots.get_selected_id(),
 				ll.get_selected_id(), LobbyModel.PRESETS[preset.selected], arcs.get_selected_id(), "", length_ids[length.selected])
+			set_gm.call(MenuSession.campaign)
 			MenuSession.go(self, "hub")
 			return
 		var c := MenuSession.new_campaign(name_edit.text.strip_edges(), pilots.get_selected_id(), ll.get_selected_id(), LobbyModel.PRESETS[preset.selected])
 		c.gm_settings["fight_length"] = length_ids[length.selected]
-		MenuSession.store.save_campaign(c)
+		set_gm.call(c)
 		MenuSession.campaign = c
 		MenuSession.go(self, "lobby"))
 	body.add_child(go)
@@ -284,6 +296,10 @@ func _show_join() -> void:
 	var name_edit := LineEdit.new()
 	name_edit.placeholder_text = "Your name"
 	body.add_child(_field("Your name", name_edit))
+	var as_gm := CheckBox.new()
+	as_gm.text = "Join as the GM (the host chose \"A friend online\" as the GM)"
+	as_gm.tooltip_text = "You'll see the whole battle and story, secrets included, and get the GM tools (G). The AI still flies the enemies."
+	body.add_child(as_gm)
 	body.add_child(MenuTheme.label("You need the same game version and content packs as the host. No ports to open: the game connects you directly.", 15, MenuTheme.MUTED, true))
 	join_status = MenuTheme.label("", 16, MenuTheme.WARN, true)
 	body.add_child(join_status)
@@ -300,7 +316,7 @@ func _show_join() -> void:
 		if net == null:
 			join_status.text = "Online play isn't available here."
 			return
-		var client: NetClient = net.join_online(room, name_edit.text.strip_edges())
+		var client: NetClient = net.join_online(room, name_edit.text.strip_edges(), NetHost.GM_SEAT if as_gm.button_pressed else "")
 		MenuSession.lobby = LobbyModel.for_client(client)
 		client.joined.connect(func(_seat: String) -> void: MenuSession.go(self, "lobby"))
 		client.refused.connect(func(_c: String, why: String) -> void: join_status.text = why)
