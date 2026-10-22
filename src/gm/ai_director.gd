@@ -26,8 +26,6 @@ var mission: Mission
 var orders: Dictionary = {}
 ## Every refused AI action ({unit, action, reason}): should stay empty; kept for debugging.
 var refusals: Array = []
-## unit id -> steps left in its planned turn, when a human's reaction question paused it.
-var _resume: Dictionary = {}
 var log_lines: PackedStringArray = PackedStringArray()
 
 var _reinforced_round := 0
@@ -58,15 +56,11 @@ func run(max_steps: int = 100000) -> int:
 ## Does one piece of AI work. Returns false when there's nothing for the AI to do.
 func step() -> bool:
 	var state := host.state
-	if state.phase == GameState.PHASE_ENDED:
+	if state.phase == GameState.PHASE_ENDED or not host.paused_for.is_empty():
 		return false
 	if not state.pending.is_empty():
-		# The rules engine is asking a unit whether to react (Overwatch, Brace...).
-		var r := state.unit(String(state.pending.get("unit", "")))
-		if r == null or not host.is_ai_seat(r.controller):
-			return false  # A human decides.
-		var out := host.submit(r.controller, {"type": "react", "actor": r.id, "params": Reactions.suggested_answer(state)})
-		return (out["result"] as RuleResult).ok
+		# The engine is paused on a reaction question; answer it if an AI seat is being asked.
+		return _answer_reaction()
 	if mission != null and mission.outcome != "" and not mission.ended:
 		var out := host.submit(NetHost.GM_SEAT, mission.end_action())
 		mission.ended = true
@@ -83,10 +77,7 @@ func step() -> bool:
 	if state.active_unit != "":
 		var u := state.unit(state.active_unit)
 		if u != null and host.is_ai_seat(u.controller):
-			if _resume.has(u.id):
-				_play_steps(u, _resume[u.id])
-			else:
-				play_turn(u)
+			play_turn(u)
 			return true
 		return false
 	if not host.waiting_on()["ai"]:
@@ -112,30 +103,20 @@ func play_turn(u: Unit) -> void:
 	var plan := ai.plan_turn(know, u.id, _orders_for(u))
 	if settings.explain:
 		_log(u.id, plan["log"])
-	_play_steps(u, plan["steps"])
-
-
-## Submits planned steps in order, then ends the turn. When an action pauses for a reaction
-## (Overwatch, Brace...), an AI-played reactor answers at once; a human's question stops here
-## and the remaining steps resume once it's answered (the paused action completes then).
-func _play_steps(u: Unit, steps: Array) -> void:
-	_resume.erase(u.id)
+	var steps: Array = plan["steps"]
 	if u.turn.get("braced", false):
 		steps = _braced_steps(steps)
-	for i in range(steps.size()):
-		var action: Dictionary = steps[i]
+	for action: Dictionary in steps:
 		if u.destroyed or host.state.active_unit != u.id:
 			break
 		var out := host.submit(u.controller, action)
+		while _answer_reaction():
+			pass
+		if not host.state.pending.is_empty():
+			return  # A human is deciding on a reaction; step() replans this turn afterwards.
 		if not (out["result"] as RuleResult).ok:
 			# The real battlefield differed from what this side knew (a Hidden enemy in the way...).
 			_refused(u, action, out["result"])
-		while not host.state.pending.is_empty():
-			var r := host.state.unit(String(host.state.pending.get("unit", "")))
-			if r == null or not host.is_ai_seat(r.controller):
-				_resume[u.id] = steps.slice(i + 1)
-				return
-			host.submit(r.controller, {"type": "react", "actor": r.id, "params": Reactions.suggested_answer(host.state)})
 	if host.state.active_unit == u.id and host.state.pending.is_empty():
 		host.submit(u.controller, {"type": "end_turn", "actor": u.id})
 
@@ -148,6 +129,34 @@ static func _braced_steps(steps: Array) -> Array:
 		if h is TurnAction and (h as TurnAction).cost_for(a.get("params", {})) == TurnRules.QUICK and not a.has("free_via"):
 			return [a]
 	return []
+
+
+## Answers the engine's pending reaction question when an AI-played unit is being asked.
+## Brace only when the hit would cost structure (same test as the GM's auto policy);
+## Overwatch and prepared actions are always taken, Overwatch with the first weapon offered.
+## Returns false if nothing was answered (no question, or a human is being asked).
+func _answer_reaction() -> bool:
+	var p: Dictionary = host.state.pending
+	if p.is_empty():
+		return false
+	var u := host.state.unit(p.get("unit", ""))
+	if u == null or not host.is_ai_seat(u.controller):
+		return false
+	var ctx: Dictionary = p.get("context", {})
+	var params := {"take": true}
+	match p.get("reaction", ""):
+		"brace":
+			params["take"] = Attacks._wants_brace(u, ctx.get("damage", []), ctx.get("ap", false))
+		"overwatch":
+			var weapons: Array = ctx.get("weapons", [])
+			params["take"] = not weapons.is_empty()
+			if not weapons.is_empty():
+				params["weapon"] = weapons[0]
+	var out := host.submit(u.controller, {"type": "react", "actor": u.id, "params": params})
+	if not (out["result"] as RuleResult).ok:
+		_refused(u, {"type": "react", "params": params}, out["result"])
+		return false
+	return true
 
 
 ## Which AI unit acts next: the one with the most to do right now (enemies in reach, damage

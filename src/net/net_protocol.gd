@@ -4,7 +4,8 @@ extends RefCounted
 ## (type) field. The host is authoritative: clients only ever send `hello` and `action`.
 ##
 ## client -> host
-##   hello    {version, name, token, seat}   join, or rejoin with the token from `welcome`
+##   hello    {version, name, token, seat, packs}   join, or rejoin with the token from
+##                                           `welcome`; packs = content packs installed
 ##   action   {id, action}                   an action for the rules engine
 ## host -> client
 ##   welcome  {seat, token, room, version}   you have a seat; keep the token to reconnect
@@ -29,6 +30,7 @@ const REFUSE_VERSION := "version_mismatch"
 const REFUSE_FULL := "no_free_seat"
 const REFUSE_SEAT_TAKEN := "seat_taken"
 const REFUSE_BAD_MESSAGE := "bad_message"
+const REFUSE_PACKS := "missing_packs"
 
 ## Room codes avoid look-alike characters (0/O, 1/I/L) so they can be read out loud.
 const CODE_ALPHABET := "ABCDEFGHJKMNPQRSTUVWXYZ23456789"

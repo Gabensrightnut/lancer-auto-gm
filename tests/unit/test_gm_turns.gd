@@ -134,11 +134,15 @@ func test_scripted_human_plays_a_whole_mission() -> void:
 				continue
 			fail("stuck: waiting on %s" % str(w))
 			return
-		if w["state"] == "reaction":
-			expect((host.submit("p1", {"type": "react", "actor": w["unit"], "params": Reactions.suggested_answer(host.state)})["result"] as RuleResult).ok)
-		elif w["state"] == "pick":
+		if w["state"] == "pick":
 			var pick: String = "p1" if "p1" in w["units"] else w["units"][0]
 			expect((host.submit("p1", {"type": "start_turn", "actor": pick})["result"] as RuleResult).ok)
+		elif w["state"] == "reaction":
+			var ctx: Dictionary = host.state.pending.get("context", {})
+			var params := {"take": true}
+			if ctx.has("weapons"):
+				params["weapon"] = ctx["weapons"][0]
+			expect((host.submit("p1", {"type": "react", "actor": w["unit"], "params": params})["result"] as RuleResult).ok)
 		elif w["state"] == "turn":
 			var plan := me.plan_turn(AiKnowledge.for_side(host.state, host.view_filter, "players"), "p1")
 			for a: Dictionary in plan["steps"]:

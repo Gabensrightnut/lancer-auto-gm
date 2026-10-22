@@ -1,7 +1,9 @@
 class_name ContentDB
 extends RefCounted
-## Read-only access to the official Lancer data in res://data/lancer-data/.
-## Entries are the raw lancer-data dictionaries; see that repo's wiki for field meanings.
+## Read-only access to the official Lancer data in res://data/lancer-data/, plus any content
+## packs added on top (add_pack). Entries are the raw lancer-data dictionaries; see that repo's
+## wiki for field meanings. NPC collections (npc_classes, npc_templates, npc_features) are
+## empty in the core data and filled by packs such as the official NPC pack.
 
 const DATA_DIR := "res://data/lancer-data/"
 
@@ -28,6 +30,11 @@ const FILES := {
 	"tables": "tables.json",
 }
 
+## Collections that only content packs provide.
+const PACK_ONLY := ["npc_classes", "npc_templates", "npc_features"]
+
+## Packs added on top of the core data, in order: [ContentPack.summary()].
+var packs: Array = []
 var _collections: Dictionary = {}  # name -> {key -> entry}
 var _by_name: Dictionary = {}  # collection -> {lowercase display name -> key}
 ## rules.json: base numbers (structure, stress, mount fittings, overcharge...).
@@ -43,21 +50,44 @@ func load_all(dir: String = DATA_DIR) -> bool:
 		if not data is Array:
 			ok = false
 			continue
-		var index := {}
-		var names := {}
-		for entry: Dictionary in data:
-			var key: String = entry.get("id", entry.get("name", ""))
-			# Some files repeat a name for pilot and mech versions (e.g. actions); keep both.
-			if index.has(key) and entry.has("activation"):
-				key = "%s|%s" % [key, entry["activation"]]
-			index[key] = entry
-			if entry.has("name"):
-				names[String(entry["name"]).to_lower()] = key
-		_collections[collection] = index
-		_by_name[collection] = names
+		_collections[collection] = {}
+		_by_name[collection] = {}
+		_index(collection, data)
+	for collection: String in PACK_ONLY:
+		_collections[collection] = {}
+		_by_name[collection] = {}
 	rules = _read_json(dir + "rules.json") if FileAccess.file_exists(dir + "rules.json") else {}
 	info = _read_json(dir + "info.json") if FileAccess.file_exists(dir + "info.json") else {}
 	return ok
+
+
+## Adds a content pack's entries on top of what's loaded (same id = the pack's version wins,
+## as in COMP/CON). Returns false if the pack couldn't be read.
+func add_pack(pack: ContentPack) -> bool:
+	if pack.error != "":
+		return false
+	for collection: String in pack.collections:
+		if not _collections.has(collection):
+			_collections[collection] = {}
+			_by_name[collection] = {}
+		_index(collection, pack.collections[collection])
+	packs.append(pack.summary())
+	return true
+
+
+func _index(collection: String, data: Array) -> void:
+	var index: Dictionary = _collections[collection]
+	var names: Dictionary = _by_name[collection]
+	for entry: Variant in data:
+		if not entry is Dictionary:
+			continue
+		var key: String = str(entry.get("id", entry.get("name", "")))
+		# Some files repeat a name for pilot and mech versions (e.g. actions); keep both.
+		if index.has(key) and entry.has("activation"):
+			key = "%s|%s" % [key, entry["activation"]]
+		index[key] = entry
+		if entry.has("name"):
+			names[String(entry["name"]).to_lower()] = key
 
 
 ## Looks up by id first, then by display name (case-insensitive), e.g. "Jammed".
