@@ -1,0 +1,25 @@
+{
+  "_note": "Our own data. When a skill check's situation tags match a pilot's background tags, the background is invoked for +1 Accuracy (Core p.20). 'against' tags in a check make the GM invoke it for +1 Difficulty instead. Situation tags used by scenes: colonists, wilderness, farming, crime, streets, black_market, machines, repair, medicine, wounded, military, mercenaries, nobles, etiquette, politics, ships, space, piloting, computers, nhp, religion, science, research, fame, crowds, prisons, labor, industry, stealth, combat, survival.",
+  "backgrounds": {
+    "pbg_celebrity": {"name": "Celebrity", "tags": ["fame", "crowds", "etiquette", "politics"]},
+    "pbg_colonist": {"name": "Colonist", "tags": ["colonists", "wilderness", "farming", "survival"]},
+    "pbg_criminal": {"name": "Criminal", "tags": ["crime", "streets", "black_market", "prisons"]},
+    "pbg_far_field_team": {"name": "Far-Field Team", "tags": ["wilderness", "survival", "research", "space"]},
+    "pbg_hacker": {"name": "Hacker", "tags": ["computers", "nhp", "stealth", "crime"]},
+    "pbg_mechanic": {"name": "Mechanic", "tags": ["machines", "repair", "industry", "labor"]},
+    "pbg_medic": {"name": "Medic", "tags": ["medicine", "wounded", "military", "science"]},
+    "pbg_mercenary": {"name": "Mercenary", "tags": ["mercenaries", "combat", "military", "black_market"]},
+    "pbg_nhp_specialist": {"name": "NHP Specialist", "tags": ["nhp", "computers", "science", "research"]},
+    "pbg_noble": {"name": "Noble", "tags": ["nobles", "etiquette", "politics", "fame"]},
+    "pbg_outlaw": {"name": "Outlaw", "tags": ["crime", "wilderness", "black_market", "survival"]},
+    "pbg_penal_colonist": {"name": "Penal Colonist", "tags": ["prisons", "labor", "survival", "streets"]},
+    "pbg_priest": {"name": "Priest", "tags": ["religion", "crowds", "wounded", "etiquette"]},
+    "pbg_scientist": {"name": "Scientist", "tags": ["science", "research", "machines", "nhp"]},
+    "pbg_soldier": {"name": "Soldier", "tags": ["military", "combat", "mercenaries", "survival"]},
+    "pbg_spaceborn": {"name": "Spaceborn", "tags": ["space", "ships", "machines", "survival"]},
+    "pbg_spec_ops": {"name": "Spec Ops", "tags": ["stealth", "military", "combat", "crime"]},
+    "pbg_super_soldier": {"name": "Super Soldier", "tags": ["military", "combat", "medicine", "science"]},
+    "pbg_starship_pilot": {"name": "Starship Pilot", "tags": ["ships", "piloting", "space", "machines"]},
+    "pbg_worker": {"name": "Worker", "tags": ["labor", "industry", "streets", "colonists"]}
+  }
+}

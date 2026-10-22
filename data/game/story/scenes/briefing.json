@@ -1,0 +1,218 @@
+{
+ "_note": "Our own writing. The mission briefing: the goal and the stakes are set before boots on the ground (Core p.40). Opened by StoryEngine 'choose_hook' with the patron as the NPC.",
+ "id": "briefing",
+ "start": "open",
+ "nodes": {
+  "open": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@briefing_open",
+   "next": "stakes"
+  },
+  "stakes": {
+   "speaker": "npc",
+   "expression": "worried",
+   "line": "@briefing_stakes",
+   "next": "questions"
+  },
+  "questions": {
+   "speaker": "npc",
+   "line": [
+    "Questions?",
+    "Anything you need to know?",
+    "Well?"
+   ],
+   "choices": [
+    {
+     "id": "ready",
+     "text": [
+      "Understood. We'll get it done.",
+      "We're ready.",
+      "Consider it handled."
+     ],
+     "tags": [
+      "practical",
+      "bold"
+     ],
+     "pinned": true,
+     "next": "close"
+    },
+    {
+     "id": "enemy",
+     "text": [
+      "What are we up against?",
+      "Who's waiting for us out there?"
+     ],
+     "tags": [
+      "curious",
+      "cautious"
+     ],
+     "condition": {
+      "not": {
+       "flag": "asked_enemy:{operation}"
+      }
+     },
+     "effects": [
+      {
+       "set_flag": "asked_enemy:{operation}"
+      }
+     ],
+     "next": "enemy"
+    },
+    {
+     "id": "pay",
+     "text": [
+      "What's in it for us?",
+      "And the squad gets what, exactly?"
+     ],
+     "tags": [
+      "greedy"
+     ],
+     "condition": {
+      "not": {
+       "flag": "asked_pay:{operation}"
+      }
+     },
+     "effects": [
+      {
+       "set_flag": "asked_pay:{operation}"
+      }
+     ],
+     "next": "pay"
+    },
+    {
+     "id": "intel",
+     "text": "Let me go over the intel myself.",
+     "trigger": "sk_investigate",
+     "tags": [
+      "curious",
+      "cautious"
+     ],
+     "condition": {
+      "not": {
+       "flag": "intel:{operation}"
+      }
+     },
+     "check": {
+      "skills": [
+       "sk_investigate",
+       "sk_spot",
+       "sk_hack_or_fix"
+      ],
+      "goal": "intel:{operation}",
+      "consequence": "You find nothing useful before deployment.",
+      "success": "intel_ok",
+      "fail": "intel_bad",
+      "success_effects": [
+       {
+        "set_flag": "intel:{operation}"
+       },
+       {
+        "reserve": "reserve_scouting",
+        "source": "Your own analysis"
+       }
+      ],
+      "fail_effects": [
+       {
+        "set_flag": "intel:{operation}"
+       }
+      ]
+     }
+    },
+    {
+     "id": "rally",
+     "text": "Rally the squad before we drop.",
+     "trigger": "sk_lead_or_inspire",
+     "tags": [
+      "bold",
+      "kind"
+     ],
+     "condition": {
+      "not": {
+       "flag": "rally:{operation}"
+      }
+     },
+     "check": {
+      "skills": [
+       "sk_lead_or_inspire"
+      ],
+      "goal": "rally:{operation}",
+      "consequence": "The speech falls flat.",
+      "success": "rally_ok",
+      "fail": "rally_bad",
+      "success_effects": [
+       {
+        "set_flag": "rally:{operation}"
+       },
+       {
+        "reserve": "reserve_accuracy",
+        "name": "Fired up (+1 Accuracy on one mech skill or action)",
+        "source": "Your speech"
+       }
+      ],
+      "fail_effects": [
+       {
+        "set_flag": "rally:{operation}"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "enemy": {
+   "speaker": "npc",
+   "line": [
+    "Expect {enemy}. Beyond that, your guess is as good as ours.",
+    "{enemy}, last we saw. Numbers unknown.",
+    "Our scouts say {enemy}. Our scouts have been wrong before."
+   ],
+   "next": "questions"
+  },
+  "pay": {
+   "speaker": "npc",
+   "line": [
+    "What you always get: a License Level, and people who owe you.",
+    "Favors, pilot. And the knowledge you did some good.",
+    "No credits. But {patron} won't forget it."
+   ],
+   "next": "questions"
+  },
+  "intel_ok": {
+   "speaker": "narrator",
+   "line": [
+    "You spot a pattern in the patrol reports: you know roughly what's waiting (Scouting reserve).",
+    "The intel adds up. You've got a good picture of the opposition (Scouting reserve)."
+   ],
+   "next": "questions"
+  },
+  "intel_bad": {
+   "speaker": "narrator",
+   "line": [
+    "The reports contradict each other. You'll find out when you get there.",
+    "Nothing useful. The data's a mess."
+   ],
+   "next": "questions"
+  },
+  "rally_ok": {
+   "speaker": "narrator",
+   "line": [
+    "The squad's grinning by the time you're done. They're ready.",
+    "It lands. Everyone stands a little straighter."
+   ],
+   "next": "questions"
+  },
+  "rally_bad": {
+   "speaker": "narrator",
+   "line": [
+    "Someone coughs. It doesn't land.",
+    "Nobody says anything. Awkward."
+   ],
+   "next": "questions"
+  },
+  "close": {
+   "speaker": "npc",
+   "line": "@briefing_close",
+   "end": true
+  }
+ }
+}

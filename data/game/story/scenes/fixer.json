@@ -1,0 +1,279 @@
+{
+ "_note": "Our own writing. A fixer: Scrounge and Barter and Power at a Cost (Core p.53-55). LANCER has no money (Core p.18).",
+ "id": "fixer",
+ "start": "greet",
+ "nodes": {
+  "greet": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@greet_fixer",
+   "effects": [
+    {
+     "set_flag": "met:{npc_id}"
+    }
+   ],
+   "next": "describe",
+   "branch": [
+    {
+     "if": {
+      "flag": "met:{npc_id}"
+     },
+     "next": "greet_again"
+    }
+   ]
+  },
+  "greet_again": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": "@greet_fixer",
+   "next": "menu"
+  },
+  "describe": {
+   "speaker": "narrator",
+   "line": "@describe_npc",
+   "next": "menu"
+  },
+  "farewell": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@farewell",
+   "end": true
+  },
+  "check_ok": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": "@check_success",
+   "next": "menu"
+  },
+  "check_bad": {
+   "speaker": "npc",
+   "expression": "angry",
+   "line": "@check_fail",
+   "next": "menu"
+  },
+  "favor": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@rep_favor_intro",
+   "effects": [
+    {
+     "downtime": "dt_get_connected",
+     "subject": "$npc"
+    }
+   ],
+   "next": "menu"
+  },
+  "pay_favor": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": [
+    "Good. Here's what we need from you.",
+    "I was hoping you'd remember. There's a job.",
+    "A favor for a favor. Here's the job."
+   ],
+   "effects": [
+    {
+     "hook": "favor_owed",
+     "patron": "$npc"
+    },
+    {
+     "log": "{npc} called in the favor: a new job is on the board."
+    }
+   ],
+   "next": "menu"
+  },
+  "menu": {
+   "speaker": "npc",
+   "line": "@barter_intro",
+   "choices": [
+    {
+     "id": "barter",
+     "text": [
+      "I'm looking for something physical. (Scrounge and Barter: your downtime action)",
+      "Let's trade. (Scrounge and Barter)"
+     ],
+     "condition": [
+      {
+       "phase": "downtime"
+      },
+      {
+       "downtime_left": true
+      }
+     ],
+     "tags": [
+      "practical",
+      "greedy"
+     ],
+     "effects": [
+      {
+       "ui": "downtime",
+       "action": "dt_scrounge_and_barter"
+      }
+     ],
+     "next": "menu"
+    },
+    {
+     "id": "power",
+     "text": [
+      "I need something big, whatever it costs. (Power at a Cost)",
+      "Name your price. I want it anyway. (Power at a Cost)"
+     ],
+     "condition": {
+      "any": [
+       {
+        "all": [
+         {
+          "phase": "downtime"
+         },
+         {
+          "downtime_left": true
+         }
+        ]
+       },
+       {
+        "phase": "mission"
+       }
+      ]
+     },
+     "tags": [
+      "greedy",
+      "bold"
+     ],
+     "effects": [
+      {
+       "ui": "downtime",
+       "action": "dt_power_at_a_cost"
+      }
+     ],
+     "next": "menu"
+    },
+    {
+     "id": "money",
+     "text": [
+      "How much? In credits?",
+      "What do I owe you, in money?"
+     ],
+     "tags": [
+      "curious"
+     ],
+     "next": "no_money",
+     "condition": {
+      "not": {
+       "flag": "asked_money"
+      }
+     }
+    },
+    {
+     "id": "threaten",
+     "text": "Lean on them. Hard.",
+     "trigger": "sk_threaten",
+     "tags": [
+      "aggressive"
+     ],
+     "check": {
+      "skills": [
+       "sk_threaten",
+       "sk_pull_rank"
+      ],
+      "goal": "threaten:{npc_id}",
+      "consequence": "{npc}'s people don't take kindly to it: 2 damage (and standing -1 if it fails).",
+      "success": "check_ok",
+      "fail": "check_bad",
+      "success_effects": [
+       {
+        "reserve": "reserve_access",
+        "name": "{npc}'s back door",
+        "source": "$npc.name"
+       },
+       {
+        "set_flag": "threaten:{npc_id}"
+       }
+      ],
+      "fail_effects": [
+       {
+        "standing": "$npc.faction",
+        "add": -1
+       },
+       {
+        "harm": 2,
+        "risky_too": true
+       }
+      ],
+      "risky": true,
+      "tags": [
+       "crime",
+       "streets"
+      ]
+     },
+     "condition": [
+      {
+       "not": {
+        "flag": "threaten:{npc_id}"
+       }
+      }
+     ]
+    },
+    {
+     "id": "favor",
+     "text": "Can you help us out for the next mission? (Get Connected: your downtime action)",
+     "condition": [
+      {
+       "phase": "downtime"
+      },
+      {
+       "downtime_left": true
+      },
+      {
+       "standing": "$npc.faction",
+       "min": -2
+      }
+     ],
+     "tags": [
+      "practical",
+      "greedy"
+     ],
+     "next": "favor"
+    },
+    {
+     "id": "pay_favor",
+     "text": "About the favor we owe {npc_faction}...",
+     "condition": {
+      "obligation": "$npc.faction"
+     },
+     "tags": [
+      "honest"
+     ],
+     "priority": 3,
+     "next": "pay_favor"
+    },
+    {
+     "id": "leave",
+     "text": [
+      "That's all for now.",
+      "I should go.",
+      "Thanks. See you around.",
+      "We'll talk later."
+     ],
+     "tags": [
+      "leave"
+     ],
+     "pinned": true,
+     "next": "farewell"
+    }
+   ]
+  },
+  "no_money": {
+   "speaker": "npc",
+   "effects": [
+    {
+     "set_flag": "asked_money"
+    }
+   ],
+   "line": [
+    "Money? Pilot, nobody out here deals in money. Favors. Access. Who owes who. That's the currency.",
+    "Ha. Keep your credits. I want favors, information, and people who owe me."
+   ],
+   "next": "menu"
+  }
+ }
+}

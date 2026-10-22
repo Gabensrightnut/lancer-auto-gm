@@ -1,0 +1,108 @@
+{
+ "_note": "Our own writing. The debrief after a mission (Core p.44): talk about it, then everyone levels up whether the mission succeeded or not (Core p.18).",
+ "id": "debrief",
+ "start": "open",
+ "nodes": {
+  "open": {
+   "speaker": "npc",
+   "branch": [
+    {
+     "if": {
+      "var": "outcome",
+      "eq": "victory"
+     },
+     "next": "won"
+    },
+    {
+     "if": {
+      "var": "outcome",
+      "eq": "defeat"
+     },
+     "next": "lost"
+    }
+   ],
+   "next": "draw"
+  },
+  "won": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": "@debrief_victory",
+   "next": "talk"
+  },
+  "lost": {
+   "speaker": "npc",
+   "expression": "worried",
+   "line": "@debrief_defeat",
+   "next": "talk"
+  },
+  "draw": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@debrief_draw",
+   "next": "talk"
+  },
+  "talk": {
+   "speaker": "npc",
+   "line": [
+    "How do you think it went?",
+    "Anything you'd do differently?",
+    "Talk to me."
+   ],
+   "choices": [
+    {
+     "id": "proud",
+     "text": [
+      "We did what we came to do.",
+      "The squad flew well."
+     ],
+     "tags": [
+      "bold",
+      "honest"
+     ],
+     "next": "level"
+    },
+    {
+     "id": "mistakes",
+     "text": [
+      "We made mistakes. We'll learn from them.",
+      "I'd do a few things differently."
+     ],
+     "tags": [
+      "honest",
+      "cautious"
+     ],
+     "next": "level"
+    },
+    {
+     "id": "cost",
+     "text": [
+      "Was it worth what it cost?",
+      "Somebody's going to pay for this."
+     ],
+     "tags": [
+      "kind",
+      "aggressive"
+     ],
+     "next": "level"
+    },
+    {
+     "id": "next",
+     "text": [
+      "What's next?",
+      "Let's just get to the next one."
+     ],
+     "tags": [
+      "practical"
+     ],
+     "pinned": true,
+     "next": "level"
+    }
+   ]
+  },
+  "level": {
+   "speaker": "npc",
+   "line": "@debrief_level",
+   "end": true
+  }
+ }
+}
