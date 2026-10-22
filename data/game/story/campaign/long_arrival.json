@@ -50,7 +50,25 @@
    "culture": "retrofuturistic",
    "kind": "station",
    "landscape": "station",
-   "hub": "The Dock"
+   "hub": "The Dock",
+   "spot_names": {
+    "market": "the sleeper vault"
+   },
+   "room_names": {
+    "market": {
+     "floor": "the vault",
+     "store": "the vault's control room"
+    }
+   },
+   "interiors": {
+    "market": {
+     "kind": "sleeper_vault",
+     "rooms": {
+      "vault": "floor",
+      "control": "store"
+     }
+    }
+   }
   }
  },
  "npcs": {

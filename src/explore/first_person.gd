@@ -17,6 +17,7 @@ var enabled := false
 var sneaking := false
 var pitch := 0.0
 var target: Dictionary = {}  # {kind: "npc"|"door", id, spot, name}
+var inside_prompt := ""  # inside a building: what's in reach (a door, something to take)
 
 var _ui: Control
 var _cross: Control
@@ -164,6 +165,8 @@ func show(story: StoryState, me_pid: String, near_room: String) -> void:
 		t = "[E] Go into %s" % target["name"]
 		if sneaking and not priv.is_empty():
 			t = "[E] Slip into %s, %s   [R] Force the door" % [target["name"], TownLife.room_name(story, spot, str(priv[0]))]
+	if t == "" and inside_prompt != "":
+		t = inside_prompt
 	_prompt.text = t
 	_prompt.reset_size()
 	_prompt.position = Vector2((vp.x - _prompt.size.x) / 2.0, vp.y * 0.5 + 34)

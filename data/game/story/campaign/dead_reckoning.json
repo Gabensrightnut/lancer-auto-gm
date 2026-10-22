@@ -104,6 +104,60 @@
    },
    "hub_flags": {
     "flash_vat": true
+   },
+   "interiors": {
+    "office": {
+     "kind": "ship_deck",
+     "rooms": {
+      "corridor": [
+       "plaza",
+       "square"
+      ],
+      "bridge": [
+       "office",
+       "front"
+      ],
+      "captain": [
+       "office",
+       "back"
+      ],
+      "crew": [
+       "bar",
+       "upstairs"
+      ],
+      "commons": [
+       "bar",
+       "main"
+      ],
+      "engineering": [
+       "printer",
+       "floor"
+      ],
+      "cargo": [
+       "market",
+       "floor"
+      ]
+     },
+     "containers": {
+      "captain_locker": [
+       "office",
+       "safe"
+      ],
+      "arms_locker": [
+       "office",
+       "front"
+      ]
+     }
+    },
+    "bar": {
+     "same_as": "office"
+    },
+    "market": {
+     "same_as": "office"
+    },
+    "printer": {
+     "same_as": "office"
+    }
    }
   },
   "gallows": {

@@ -135,6 +135,9 @@ static func populate(story: StoryState, campaign: Campaign) -> void:
 			sp["name"] = str(wdef["spot_names"][str(sp["kind"])])
 	if wdef.has("room_names"):
 		story.hub["room_names"] = (wdef["room_names"] as Dictionary).duplicate(true)
+	# What's inside its buildings (HubInterior): a ship's deck, a sleeper vault.
+	if wdef.has("interiors"):
+		story.hub["interiors"] = (wdef["interiors"] as Dictionary).duplicate(true)
 	for k: String in wdef.get("hub_flags", {}):
 		story.hub[k] = wdef["hub_flags"][k]
 	if wdef.has("hub") and str(story.hub.get("name", "")) != str(wdef["hub"]) and not bool(story.hub.get("_named", false)):
