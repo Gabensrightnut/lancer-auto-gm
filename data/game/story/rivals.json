@@ -1,0 +1,346 @@
+{
+  "_note": "Our own writing. Enemy commanders as characters: every enemy force has someone in charge, and the ones who live remember the squad. NPCs have objectives of their own and care about self-preservation; surrender and retreat are valid ends to a fight, and the GM may end a fight early once the outcome isn't in question (Core p.60). Personalities decide what a commander does when the fight turns against them (when_losing) or against the squad (when_winning). Lines use no pronouns for the commander, or they/them.",
+  "revenge_chance": 25,
+  "titles": [
+    "Commander",
+    "Captain",
+    "Lance Leader",
+    "Squad Lead",
+    "Lieutenant",
+    "Warden",
+    "Chief",
+    "Sergeant"
+  ],
+  "personalities": {
+    "honorable": {
+      "name": "Honorable",
+      "text": "Fights fair and keeps their word.",
+      "when_losing": "yield",
+      "when_winning": "offer_retreat",
+      "start": [
+        "{rival} here. Nothing personal, lancers. Let's keep this clean.",
+        "This is {rival}. I'll give you the same courtesy I'd want: no tricks.",
+        "{rival} to the squad: we don't have to like each other to do this right."
+      ],
+      "start_return": [
+        "{rival} again. I hoped we'd meet on a better day.",
+        "We meet again. I haven't forgotten {last_time}.",
+        "{rival} here. You fought well last time. So will I."
+      ],
+      "hurt": [
+        "Good hit. You've earned that one.",
+        "That's going to cost me. Well flown.",
+        "Still standing. Barely."
+      ],
+      "ally_down": [
+        "Get them clear! Somebody pull that pilot out!",
+        "Pilot down. See to them!",
+        "Fall back to me. Nobody else dies for this."
+      ],
+      "gloat": [
+        "Your pilot's down. Get them out; I won't fire on a rescue.",
+        "Pull your friend out. I'll wait.",
+        "That's enough for one of you. Get them clear."
+      ],
+      "defeated": [
+        "Ejecting! Hold fire, I'm out!",
+        "Reactor's gone. I yield. I yield!",
+        "That's it. That's the fight."
+      ],
+      "refused": [
+        "Then we finish it. On your head, lancers.",
+        "So be it.",
+        "I offered. Remember that."
+      ]
+    },
+    "proud": {
+      "name": "Proud",
+      "text": "Can't stand to lose, and never forgets it.",
+      "when_losing": "withdraw",
+      "when_winning": "",
+      "start": [
+        "{rival} here. Try to keep up.",
+        "You're the squad everyone talks about? I'm not impressed.",
+        "This is {rival}. Remember the name. You'll be hearing it a lot."
+      ],
+      "start_return": [
+        "{rival}. Did you think I'd forget {last_time}? I've thought of nothing else.",
+        "Round two, lancers. I've been practicing.",
+        "You. Good. I've been waiting for this."
+      ],
+      "hurt": [
+        "Lucky shot!",
+        "You'll pay for that paint job.",
+        "That's the last free hit you get."
+      ],
+      "ally_down": [
+        "Useless! Hold the line!",
+        "Do I have to do everything myself?",
+        "Stop dying and start shooting!"
+      ],
+      "gloat": [
+        "One down! Who's next?",
+        "Is that all? I expected more.",
+        "Did you see that? Did everyone see that?"
+      ],
+      "defeated": [
+        "This isn't over! Do you hear me? This isn't over!",
+        "Eject, eject! You'll regret this!",
+        "Not like this. Not to you!"
+      ],
+      "refused": [
+        "Fine. I'll take you with me.",
+        "You'll regret not letting me walk.",
+        "Then come and get me."
+      ]
+    },
+    "cunning": {
+      "name": "Cunning",
+      "text": "Always has a way out, and something to trade.",
+      "when_losing": "deal",
+      "when_winning": "offer_retreat",
+      "start": [
+        "{rival} here. Let's see how good you really are.",
+        "This is {rival}. Your patron didn't tell you about me, did they?",
+        "Lancers. Let's be smart about this, shall we?"
+      ],
+      "start_return": [
+        "{rival}. I still owe you for {last_time}. I always pay my debts.",
+        "Hello again. I've read every report on you since last time.",
+        "You again. I brought a few surprises."
+      ],
+      "hurt": [
+        "Hm. I'll adjust.",
+        "That was the plan. Probably.",
+        "Noted, lancer. Noted."
+      ],
+      "ally_down": [
+        "Shift left. Use the cover. Think!",
+        "We lost one. Stay on the plan.",
+        "Pull back, regroup, make them come to us."
+      ],
+      "gloat": [
+        "Exactly as planned.",
+        "Predictable. One down.",
+        "You walked right into that."
+      ],
+      "defeated": [
+        "Punching out! I'll be in touch.",
+        "Well played. We'll talk again.",
+        "Ejecting. Don't wait up."
+      ],
+      "refused": [
+        "Your loss. I'd have made it worth your while.",
+        "Pity. We could have both walked away.",
+        "Then I'll take my chances."
+      ]
+    },
+    "zealous": {
+      "name": "Zealous",
+      "text": "Believes in their cause more than their own life.",
+      "when_losing": "fight",
+      "when_winning": "",
+      "start": [
+        "{rival} here. You stand against something bigger than you.",
+        "This is {rival}. Turn back, or be turned back.",
+        "No retreat! Not one step back!"
+      ],
+      "start_return": [
+        "{rival}. I was spared last time for a reason. It was this.",
+        "We meet again. The cause hasn't changed, and neither have I.",
+        "You. I prayed you'd come back."
+      ],
+      "hurt": [
+        "Pain is nothing!",
+        "I've lost worse and kept fighting.",
+        "Is that all you have?"
+      ],
+      "ally_down": [
+        "Their sacrifice won't be wasted!",
+        "Remember them! Fight on!",
+        "Another one for the wall. Hold!"
+      ],
+      "gloat": [
+        "Down! Who else will fall?",
+        "This is what you get for standing in our way!",
+        "One less!"
+      ],
+      "defeated": [
+        "For the cause...",
+        "I don't need a mech to fight you!",
+        "This changes nothing!"
+      ],
+      "refused": [
+        "Good. I wouldn't have taken it anyway.",
+        "There are no terms with you.",
+        "Then we fight."
+      ]
+    },
+    "weary": {
+      "name": "Weary",
+      "text": "Tired of this war, and of burying friends.",
+      "when_losing": "yield",
+      "when_winning": "offer_retreat",
+      "start": [
+        "{rival} here. I've buried too many people this year. Don't make me bury you.",
+        "This is {rival}. Let's just get this over with.",
+        "{rival} to the squad: nobody has to die out here today."
+      ],
+      "start_return": [
+        "{rival}. You again. I was hoping you'd retired.",
+        "We keep doing this, don't we? {last_time}, and now this.",
+        "Back again. Neither of us learns."
+      ],
+      "hurt": [
+        "Ugh. Still here.",
+        "That hurt. Of course it did.",
+        "I'm getting too old for this."
+      ],
+      "ally_down": [
+        "No. No, not them too.",
+        "Pull them out. Please.",
+        "Get clear! That's an order!"
+      ],
+      "gloat": [
+        "Get your pilot out. I'm not after anyone's life.",
+        "Stop. Get them clear. We don't need more dead.",
+        "One of yours is down. Help them."
+      ],
+      "defeated": [
+        "Ejecting. I'm done. I'm done.",
+        "Enough. That's enough.",
+        "Out. I'm out."
+      ],
+      "refused": [
+        "Then I guess we both lose.",
+        "...All right.",
+        "I tried."
+      ]
+    },
+    "ruthless": {
+      "name": "Ruthless",
+      "text": "Wins at any cost, and makes sure you know it.",
+      "when_losing": "withdraw",
+      "when_winning": "",
+      "start": [
+        "{rival} here. I'm being paid either way, lancers. You're not.",
+        "This is {rival}. Nobody's coming to save you.",
+        "Lancers. Let's find out how much you're worth."
+      ],
+      "start_return": [
+        "{rival}. I let you live last time. Mistake.",
+        "Remember {last_time}? I do. Every day.",
+        "Back for more? This time I finish it."
+      ],
+      "hurt": [
+        "You'll bleed for that.",
+        "Cute.",
+        "That's one. You don't get two."
+      ],
+      "ally_down": [
+        "Replace them. Keep pushing.",
+        "Plenty more where they came from.",
+        "Step over them and keep firing!"
+      ],
+      "gloat": [
+        "Next.",
+        "Leave them. Hit the rest.",
+        "Who wants to be next?"
+      ],
+      "defeated": [
+        "You'll pay for this, every one of you!",
+        "Eject! Somebody pick me up!",
+        "I'll remember your faces!"
+      ],
+      "refused": [
+        "Your funeral.",
+        "Should've let me go.",
+        "Fine by me."
+      ]
+    }
+  },
+  "parley": {
+    "yield": [
+      "It's over. My people are done. What are your terms?",
+      "Enough. I'm ordering my squad to stand down. What happens now?",
+      "We yield. Nobody else needs to die for this."
+    ],
+    "withdraw": [
+      "We're pulling out. Follow us and it gets expensive.",
+      "This isn't worth it. We're leaving. Don't push your luck.",
+      "All units, fall back. You win this one, lancers."
+    ],
+    "deal": [
+      "Let's talk. I know things your patron doesn't tell you. Let me walk, and they're yours.",
+      "Hold fire. I've got something worth more than my mech: information. Interested?",
+      "We can both walk away richer. Hear me out."
+    ],
+    "demand_fight": [
+      "Surrender? Never.",
+      "You don't understand. We don't stop.",
+      "I'd rather burn."
+    ],
+    "offer_retreat": [
+      "You've lost, lancers. Take your wounded and go. I won't follow.",
+      "Call it. Get your people out of here and I'll hold fire.",
+      "This is your one chance. Walk away."
+    ]
+  },
+  "fates": {
+    "captured": {
+      "log": "{rival} surrendered to the squad.",
+      "debrief": [
+        "{rival} is in custody. What happens to them now is up to us.",
+        "{rival} surrendered. Not every fight ends with a wreck."
+      ]
+    },
+    "withdrew": {
+      "log": "{rival} withdrew from the field.",
+      "debrief": [
+        "{rival} pulled out before the end. We'll see them again.",
+        "{rival} got away. That one won't forget you."
+      ]
+    },
+    "escaped": {
+      "log": "{rival} ejected and escaped.",
+      "debrief": [
+        "{rival} punched out and got away. Expect them back.",
+        "{rival}'s mech is scrap, but they made it out. They'll want payback."
+      ]
+    },
+    "dead": {
+      "log": "{rival} did not make it out.",
+      "debrief": [
+        "{rival} didn't get out of that mech.",
+        "{rival} is dead. Whatever else they were, they were a pilot."
+      ]
+    },
+    "won": {
+      "log": "{rival} won the day.",
+      "debrief": [
+        "{rival} held the field. They'll be gloating about that.",
+        "{rival} beat you this time."
+      ]
+    },
+    "routed": {
+      "log": "{rival} fled with what was left of their force.",
+      "debrief": [
+        "{rival}'s force broke when the fight turned, and {rival} went with it. They'll be back.",
+        "{rival} pulled what was left of their force out. We haven't seen the last of them."
+      ]
+    }
+  },
+  "return_briefing": [
+    "{rival} is back. They haven't forgotten {last_time}.",
+    "Intel says {rival} is leading the other side. You've met.",
+    "{rival} again. Some people don't know when to quit."
+  ],
+  "last_time": {
+    "captured": "the surrender",
+    "withdrew": "the retreat",
+    "escaped": "losing their mech to you",
+    "routed": "running from you",
+    "won": "beating you",
+    "": "last time"
+  }
+}

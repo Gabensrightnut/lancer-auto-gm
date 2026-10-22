@@ -59,7 +59,7 @@ func _init() -> void:
 	_text = RichTextLabel.new()
 	_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_text.custom_minimum_size = Vector2(720, 560)
-	_text.add_theme_font_size_override("normal_font_size", 16)
+	_text.add_theme_font_size_override("normal_font_size", StorySettings.size(16))
 	_text.selection_enabled = true
 	right.add_child(_text)
 

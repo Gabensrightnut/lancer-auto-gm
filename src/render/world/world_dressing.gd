@@ -97,7 +97,8 @@ static func _liquids(t: TerrainRenderer, root: Node3D) -> void:
 		match kind:
 			"toxic":
 				m.shader = TOXIC_SHADER
-				m.set_shader_parameter("glow", WorldStyle.col(t.style, "liquid.shallow", Color(0.45, 1.0, 0.25)))
+				var toxic_glow: Variant = WorldStyle.value(t.style, "liquid.toxic_glow")
+				m.set_shader_parameter("glow", WorldStyle.color(toxic_glow) if toxic_glow != null else WorldStyle.col(t.style, "liquid.shallow", Color(0.45, 1.0, 0.25)))
 				m.set_shader_parameter("deep", WorldStyle.col(t.style, "liquid.deep", Color(0.05, 0.18, 0.05)))
 			"lava":
 				m.shader = TOXIC_SHADER

@@ -34,8 +34,13 @@ func screenshot_stage(tag: String) -> void:
 	if map_name.begins_with("hub"):
 		await _hub(map_name.trim_prefix("hub").trim_prefix("-"), cam)
 		return
+	var sitrep := ""
+	if "^" in map_name:
+		sitrep = "sitrep_" + map_name.get_slice("^", 1)
+		map_name = map_name.get_slice("^", 0)
 	if map_name.begins_with("gen"):
-		# gen<seed>[+landscape[+culture]][+size]
+		# gen<seed>[+landscape[+culture]][+size][^sitrep] (control, holdout, gauntlet, escort,
+		# extraction, recon, standardcombat)
 		var parts := map_name.trim_prefix("gen").split("+")
 		var opts := {"db": content, "shape": "square" if shape == GridLayout.Shape.SQUARE else "hex"}
 		if parts.size() > 1:
@@ -44,6 +49,22 @@ func screenshot_stage(tag: String) -> void:
 			opts["culture"] = parts[2]
 		if parts.size() > 3:
 			opts["size"] = int(parts[3])
+		if sitrep != "":
+			# Any sitrep's map, including ones the GM doesn't generate yet.
+			var rng := RandomNumberGenerator.new()
+			rng.seed = int(parts[0])
+			var wr := RandomNumberGenerator.new()
+			wr.seed = int(parts[0]) + 1
+			var sz := int(parts[3]) if parts.size() > 3 else 30
+			var bf := MissionGenerator.battlefield(rng, wr, sitrep, sz, int(sz * 0.85), shape, parts[1] if parts.size() > 1 else "", parts[2] if parts.size() > 2 else "")
+			map = bf["map"]
+			kit = TerrainGen.kit(bf["world"][0], bf["world"][1])
+			view.set_map(map, kit)
+			view.terrain.show_objectives(bf["layout"]["zones"], bf["layout"]["deployment"])
+			print("fairness: ", bf["fairness"])
+			_place_mechs(map)
+			await _aim_camera(map, cam)
+			return
 		var g := MissionGenerator.generate(int(parts[0]), opts)
 		print("briefing: ", (g["mission"] as Mission).briefing)
 		map = (g["state"] as GameState).map
@@ -65,7 +86,12 @@ func screenshot_stage(tag: String) -> void:
 	if spec.size() > 1:
 		kit = spec[1].replace("-", "/")
 	view.set_map(map, kit)
+	view.terrain.show_objectives({})
 	_place_mechs(map)
+	await _aim_camera(map, cam)
+
+
+func _aim_camera(map: BattleMap, cam: String) -> void:
 	var lo := Vector3(INF, 0, INF)
 	var hi := Vector3(-INF, 0, -INF)
 	for c in map.cells():

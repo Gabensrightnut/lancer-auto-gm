@@ -18,6 +18,8 @@ extends RefCounted
 ##   downtime_choose {picks: [option ids]}           end_downtime {}
 ##   set_bondmate {pilot, mate}                      end_campaign {}  (retire the squad)
 ##   session_zero {identity, patron, history: [{question, a, b}], tone, focus, content_off: []}
+##   battle_events {events: [battle events]}  (host, each batch: the enemy commander may offer terms)
+##   parley {}                                        the squad calls on the enemy commander to stand down
 ## "seat" "gm" (the host / procedural GM) may act for anyone.
 
 const REF_FLOW := "Core p.40: the structure of play"
@@ -201,6 +203,13 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 			var why := SessionZero.refusal(story, campaign, p)
 			if why != "":
 				return _no(why, "Core p.40-41")
+		"battle_events":
+			if seat != "gm":
+				return _no("The host reports the battle.")
+		"parley":
+			var why := Rivals.parley_refusal(story, seat)
+			if why != "":
+				return _no(why, Rivals.REF_EARLY)
 		"end_campaign":
 			if seat != "gm":
 				return _no("The host decides when the campaign ends.")
@@ -345,6 +354,10 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 			return Ending.conclude(story, campaign, "")
 		"session_zero":
 			return SessionZero.apply(story, campaign, p)
+		"battle_events":
+			return Rivals.observe(story, campaign, p.get("events", []))
+		"parley":
+			return Rivals.demand(story, campaign, seat)
 		"end_downtime":
 			story.phase = "briefing"
 			var recap: Array = (story.downtime.get("log", []) as Array).duplicate(true)
@@ -438,6 +451,8 @@ func _finish_mission(story: StoryState, campaign: Campaign, p: Dictionary) -> Ar
 			events.append_array(StoryEffects.apply({"standing": "$npc.faction", "add": 1}, story, campaign, dctx))
 		events.append({"type": "deal_" + ("kept" if won else "off"), "npc": npc_id, "reward": deal["reward"], "rule_ref": "Core p.40-43: reserves"})
 	events.append_array(StoryArc.advance(story, campaign, hook, won))
+	# What became of the enemy commander (Rivals).
+	events.append_array(Rivals.after_mission(story, outcome, hook))
 	# The GM's bond rewards were for this mission only (Core p.50).
 	story.flags.erase(Bonds.REWARDS)
 	# Has the campaign told its story? It ends after the level up (or now, if nobody's left).

@@ -59,6 +59,8 @@ static func start(story: StoryState, campaign: Campaign = null) -> void:
 	var names: Array = data().get("rival_names", ["the other squad"])
 	story.arc = {"id": str(pick["id"]), "name": str(pick["name"]), "stage": 0, "hub": str(story.hub["id"]),
 		"a": str(conflict["a"]), "b": str(conflict["b"]), "rival": str(names[story.dice.die(names.size()) - 1])}
+	# The other side has one commander for the whole situation (Rivals).
+	story.arc["commander"] = Rivals.make(story, campaign, str(conflict["b"]), str(pick["id"]), str(story.arc["rival"]) if str(pick["id"]) == "rivalry" else "")
 	story.add_log("A new situation at %s: %s" % [story.hub.get("name", ""), conflict.get("summary", "")])
 
 
@@ -89,7 +91,8 @@ static func stage_hook(story: StoryState, campaign: Campaign) -> Dictionary:
 			tid = "raid_depot"
 	var patron := _npc_of(story, str(story.arc[side]))
 	var other := str(story.arc["b" if side == "a" else "a"])
-	var hook := MissionHooks.make(story, campaign, tid, {"patron": patron, "rival": other, "twist": str(stage.get("twist", ""))})
+	var hook := MissionHooks.make(story, campaign, tid, {"patron": patron, "rival": other, "twist": str(stage.get("twist", "")),
+		"commander": str(story.arc.get("commander", "")) if side == "a" else ""})
 	if hook.is_empty():
 		return {}
 	hook["enemy"] = "%s's forces" % other if kind != "side_a" or n > 0 else hook["enemy"]
