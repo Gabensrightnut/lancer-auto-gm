@@ -248,7 +248,7 @@ them, and they disappear when the turn moves on.
 
 ### Living, themed battlefields
 - **Bigger maps:** sized for real Lancer fights with room to maneuver and flank (roughly
-  20x20 to 40x40 spaces depending on mission type and squad size), not small test boards.
+  30x30 to 60x60 spaces (wider and longer, per the user), depending on mission type and squad size; starting distance is set by the fight length dial, so the extra space is flanking room), not small test boards.
 - **Biomes drive both look and terrain:** grassy hills, desert, snow/tundra, urban ruins,
   industrial yard, forest, swamp, volcanic, space station, moon base... Each biome has its own
   height shapes (rolling hills vs. mesas vs. city blocks) and its own materials.
@@ -263,6 +263,15 @@ them, and they disappear when the turn moves on.
   Purely decorative details stay small and flat so they never look like cover they aren't.
   Destructible terrain visibly breaks when destroyed.
 - The grid stays readable on top of everything (toggle-able grid lines, clear tile edges).
+
+### Town fights and building toughness
+- A fight that breaks out in a town happens in that town: the battle map is built from the
+  hub's own layout and culture kit at mech scale, so the saloon you walked into is the cover
+  you fight behind.
+- Buildings follow the book's object rules (Core p.68): 5 Evasion and 10 HP per Size-1 section,
+  each section destroyed separately. Flimsy wood/prefab has no Armor and breaks easily; tough
+  stone or brick has 1-2 Armor; fortified bunkers, bulkheads and hulls have 3-4 Armor, so most
+  shots just chip them and it takes AP damage or breaching charges to bring them down.
 
 ### World art direction: beautiful but dangerous
 The feel to aim for (examples are inspiration only; nothing taken from them): the vast alien
@@ -689,6 +698,10 @@ until you decide to turn any of these on as your own campaign rules.
   lose and the deal is off, but you can come back and pay with scrap, a spare mech, manna or
   local money.
 - Buying food and water as a survival need.
+- A saving roll to see whether a hit building collapses (the book uses HP, Armor and AP
+  instead, Core p.68).
+- Being Stunned after falling, and a general "brace for the fall" reaction (the book gives
+  falls damage only, 3 AP per 3 spaces, max 9; only specific systems like flight avoid a fall).
 
 ## Rule differences: Lancer Tactics vs. the book
 

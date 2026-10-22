@@ -53,6 +53,7 @@ var tutorial_panel: TutorialPanel
 var epilogue: EpilogueScreen
 var codex: CodexPanel
 var map: CampaignMap
+var gm_panel: GmPanel
 
 
 func setup(e: StoryEngine, s: StoryState, c: Campaign, content: ContentDB, seat: String = "p1") -> void:
@@ -557,6 +558,11 @@ func _unhandled_input(ev: InputEvent) -> void:
 			KEY_M:
 				if not dialogue.visible and not map.visible:
 					open_map()
+			KEY_G:
+				if gm_enabled():
+					gm_panel.visible = not gm_panel.visible
+					if gm_panel.visible:
+						gm_panel.open()
 			KEY_ESCAPE:
 				codex.visible = false
 				downtime_screen.visible = false
@@ -624,6 +630,19 @@ func _build_ui() -> void:
 	map.travelled.connect(_travelled)
 	map.closed.connect(func() -> void: hud.set_busy(false))
 	hud.map_requested.connect(open_map)
+	gm_panel = GmPanel.new()
+	ui.add_child(gm_panel)
+	gm_panel.bind(engine, story, campaign)
+	gm_panel.story_events.connect(func(evs: Array) -> void:
+		_handle(evs)
+		dialogue.refresh()
+		if evs.any(func(x: Dictionary) -> bool: return str(x.get("type", "")) in ["npc_added", "npc_edited"]):
+			rebuild())
+
+
+## The GM tools (G) are for a human GM: the gm seat, or a campaign set up with one.
+func gm_enabled() -> bool:
+	return local_seat == "gm" or bool(campaign.options.get("human_gm", false))
 
 
 ## The sector map (M): where the squad is, the worlds around it, standing, travel.
@@ -747,6 +766,9 @@ func screenshot_setup(args: Array) -> Array:
 		return ["codex"]
 	if args.has("map"):
 		return ["map"]
+	if args.has("gm"):
+		campaign.options["human_gm"] = true
+		return ["gm_scene", "gm_played", "gm_jobs"]
 	if args.has("parley"):
 		StorySettings.persist = false
 		return ["parley", "log"]
@@ -789,6 +811,26 @@ func screenshot_stage(tag: String) -> void:
 			codex.open("engaged")
 		"map":
 			open_map()
+		"gm_scene":
+			gm_panel.open()
+			gm_panel._scene_lines.text = "You're the lancers who blew the dam.
+narrator: The bar goes quiet.
+(angry) Give me one reason not to call the marshal."
+			(gm_panel._scene_choices[0]["text"] as LineEdit).text = "We saved the valley. -> ...Fine. One drink."
+			(gm_panel._scene_choices[1]["text"] as LineEdit).text = "Call them. We'll wait."
+			(gm_panel._scene_choices[0]["fx"] as OptionButton).select(1)
+		"gm_played":
+			if Dialogue.is_open(story):
+				_handle(Dialogue.close(story))
+			gm_panel._send("gm_scene", gm_panel._scene_params(true))
+			gm_panel.visible = false
+			dialogue.refresh()
+		"gm_jobs":
+			if Dialogue.is_open(story):
+				_handle(Dialogue.close(story))
+			dialogue.refresh()
+			gm_panel.open()
+			gm_panel._tabs.current_tab = 1
 		"parley":
 			# Mid-battle terms with the enemy commander (Rivals), shown over the hub for the picture.
 			if Dialogue.is_open(story):

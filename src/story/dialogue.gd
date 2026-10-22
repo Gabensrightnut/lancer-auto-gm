@@ -28,6 +28,12 @@ static var _scenes: Dictionary = {}
 static var _personas: Dictionary = {}
 
 
+## A scene from the data files, or one the GM wrote during play (GmTools, kept in the story).
+static func scene_of(story: StoryState, id: String) -> Dictionary:
+	var gm: Dictionary = story.flags.get(GmTools.SCENES, {}) if story != null else {}
+	return gm[id] if gm.has(id) else scene(id)
+
+
 static func scene(id: String) -> Dictionary:
 	if not _scenes.has(id):
 		var path := SCENE_DIR + id + ".json"
@@ -53,7 +59,7 @@ static func is_open(story: StoryState) -> bool:
 
 ## Opens a conversation. ctx: {"speaker": pilot id, "npc": npc id, "vars": {...}}.
 static func start(story: StoryState, campaign: Campaign, scene_id: String, ctx: Dictionary) -> Array:
-	var sc := scene(scene_id)
+	var sc := scene_of(story, scene_id)
 	story.dialogue = {"scene": scene_id, "node": "", "ctx": ctx.duplicate(true), "log": [], "votes": {}, "choices": []}
 	var events: Array = [{"type": "dialogue_started", "scene": scene_id, "npc": ctx.get("npc", ""), "speaker": ctx.get("speaker", "")}]
 	events.append_array(_enter(story, campaign, str(sc.get("start", ""))))
@@ -104,7 +110,7 @@ static func _keep_transcript(story: StoryState) -> void:
 
 
 static func current_node(story: StoryState) -> Dictionary:
-	return scene(str(story.dialogue.get("scene", ""))).get("nodes", {}).get(str(story.dialogue.get("node", "")), {})
+	return scene_of(story, str(story.dialogue.get("scene", ""))).get("nodes", {}).get(str(story.dialogue.get("node", "")), {})
 
 
 static func offered(story: StoryState) -> Array:
@@ -112,7 +118,7 @@ static func offered(story: StoryState) -> Array:
 
 
 static func _enter(story: StoryState, campaign: Campaign, node_id: String) -> Array:
-	var nodes: Dictionary = scene(str(story.dialogue["scene"])).get("nodes", {})
+	var nodes: Dictionary = scene_of(story, str(story.dialogue["scene"])).get("nodes", {})
 	var ctx: Dictionary = story.dialogue["ctx"]
 	var events: Array = []
 	var guard := 0
