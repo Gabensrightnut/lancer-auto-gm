@@ -41,18 +41,31 @@ func look_at_point(p: Vector3, dist: float = -1.0) -> void:
 
 
 ## Frames two points side-on (e.g. attacker and target) so the action between them reads.
-func frame_pair(a: Vector3, b: Vector3, min_dist: float = 5.0) -> void:
+## `blocked`, if given, is called with a camera position and returns how much terrain hides
+## the pair from there (0 = clear); the least blocked of several angles is used.
+func frame_pair(a: Vector3, b: Vector3, min_dist: float = 5.0, blocked: Callable = Callable()) -> void:
 	var d := b - a
 	d.y = 0.0
-	var fwd := d.cross(Vector3.UP).normalized() if d.length() > 0.01 else Vector3.FORWARD
-	if fwd.z > 0.0:
-		fwd = -fwd
-	# Lean the view a little toward the target so the attacker sits in front.
-	fwd = (fwd + d.normalized() * 0.35).normalized()
-	yaw = rad_to_deg(atan2(-fwd.x, -fwd.z))
-	pitch = -36.0
 	focus = (a + b) * 0.5 + Vector3.UP * 0.5
 	distance = maxf(min_dist, d.length() * 1.15 + 2.0)
+	var side := d.cross(Vector3.UP).normalized() if d.length() > 0.01 else Vector3.FORWARD
+	var lean := d.normalized() * 0.35 if d.length() > 0.01 else Vector3.ZERO
+	# Candidates: both sides of the line between them, at a normal and a steep angle.
+	var best := INF
+	for p: float in [-36.0, -52.0]:
+		for s: float in [1.0, -1.0]:
+			var fwd := (side * s + lean).normalized()
+			var y := rad_to_deg(atan2(-fwd.x, -fwd.z))
+			var cost := 0.0
+			if blocked.is_valid():
+				var basis := Basis.from_euler(Vector3(deg_to_rad(p), deg_to_rad(y), 0))
+				cost = float(blocked.call(focus + basis.z * distance))
+			# Prefer the side facing the default view, and shallower angles.
+			cost += (0.0 if fwd.z <= 0.0 else 0.3) + (0.0 if p == -36.0 else 1.5)
+			if cost < best:
+				best = cost
+				yaw = y
+				pitch = p
 
 
 func _process(delta: float) -> void:

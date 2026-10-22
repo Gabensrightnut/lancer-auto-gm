@@ -360,6 +360,22 @@ func _check(d20: int, acc: Array, diff: Array, dice: Array, bonuses: Array, targ
 	}
 
 
+## A ground-level cell next to `target`, on the side facing `from` (for melee demos).
+func _beside(target: String, from: String) -> Vector2i:
+	var t := _cell(target)
+	var f := _cell(from)
+	var best := t
+	var best_d := 1 << 30
+	for n in view.map.grid.neighbors(t):
+		if not view.map.has_cell(n) or view.map.ground_height(n) != view.map.ground_height(t):
+			continue
+		var d := view.map.grid.distance(n, f)
+		if d < best_d:
+			best_d = d
+			best = n
+	return best
+
+
 func demo_events() -> Dictionary:
 	var ev := {}
 	var dest := DemoMap.cell_at(view.map, 4.8, 6.9)
@@ -387,7 +403,7 @@ func demo_events() -> Dictionary:
 		{"type": "damage_dealt", "target": "drake", "amount": 5, "damage_type": "Energy"},
 	]
 	ev["melee"] = [
-		{"type": "moved", "unit": "blackbeard", "path": _path(_cell("blackbeard"), DemoMap.cell_at(view.map, 10.0, 6.4)), "mode": "boost"},
+		{"type": "moved", "unit": "blackbeard", "path": _path(_cell("blackbeard"), _beside("tokugawa", "blackbeard")), "mode": "boost"},
 		{"type": "attack_rolled", "attacker": "blackbeard", "target": "tokugawa", "weapon": "mw_chain_axe", "result": "crit",
 			"check": _check(18, [], [], [], [{"label": "Grit", "value": 2}], 8)},
 		{"type": "damage_dealt", "target": "tokugawa", "amount": 9, "damage_type": "Kinetic"},
@@ -620,7 +636,9 @@ func screenshot_stage(tag: String) -> void:
 		"kinetic", "beam", "missile", "melee", "tech":
 			_focus_for(tag)
 			view.tactical.snap()
-			var delays := {"kinetic": 0.42, "beam": 0.9, "missile": 1.12, "melee": 0.52, "tech": 0.95}
+			player.camera = view.tactical
+			# Time from the start of the shot/swing to the most telling moment.
+			var delays := {"kinetic": 0.06, "beam": 0.42, "missile": 0.62, "melee": 0.32, "tech": 0.55}
 			var list: Array = ev[tag]
 			if tag == "beam":
 				list = [ev["beam"][1]]
@@ -630,6 +648,8 @@ func screenshot_stage(tag: String) -> void:
 			elif tag == "missile":
 				list = [ev["missile"][0]]
 			player.play(list)
+			await player.firing
+			view.tactical.snap()
 			await Fx.wait(self, delays[tag])
 		"deploy":
 			_focus_for("deploy")
