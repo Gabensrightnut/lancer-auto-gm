@@ -264,6 +264,11 @@ them, and they disappear when the turn moves on.
   Destructible terrain visibly breaks when destroyed.
 - The grid stays readable on top of everything (toggle-able grid lines, clear tile edges).
 
+### People up close (feedback to act on next)
+- The user, seeing a town NPC face to face: "people here still too blocky and round for my
+  liking". Next pass on people: less round, less blocky, closer to the Lancer art style, with
+  the most detail on head, face and hands (the face-to-face camera is about 1.25 m away).
+
 ### Every place is its own place
 - No two towns look the same: every hub and every map gets its own layout, building mix and
   details, even within one culture and landscape.
