@@ -59,6 +59,13 @@ func _ready() -> void:
 	skip.button_pressed = StorySettings.skip_seen()
 	skip.toggled.connect(func(on: bool) -> void: StorySettings.set_skip_seen(on))
 	sb.add_child(skip)
+	sb.add_child(_slider("Mouse look speed (walking, first person)", StorySettings.look_sensitivity(), 0.25, 3.0, func(v: float) -> void: StorySettings.set_look_sensitivity(v),
+		"How fast the view turns when you move the mouse while walking around in first person."))
+	var inv := CheckButton.new()
+	inv.text = "Invert mouse up/down (walking, first person)"
+	inv.button_pressed = StorySettings.invert_y()
+	inv.toggled.connect(func(on: bool) -> void: StorySettings.set_invert_y(on))
+	sb.add_child(inv)
 
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 20)
