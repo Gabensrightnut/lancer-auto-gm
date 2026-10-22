@@ -84,6 +84,8 @@ static func sources(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 			continue
 		if e.get("per", "") == "round" and _used_this_round(state, attacker, e):
 			continue
+		if e.has("weapon_key") and String(e["weapon_key"]) != String(w.get("key", "")):
+			continue  # Overpower Caliber: the chosen weapon only
 		match String(e.get("when", "")):
 			"after_boost":
 				if not info.get("momentum", false):
@@ -107,6 +109,13 @@ static func sources(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 	if String(attacker.counters.get("hunter_lock", "")) == target.id and not _used_this_round(state, attacker, lock):
 		out.append(lock)  # Hunter Lock: the first successful attack each round, +3
 	out.append_array(TalentRules.bonus_sources(state, attacker, w, target, info))
+	var charge: Dictionary = WeaponRules.rules(w).get("mod_charge", {})
+	if not charge.is_empty() and info.get("thermal_charge", false) and int(attacker.counters.get("mod_uses", {}).get(String(w.get("key", "")), int(w.get("mod_uses", 0)))) > 0:
+		# Thermal Charge: expend a charge on a hit for +1d6 explosive.
+		var used: Dictionary = attacker.counters.get("mod_uses", {})
+		used[String(w.get("key", ""))] = int(used.get(String(w.get("key", "")), int(w.get("mod_uses", 0)))) - 1
+		attacker.counters["mod_uses"] = used
+		out.append({"value": String(charge.get("bonus", "1d6")), "type": String(charge.get("type", "Explosive")), "label": String(w.get("mod", {}).get("name", "Mod"))})
 	var crit_extra := WeaponRules.crit_bonus(w)
 	if crit_extra != "" and info.get("crit", false):
 		out.append({"value": crit_extra, "label": String(w.get("name", ""))})

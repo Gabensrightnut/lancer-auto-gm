@@ -29,7 +29,7 @@ func _init() -> void:
 		PilotActions.Fight.new(), PilotActions.SelfDestruct.new(), PilotActions.Prepare.new(),
 		PilotActions.DropPrepared.new(), SystemActions.CorePower.new(), MoveActions.BonusMove.new(),
 		Rulings.SetRuling.new(), CloseCombat.GrappleContest.new(), AbilityActions.Activate.new(),
-		RestActions.Rest.new(), GearActions.PullStake.new(), GearActions.UseObject.new(), GearActions.ShakeOff.new(),
+		RestActions.Rest.new(), GearActions.AIControl.new(), GearActions.ClimbOn.new(), GearActions.Board.new(), GearActions.Disembark.new(), GearActions.CutCable.new(), GearActions.PullStake.new(), GearActions.UseObject.new(), GearActions.ShakeOff.new(),
 	]:
 		register(h)
 
@@ -59,6 +59,9 @@ func validate(state: GameState, action: Dictionary) -> RuleResult:
 		if actor == null:
 			return RuleResult.deny("No such unit.", "")
 		var limit := FrameSystems.action_allowed(state, actor, String(action.get("type", "")))
+		if not limit.ok:
+			return limit
+		limit = AISystems.action_allowed(actor, String(action.get("type", "")))
 		if not limit.ok:
 			return limit
 	if not action.get("params", {}) is Dictionary:

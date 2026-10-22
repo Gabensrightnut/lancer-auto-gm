@@ -108,6 +108,28 @@ static func backblast(state: GameState, u: Unit, target: Unit) -> Array[Dictiona
 	return events
 
 
+## Throughbolt Rounds: a line 3 path from you through anything in the way; everything on it
+## takes 2 AP kinetic; the attack is then measured from the end of the path.
+static func throughbolt(state: GameState, u: Unit, a: Dictionary) -> Dictionary:
+	var toward: Variant = TurnAction.cell_param(a, "throughbolt")
+	var events: Array[Dictionary] = []
+	var line := state.map.grid.line(u.cell, toward)
+	var path: Array[Vector2i] = []
+	for i in range(1, mini(4, line.size())):
+		path.append(line[i])
+	var ids: Array = state.units.keys()
+	ids.sort()
+	for id: String in ids:
+		var o := state.unit(id)
+		if o == u or not Combat.is_present(o):
+			continue
+		for c in state.map.grid.footprint(o.cell, o.size):
+			if path.has(c):
+				events.append_array(Combat.deal_damage(state, o, [{"type": "Kinetic", "amount": 2}], {"ap": true, "source": u.id}))
+				break
+	return {"events": events, "end": path.back() if not path.is_empty() else u.cell}
+
+
 static func _fire(state: GameState, u: Unit, w: Dictionary, a: Dictionary, aux: bool) -> Array[Dictionary]:
 	if Weapons.area(w) != "" and a.has("aims") and int(WeaponRules.rules(w).get("blasts", 1)) > 1:
 		# Pinaka: up to two blast areas from one attack, damage rolled once.
@@ -142,12 +164,32 @@ static func _fire(state: GameState, u: Unit, w: Dictionary, a: Dictionary, aux: 
 		return events
 	var target := state.unit(String(a["target"]))
 	var opts := a.duplicate()
+	var pre_events: Array[Dictionary] = []
+	if a.has("throughbolt") and WeaponRules.rules(w).get("throughbolt", false):
+		var tb := AttackActions.throughbolt(state, u, a)
+		pre_events = tb["events"]
+		opts["origin_cell"] = tb["end"]
 	opts["no_bonus_damage"] = aux
 	opts["action"] = String(a.get("_action", "attack"))
 	var p := Attacks.preview(state, u, w, target, opts)
 	if not p["ok"]:
 		# An earlier attack in the same action changed things (target destroyed, pushed away).
-		return [{"type": "attack_skipped", "attacker": u.id, "weapon": a["weapon"], "target": a["target"], "reason": p["reason"], "rule_ref": p["rule_ref"]}] as Array[Dictionary]
+		pre_events.append({"type": "attack_skipped", "attacker": u.id, "weapon": a["weapon"], "target": a["target"], "reason": p["reason"], "rule_ref": p["rule_ref"]})
+		return pre_events
+	if not pre_events.is_empty():
+		pre_events.append_array(Attacks.attack(state, u, w, target, opts))
+		return pre_events
+	if Effects.has(u, "tlaloc"):
+		# TLALOC: reroll a missed attack once against a new target within Range.
+		var ev := Attacks.attack(state, u, w, target, opts)
+		if not CloseCombat._hit(ev):
+			var other := AISystems.tlaloc_retarget(state, u, w, target, [target.id])
+			if other != null:
+				var o2 := opts.duplicate()
+				o2["skip_spend"] = true
+				ev.append({"type": "attack_retargeted", "attacker": u.id, "from": target.id, "to": other.id, "rule_ref": "systems: TLALOC-Class NHP"})
+				ev.append_array(Attacks.attack(state, u, w, other, o2))
+		return ev
 	if int(WeaponRules.rules(w).get("chain", 0)) > 0 and a.has("chain"):
 		# Arc Projector: on a hit, another target within range 3 of the last, 1 heat each, no
 		# bonus damage, nobody twice.

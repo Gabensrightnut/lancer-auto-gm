@@ -51,7 +51,7 @@ static func source_state(u: Unit, source_key: String) -> Dictionary:
 static func max_uses(u: Unit, source_key: String) -> int:
 	for s: Dictionary in u.loadout.get("systems", []):
 		if s.get("key", "") == source_key and Weapons.has_tag(s, "tg_limited"):
-			return Weapons.tag_value(s, "tg_limited") + u.engineering / 2
+			return Weapons.tag_value(s, "tg_limited") + u.engineering / 2 + Effects.value(u, "limited_bonus")
 	return -1
 
 

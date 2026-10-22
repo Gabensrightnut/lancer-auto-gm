@@ -212,6 +212,59 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				events.append_array(Zones.add(state, {"kind": "interdiction", "owner": u.id, "anchor": u.id, "radius": 3, "cells": [], "center": [u.cell.x, u.cell.y],
 					"label": "Interdiction Field", "rule_ref": "systems: Interdiction Field"}))
 				events.append_array(Combat.add_status(state, u, "Slowed", "Interdiction Field"))
+			"attach_cable":
+				events.append_array(Riders.attach_cable(state, u, target))
+			"transfer_control":
+				events.append_array(Riders.transfer(state, u))
+			"flash_grenade":
+				var fa: Vector2i = TurnAction.cell_param(params, "aim")
+				GearSystems._mark_launcher(state, u, op, fa)
+				events.append_array(Zones.add(state, {"kind": "flash", "owner": u.id, "label": "Flash", "center": [fa.x, fa.y],
+					"cells": Zones.cells_around(state, [fa] as Array[Vector2i], 3), "expires": {"unit": u.id, "when": "end", "count": 2 if state.active_unit == u.id else 1},
+					"rule_ref": "systems: Flash Charges"}))
+			"hardlight":
+				var foot: Array[Vector2i] = []
+				foot.assign(state.map.grid.footprint(u.cell, u.size))
+				for z: Dictionary in Zones.of_kind(state, "hardlight"):
+					if z.get("owner", "") == u.id:
+						events.append_array(Zones.remove(state, String(z["id"]), "replaced"))
+				events.append_array(Zones.add(state, {"kind": "hardlight", "owner": u.id, "label": "Hardlight shield", "center": [u.cell.x, u.cell.y],
+					"cells": Zones.cells_around(state, foot, 3), "rule_ref": "systems: Hardlight Defense System"}))
+				events.append_array(Combat.add_status(state, u, "Immobilized", "Hardlight Defense System"))
+			"blinkshield":
+				events.append_array(Zones.blinkshield(state, u))
+			"oasis":
+				for z: Dictionary in Zones.of_kind(state, "oasis"):
+					if z.get("owner", "") == u.id:
+						events.append_array(Zones.remove(state, String(z["id"]), "used again"))
+				events.append_array(Zones.add(state, {"kind": "oasis", "owner": u.id, "label": "Oasis Wall", "center": [u.cell.x, u.cell.y],
+					"cells": [], "rule_ref": "systems: Oasis Wall"}))
+				events.append_array(Effects.activate(state, u, [{"kind": "oasis_wall"}], "Oasis Wall", "start_next_turn"))
+			"hand_over":
+				events.append_array(AISystems.hand_over(state, u, String(a["name"])))
+			"sekhmet":
+				events.append_array(AISystems.sekhmet(state, u))
+			"sekhmet_off":
+				events.append_array(AISystems.sekhmet_off(state, u))
+			"simulacrum":
+				events.append_array(AISystems.simulacrum(state, u, params))
+			"duat":
+				events.append_array(Combat.apply_heat(state, target, 2, u.id))
+				events.append_array(AISystems.duat(state, u, target))
+			"uncle_attack":
+				# UNCLE: a free attack at +2 Difficulty with its weapon; that weapon then can't be
+				# used again until the start of your next turn.
+				var uw := Weapons.find(u, String(a["source_key"]).trim_prefix("mod:"))
+				events.append_array(Attacks.attack(state, u, uw, target, {"extra_difficulty": 2, "extra_label": "UNCLE"}))
+				Weapons.state_of(u, uw)["uncle_lock"] = true
+			"shock_wreath":
+				var had_burn := target.burn > 0
+				var roll := state.dice.roll("1d6")
+				events.append_array(Combat.deal_damage(state, target, [{"type": "Burn", "amount": int(roll["total"])}], {"source": u.id}))
+				if had_burn:
+					events.append_array(Combat.add_status(state, target, "Blinded", u.id, target.id))
+			"fire_integrated":
+				events.append_array(Attacks.attack(state, u, Weapons.find(u, "cbi:0"), target, {"fired_by_rule": true}))
 			"fire_weapon":
 				var fw := Weapons.find(u, String(a["source_key"]).trim_prefix("w:"))
 				events.append_array(Attacks.attack(state, u, fw, target, {"fired_by_rule": true}))
@@ -367,6 +420,8 @@ static func apply_target_ops(state: GameState, u: Unit, ops: Array, ids: Array) 
 				var save := Combat.skill_check(state, t, String(op.get("save", "agility")), "Save vs %s" % op.get("label", "core"), u.save_target, acc, 0, extra, true)
 				events.append({"type": "skill_check", "unit": t.id, "check": save})
 				success = save["success"]
+				if not success:
+					events.append_array(CoreBonuses.failed_save(state, u, t))
 			var amount := int(roll["total"])
 			if success:
 				amount = amount - amount / 2 if op.get("half", false) else 0
@@ -413,12 +468,43 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 				any = any or (m.counters.get("owner", "") == u.id and m.name == String(op.get("deployable", "")) and not m.destroyed and m.counters.get("armed", false))
 			if not any:
 				return RuleResult.deny("No armed %s to detonate." % op.get("deployable", ""), "tags: Mine")
+		if op.get("op", "") in ["hand_over", "sekhmet"]:
+			if not AISystems.has_ai(u) or AISystems.controlled(u):
+				return RuleResult.deny("Only a mech with the AI tag, not already under its AI's control.", AISystems.REF)
+		if op.get("op", "") == "sekhmet_off":
+			var tb := AISystems.check_take_back(state, u)
+			if not tb.ok:
+				return tb
+		if op.get("op", "") == "simulacrum":
+			var aim: Variant = TurnAction.cell_param(params, "aim")
+			if aim == null or not state.map.has_cell(aim) or Sight.distance(state, Sight.body_of(state, u), Sight.make_body(state, aim, state.map.ground_height(aim), 0.5)) > 50:
+				return RuleResult.deny("Choose a center within range 50 (params.aim).", "systems: ATHENA-Class NHP")
+		if op.get("op", "") == "uncle_attack":
+			var uw := Weapons.find(u, String(a["source_key"]).trim_prefix("mod:"))
+			if (u.turn.get("fired", []) as Array).has(String(uw.get("key", ""))):
+				return RuleResult.deny("UNCLE can't use a weapon that was already used this turn.", "mods: UNCLE-Class COMP/CON")
+			var pv := Attacks.preview(state, u, uw, state.unit(String(params.get("target", ""))), {"extra_difficulty": 2})
+			if not pv["ok"]:
+				return RuleResult.deny(pv["reason"], pv["rule_ref"])
+		if op.get("op", "") == "shock_wreath":
+			var ww := String(a["source_key"]).trim_prefix("mod:")
+			if not (u.turn.get("hits", {}).get(ww, []) as Array).has(String(params.get("target", ""))):
+				return RuleResult.deny("Only right after hitting that character with the wreathed weapon this turn.", "mods: Shock Wreath")
+		if op.get("op", "") == "fire_integrated":
+			var fired: Array = u.turn.get("fired", [])
+			if fired.filter(func(k: String) -> bool: return k != "cbi:0").is_empty():
+				return RuleResult.deny("Only when you fire another weapon this turn.", "Core p.118")
+			var pv2 := Attacks.preview(state, u, Weapons.find(u, "cbi:0"), state.unit(String(params.get("target", ""))), {"fired_by_rule": true})
+			if not pv2["ok"]:
+				return RuleResult.deny(pv2["reason"], pv2["rule_ref"])
 		if op.get("op", "") == "fire_weapon":
 			var fw := Weapons.find(u, String(a["source_key"]).trim_prefix("w:"))
 			var pv := Attacks.preview(state, u, fw, state.unit(String(params.get("target", ""))), {"fired_by_rule": true})
 			if not pv["ok"]:
 				return RuleResult.deny(pv["reason"], pv["rule_ref"])
-		if op.get("op", "") == "napalm":
+		if op.get("op", "") == "transfer_control" and Riders.passenger_of(state, u) == null and not u.counters.has("passenger_control"):
+			return RuleResult.deny("There's no passenger to hand the controls to.", Riders.REF_COMPARTMENT)
+		if op.get("op", "") in ["napalm", "flash_grenade"]:
 			var nr := GearSystems.check_aimed(state, u, op, params)
 			if not nr.ok:
 				return nr
@@ -481,7 +567,8 @@ const BASIC := [
 	["shut_down", "Shut Down", "other"], ["boot_up", "Boot Up", "other"], ["eject", "Eject", "other"],
 	["dismount", "Dismount", "other"], ["mount", "Mount", "other"], ["self_destruct", "Self-Destruct", "other"],
 	["end_grapple", "Let Go", "other"], ["break_free", "Break Free", "other"], ["grapple_contest", "Grapple Contest", "other"],
-	["pull_stake", "Pull Out Stake", "other"], ["use_object", "Use Object", "other"],
+	["climb_on", "Climb On", "move"], ["board", "Board", "other"], ["disembark", "Climb Out", "other"], ["cut_cable", "Cut Cable", "attack"],
+	["pull_stake", "Pull Out Stake", "other"], ["use_object", "Use Object", "other"], ["ai_control", "Hand Over to AI", "other"],
 ]
 ## Actions whose own check needs no target, so the bar can show exactly whether they work.
 const NO_TARGET := ["stand_up", "bonus_move", "disengage", "hide", "overcharge", "shut_down", "boot_up",

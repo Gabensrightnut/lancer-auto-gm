@@ -38,11 +38,12 @@ static func add(state: GameState, z: Dictionary) -> Array[Dictionary]:
 static func remove(state: GameState, id: String, why: String) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	for z: Dictionary in state.zones:
-		if z["id"] == id and z.get("kind", "") in ["cloak", "interdiction"]:
+		if z["id"] == id and z.get("kind", "") in ["cloak", "interdiction", "hardlight"]:
 			var o := state.unit(String(z.get("owner", "")))
-			var src := "LB/OC Cloaking Field" if z["kind"] == "cloak" else "Interdiction Field"
-			if o != null and o.has_status("Slowed") and o.statuses["Slowed"].get("source", "") == src:
-				events.append_array(Combat.remove_status(o, "Slowed", "field ended"))
+			var src := {"cloak": "LB/OC Cloaking Field", "interdiction": "Interdiction Field", "hardlight": "Hardlight Defense System"}[z["kind"]] as String
+			var st := "Immobilized" if z["kind"] == "hardlight" else "Slowed"
+			if o != null and o.has_status(st) and o.statuses[st].get("source", "") == src:
+				events.append_array(Combat.remove_status(o, st, "field ended"))
 	state.zones = state.zones.filter(func(z: Dictionary) -> bool: return z["id"] != id)
 	events.append({"type": "zone_removed", "id": id, "reason": why})
 	return events
@@ -189,6 +190,8 @@ static func check_path(state: GameState, mover: Unit, path: Array) -> Array[Dict
 						entered = entered or _cell_in(state, z, f)
 				if entered:
 					events.append_array(_enter(state, z, mover))
+			"hardlight":
+				events.append_array(hardlight_crossing(state, mover, path))
 			"javelin":
 				for i in range(1, path.size()):
 					if int(path[i][0]) == int(z["center"][0]) and int(path[i][1]) == int(z["center"][1]):
@@ -307,7 +310,7 @@ static func _caltrops(state: GameState, z: Dictionary, u: Unit) -> Array[Diction
 
 
 static func turn_started(state: GameState, u: Unit) -> Array[Dictionary]:
-	var events: Array[Dictionary] = []
+	var events: Array[Dictionary] = hardlight_turn_start(state, u)
 	for z: Dictionary in of_kind(state, "bunker"):
 		if z.get("phase", "") == "folded" and String(z.get("unfold", {}).get("unit", "")) == u.id:
 			z["phase"] = "up"
@@ -328,6 +331,14 @@ static func turn_started(state: GameState, u: Unit) -> Array[Dictionary]:
 
 static func turn_ended(state: GameState, u: Unit) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
+	for z: Dictionary in of_kind(state, "athena"):
+		var o := state.unit(String(z.get("owner", "")))
+		if o != null and o.side != u.side and Combat.is_present(u) and contains(state, z, u):
+			# ATHENA: hostiles that end their turn inside are Locked On and lose Invisible/Hidden.
+			events.append_array(Combat.add_status(state, u, "Lock On", o.id))
+			for st in ["Invisible", "Hidden"]:
+				events.append_array(Combat.remove_status(u, st, "ATHENA"))
+	AISystems.athena_reveal(state)
 	for z: Dictionary in of_kind(state, "swarm_body"):
 		if z.get("owner", "") == u.id:
 			if z.get("at", []) == [u.cell.x, u.cell.y, u.level]:
@@ -494,3 +505,163 @@ static func make_cloud(state: GameState, u: Unit) -> Array[Dictionary]:
 	foot.assign(state.map.grid.footprint(u.cell, u.size))
 	return add(state, {"kind": "smoke_cloud", "owner": u.id, "label": "Burning cloud", "center": [u.cell.x, u.cell.y],
 		"cells": cells_around(state, foot, 3), "phase": "smoke", "expires": {"unit": u.id, "when": "start", "count": 1}, "rule_ref": REF_CLOUD})
+
+
+# --- Vision and barriers --------------------------------------------------------------
+#   flash       Flash Grenade: characters other than its thrower at least partly inside can't
+#               draw line of sight out of it (until the end of the thrower's next turn)
+#   hardlight   Hardlight Defense System (burst 3): blocks line of sight both ways and no
+#               attack or effect crosses it; characters partly inside ignore it; crossing the
+#               edge the first time in a round, or starting a turn on it: 2 burn
+#   blink       Blinkshield (burst 4, until the end of the owner's next turn): nothing crosses
+#               its edge, not even line of sight or movement
+#   oasis       Oasis Wall trail: adjacent characters have hard cover and Resistance to energy
+# Blinded (status): line of sight only to adjacent spaces (Flash Mine, Shock Wreath).
+
+static func _inside_all(state: GameState, z: Dictionary, u: Unit) -> bool:
+	for c in state.map.grid.footprint(u.cell, u.size):
+		if not _cell_in(state, z, c):
+			return false
+	return true
+
+
+## Can `a` see `b` past these areas and statuses? (Sight.unit_line_of_sight asks.)
+static func blocks_sight(state: GameState, a: Unit, b: Unit) -> bool:
+	if a.has_status("Blinded") and Sight.unit_distance(state, a, b) > 1:
+		return true
+	for z: Dictionary in state.zones:
+		match String(z.get("kind", "")):
+			"flash":
+				if a.id != z.get("owner", "") and contains(state, z, a) and not contains(state, z, b):
+					return true
+			"hardlight", "blink":
+				if blocks_crossing(state, z, a, b):
+					return true
+	return false
+
+
+## No attack or effect crosses a Hardlight shield or a Blinkshield.
+static func blocks_crossing(state: GameState, z: Dictionary, a: Unit, b: Unit) -> bool:
+	var a_in := contains(state, z, a)
+	var b_in := contains(state, z, b)
+	if z.get("kind", "") == "hardlight":
+		# Characters partly inside ignore the hardlight shield.
+		if (a_in and not _inside_all(state, z, a)) or (b_in and not _inside_all(state, z, b)):
+			return false
+	return a_in != b_in
+
+
+static func barrier_between(state: GameState, a: Unit, b: Unit) -> Dictionary:
+	for z: Dictionary in state.zones:
+		if z.get("kind", "") in ["hardlight", "blink"] and blocks_crossing(state, z, a, b):
+			return z
+	return {}
+
+
+## Movement can't cross a Blinkshield's edge.
+static func blocks_step(state: GameState, from: Vector2i, to: Vector2i) -> bool:
+	for z: Dictionary in of_kind(state, "blink"):
+		if _cell_in(state, z, from) != _cell_in(state, z, to):
+			return true
+	return false
+
+
+## Oasis Wall: next to the trail, hard cover and Resistance to energy.
+static func oasis_cover(state: GameState, u: Unit) -> bool:
+	for z: Dictionary in of_kind(state, "oasis"):
+		for c in state.map.grid.footprint(u.cell, u.size):
+			for n: Vector2i in state.map.grid.neighbors(c):
+				if _has_cell(z, n):
+					return true
+	return false
+
+
+static func oasis_trail(state: GameState, u: Unit, path: Array) -> void:
+	if not Effects.has(u, "oasis_wall"):
+		return
+	for z: Dictionary in of_kind(state, "oasis"):
+		if z.get("owner", "") != u.id:
+			continue
+		var cells: Array = z["cells"]
+		for p: Array in path:
+			for c in state.map.grid.footprint(Vector2i(int(p[0]), int(p[1])), maxf(1.0, u.size)):
+				if not cells.has([c.x, c.y]):
+					cells.append([c.x, c.y])
+
+
+## Hardlight: crossing the edge the first time in a round costs 2 burn.
+static func hardlight_crossing(state: GameState, u: Unit, path: Array) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for z: Dictionary in of_kind(state, "hardlight"):
+		var crossed := false
+		for i in range(1, path.size()):
+			var a := Vector2i(int(path[i - 1][0]), int(path[i - 1][1]))
+			var b := Vector2i(int(path[i][0]), int(path[i][1]))
+			crossed = crossed or _cell_in(state, z, a) != _cell_in(state, z, b)
+		if crossed:
+			events.append_array(_hardlight_burn(state, z, u))
+	return events
+
+
+static func _hardlight_burn(state: GameState, z: Dictionary, u: Unit) -> Array[Dictionary]:
+	var entered: Dictionary = z.get("entered", {})
+	if int(entered.get(u.id, -1)) == state.round_number:
+		return [] as Array[Dictionary]
+	entered[u.id] = state.round_number
+	z["entered"] = entered
+	var events: Array[Dictionary] = [{"type": "zone_triggered", "zone": z["id"], "unit": u.id, "rule_ref": z.get("rule_ref", "")}]
+	events.append_array(Combat.deal_damage(state, u, [{"type": "Burn", "amount": 2}], {"source": String(z.get("owner", ""))}))
+	return events
+
+
+## Starting a turn overlapping a Hardlight edge (partly inside): 2 burn.
+static func hardlight_turn_start(state: GameState, u: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for z: Dictionary in of_kind(state, "hardlight"):
+		if contains(state, z, u) and not _inside_all(state, z, u):
+			events.append_array(_hardlight_burn(state, z, u))
+	return events
+
+
+## Blinkshield: characters partly inside move to the nearest free space; they choose a side
+## on a successful Agility save, the owner chooses otherwise (the game puts them outside).
+static func blinkshield(state: GameState, u: Unit) -> Array[Dictionary]:
+	var foot: Array[Vector2i] = []
+	foot.assign(state.map.grid.footprint(u.cell, u.size))
+	var events := add(state, {"kind": "blink", "owner": u.id, "label": "Blinkshield", "center": [u.cell.x, u.cell.y],
+		"cells": cells_around(state, foot, 4), "expires": {"unit": u.id, "when": "end", "count": 2 if state.active_unit == u.id else 1},
+		"rule_ref": "systems: Blinkshield"})
+	var z: Dictionary = state.zones.back()
+	for o: Unit in state.units.values():
+		if o == u or not Combat.is_present(o) or not contains(state, z, o) or _inside_all(state, z, o):
+			continue
+		var save := Combat.skill_check(state, o, "agility", "Save vs Blinkshield", u.save_target, 0, 0, [], true)
+		events.append({"type": "skill_check", "unit": o.id, "check": save, "rule_ref": "systems: Blinkshield"})
+		var best: Variant = null
+		var best_d := 999
+		for c: Vector2i in state.map.grid.cells_within(o.cell, 4):
+			if not state.map.has_cell(c):
+				continue
+			var lv := Movement.surface_levels(state, o.size, c)
+			if lv.is_empty():
+				continue
+			var inside := true
+			var outside := true
+			for f in state.map.grid.footprint(c, o.size):
+				inside = inside and _cell_in(state, z, f)
+				outside = outside and not _cell_in(state, z, f)
+			if not outside:
+				continue
+			var body := Sight.make_body(state, c, lv[0], o.size)
+			if Movement._blocked_by_unit(body, Movement._others(state, o), true):
+				continue
+			var d := state.map.grid.distance(o.cell, c)
+			if d < best_d:
+				best = [c, lv[0]]
+				best_d = d
+		if best != null:
+			var from := [o.cell.x, o.cell.y, o.level]
+			o.cell = best[0]
+			o.level = best[1]
+			events.append({"type": "moved", "unit": o.id, "path": [from, [o.cell.x, o.cell.y, o.level]], "mode": "involuntary", "cost": 0})
+	return events

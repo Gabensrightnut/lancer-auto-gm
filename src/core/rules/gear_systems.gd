@@ -460,6 +460,8 @@ static func seen_as_invisible(state: GameState, attacker: Unit, target: Unit) ->
 
 
 static func sees_through(state: GameState, attacker: Unit, target: Unit) -> bool:
+	if AISystems.exposed_to(state, attacker, target):
+		return true  # ATHENA: no Hidden or Invisible inside the model
 	if (target.counters.get("tracked_by", []) as Array).has(attacker.id):
 		return true
 	if Effects.has(attacker, "eye_of_horus") and Sight.unit_distance(state, attacker, target) <= attacker.sensors:
@@ -532,6 +534,7 @@ static func status_ended(u: Unit, status: String) -> void:
 static func took_damage(state: GameState, u: Unit, source: String) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	spoil_cooler(u)
+	events.append_array(AISystems.harmed_by(state, u, state.unit(source)))
 	var src := state.unit(source)
 	if src != null:
 		src.counters["mirage"] = (src.counters.get("mirage", []) as Array).filter(func(m: Dictionary) -> bool: return not (m.get("stalk", false) and m.get("who", "") == u.id))

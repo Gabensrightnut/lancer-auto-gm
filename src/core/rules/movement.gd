@@ -425,6 +425,8 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool) -> Dictionar
 				continue
 			if not _clearance(state, u.size, here, k.z, nb, lv):
 				continue
+			if Zones.blocks_step(state, here, nb):
+				continue  # a Blinkshield's edge can't be crossed
 			var body := Sight.make_body(state, nb, lv, u.size)
 			if not fly and _blocked_by_unit(body, others, false):
 				continue

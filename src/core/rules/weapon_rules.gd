@@ -86,6 +86,7 @@ static func on_hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 			events.append({"type": "skill_check", "unit": target.id, "check": check, "rule_ref": "weapons: " + String(w.get("name", ""))})
 			if check["success"]:
 				continue
+			events.append_array(CoreBonuses.failed_save(state, attacker, target))
 		match String(st.get("until", "")):
 			"end_next_turn":
 				events.append_array(Combat.add_status(state, target, String(st["status"]), attacker.id, target.id))

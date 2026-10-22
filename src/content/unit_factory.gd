@@ -47,6 +47,22 @@ static func total_sp(frame: Dictionary, pilot: Dictionary) -> int:
 	return int(frame.get("stats", {}).get("sp", 0)) + grit(int(pilot.get("ll", 0))) + int(pilot.get("systems", 0)) / 2
 
 
+## The frame's mounts with core bonuses applied (Core p.118): Improved Armament adds a Flex
+## mount if there are fewer than three; Mount Retrofitting turns the chosen mount
+## (pilot core_bonus_choices.cb_mount_retrofitting) into a Main/Aux mount.
+static func mounts_for(frame: Dictionary, pilot: Dictionary) -> Array:
+	var mounts: Array = (frame.get("mounts", []) as Array).duplicate()
+	var cbs: Array = pilot.get("core_bonuses", [])
+	var choices: Dictionary = pilot.get("core_bonus_choices", {})
+	if cbs.has("cb_mount_retrofitting"):
+		var i := int(choices.get("cb_mount_retrofitting", 0))
+		if i >= 0 and i < mounts.size():
+			mounts[i] = "Main/Aux"
+	if cbs.has("cb_improved_armament") and mounts.size() < 3:
+		mounts.append("Flex")
+	return mounts
+
+
 ## Is this loadout legal on this frame? Collects every problem in `details`.
 static func check_loadout(db: ContentDB, frame_id: String, loadout: Dictionary, pilot: Dictionary = {}) -> RuleResult:
 	var problems: Array = []
@@ -56,7 +72,7 @@ static func check_loadout(db: ContentDB, frame_id: String, loadout: Dictionary, 
 	problems.append_array(check_pilot(db, pilot))
 	_license(problems, frame, pilot)
 	var fittings: Dictionary = db.rules.get("mount_fittings", {})
-	var frame_mounts: Array = frame.get("mounts", [])
+	var frame_mounts: Array = mounts_for(frame, pilot)
 	var mounts: Array = loadout.get("mounts", [])
 	if float(frame["stats"].get("size", 1)) > float(db.rules.get("max_frame_size", 3)):
 		problems.append({"reason": "Frame is larger than the largest allowed size.", "rule_ref": "rules.json: max_frame_size"})
@@ -93,7 +109,8 @@ static func check_loadout(db: ContentDB, frame_id: String, loadout: Dictionary, 
 			else:
 				sp_used += int(mod.get("sp", 0))
 				_license(problems, mod, pilot)
-				var w0 := db.weapon(String(ids[0])) if not ids.is_empty() else {}
+				var mslot := int(m.get("mod_slot", 0))
+				var w0 := db.weapon(String(ids[mslot])) if mslot < ids.size() else {}
 				if w0.is_empty():
 					problems.append({"reason": "Mount %d has a mod but no weapon to put it on." % (i + 1), "rule_ref": "tags: Mod"})
 				elif not (mod.get("allowed_types", []) as Array).is_empty() and not (mod["allowed_types"] as Array).has(w0.get("type", "")):
@@ -119,8 +136,18 @@ static func check_loadout(db: ContentDB, frame_id: String, loadout: Dictionary, 
 			seen_unique[sid] = true
 		if _has_tag(s, "tg_ai"):
 			ai_count += 1
-	if ai_count > 1:
-		problems.append({"reason": "Only one AI system can be installed.", "rule_ref": "tags: AI"})
+	var ai_cap := 2 if (pilot.get("core_bonuses", []) as Array).has("cb_the_lesson_of_shaping") else 1
+	if ai_count > ai_cap:
+		problems.append({"reason": "Only %d AI system%s can be installed." % [ai_cap, "" if ai_cap == 1 else "s"], "rule_ref": "tags: AI; Core p.191"})
+	var iw := String(loadout.get("integrated_weapon", ""))
+	if iw != "":
+		if not (pilot.get("core_bonuses", []) as Array).has("cb_integrated_weapon"):
+			problems.append({"reason": "An integrated weapon needs the Integrated Weapon core bonus.", "rule_ref": "Core p.118"})
+		elif db.weapon(iw).get("mount", "") != "Auxiliary":
+			problems.append({"reason": "The Integrated Weapon mount takes one Auxiliary weapon.", "rule_ref": "Core p.118"})
+		else:
+			sp_used += int(db.weapon(iw).get("sp", 0))
+			_license(problems, db.weapon(iw), pilot)
 	var sp := total_sp(frame, pilot)
 	if sp_used > sp:
 		problems.append({"reason": "Uses %d SP but this mech has %d." % [sp_used, sp], "rule_ref": REF_SP})
@@ -250,7 +277,7 @@ static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dic
 	u.stress = u.max_stress
 	var weapons: Array = []
 	var mounts: Array = []
-	var frame_mounts: Array = frame.get("mounts", [])
+	var frame_mounts: Array = mounts_for(frame, pilot)
 	var given: Array = loadout.get("mounts", [])
 	for i in range(frame_mounts.size()):
 		var m: Dictionary = given[i] if i < given.size() else {}
@@ -259,8 +286,18 @@ static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dic
 		for wid: String in m.get("weapons", []):
 			var w := db.weapon(wid)
 			if not w.is_empty():
-				weapons.append(weapon_profile(w, "%d:%d" % [i, slot], i))
+				var prof := weapon_profile(w, "%d:%d" % [i, slot], i)
+				if String(m.get("mod", "")) != "" and slot == int(m.get("mod_slot", 0)):
+					apply_mod(db, prof, String(m["mod"]), u)
+				weapons.append(prof)
 			slot += 1
+	# Integrated Weapon core bonus: an integrated Auxiliary mount (Core p.118).
+	var cbw := String(loadout.get("integrated_weapon", ""))
+	if cbw != "" and (pilot.get("core_bonuses", []) as Array).has("cb_integrated_weapon") and not db.weapon(cbw).is_empty():
+		var iwp := weapon_profile(db.weapon(cbw), "cbi:0", -1)
+		iwp["integrated"] = true
+		iwp["no_attack"] = true  # fired 1/round as a free action when you fire another weapon
+		weapons.append(iwp)
 	# Integrated mounts: the frame's own weapons, always included, never destroyed, removed or
 	# modified (Core p.32).
 	var integ := 0
@@ -291,7 +328,10 @@ static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dic
 		gear_ids.append(s["id"])
 	gear_ids.append_array(pilot.get("core_bonuses", []))
 	_add_gear_effects(u, gear_ids, pilot.get("talents", {}))
+	_core_bonus_choices(u, pilot)
 	TalentRules.adjust_weapons(u)
+	AISystems.detect(db, u)
+	u.loadout["core_bonus_ids"] = (pilot.get("core_bonuses", []) as Array).duplicate()
 	u.loadout["abilities"] = _abilities(db, u, frame, loadout.get("systems", []), pilot.get("talents", {}))
 	if (frame_effects_data().get(frame_id, {}) as Dictionary).get("orochi_choice", false):
 		# Hydra: one OROCHI drone accompanies it; Full Deployment brings all four.
@@ -335,6 +375,11 @@ static func _abilities(db: ContentDB, u: Unit, frame: Dictionary, system_ids: Ar
 				acts.append({"name": "Spin Down " + String(raw.get("name", "")), "activation": "Protocol", "detail": "End Spin-Up mode.", "ops": [{"op": "spin_down", "weapon": w["key"]}]})
 				src["actions"] = acts
 			_add_source(out, src, "w:" + String(w["key"]), raw.get("name", ""), String(raw.get("id", "")), true)
+		if w.has("mod"):
+			# The mod's own actions (UNCLE, Shock Wreath), tied to this weapon.
+			var mod := db.get_entry("mods", String(w["mod"]["id"]))
+			var msrc := {"actions": (mod.get("actions", []) as Array).duplicate(true) if mod.get("actions") is Array else []}
+			_add_source(out, msrc, "mod:" + String(w["key"]), String(w["mod"]["name"]), String(w["mod"]["id"]))
 	var core: Dictionary = frame.get("core_system", {})
 	var core_src := {"actions": [], "deployables": core.get("deployables", [])}
 	for a: Dictionary in core.get("passive_actions", []):
@@ -359,6 +404,10 @@ static func _abilities(db: ContentDB, u: Unit, frame: Dictionary, system_ids: Ar
 			src = t.duplicate(true)
 			src["actions"] = (t.get("actions", []) as Array).filter(func(a: Dictionary) -> bool: return Abilities.COSTS.has(String(a.get("activation", ""))))
 		_add_source(out, src, "trait:" + String(t.get("name", "")), String(t.get("name", "")), String(frame.get("id", "")))
+	for cid: Variant in u.loadout.get("core_bonus_ids", []):
+		var cb := db.get_entry("core_bonuses", String(cid))
+		if not cb.is_empty():
+			_add_source(out, cb, "cb:" + String(cid), String(cb.get("name", cid)), String(cid))
 	for tid: String in talents:
 		var tal := db.get_entry("talents", tid)
 		for r in range(mini(int(talents[tid]), (tal.get("ranks", []) as Array).size())):
@@ -384,12 +433,15 @@ static func _add_source(out: Array, src: Dictionary, key: String, name: String, 
 			continue
 		var aname := String(a.get("name", name) if a.get("name") != null else name)
 		var ops: Variant = a.get("ops") if a.has("ops") else data.get("%s:%s" % [data_id, aname])
+		var freq := String(a.get("frequency", tag_freq))
 		if ops is Dictionary:
-			# {"activation": ..., "ops": [...]}: lancer-data gives no activation (Thermal Grenade).
+			# {"activation": ..., "frequency": ..., "ops": [...]}: what lancer-data leaves out
+			# (Thermal Grenade's activation, Hurl Into the Duat's 1/round).
 			act = String(ops.get("activation", act))
+			freq = String(ops.get("frequency", freq))
 			ops = ops.get("ops", [])
 		out.append({"key": "%s/a%d" % [key, n], "name": aname, "source_key": key, "source_name": name,
-			"kind": "action", "activation": act, "frequency": a.get("frequency", tag_freq),
+			"kind": "action", "activation": act, "frequency": freq,
 			"trigger": a.get("trigger", ""), "detail": a.get("detail", ""), "range": a.get("range", []),
 			"requires_core_active": a.get("requires_core_active", false),
 			"ops": ops if ops is Array else [], "automated": ops is Array})
@@ -441,6 +493,8 @@ static func _add_gear_effects(u: Unit, ids: Array, talents: Dictionary) -> void:
 			if copy["kind"] == "hp_bonus":
 				u.max_hp += int(copy.get("value", 0))  # Personalizations
 				u.hp = u.max_hp
+			if copy["kind"] == "stat":
+				_stat_bonus(u, copy)
 	for id: String in ids:
 		if data.get(id) is Array:
 			add.call(data[id], id)
@@ -450,6 +504,43 @@ static func _add_gear_effects(u: Unit, ids: Array, talents: Dictionary) -> void:
 			for r in range(1, int(talents[t]) + 1):
 				if (ranks as Dictionary).has(str(r)):
 					add.call(ranks[str(r)], "%s rank %d" % [t, r])
+	u.loadout["effects"] = effects
+
+
+## Core bonus stat changes ({stat, value, max}).
+static func _stat_bonus(u: Unit, e: Dictionary) -> void:
+	var v := int(e.get("value", 0))
+	match String(e.get("stat", "")):
+		"max_hp":
+			u.max_hp += v
+			u.hp = u.max_hp
+		"armor":
+			u.armor = mini(u.armor + v, int(e.get("max", 99)))
+		"evasion":
+			u.evasion += v
+		"edef":
+			u.edef += v
+		"save_target":
+			u.save_target += v
+		"heat_cap":
+			u.heat_cap += v
+
+
+## Core bonuses that need a choice: Auto-Stabilizing Hardpoints (a mount) and Overpower
+## Caliber (a weapon key), from pilot.core_bonus_choices.
+static func _core_bonus_choices(u: Unit, pilot: Dictionary) -> void:
+	var cbs: Array = pilot.get("core_bonuses", [])
+	var choices: Dictionary = pilot.get("core_bonus_choices", {})
+	var effects: Array = u.loadout.get("effects", [])
+	if cbs.has("cb_auto_stabilizing_hardpoints"):
+		effects.append({"kind": "mount_accuracy", "mount": int(choices.get("cb_auto_stabilizing_hardpoints", 0)), "value": 1,
+			"label": "cb_auto_stabilizing_hardpoints", "rule_ref": "Core p.118"})
+	if cbs.has("cb_overpower_caliber"):
+		var key := String(choices.get("cb_overpower_caliber", ""))
+		if key == "" and not (u.loadout.get("weapons", []) as Array).is_empty():
+			key = String(u.loadout["weapons"][0]["key"])
+		effects.append({"kind": "bonus_damage", "value": "1d6", "per": "round", "weapon_key": key, "on": "attack",
+			"label": "cb_overpower_caliber", "rule_ref": "Core p.118"})
 	u.loadout["effects"] = effects
 
 
@@ -531,6 +622,40 @@ static func _frame_effects(u: Unit, frame: Dictionary) -> void:
 
 ## The fields of a lancer-data weapon the rules use. Weapons with several profiles use the
 ## first one (choosing a profile isn't supported yet).
+## A weapon mod (tags: Mod, Core p.106) on a weapon: its added tags, range and damage, and our
+## encoding of its special rules (weapon_effects.json, keyed by the mod id).
+static func apply_mod(db: ContentDB, w: Dictionary, mod_id: String, u: Unit) -> void:
+	var mod := db.get_entry("mods", mod_id)
+	if mod.is_empty():
+		return
+	w["mod"] = {"id": mod_id, "name": String(mod.get("name", mod_id))}
+	var targets: Array = [w]
+	targets.append_array(w.get("profiles", []))
+	for t: Dictionary in targets:
+		for tag: Dictionary in mod.get("added_tags", []):
+			if not Weapons.has_tag(t, String(tag.get("id", ""))):
+				(t["tags"] as Array).append(tag.duplicate())
+		for r: Dictionary in mod.get("added_range", []):
+			var done := false
+			for own: Dictionary in t.get("range", []):
+				if own.get("type", "") == r.get("type", ""):
+					own["val"] = int(own.get("val", 0)) + int(r.get("val", 0))
+					done = true
+			if not done:
+				(t["range"] as Array).append(r.duplicate())
+		for d: Dictionary in mod.get("added_damage", []):
+			(t["damage"] as Array).append(d.duplicate())
+	var r: Variant = weapon_effects_data().get(mod_id)
+	if r is Dictionary:
+		var rules: Dictionary = w.get("rules", {})
+		rules.merge((r as Dictionary).duplicate(true), true)
+		w["rules"] = rules
+	for tag: Dictionary in mod.get("tags", []):
+		if tag.get("id", "") == "tg_limited":
+			# The mod's own charges (+1 per 2 Engineering, Core p.34).
+			w["mod_uses"] = int(tag.get("val", 1)) + u.engineering / 2
+
+
 static func _with_profile(w: Dictionary, i: int) -> Dictionary:
 	var src := w.duplicate(true)
 	src.erase("profiles")

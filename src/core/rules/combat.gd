@@ -164,7 +164,7 @@ static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dict
 			events.append({"type": "damage_dealt", "target": target.id, "source": source, "amount": 0, "damage_type": dtype,
 				"roll": amount, "immune": true, "hp": target.hp, "rule_ref": "glossary: Immunity"})
 			continue
-		var resist_here: bool = opts.get("resist_all", false) or Effects.resists(target, dtype, opts.get("area", false), int(opts.get("distance", -1))) or Effects.shepherded(state, target)
+		var resist_here: bool = opts.get("resist_all", false) or (opts.get("resist_types", []) as Array).has(dtype) or Effects.resists(target, dtype, opts.get("area", false), int(opts.get("distance", -1))) or Effects.shepherded(state, target)
 		if dtype == "Heat":
 			events.append_array(apply_heat(state, target, amount, source, resist_here))
 			continue
@@ -181,7 +181,7 @@ static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dict
 			amount -= armor_used
 		# 3) Resistance halves what's left, rounding the damage taken up (Core p.12).
 		var resisted := 0
-		if not shredded and not unreducible and amount > 0 and (resist_here or _resists(target, dtype)):
+		if not shredded and not unreducible and amount > 0 and (resist_here or _resists(target, dtype) or CoreBonuses.briareos_resists(target)):
 			resisted = amount / 2
 			amount -= resisted
 		var ev := {"type": "damage_dealt", "target": target.id, "source": source, "amount": amount,
@@ -226,6 +226,11 @@ static func lose_hp(state: GameState, u: Unit, amount: int, source: String) -> A
 	var from_shield := mini(u.overshield, amount)
 	u.overshield -= from_shield
 	amount -= from_shield
+	if u.counters.get("briareos_down", false) and not u.destroyed:
+		# Briareos Frame at 0 Structure: every hit is a structure damage check.
+		events.append({"type": "hp_changed", "unit": u.id, "hp": 0, "overshield": u.overshield, "source": source})
+		events.append_array(structure_check(state, u))
+		return events
 	u.hp -= amount
 	events.append({"type": "hp_changed", "unit": u.id, "hp": maxi(u.hp, 0), "overshield": u.overshield, "source": source})
 	if u.hp > 0:
@@ -251,6 +256,15 @@ static func lose_hp(state: GameState, u: Unit, amount: int, source: String) -> A
 		u.structure -= 1
 		events.append({"type": "structure_lost", "unit": u.id, "structure": u.structure, "rule_ref": "Core p.80 Structure"})
 		events.append_array(GearSystems.batteries_blow(state, u))
+		if u.structure <= 0 and CoreBonuses.briareos_holds(u):
+			# Briareos Frame: at 0 HP and 0 Structure it isn't destroyed; it makes a structure
+			# damage check each time it takes damage, and gets no HP back until it rests.
+			u.structure = 0
+			u.hp = 0
+			u.counters["briareos_down"] = true
+			events.append_array(structure_check(state, u))
+			return events
+		events.append_array(CoreBonuses.structure_lost(state, u))
 		events.append_array(_on_structure_or_stress(state, u, true))
 		if u.structure <= 0:
 			events.append_array(destroy(state, u, "Reached 0 Structure."))
@@ -276,7 +290,7 @@ static func _on_structure_or_stress(state: GameState, u: Unit, structure: bool) 
 
 static func structure_check(state: GameState, u: Unit) -> Array[Dictionary]:
 	var r := _damage_check_roll(state, u.max_structure - u.structure)
-	var events: Array[Dictionary] = []
+	var events: Array[Dictionary] = AISystems.cascade_check(state, u)
 	var lowest: int = r["lowest"]
 	var outcome := ""
 	if r["ones"] >= 2:
@@ -419,6 +433,7 @@ static func apply_heat(state: GameState, u: Unit, amount: int, source: String, r
 		u.heat = 0
 		u.stress -= 1
 		events.append({"type": "stress_lost", "unit": u.id, "stress": u.stress, "rule_ref": "Core p.81 Overheating"})
+		events.append_array(CoreBonuses.stress_lost(state, u))
 		events.append_array(GearSystems.vents(state, u))  # Explosive Vents: took stress
 		events.append_array(_on_structure_or_stress(state, u, false))
 		events.append({"type": "heat_changed", "unit": u.id, "amount": 0, "total": 0, "source": "overheat"})
@@ -461,7 +476,7 @@ static func _danger_zone(u: Unit) -> Array[Dictionary]:
 
 static func stress_check(state: GameState, u: Unit) -> Array[Dictionary]:
 	var r := _damage_check_roll(state, u.max_stress - u.stress)
-	var events: Array[Dictionary] = []
+	var events: Array[Dictionary] = AISystems.cascade_check(state, u)
 	if Effects.has(u, "reactor_stabilizer") and int(r["lowest"]) < 5:
 		# Reactor Stabilizer: may reroll, keeping the second result (rerolled unless the first
 		# was already the best outcome).
@@ -533,6 +548,7 @@ static func destroy(state: GameState, u: Unit, why: String) -> Array[Dictionary]
 	var events: Array[Dictionary] = [{"type": "unit_destroyed", "unit": u.id, "reason": why}]
 	if u.counters.get("snare", false):
 		events.append_array(GearSystems.snare_gone(state, u))
+	events.append_array(Riders.on_destroyed(state, u))
 	if Pilots.castigating(state, u) and not u.counters.get("vaporized", false) and why != "Self Destruct.":
 		# Manticore Castigate the Enemies of the Godhead: it explodes at once (burst 2, 8d6).
 		events.append_array(Pilots.explode(state, u, "Castigation: " + why))
@@ -690,7 +706,7 @@ static func is_present(u: Unit) -> bool:
 		return false  # Fold Space: off the battlefield until the start of its next turn
 	if u == null or u.destroyed:
 		return false
-	var inside := String(u.counters.get("mounted_in", ""))
+	var inside := String(u.counters.get("mounted_in", u.counters.get("passenger_in", "")))
 	if inside == "":
 		return true
 	# A pilot inside a destroyed mech can be targeted and affected (Core p.74).
@@ -731,6 +747,10 @@ static func refresh_engagement(state: GameState) -> Array[Dictionary]:
 ## Could `u` HIDE right now? Not Engaged, and every enemy either has no line of sight or
 ## the unit is entirely inside soft cover; INVISIBLE can always hide (actions: Hide).
 static func can_hide(state: GameState, u: Unit) -> RuleResult:
+	for z: Dictionary in Zones.of_kind(state, "athena"):
+		var o := state.unit(String(z.get("owner", "")))
+		if o != null and o.side != u.side and Zones.contains(state, z, u):
+			return RuleResult.deny("Inside an ATHENA model you can't Hide.", "systems: ATHENA-Class NHP")
 	if not (u.counters.get("tracked_by", []) as Array).is_empty():
 		return RuleResult.deny("A tracking bug is on you: you can't Hide.", "systems: Tracking Bug")
 	for o: Unit in state.units.values():
@@ -776,6 +796,7 @@ static func refresh_hidden(state: GameState) -> Array[Dictionary]:
 ## After any movement: engagement, Hidden, grapples.
 static func after_movement(state: GameState) -> Array[Dictionary]:
 	FrameSystems.follow_hosts(state)
+	Riders.follow(state)
 	var events := refresh_hidden(state)
 	events.append_array(refresh_engagement(state))
 	events.append_array(CloseCombat.check_grapples(state))
