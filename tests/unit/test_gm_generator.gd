@@ -267,3 +267,21 @@ func test_materials_follow_the_culture() -> void:
 		if ship.column(c).has_tag("bulkhead"):
 			expect(ship.column(c).has_tag("armor_4"), "starship hull: Armor 4")
 			break
+
+
+
+func test_story_town_opts_are_understood() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 9
+	var spots := HubLayout.spots("town", rng)
+	var town := {"hub_id": "hub_9", "kind": "town", "culture": "medieval_tech", "map_culture": "medieval",
+		"landscape": "tundra", "seed": 9, "spots": spots, "at": "bar", "on_foot": true}
+	var g := _gen(44, {"town": town, "sitrep": "sitrep_standardcombat", "players": 2})
+	var m: Mission = g["mission"]
+	expect(str(m.flavor["kit"]).begins_with("tundra/medieval"), "town landscape and culture: %s" % m.flavor["kit"])
+	var s: GameState = g["state"]
+	var buildings := 0
+	for c in s.map.cells():
+		if s.map.column(c).has_tag("building"):
+			buildings += 1
+	expect(buildings > 15, "the town's buildings (%d)" % buildings)

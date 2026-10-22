@@ -14,7 +14,9 @@ extends RefCounted
 ##   "height": map height (default: from the width and the sitrep's shape), "shape": "hex"/"square" (default hex),
 ##   "landscape": TerrainGen.LANDSCAPES key, "culture": culture id (default: seeded pick),
 ##   "settings": GmSettings, "db": ContentDB, "npc_templates": Dictionary,
-##   "hub": story.hub (a fight in a hub's town: built from its layout and culture kit),
+##   "town": MissionHooks.town_for(...) or "hub": story.hub (a fight in a hub's town: built
+##     from its spots and culture; "at" = the spot id where the fight starts, which is put
+##     in the middle of the battle band; "landscape" / "map_culture" when given),
 ##   "map_doc": MapDoc (a saved/edited map: its terrain, kit and zones; sitrep defaults to its own),
 ##   "weather": a weather.json id ("clear" for none), "environments": [ids] (overrides the pick),
 ##   "squad": Campaign.squad() entries [{seat, pilot, mech}] to field the campaign's pilots}
@@ -52,11 +54,18 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	var world_rng := RandomNumberGenerator.new()
 	world_rng.seed = hash([mission_seed, "world"])
 	# A fight in a hub's town happens in that town: its culture, its streets and buildings.
-	var hub: Dictionary = opts.get("hub", {}) if opts.get("hub") is Dictionary else {}
+	# opts.town (story's MissionHooks.town_for) or opts.hub (a story.hub): same fields.
+	var hub: Dictionary = {}
+	for key: String in ["town", "hub"]:
+		if opts.get(key) is Dictionary and not (opts[key] as Dictionary).get("spots", []).is_empty():
+			hub = opts[key]
+			break
 	var landscape := str(opts.get("landscape", ""))
 	var culture := str(opts.get("culture", ""))
 	if not hub.is_empty():
-		culture = WorldKits.culture_id(str(hub.get("culture", culture)))
+		culture = WorldKits.culture_id(str(hub.get("map_culture", hub.get("culture", culture))))
+		if landscape == "":
+			landscape = str(hub.get("landscape", ""))
 		if landscape == "":
 			landscape = "station" if str(hub.get("kind", "")) == "station" else str(WorldKits.HUB_LANDSCAPE.get(culture, "grassy_hills"))
 	var bf: Dictionary

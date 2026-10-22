@@ -217,6 +217,15 @@ const TOWN_SCALE := 2.0
 func _town(hub: Dictionary, culture: String) -> void:
 	var cc := w / 2
 	var cr := h / 2
+	# The fight starts at hub["at"] (a spot id): shift the town so that building stands in the
+	# middle of the battle band, between the two deployment zones.
+	for spot: Dictionary in hub.get("spots", []):
+		if str(spot.get("id", "")) == str(hub.get("at", "")) and str(hub.get("at", "")) != "":
+			cc -= int(round(float(spot["pos"][0]) / TOWN_SCALE))
+			cr -= int(round(float(spot["pos"][1]) / TOWN_SCALE))
+			break
+	cc = clampi(cc, 6, w - 7)
+	cr = clampi(cr, 6, h - 7)
 	var used := {}
 	var mark := func(c: int, r: int, levels: int, tags: Array) -> void:
 		if c < 0 or r < 0 or c >= w or r >= h:
