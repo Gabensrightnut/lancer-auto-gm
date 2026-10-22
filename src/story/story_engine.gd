@@ -30,6 +30,7 @@ extends RefCounted
 ##   set_origin {pilot, origin: {homeworld, upbringing, employer, specialty, perks}}  (Origin)
 ##   store_template {pilot, kind} / wake_clone {pilot} / add_second_pilot {seat, name, callsign, relation}
 ##   set_active_pilot {seat, pilot}                     death, cloning and a second pilot (Cloning)
+##   ship_work {job, pilot}                              a shift's work aboard the squad's ship (ShipLife)
 ##   buy_upgrade {slot}                                   the squad's own ship (house rule; Plunder)
 ##   decide {accept}  / split_resolved {winner}           squad decisions and party splits (Decisions)
 ##   travel {world}                                   go to another world of the sector (between missions; Sector)
@@ -260,6 +261,13 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 			var why_d := Decisions.refusal(story, seat)
 			if why_d != "":
 				return _no(why_d)
+		"ship_work":
+			var wpid := str(p.get("pilot", me))
+			if seat != "gm" and not _controls(story, seat, wpid):
+				return _no("Pick one of your pilots.")
+			var why_w2 := ShipLife.work_refusal(story, campaign, str(p.get("job", "")), wpid)
+			if why_w2 != "":
+				return _no(why_w2)
 		"buy_upgrade":
 			if story.phase == "mission":
 				return _no("Not in the middle of a mission.")
@@ -493,6 +501,8 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 			return Cloning.set_active(story, campaign, str(p.get("seat", seat)), str(p["pilot"]))
 		"decide":
 			return Decisions.vote(story, campaign, seat, bool(p.get("accept", true)))
+		"ship_work":
+			return ShipLife.work(story, campaign, str(p["job"]), str(p.get("pilot", me)))
 		"buy_upgrade":
 			return Plunder.buy_upgrade(story, campaign, str(p["slot"]))
 		"split_resolved":
@@ -632,6 +642,8 @@ func _finish_mission(story: StoryState, campaign: Campaign, p: Dictionary) -> Ar
 	events.append_array(Economy.after_mission(story, campaign, hook, won, p.get("summary", {})))
 	# A raid's haul: money, loot for the ship, or a reserve by the book (Plunder).
 	events.append_array(Plunder.after_mission(story, campaign, hook, won))
+	# A run for the people aboard (ShipLife).
+	events.append_array(ShipLife.after_mission(story, campaign, hook, won))
 	# The GM's bond rewards were for this mission only (Core p.50).
 	story.flags.erase(Bonds.REWARDS)
 	# Has the campaign told its story? It ends after the level up (or now, if nobody's left).

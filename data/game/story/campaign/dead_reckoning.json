@@ -1,8 +1,8 @@
 {
- "_note": "Our own writing: the pirate career for AI-GM play. Canon-consistent: pirates and boarding (Core p.42, p.126, p.139), NHPs and cascade (p.107), cloning and flash cloning (p.83-84), Union DoJ/HR. Nothing from Massif's modules. All text here is easy to edit; the engine (CampaignScript) reads it. Branches: b1 the mutiny, b2 MERIDIAN, b3 the start, b4 the first raid, b5 Hask's cut, b6 the Gallowglass, b6r Vosk's fate, b7 the breach, b8 Ruslan Dey, b9 the amnesty, b10 Saltmarrow, b11 the crews, b12 MERIDIAN's fate, b13 the captaincy, b14 Hask's fate, b15 the big score, b16 betrayal, b17 the final site, b18 the ending. Splits (decisions): the mutiny and the captaincy.",
+ "_note": "Our own writing: the pirate career for AI-GM play. Canon-consistent: pirates and boarding (Core p.42, p.126, p.139), NHPs and cascade (p.107), cloning and flash cloning (p.83-84), Union DoJ/HR. Nothing from Massif's modules. All text here is easy to edit; the engine (CampaignScript) reads it. Branches: b1 the mutiny, b2 MERIDIAN, b3 the start, b4 the first raid, b5 Hask's cut, b6 the Gallowglass, b6r Vosk's fate, b7 the breach, b8 Ruslan Dey, b9 the amnesty, b10 Saltmarrow, b11 the crews, b12 MERIDIAN's fate, b13 the captaincy, b14 Hask's fate, b15 the big score, b16 betrayal, b17 the final site, b18 the ending. Splits (decisions): the mutiny and the captaincy. After the prologue the Cadence is home to a whole society (Hask's people from the Gannet, ship-borne like a colony ship, Core p.10, p.20): the squad's renown with them, Hask quietly cutting it down to keep the peace, and the unrest that causes drive the mutiny as much as hardship does (society, ShipLife).",
  "id": "dead_reckoning",
  "name": "Dead Reckoning",
- "premise": "You're the lance aboard the Saint Cadence, an IPS-N long-hauler stalled on a fringe run. Her NHP is failing, the company says wait four months, and the crew has stopped waiting. Before long the Cadence will fly under a pirate captain who counts pilots like ammunition. Getting paid by Corvo Hask is easy. Not getting killed by him is the hard part.",
+ "premise": "You're the lance aboard the Saint Cadence, an IPS-N long-hauler stalled on a fringe run. Her NHP is failing, the company says wait four months, and the crew has stopped waiting. Soon the Cadence will be home to a whole people: Corvo Hask's ship-born families, their markets and feuds, and the captain who keeps the peace among them. Hask values his lancers. He just can't afford for them to be loved more than he is.",
  "enemy_mixes": {
   "drones": [
    "ph_controller",
@@ -55,6 +55,7 @@
  "factions": {
   "ipsn": "IPS-N",
   "hask": "Hask's crew",
+  "holds": "The people of the Cadence",
   "crew": "The old Cadence hands",
   "ship": "The Saint Cadence",
   "union": "Union DoJ/HR",
@@ -241,12 +242,12 @@
   "bede": {
    "name": "Bede Okonkwo",
    "title": "Quartermaster",
-   "role": "trader",
+   "role": "quartermaster",
    "faction": "crew",
    "personality": "weary",
    "world": "cadence",
    "spot": "market",
-   "replaces": "trader",
+   "replaces": "quartermaster",
    "schedule": {
     "dawn": [
      "market",
@@ -263,6 +264,102 @@
     "night": [
      "market",
      "store",
+     "asleep"
+    ]
+   }
+  },
+  "siddiqui": {
+   "scene": "dr_siddiqui",
+   "name": "Mother Amara Siddiqui",
+   "title": "Speaker for the families of the holds",
+   "role": "local",
+   "faction": "holds",
+   "personality": "warm",
+   "world": "cadence",
+   "spot": "plaza",
+   "if": {
+    "flag": "dr_hask_aboard"
+   },
+   "schedule": {
+    "dawn": [
+     "plaza",
+     "square"
+    ],
+    "day": [
+     "market",
+     "floor"
+    ],
+    "evening": [
+     "plaza",
+     "square"
+    ],
+    "night": [
+     "bar",
+     "upstairs",
+     "asleep"
+    ]
+   }
+  },
+  "wen": {
+   "scene": "dr_wen",
+   "name": "Wen Lazaro",
+   "title": "Runs the mess",
+   "role": "bartender",
+   "faction": "holds",
+   "personality": "sly",
+   "world": "cadence",
+   "spot": "bar",
+   "replaces": "bartender",
+   "if": {
+    "flag": "dr_hask_aboard"
+   },
+   "schedule": {
+    "dawn": [
+     "bar",
+     "back"
+    ],
+    "day": [
+     "bar",
+     "main"
+    ],
+    "evening": [
+     "bar",
+     "main"
+    ],
+    "night": [
+     "bar",
+     "back",
+     "asleep"
+    ]
+   }
+  },
+  "pike": {
+   "name": "Juno Pike",
+   "title": "Repair chief",
+   "role": "mechanic",
+   "faction": "holds",
+   "personality": "blunt",
+   "world": "cadence",
+   "spot": "printer",
+   "if": {
+    "flag": "dr_hask_aboard"
+   },
+   "schedule": {
+    "dawn": [
+     "printer",
+     "floor"
+    ],
+    "day": [
+     "printer",
+     "floor"
+    ],
+    "evening": [
+     "bar",
+     "main"
+    ],
+    "night": [
+     "printer",
+     "floor",
      "asleep"
     ]
    }
@@ -310,12 +407,11 @@
   "marchetti": {
    "name": "Lio Marchetti",
    "title": "Fence",
-   "role": "trader",
+   "role": "local",
    "faction": "gallows",
    "personality": "sly",
    "world": "gallows",
-   "spot": "market",
-   "replaces": "trader"
+   "spot": "market"
   },
   "pell": {
    "name": "Elder Yusra Pell",
@@ -468,6 +564,21 @@
    "name": "Gallowglass raiders",
    "template": "ph_assault",
    "count": 1
+  },
+  {
+   "if": {
+    "any": [
+     {
+      "flag": "dr_people_rising"
+     },
+     {
+      "flag": "dr_holds_with_us"
+     }
+    ]
+   },
+   "name": "The holds' volunteers",
+   "template": "ph_grunt",
+   "count": 2
   }
  ],
  "lines": {
@@ -670,11 +781,11 @@
    "world": "cadence",
    "title": "Someone Answers",
    "intro": [
-    "Somebody heard the Cadence's distress call. Not IPS-N. A raider with a broken-nosed hull and a voice on the comms like warm honey: Captain Corvo Hask.",
-    "\"Saint Cadence, you sound like you've had a hard month. Let's talk about what you've got that I want.\""
+    "Somebody heard the Cadence's distress call. Not IPS-N: the Gannet, a patched-up raider hauler that has been home to three thousand people for two generations, with markets in her holds and children who've never seen a sky.",
+    "Her captain, Corvo Hask, has a voice on the comms like warm honey: \"Saint Cadence, my ship is dying and yours has room. Let's talk.\""
    ],
    "briefing": [
-    "Hask's boarding party is coming through the docking ring. Whatever we decide about him, we decide it standing up.",
+    "Hask's boarding party is coming through the docking ring to make sure the talk goes his way. Whatever we decide about him, we decide it standing up.",
     "Hold the ring."
    ],
    "hook": {
@@ -770,7 +881,7 @@
    "title": "First Blood",
    "intro": [
     "{start_line}",
-    "Hask has given the Cadence a new name on her transponder and a new trade. \"We take what the Union doesn't miss,\" he says. \"And you, my lancers, are how we take it.\""
+    "The Cadence is a town now: three thousand of Hask's people in her holds, market stalls in her cargo bays, laundry strung across the crew deck. Everyone works. The trade that feeds them all is raiding. \"We take what the Union doesn't miss,\" Hask says. \"And you, my lancers, are how we take it.\""
    ],
    "intro_vars": {
     "start_line": [
@@ -787,13 +898,13 @@
       "text": "You reached Gallows Reach in a lifeboat that smelled of fear and coolant. The Cadence was docked there a week later, under Hask's colours. He was hiring."
      },
      {
-      "text": "Hask and Tamsin shook on it over Captain Kell's empty chair: Hask's guns, the Cadence's hull, one crew."
+      "text": "Hask and Tamsin shook on it over Captain Kell's empty chair: the Gannet's people, the Cadence's hull, one crew."
      }
     ]
    },
    "briefing": [
     "A Harrison Armory supply freighter, the Brightwater, running light on escorts. Board her, take the hold.",
-    "Oh, and before you go: there's a vat in the medical bay. Everyone on my crew gets a template in it. One pilot dies, so what? We wake another."
+    "And before you go: there's a vat in the medical bay. Everyone who works aboard gets a template in it. We've buried too many good people out here. This ship doesn't do that any more."
    ],
    "hook": {
     "template": "seize_ship",
@@ -829,7 +940,7 @@
      },
      {
       "who": "npc",
-      "text": "Your prize, your call. Though I'll say: a crew that talks is a crew that tells the Union where we went."
+      "text": "Your prize, your call. Though I'll say: a crew that talks is a crew that tells the Union where three thousand of my people are sleeping."
      }
     ],
     "choices": [
@@ -850,6 +961,10 @@
        {
         "trust": "hask",
         "add": -1
+       },
+       {
+        "renown": 1,
+        "why": "they let the Brightwater's crew go"
        }
       ]
      },
@@ -882,11 +997,15 @@
        },
        {
         "trust": "hask",
-        "add": 2
+        "add": -1
        },
        {
         "trust": "tamsin",
         "add": -3
+       },
+       {
+        "renown": -2,
+        "why": "the Brightwater's crew went out the airlock"
        }
       ]
      }
@@ -922,7 +1041,7 @@
    "title": "Hask's Cut",
    "intro": [
     "{raid_line}",
-    "Hask divides the take in the mess, in front of everyone. The captain's share is half. The lancers' share is a tenth."
+    "Hask divides the take in the mess, in front of everyone. Half goes to the ship: food, air, the repair crews, the families in the holds. A fifth to the captain. A tenth to the lance."
    ],
    "intro_vars": {
     "raid_line": [
@@ -973,11 +1092,11 @@
     "lines": [
      {
       "who": "npc",
-      "text": "Half for the captain. A tenth for the lance. That's how it's always been on my ships."
+      "text": "Half for the ship, a fifth for the captain, a tenth for the lance. That keeps three thousand people fed and nobody fighting over the scraps."
      },
      {
       "who": "npc",
-      "text": "Unless one of you would like to tell the crew why it should be different."
+      "text": "If the lance wants more, it can tell the holds whose bread it's coming out of."
      }
     ],
     "choices": [
@@ -999,7 +1118,7 @@
         "agenda": {
          "pilot": "speaker",
          "kind": "grievance",
-         "why": "Hask's half while the pilots bleed for a tenth"
+         "why": "a tenth for the lance while the lance does the bleeding"
         }
        }
       ]
@@ -1022,6 +1141,10 @@
        {
         "trust": "tamsin",
         "add": 2
+       },
+       {
+        "renown": 1,
+        "why": "the lance stood up to the captain in the mess"
        }
       ]
      },
@@ -1123,6 +1246,10 @@
        {
         "trust": "hask",
         "add": 1
+       },
+       {
+        "renown": 1,
+        "why": "the lance faced down Vosk's fleet"
        }
       ]
      },
@@ -1242,7 +1369,7 @@
      },
      {
       "who": "npc",
-      "text": "Lancer! Hold the breach. We'll come back for you. Probably."
+      "text": "Lancer! Hold the breach two minutes. I'll bring her back for you, I swear it on my people."
      }
     ],
     "choices": [
@@ -1270,6 +1397,10 @@
          "kind": "grievance",
          "why": "Hask left them holding the breach"
         }
+       },
+       {
+        "renown": 1,
+        "why": "a pilot held the breach for the ship"
        }
       ]
      },
@@ -1306,6 +1437,10 @@
        {
         "trust": "tamsin",
         "add": 2
+       },
+       {
+        "renown": 1,
+        "why": "the lance brought everyone home"
        }
       ]
      }
@@ -1653,6 +1788,10 @@
        {
         "trust": "hask",
         "add": -1
+       },
+       {
+        "renown": 1,
+        "why": "the lance stood up for Saltmarrow"
        }
       ]
      },
@@ -1731,10 +1870,28 @@
    "world": "cadence",
    "title": "Two Crews",
    "intro": [
-    "The Cadence has two crews now: the old hands, who came aboard under IPS-N and follow Tamsin Reyes, and Hask's people, who came aboard with Hask.",
+    "The Cadence has two crews now: the old hands, who came aboard under IPS-N and follow Tamsin Reyes, and the Gannet's people, who follow Hask.",
+    "{people_line}",
     "{grudge_line}"
    ],
    "intro_vars": {
+    "people_line": [
+     {
+      "if": {
+       "unrest": 2
+      },
+      "text": "And down in the holds, people have started asking out loud why the captain keeps sending their protectors away."
+     },
+     {
+      "if": {
+       "renown": 3
+      },
+      "text": "The children in the holds play at being your lance. Hask has noticed."
+     },
+     {
+      "text": "Hask keeps the peace between them, mostly."
+     }
+    ],
     "grudge_line": [
      {
       "if": {
@@ -1774,11 +1931,11 @@
     "lines": [
      {
       "who": "npc",
-      "text": "Hask counts pilots like ammunition. One spent, another in the vat. I didn't take this ship from Kell to give it to a man like that."
+      "text": "Hask keeps the peace by keeping you small. Every time the holds cheer for the lance, he finds you a job on the far side of the ship and his own people take the credit."
      },
      {
       "who": "npc",
-      "text": "When it comes to it, and it will, whose side are you on?"
+      "text": "People down there call you their protectors. He can't stand it. When it comes to it, and it will, whose side are you on?"
      }
     ],
     "choices": [
@@ -1839,6 +1996,32 @@
      },
      {
       "condition": {
+       "unrest": 2
+      },
+      "text": "The holds don't want Hask's peace. They want us. Let's stop pretending otherwise.",
+      "tone": "blunt",
+      "tags": [
+       "bold"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_people_rising"
+       },
+       {
+        "set_flag": "dr_moved"
+       },
+       {
+        "trust": "tamsin",
+        "add": 1
+       },
+       {
+        "trust": "siddiqui",
+        "add": 2
+       }
+      ]
+     },
+     {
+      "condition": {
        "agenda": "grievance",
        "pilot": "speaker"
       },
@@ -1872,6 +2055,12 @@
       "flag": "dr_driver"
      },
      "set": "driver"
+    },
+    {
+     "if": {
+      "flag": "dr_people_rising"
+     },
+     "set": "the_holds"
     },
     {
      "if": {
@@ -2092,12 +2281,18 @@
      },
      {
       "if": {
+       "flag": "dr_people_rising"
+      },
+      "text": "The holds have had enough of Hask's peace. Tonight Mother Siddiqui's families and the old hands move on the bridge together, and they've asked the lance to lead them."
+     },
+     {
+      "if": {
        "flag": "dr_moved"
       },
       "text": "Tonight the old hands move on the bridge. You're with them."
      },
      {
-      "text": "Tamsin Reyes has made her move without you. Her people have the hangar and they're coming for the bridge, and Hask is calling for his lancers."
+      "text": "Tamsin Reyes has made her move without you. Her people have the hangar and they're coming for the bridge, and Hask is calling for his lancers: \"Hold the bridge with me, and nobody aboard ever forgets it.\""
      }
     ]
    },
@@ -2645,7 +2840,7 @@
    },
    "kind": "bittersweet",
    "title": "Hask's Expendables",
-   "text": "Corvo Hask takes the score and keeps the ship. At Gallows Reach he cuts the lance loose with their mechs, a handshake and nothing else. \"One pilot dies, so what,\" he says, not unkindly. \"I'll find others.\" He already has."
+   "text": "Corvo Hask keeps the ship, and the peace. The lance had become too loved for a captain to live with: at Gallows Reach he thanks you in front of the whole ship, gives you your mechs and a fair share, and sets you ashore. The holds never quite forgive him. The Cadence sails on without her protectors."
   },
   {
    "id": "brought_to_trial",
@@ -2700,7 +2895,7 @@
    ],
    "kind": "triumph",
    "title": "Captains of a Free Fleet",
-   "text": "With the Gallowglass treasury and the Gallowglass broken, the Reach's ships needed someone to follow. They chose the Cadence. There's a free fleet on the fringe now, with a charter and a vote and no captain who counts pilots like ammunition."
+   "text": "With the Gallowglass treasury and the Gallowglass broken, the Reach's ships needed someone to follow. They chose the Cadence. There's a free fleet on the fringe now, with a charter and a vote and no captain who's afraid of his own heroes."
   },
   {
    "id": "legend_of_the_fringe",
@@ -3001,7 +3196,7 @@
     "offer": {
      "speaker": "npc",
      "line": [
-      "Here's how it is: I'm taking this ship. The crew can come with her. The lifeboats are still there for anyone who'd rather take their chances."
+      "Here's how it is. The Gannet won't last the year, and your Cadence has holds big enough for all my people. We're coming aboard, and there's a place for anyone who'll work: everyone works on my ship. The lifeboats are there for anyone who'd rather not."
      ],
      "choices": [
       {
@@ -3041,7 +3236,7 @@
     "stay": {
      "speaker": "npc",
      "line": [
-      "Welcome to my crew. You'll like it. Most do."
+      "Welcome aboard. We're a ship that looks after its own. You'll see."
      ],
      "end": true
     },
@@ -3432,6 +3627,19 @@
        ]
       },
       {
+       "id": "fame",
+       "text": "Why do you keep sending us to the far side of the ship?",
+       "tone": "blunt",
+       "tags": [
+        "curious"
+       ],
+       "next": "fame",
+       "once": true,
+       "condition": {
+        "unrest": 1
+       }
+      },
+      {
        "id": "insult",
        "text": "Does anyone on this ship actually like you?",
        "tone": "insult",
@@ -3456,14 +3664,14 @@
     "vat": {
      "speaker": "npc",
      "line": [
-      "Flash-grown, quick, quiet. Quite unlawful, so don't tell the Union. One pilot dies, so what? We wake another. There: you're in it now."
+      "Flash-grown, quick, quiet. Quite unlawful, so don't tell the Union. I've buried enough good pilots. There: you're in it now."
      ],
      "next": "menu"
     },
     "cut": {
      "speaker": "npc",
      "line": [
-      "Then fly better and live longer. Shares go up with seniority. Nobody's very senior on a lance."
+      "Shares are what keep three thousand people from each other's throats. Change one, and I'm changing them all. Bring me the holds, and we'll talk."
      ],
      "next": "menu"
     },
@@ -3475,11 +3683,18 @@
      ],
      "end": true
     },
+    "fame": {
+     "speaker": "npc",
+     "line": [
+      "Because a ship needs one captain, and the holds have started cheering for four. I like you. I need you. I can't have the holds choosing between us."
+     ],
+     "next": "menu"
+    },
     "bristle": {
      "speaker": "npc",
      "expression": "angry",
      "line": [
-      "Everyone who matters. Careful."
+      "Enough of them to keep the air on. Careful."
      ],
      "next": "menu"
     },
@@ -3487,6 +3702,209 @@
      "speaker": "npc",
      "line": [
       "Fly safe. Or at least profitably."
+     ],
+     "end": true
+    }
+   }
+  },
+  "dr_wen": {
+   "start": "greet",
+   "nodes": {
+    "greet": {
+     "speaker": "npc",
+     "line": [
+      "Sit down, lancer. You look like you need soup.",
+      "Back again. The usual?"
+     ],
+     "next": "menu"
+    },
+    "menu": {
+     "speaker": "npc",
+     "line": [
+      "What'll it be?"
+     ],
+     "choices": [
+      {
+       "id": "talk",
+       "text": "What are people saying?",
+       "tone": "warm",
+       "tags": [
+        "curious"
+       ],
+       "next": "talk",
+       "once": true
+      },
+      {
+       "id": "hask",
+       "text": "What do the holds really think of Hask?",
+       "tone": "courteous",
+       "tags": [
+        "curious"
+       ],
+       "next": "hask",
+       "once": true
+      },
+      {
+       "id": "leave",
+       "text": "Thanks, Wen.",
+       "tone": "leave",
+       "tags": [
+        "leave"
+       ],
+       "next": "farewell",
+       "pinned": true
+      }
+     ]
+    },
+    "talk": {
+     "speaker": "npc",
+     "line": [
+      "Nothing much. Who's sleeping with whose cousin. Whether the water ration's going down again."
+     ],
+     "next": "menu",
+     "branch": [
+      {
+       "if": {
+        "unrest": 2
+       },
+       "next": "talk_unrest"
+      },
+      {
+       "if": {
+        "renown": 3
+       },
+       "next": "talk_fame"
+      },
+      {
+       "if": {
+        "flag": "dr_ledger"
+       },
+       "next": "talk_ledger"
+      }
+     ]
+    },
+    "talk_unrest": {
+     "speaker": "npc",
+     "line": [
+      "That Hask is scared of you. That's what they're saying. Not where he can hear it. Yet."
+     ],
+     "next": "menu"
+    },
+    "talk_fame": {
+     "speaker": "npc",
+     "line": [
+      "The kids in hold six made little mechs out of ration tins. One of them's you. Hask walked past it this morning and didn't say a word."
+     ],
+     "next": "menu"
+    },
+    "talk_ledger": {
+     "speaker": "npc",
+     "line": [
+      "That somebody's been reading the captain's private books. And that what's in them isn't pretty."
+     ],
+     "next": "menu"
+    },
+    "hask": {
+     "speaker": "npc",
+     "line": [
+      "He brought three thousand of us out of a dying ship and nobody starved. That buys a lot of patience. It doesn't buy all of it."
+     ],
+     "next": "menu"
+    },
+    "farewell": {
+     "speaker": "npc",
+     "line": [
+      "Eat something."
+     ],
+     "end": true
+    }
+   }
+  },
+  "dr_siddiqui": {
+   "start": "greet",
+   "nodes": {
+    "greet": {
+     "speaker": "npc",
+     "line": [
+      "Our lancers. Come, sit. The children want to see your hands; they think pilots have metal ones."
+     ],
+     "next": "menu"
+    },
+    "menu": {
+     "speaker": "npc",
+     "line": [
+      "What can the holds do for you?"
+     ],
+     "choices": [
+      {
+       "id": "needs",
+       "text": "What do the holds need most?",
+       "tone": "warm",
+       "tags": [
+        "kind"
+       ],
+       "effects": [
+        {
+         "renown": 1,
+         "why": "the lance asked the families what they needed"
+        }
+       ],
+       "next": "needs",
+       "once": true
+      },
+      {
+       "id": "stand",
+       "text": "If it came to it, would the holds stand with us?",
+       "tone": "courteous",
+       "tags": [
+        "diplomatic"
+       ],
+       "effects": [
+        {
+         "set_flag": "dr_holds_with_us"
+        }
+       ],
+       "next": "stand",
+       "once": true,
+       "condition": [
+        {
+         "renown": 4
+        },
+        {
+         "flag": "dr_hask_aboard"
+        }
+       ]
+      },
+      {
+       "id": "leave",
+       "text": "Another time, Mother.",
+       "tone": "leave",
+       "tags": [
+        "leave"
+       ],
+       "next": "farewell",
+       "pinned": true
+      }
+     ]
+    },
+    "needs": {
+     "speaker": "npc",
+     "line": [
+      "Air that doesn't taste of the scrubbers. A school that isn't a cargo container. To be treated like people and not cargo. You can't fix the first two."
+     ],
+     "next": "menu"
+    },
+    "stand": {
+     "speaker": "npc",
+     "line": [
+      "We've stood behind captains for two generations. If the lance asks, the holds will stand beside it. Ask carefully."
+     ],
+     "next": "menu"
+    },
+    "farewell": {
+     "speaker": "npc",
+     "line": [
+      "Come back for supper."
      ],
      "end": true
     }
@@ -3599,11 +4017,11 @@
    "npc": "hask",
    "lines": [
     {
-     "text": "There's our {name}. See? Nobody stays dead on my ship. That's the deal."
+     "text": "Welcome back, {name}. Quietly, please. The holds took it hard when you died, and I'd rather they didn't make a saint of you."
     },
     {
      "who": "narrator",
-     "text": "Hask is smiling. It doesn't reach his eyes. He's already counting what the next one will cost."
+     "text": "Hask means it kindly. He's also already thinking about what the holds will say."
     }
    ]
   },
@@ -3631,6 +4049,146 @@
    ]
   }
  ],
+ "society": {
+  "world": "cadence",
+  "people": "The people of the Cadence",
+  "captain_if": [
+   {
+    "flag": "dr_hask_aboard"
+   },
+   {
+    "not": {
+     "flag": "dr_new_captain"
+    }
+   },
+   {
+    "not": {
+     "any": [
+      {
+       "flag": "dr_hask_marooned"
+      },
+      {
+       "flag": "dr_hask_killed"
+      }
+     ]
+    }
+   }
+  ],
+  "quell_at": [
+   3,
+   5,
+   7,
+   9
+  ],
+  "quells": [
+   {
+    "id": "credit",
+    "flag": "dr_credit_taken",
+    "text": "At the evening meal Hask thanks \"the whole crew\" for the lance's last job, and names his own people one by one. Down in the holds, people notice whose names he left out."
+   },
+   {
+    "id": "sideline",
+    "flag": "dr_sidelined",
+    "text": "Hask gives the next market patrol to his own people and sends the lance to scrub the reactor baffles. \"Nobody's too good for the hard jobs,\" he says. The holds think otherwise."
+   },
+   {
+    "id": "reassign",
+    "flag": "dr_reassigned",
+    "text": "Hask moves the lance's bunks from the crew deck to the far end of the cargo spine, \"closer to the hangar\". The families who used to stop by with food have a long walk now. Some make it anyway."
+   },
+   {
+    "id": "speech",
+    "flag": "dr_speech",
+    "text": "Hask gives a speech in the mess about how no one person keeps a ship alive. Everyone knows who he means. Mother Siddiqui walks out halfway through, and half the holds go with her."
+   }
+  ],
+  "jobs": [
+   {
+    "id": "repairs",
+    "name": "A repair shift",
+    "skills": [
+     "sk_hack_or_fix",
+     "sk_patch"
+    ],
+    "spot": "printer",
+    "renown": 1,
+    "pay": 60,
+    "favor": "the repair crews",
+    "talk": "worked a double shift with Juno Pike's repair crews",
+    "text": "Twelve hours in the air scrubbers with Juno Pike's crew. The holds breathe a little easier tonight.",
+    "fail": "A coupling blows and the deck loses air for an hour. Nobody's hurt. Pike is furious."
+   },
+   {
+    "id": "dispute",
+    "name": "Settle a dispute in the holds",
+    "skills": [
+     "sk_read_a_situation",
+     "sk_charm"
+    ],
+    "spot": "plaza",
+    "renown": 1,
+    "pay": 40,
+    "favor": "the families of the holds",
+    "talk": "settled a feud in the holds without anyone getting hurt",
+    "text": "Two families, one water ration, one cabin wall. By the end of the night they're sharing both.",
+    "fail": "It ends with a punch thrown and a cabin wall kicked in. Hask's people have to break it up."
+   },
+   {
+    "id": "markets",
+    "name": "Guard the markets",
+    "skills": [
+     "sk_threaten",
+     "sk_spot"
+    ],
+    "spot": "market",
+    "renown": 1,
+    "pay": 50,
+    "favor": "the market stallholders",
+    "talk": "kept the thieves out of the markets",
+    "text": "A quiet night in the cargo-bay markets, because everyone could see a lancer standing in the middle of it.",
+    "fail": "Three stalls are cleaned out while you're watching the wrong aisle."
+   }
+  ],
+  "side_jobs": [
+   {
+    "template": "escort_convoy",
+    "title": "Escort Run",
+    "objective": "Escort the Cadence's supply shuttles back from the ice moon.",
+    "stakes": "The holds eat what those shuttles carry.",
+    "question": "Do the shuttles get home?",
+    "place": "the ice-moon run",
+    "enemy": "scavengers",
+    "foes": "freighter",
+    "patron": "bede",
+    "renown": 1
+   },
+   {
+    "template": "clear_raiders",
+    "title": "Thieves in the Markets",
+    "objective": "Drive the armed gang out of the cargo-bay markets.",
+    "stakes": "Families have been robbed at gunpoint.",
+    "question": "Can the markets be made safe?",
+    "place": "the cargo-bay markets",
+    "enemy": "a gang from the Gannet's old crew",
+    "foes": "colonists",
+    "patron": "siddiqui",
+    "renown": 2,
+    "in_town": true
+   },
+   {
+    "template": "explore_derelict",
+    "title": "Salvage for the Holds",
+    "objective": "Strip the derelict ore tug for hull plate the repair crews need.",
+    "stakes": "The Cadence's patched holds won't take another winter.",
+    "question": "What's still alive on the tug?",
+    "place": "the derelict tug",
+    "enemy": "the tug's old defence drones",
+    "foes": "drones",
+    "patron": "pike",
+    "renown": 1
+   }
+  ]
+ },
  "vars": {
   "p2_enemy": [
    {

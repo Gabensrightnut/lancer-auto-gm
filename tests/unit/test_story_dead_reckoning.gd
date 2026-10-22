@@ -283,3 +283,47 @@ func test_raids_pay_by_house_rule() -> void:
 	expect(r["ok"], str(r.get("reason", "")))
 	expect_eq(Plunder.level(os, oc, "cargo"), 1)
 	expect(not oe.submit(os, oc, {"type": "buy_upgrade", "seat": "gm", "params": {"slot": "printer"}})["ok"], "can't afford the printer yet")
+
+
+func test_the_holds_love_the_lance_and_hask_keeps_the_peace() -> void:
+	var t := fresh(590)
+	var s: StoryState = t["story"]
+	var c: Campaign = t["campaign"]
+	var e: StoryEngine = t["engine"]
+	for p: int in [0, 0, 0]:
+		play_chapter(t, p)
+	expect((s.hub["npcs"] as Array).has("cs_siddiqui") and (s.hub["npcs"] as Array).has("cs_wen"), "Hask's people live aboard now")
+	expect(s.hooks.any(func(h: Dictionary) -> bool: return h.has("ship_job")), "work for the holds on the board, besides the raid")
+	# Everyone works: one shift per pilot between jobs.
+	var r := e.submit(s, c, {"type": "ship_work", "seat": "gm", "params": {"job": "repairs", "pilot": t["a"]}})
+	expect(r["ok"], str(r.get("reason", "")))
+	expect((r["events"] as Array).any(func(x: Dictionary) -> bool: return x["type"] == "narrative_check"), "a skill check (Core p.45)")
+	expect(not e.submit(s, c, {"type": "ship_work", "seat": "gm", "params": {"job": "markets", "pilot": t["a"]}})["ok"], "one shift each")
+	# The lance gets famous; Hask cuts it down to size, and the holds resent him for it.
+	var before := ShipLife.unrest(s)
+	var ev := ShipLife.add_renown(s, c, 5, "test")
+	expect(ev.any(func(x: Dictionary) -> bool: return x["type"] == "captain_quells"), "Hask keeps the peace")
+	expect(ShipLife.unrest(s) > before, "and the holds don't like it")
+	expect(s.get_standing("The people of the Cadence") >= 1, "renown shows as standing with the people aboard")
+	ShipLife.add_renown(s, c, 3, "test")
+	expect(ShipLife.unrest(s) >= 2)
+	expect(StoryConditions.check({"unrest": 2}, s, c, {}))
+	# Away from the ship there's no ship's work.
+	for p: int in [0, 0]:
+		play_chapter(t, p)
+	expect_eq(chapter_id(t), "c6_gallowglass")
+	expect(not e.submit(s, c, {"type": "ship_work", "seat": "gm", "params": {"job": "repairs", "pilot": t["b"]}})["ok"], "not aboard")
+
+
+func test_the_holds_can_drive_the_mutiny() -> void:
+	var t := fresh(595)
+	var s: StoryState = t["story"]
+	var c: Campaign = t["campaign"]
+	for p: int in [0, 0, 0, 0, 1, 0, 2, 1, 1, 0]:
+		play_chapter(t, p)
+	expect_eq(chapter_id(t), "c11_factions")
+	(ShipLife.state(s))["unrest"] = 2
+	play_chapter(t, 0, true, "They want us")
+	expect((t["offered"] as Array).any(func(x: String) -> bool: return x.contains("They want us")), "with the holds angry, the lance can say so")
+	expect_eq(str(CampaignScript.state(s)["branches"]["b11"]), "the_holds")
+	expect(CampaignScript.fill(s, c, "{cap_line}", CampaignScript.script(c)["chapters"]["c13_captaincy"]).contains("Siddiqui"), "the families move on the bridge with you")

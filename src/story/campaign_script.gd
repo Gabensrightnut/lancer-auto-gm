@@ -204,6 +204,9 @@ static func start_chapter(story: StoryState, campaign: Campaign, cid: String) ->
 	story.add_log("%s: %s" % [ch.get("title", ""), intro])
 	for h: Dictionary in fill_board(story, campaign):
 		events.append({"type": "hook_added", "hook": h})
+	# Work for the people aboard the squad's ship (ShipLife).
+	for h: Dictionary in ShipLife.side_jobs(story, campaign):
+		events.append({"type": "hook_added", "hook": h})
 	if bool(ch.get("final", false)):
 		var names: Array = (fill_allies(story, campaign) as Array).map(func(a: Dictionary) -> String: return a["name"])
 		st["branches"]["b13"] = ", ".join(PackedStringArray(names)) if not names.is_empty() else "alone"
