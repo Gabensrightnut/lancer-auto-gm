@@ -11,6 +11,13 @@ var _legs: Array[Node3D] = []
 var _arms: Array[Node3D] = []
 var _body: Node3D
 var _label: Label3D
+var _label_color := Color(0.92, 0.95, 1.0)
+## Name labels: their size on screen stops growing inside this distance (meters), and they
+## fade out when the camera is right on top of someone.
+const LABEL_FULL_SIZE_AT := 12.0
+const LABEL_MIN_SCALE := 0.3
+const LABEL_FADE := Vector2(1.6, 3.2)
+const LABEL_PIXEL := 0.006
 var _ring: MeshInstance3D
 
 
@@ -76,7 +83,7 @@ func build(l: Dictionary, title: String = "", subtitle: String = "", pilot_suit:
 		_label.text = title + ("\n" + subtitle if subtitle != "" else "")
 		_label.font_size = 40
 		_label.outline_size = 10
-		_label.pixel_size = 0.006
+		_label.pixel_size = LABEL_PIXEL
 		_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		_label.no_depth_test = true
 		_label.position = Vector3(0, 2.25, 0)
@@ -89,10 +96,12 @@ func set_highlight(on: bool, color: Color = Color(1.0, 0.82, 0.4)) -> void:
 	if _ring != null:
 		_ring.material_override = MeshKit.overlay_material(Color(color, 0.7) if on else Color(0, 0, 0, 0.28))
 	if _label != null:
-		_label.modulate = color if on else Color(0.92, 0.95, 1.0)
+		_label_color = color if on else Color(0.92, 0.95, 1.0)
+		_label.modulate = _label_color
 
 
 func _process(delta: float) -> void:
+	_fit_label()
 	_t += delta * (7.0 if walking > 0.05 else 1.6)
 	var swing := sin(_t) * 0.6 * walking
 	for i in range(_legs.size()):
@@ -101,3 +110,19 @@ func _process(delta: float) -> void:
 		_arms[i].rotation.x = -swing * 0.8 * (1.0 if i == 0 else -1.0)
 	if _body != null:
 		_body.position.y = absf(sin(_t)) * 0.04 * walking + (sin(_t) * 0.006 if walking <= 0.05 else 0.0)
+
+
+## Keeps the name label readable: up close it shrinks so it never covers the screen (its size
+## on screen is capped at what it is from LABEL_FULL_SIZE_AT away), and very close it fades out.
+func _fit_label() -> void:
+	if _label == null or not is_inside_tree():
+		return
+	var cam := get_viewport().get_camera_3d()
+	if cam == null:
+		return
+	var dist := cam.global_position.distance_to(_label.global_position)
+	_label.pixel_size = LABEL_PIXEL * clampf(dist / LABEL_FULL_SIZE_AT, LABEL_MIN_SCALE, 1.0)
+	var a := clampf((dist - LABEL_FADE.x) / (LABEL_FADE.y - LABEL_FADE.x), 0.0, 1.0)
+	_label.modulate = Color(_label_color, a)
+	_label.outline_modulate = Color(0, 0, 0, a)
+	_label.visible = a > 0.01

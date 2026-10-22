@@ -190,6 +190,11 @@ static func can_auto_skip(s: StoryState, c: Campaign, local_seat: String) -> boo
 	return humans <= 1
 
 
+## The reply that ends a conversation (scenes' "leave" / "back_off" choices).
+static func is_leave(o: Dictionary) -> bool:
+	return str(o.get("id", "")) in ["leave", "back_off"]
+
+
 func toggle_log() -> void:
 	_log_panel.visible = not _log_panel.visible
 	_refresh_log()
@@ -229,6 +234,8 @@ func _build_choices(offered: Array) -> void:
 		i += 1
 		var b := StoryStyle.button("", 17, true)
 		var label := "%d.  %s" % [i, o["text"]]
+		if is_leave(o):
+			label = "%d.  Leave (Esc):  %s" % [i, o["text"]]
 		var extra := PackedStringArray()
 		if o.has("badge"):
 			extra.append("[%s]" % o["badge"])
@@ -378,6 +385,17 @@ func _unhandled_input(ev: InputEvent) -> void:
 		elif k == KEY_L:
 			toggle_log()
 			get_viewport().set_input_as_handled()
+		elif k == KEY_ESCAPE:
+			# Esc takes the way out when there is one (the log closes first).
+			if _log_panel.visible:
+				toggle_log()
+				get_viewport().set_input_as_handled()
+				return
+			for o: Dictionary in Dialogue.offered(story):
+				if is_leave(o):
+					choose(str(o["id"]))
+					get_viewport().set_input_as_handled()
+					return
 		elif k >= KEY_1 and k <= KEY_6:
 			var offered := Dialogue.offered(story)
 			var i := k - KEY_1

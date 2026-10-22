@@ -33,9 +33,28 @@ func _init() -> void:
 	scroll.offset_left = 80
 	scroll.offset_right = -80
 	scroll.offset_top = 24
-	scroll.offset_bottom = -24
+	scroll.offset_bottom = -92
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	add_child(scroll)
+	# The way forward is always on screen, however long the page gets (4 pilots' history).
+	var foot := PanelContainer.new()
+	foot.name = "Footer"
+	foot.add_theme_stylebox_override("panel", StoryStyle.panel(StoryStyle.EDGE, Color(0.04, 0.05, 0.08, 0.98), 2, 0, 14))
+	foot.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	foot.offset_top = -80
+	add_child(foot)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	foot.add_child(row)
+	var hint := StoryStyle.label("Scroll down for every question ↓  (all of them are optional)", 14, StoryStyle.DIM)
+	row.add_child(hint)
+	_msg = StoryStyle.label("", 14, StoryStyle.RED)
+	_msg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(_msg)
+	var go := StoryStyle.button("Start the campaign", 18)
+	go.name = "StartButton"
+	go.pressed.connect(_apply)
+	row.add_child(go)
 	_box = VBoxContainer.new()
 	_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_box.add_theme_constant_override("separation", 10)
@@ -120,11 +139,6 @@ func _build() -> void:
 		cb.text = "%s: %s" % [d["content"][id]["name"], d["content"][id]["text"]]
 		_content[id] = cb
 		_box.add_child(cb)
-	_msg = StoryStyle.label("", 14, StoryStyle.RED, 1200)
-	_box.add_child(_msg)
-	var go := StoryStyle.button("Start the campaign", 18)
-	go.pressed.connect(_apply)
-	_box.add_child(go)
 
 
 func _roll_button(cb: Callable) -> Button:
