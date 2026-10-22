@@ -185,3 +185,26 @@ func test_fade_cloak() -> void:
 	F.load_dice(s, [2])
 	F.act(e, s, "start_turn", "a")
 	expect(not GearSystems.intangible(a), "rolled 3 or less: back in realspace this turn")
+
+
+func test_pinaka_delayed() -> void:
+	_setup([], Vector2i(8, 0))
+	a.loadout["weapons"] = [{"key": "0:0", "id": "mw_pinaka_missiles", "name": "Pinaka Missiles", "mount": 0, "size": "Heavy", "type": "Launcher",
+		"damage": [{"type": "Explosive", "val": "2d6"}], "range": [{"type": "Range", "val": 15}, {"type": "Blast", "val": 1}], "tags": [{"id": "tg_arcing"}]}]
+	var out := F.act(e, s, "skirmish", "a", {"weapon": "0:0", "aims": [[8, 0]], "delayed": true})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(Zones.of_kind(s, "pinaka_strike").size(), 1, "the target area is marked")
+	expect(a.has_status("Slowed"))
+	var round := s.round_number
+	F.act(e, s, "end_turn", "a")
+	F.act(e, s, "start_turn", "t")
+	F.act(e, s, "end_turn", "t")
+	expect_eq(t.hp, 40, "not yet: it lands at the end of the next round")
+	F.act(e, s, "start_turn", "a")
+	F.act(e, s, "end_turn", "a")
+	F.act(e, s, "start_turn", "t")
+	F.load_dice(s, [15, 6, 6, 6])
+	F.act(e, s, "end_turn", "t")
+	expect_eq(s.round_number, round + 2)
+	expect(t.hp < 40, "landed: 3d6 explosive")
+	expect(Zones.of_kind(s, "pinaka_strike").is_empty())

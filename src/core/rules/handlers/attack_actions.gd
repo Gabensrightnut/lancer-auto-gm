@@ -133,6 +133,45 @@ static func backblast(state: GameState, u: Unit, target: Unit) -> Array[Dictiona
 	return events
 
 
+## Pinaka delayed impact: the areas are marked for everyone and land at the end of the next
+## round for 3d6 explosive instead of 2d6; the user is Slowed until the end of its next turn.
+static func delay_pinaka(state: GameState, u: Unit, w: Dictionary, a: Dictionary) -> Array[Dictionary]:
+	var aims: Array = a.get("aims", [a.get("aim", [])])
+	var events: Array[Dictionary] = Attacks._spend_weapon(state, u, w)
+	var cells: Array = []
+	for aim: Variant in aims:
+		if aim is Array and (aim as Array).size() >= 2:
+			cells.append_array(Zones.cells_around(state, [Vector2i(int(aim[0]), int(aim[1]))] as Array[Vector2i], 1))
+	events.append_array(Zones.add(state, {"kind": "pinaka_strike", "owner": u.id, "label": "Pinaka: incoming", "cells": cells,
+		"center": aims[0], "aims": aims, "weapon": String(w.get("key", "")), "land_round": state.round_number + 1, "rule_ref": "weapons: Pinaka Missiles"}))
+	events.append_array(Combat.add_status(state, u, "Slowed", u.id, u.id))
+	u.turn["attacked"] = true
+	return events
+
+
+## End of a round: delayed Pinaka strikes due now land.
+static func land_delayed(state: GameState) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for z: Dictionary in Zones.of_kind(state, "pinaka_strike").duplicate():
+		if int(z.get("land_round", 0)) > state.round_number:
+			continue
+		events.append_array(Zones.remove(state, String(z["id"]), "landed"))
+		var u := state.unit(String(z.get("owner", "")))
+		if u == null or u.destroyed:
+			continue  # PROVISIONAL: nobody left to guide them in
+		var w: Dictionary = Weapons.find(u, String(z.get("weapon", ""))).duplicate(true)
+		if w.is_empty():
+			continue
+		for d: Dictionary in w.get("damage", []):
+			d["val"] = "3d6"
+		var shared := {}
+		var first := true
+		for aim: Variant in z.get("aims", []):
+			events.append_array(Areas.attack(state, u, w, {"aim": aim, "_shared": shared, "skip_spend": true, "reaction": true, "delayed_strike": true}))
+			first = false
+	return events
+
+
 ## Throughbolt Rounds: a line 3 path from you through anything in the way; everything on it
 ## takes 2 AP kinetic; the attack is then measured from the end of the path.
 static func throughbolt(state: GameState, u: Unit, a: Dictionary) -> Dictionary:
@@ -156,6 +195,8 @@ static func throughbolt(state: GameState, u: Unit, a: Dictionary) -> Dictionary:
 
 
 static func _fire(state: GameState, u: Unit, w: Dictionary, a: Dictionary, aux: bool) -> Array[Dictionary]:
+	if a.get("delayed", false) and String(w.get("id", "")) == "mw_pinaka_missiles":
+		return AttackActions.delay_pinaka(state, u, w, a)
 	if Weapons.area(w) != "" and a.has("aims") and int(WeaponRules.rules(w).get("blasts", 1)) > 1:
 		# Pinaka: up to two blast areas from one attack, damage rolled once.
 		var events: Array[Dictionary] = []

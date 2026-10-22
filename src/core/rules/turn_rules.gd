@@ -165,6 +165,7 @@ static func finish_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 	var next := _next_side(state, u.side)
 	if next == "":
 		events.append_array(Environments.round_ending(state))
+		events.append_array(AttackActions.land_delayed(state))
 		events.append_array(_start_round(state, u.side))
 	else:
 		state.turn_side = next
