@@ -86,3 +86,23 @@ func test_pilot_on_foot_model() -> void:
 	expect(m.meshes.size() > 5, "built from the token figure")
 	expect(m.eye != null and m.torso != null, "has the anchors effects use")
 	m.free()
+
+
+func test_human_figure_dresses_from_the_portrait() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3
+	var look := PortraitSpec.randomize(rng)
+	look["parts"]["hats"]["option"] = "helmet"
+	look["parts"]["outer_outfit"]["option"] = "coat"
+	var f := HumanFigure.new().build(look, {"gear": {"pack": true}})
+	var shown := {}
+	for m: MeshInstance3D in f.find_children("*", "MeshInstance3D", true, false):
+		if m.visible:
+			shown[String(m.name)] = true
+	expect(shown.has("Hat_helmet") and shown.has("Coat") and shown.has("Gear_pack"), "helmet, coat and pack are on: %s" % shown.keys())
+	expect(not shown.keys().any(func(n: String) -> bool: return n.begins_with("Hair_")), "a helmet hides the hair")
+	for a: String in ["idle", "walk", "run", "talk", "sneak", "sit", "aim", "hit", "fall"]:
+		expect(f.anim.has_animation(a), "has the %s animation" % a)
+	f.set_speed(3.5)
+	expect_eq(f.state, "run", "fast movement runs")
+	f.free()

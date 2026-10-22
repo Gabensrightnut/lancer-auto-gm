@@ -434,6 +434,9 @@ func _moved(e: Dictionary) -> void:
 	# Time per space: bigger mechs take longer, heavier strides.
 	var step_time := ({"walk": 0.42, "boost": 0.28, "fly": 0.3, "involuntary": 0.15}.get(mode, 0.35) as float) * (0.85 + 0.15 * maxf(mv.model.size, 0.5))
 	var model := mv.model
+	var human: HumanFigure = model.get_meta("human") if model.has_meta("human") else null
+	if human:
+		human.play("run" if mode == "boost" else "walk")
 	var legged := mode == "walk" or mode == "boost"
 	model.airborne = mode == "fly"
 	if legged or mode == "fly":
@@ -507,6 +510,8 @@ func _moved(e: Dictionary) -> void:
 	stop.tween_callback(func() -> void: model.set_walk(0.0))
 	if thruster:
 		thruster.queue_free()
+	if human:
+		human.play("idle")
 	mv.place(_cell_of(last), int(last[2]) if last.size() > 2 else battle.map.ground_height(_cell_of(last)))
 
 
