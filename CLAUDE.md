@@ -30,7 +30,9 @@ Run the tests before every commit. For visual work, take a screenshot and look a
 - **Grid-agnostic.** Only `src/core/grid/` knows hex vs square. Use `GridLayout` everywhere else.
 - **Secrets stay on the host.** Clients only ever get `ViewFilter.view_for()` output.
 - **All randomness through `state.dice`.**
-- **Nothing taken from other games.** Models, art, animation and code are made here. Mechs are
+- **Nothing taken from other games.** Models, art, animation and code are made here. One approved
+  exception (user decision): MakeHuman/MPFB2 open-source CC0 base meshes for human bodies/faces,
+  with every skin/hair license checked and credited. Mechs are
   modeled to look as close as possible to Massif's official frame art (user's decision), using
   the art in frames.json `image_url` as reference only; never put official images or
   Lancer Tactics files in the game or repo. Lancer

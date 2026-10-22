@@ -268,6 +268,12 @@ them, and they disappear when the turn moves on.
 - The user, seeing a town NPC face to face: "people here still too blocky and round for my
   liking". Next pass on people: less round, less blocky, closer to the Lancer art style, with
   the most detail on head, face and hands (the face-to-face camera is about 1.25 m away).
+- Follow-up from the user: "somewhat realistic", at Dawn of War IV / Titanfall 2 pilot level of
+  realism for faces and general features (realism level only; nothing copied).
+- **Decision (user picked option A):** human bodies and faces use MakeHuman/MPFB2 open-source
+  assets (CC0 base mesh and shape targets; each skin/hair asset's license checked, credited in
+  CREDITS) with our own Lancer-style gear on top. This is the one approved exception to
+  "models made in house": open-source CC0 base meshes, never assets from games.
 
 ### Every place is its own place
 - No two towns look the same: every hub and every map gets its own layout, building mix and
