@@ -1066,5 +1066,12 @@
       "tech_attack": true,
       "label": "Slave Systems"
     }
-  ]
+  ],
+  "ms_sisyphus_class_nhp:Bend Probability": [
+    {
+      "op": "bend_probability",
+      "label": "Bend Probability"
+    }
+  ],
+  "ms_sisyphus_class_nhp:Probabilistic Cannibalism": []
 }

@@ -331,3 +331,20 @@ func test_metahook_shares_heat_and_systems() -> void:
 	expect_eq(a.heat, 2, "heat is shared")
 	Combat.add_status(s, a, "Jammed", "test")
 	expect(ally.has_status("Jammed"), "conditions are shared")
+
+
+func test_sisyphus() -> void:
+	_setup(["ms_sisyphus_class_nhp"], Vector2i(4, 0))
+	F.load_dice(s, [19, 2])
+	var out := F.act(e, s, "activate", "a", {"ability": _key("Bend Probability")})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(a.counters["bent"], [19, 2])
+	F.act(e, s, "end_turn", "a")
+	F.act(e, s, "start_turn", "t")
+	F.load_dice(s, [18, 3])  # t would hit a (18 vs Evasion 8)...
+	out = F.act(e, s, "skirmish", "t", {"weapon": "0:0", "target": "a"})
+	var roll: Dictionary = F.events_of(out, "attack_rolled")[0]
+	expect_eq(roll["result"], "miss", "...but the Goblin's 2 replaces the d20")
+	expect_eq(int(a.counters["bent_uses"]), 1)
+	var check := Combat.skill_check(s, t, "hull", "test", 10)
+	expect(check.get("reroll_source", "") == "", "a reaction per turn: no second use this turn")

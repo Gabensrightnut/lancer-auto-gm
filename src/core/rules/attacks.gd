@@ -381,6 +381,7 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 			var again := state.dice.check(p["bonus"], p["accuracy"], p["difficulty"], p["target_number"], p["sources"])
 			if int(again["total"]) > int(check["total"]):
 				check = again
+		check = GearSystems.sisyphus(state, attacker, check)  # SISYPHUS: Probabilistic Cannibalism
 		TalentRules.used_sources(state, attacker, p["sources"])
 		TalentRules.used_leadership(attacker, opts)
 		check["bonus_sources"] = p["bonus_sources"]
@@ -1026,6 +1027,7 @@ static func tech_attack(state: GameState, attacker: Unit, target: Unit, label: S
 		p["difficulty"] = int(p["difficulty"]) + int(src["value"])
 	if not invisible_miss:
 		check = state.dice.check(p["bonus"], p["accuracy"], p["difficulty"], p["target_number"], p["sources"])
+		check = GearSystems.sisyphus(state, attacker, check)
 		check["bonus_sources"] = p["bonus_sources"]
 		check["defense"] = "E-Defense"
 		hit = check["success"]

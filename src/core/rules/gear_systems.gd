@@ -980,6 +980,65 @@ static func fade_roll(state: GameState, u: Unit) -> Array[Dictionary]:
 	return events
 
 
+## SISYPHUS Bend Probability: roll 2d20 and keep them (X, Y) until the end of your next turn,
+## with the Probabilistic Cannibalism reaction.
+static func bend_probability(state: GameState, u: Unit) -> Array[Dictionary]:
+	var x := state.dice.die(20)
+	var y := state.dice.die(20)
+	u.counters["bent"] = [x, y]
+	u.counters["bent_uses"] = 0
+	var events: Array[Dictionary] = [{"type": "effect_triggered", "unit": u.id, "effect": "Bend Probability", "target": u.id, "rolls": [x, y], "rule_ref": "systems: SISYPHUS-Class NHP"}]
+	events.append_array(Effects.activate(state, u, [{"kind": "prob_cannibal", "label": "Probabilistic Cannibalism"}], "Bend Probability", "end_next_turn"))
+	return events
+
+
+## Probabilistic Cannibalism (reaction, at most twice before the start of your next turn): when
+## you or a character within Sensors would roll a d20, X or Y becomes the result. Offered only
+## when a kept number would change the outcome your way (success for you and allies, failure
+## for hostiles), with that number suggested.
+static func sisyphus(state: GameState, roller: Unit, check: Dictionary) -> Dictionary:
+	if state == null or check.is_empty() or not check.has("d20"):
+		return check
+	var ids: Array = state.units.keys()
+	ids.sort()
+	for id: String in ids:
+		var o := state.unit(id)
+		if not o.counters.has("bent") or not Effects.has(o, "prob_cannibal") or int(o.counters.get("bent_uses", 0)) >= 2 or not Combat.is_present(o):
+			continue
+		if o != roller and Sight.unit_distance(state, o, roller) > o.sensors:
+			continue
+		if not Reactions.can_react(o, "probabilistic_cannibalism", state).ok:
+			continue
+		var want_success := o.side == roller.side
+		var pick := -1
+		for v: int in o.counters["bent"]:
+			var total := int(check["total"]) - int(check["d20"]) + v
+			var success := total >= int(check.get("target", 10))
+			if success != bool(check["success"]) and success == want_success:
+				pick = v
+				break
+		if pick < 0:
+			continue
+		var d := Reactions.offer(state, o, "probabilistic_cannibalism", {"roller": roller.id, "rolled": check["d20"], "numbers": o.counters["bent"],
+			"suggested": {"take": true, "value": pick}}, {"take": true, "value": pick})
+		if not d.get("take", false):
+			continue
+		var v2 := int(d.get("value", pick))
+		if not (o.counters["bent"] as Array).has(v2):
+			v2 = pick
+		o.counters["bent_uses"] = int(o.counters.get("bent_uses", 0)) + 1
+		Reactions._mark_used(o, "probabilistic_cannibalism", state)
+		var out := check.duplicate()
+		out["rerolled_from"] = check["d20"]
+		out["reroll_source"] = "SISYPHUS: Probabilistic Cannibalism"
+		out["d20"] = v2
+		out["total"] = int(check["total"]) - int(check["d20"]) + v2
+		out["success"] = int(out["total"]) >= int(check.get("target", 10))
+		out["crit"] = int(out["total"]) >= 20
+		return out
+	return check
+
+
 ## Conditions (statuses: Impaired, Immobilized, Jammed, Lock On, Shredded, Slowed, Stunned).
 const CONDITIONS := ["Impaired", "Immobilized", "Jammed", "Lock On", "Shredded", "Slowed", "Stunned"]
 
