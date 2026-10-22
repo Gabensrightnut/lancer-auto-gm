@@ -13,7 +13,8 @@ extends RefCounted
 
 ## Landscapes the generator can build, with their weight when picked at random.
 const LANDSCAPES := {"grassy_hills": 4, "desert_mesas": 2, "tundra": 2, "volcanic": 1, "alien_wilds": 1, "crystal_fields": 1,
-	"toxic_marsh": 1, "molten_world": 1, "toxic_swamp": 1, "city": 3, "station": 1, "starship": 1, "moon": 1, "asteroid": 1, "ocean": 1, "jungle": 2, "boarding": 1, "boarding_defend": 0, "boarding_assault": 0}
+	"toxic_marsh": 1, "molten_world": 1, "toxic_swamp": 1, "city": 3, "station": 1, "starship": 1, "moon": 1, "asteroid": 1, "ocean": 1, "jungle": 2, "boarding": 1, "boarding_defend": 0, "boarding_assault": 0,
+	"autumn_forest": 2, "salt_flats": 1}
 ## Cultures that fit each landscape ("" = wilderness, no settlement).
 const CULTURES := {
 	"grassy_hills": ["", "", "medieval", "old_west", "east_asian", "union", "retro"],
@@ -30,6 +31,8 @@ const CULTURES := {
 	"boarding": [""],
 	"boarding_defend": [""],
 	"boarding_assault": [""],
+	"autumn_forest": ["", "", "medieval", "east_asian", "old_west", "union"],
+	"salt_flats": ["", "old_west", "retro", "industrial", "industrial"],
 	"moon": ["", "", "union", "retro"],
 	"asteroid": [""],
 	"ocean": ["", "east_asian", "retro", "union"],
@@ -93,6 +96,7 @@ const WEATHER := {
 	"molten_world": ["ashfall", "ashfall", "storm"], "toxic_swamp": ["mist", "mist", "spores", "rain"], "city": ["", "", "rain", "storm", "mist"],
 	"station": [""], "starship": [""], "moon": [""], "asteroid": [""], "ocean": ["", "", "rain", "storm"],
 	"jungle": ["", "rain", "rain", "mist", "storm"],
+	"autumn_forest": ["", "", "rain", "mist", "storm"], "salt_flats": ["", "", "", "sandstorm"],
 }
 
 
@@ -117,7 +121,7 @@ static func kit(landscape: String, culture: String) -> String:
 
 
 static func generate(rng: RandomNumberGenerator, w: int, h: int, shape: GridLayout.Shape, blocked: Dictionary, landscape: String, culture: String,
-		hub: Dictionary = {}) -> BattleMap:
+		hub: Dictionary = {}, area: bool = false) -> BattleMap:
 	var g := TerrainGen.new()
 	g.rng = rng
 	g.w = w
@@ -158,6 +162,11 @@ static func generate(rng: RandomNumberGenerator, w: int, h: int, shape: GridLayo
 			g._ocean()
 		"jungle":
 			g._jungle()
+		"autumn_forest":
+			g._hills()
+			g._patches(w * h / 160, Vector2i(4, 8), [Sight.TAG_SOFT_COVER, BattleMap.TAG_DIFFICULT, "woods"])
+		"salt_flats":
+			g._flats()
 		"molten_world":
 			g._molten()
 		"toxic_swamp":
@@ -168,8 +177,13 @@ static func generate(rng: RandomNumberGenerator, w: int, h: int, shape: GridLayo
 		g._town(hub, culture)
 	elif landscape != "city" and culture != "":
 		g._settlement(culture, landscape)
+	if area and landscape not in ["city", "station", "starship", "boarding", "boarding_defend", "boarding_assault"]:
+		g._area_ways()
+	g._clear_rock_near_built()
 	g._place_outcrops()
 	g._clear_blocked()
+	if area:
+		g._area_edges()
 	g._materials(landscape, culture)
 	return g.map
 
@@ -329,6 +343,19 @@ func _town(hub: Dictionary, culture: String) -> void:
 					map.column(cell).tags = PackedStringArray()
 	# Some crates and carts in the streets: difficult going, not cover.
 	_patches(maxi(2, w * h / 400), Vector2i(1, 2), [BattleMap.TAG_DIFFICULT, "rubble"], 0, true)
+	# The ground between the buildings is the town's own: yards, sidewalks and the square.
+	for r in range(cr - radius + 1, cr + radius):
+		for c in range(cc - radius + 1, cc + radius):
+			if c < 0 or r < 0 or c >= w or r >= h:
+				continue
+			var cell := _cell(c, r)
+			if map.has_cell(cell) and not blocked.has(cell) and map.column(cell).tags.is_empty() and map.ground_height(cell) == 0:
+				map.column(cell).tags = PackedStringArray(["lot"])
+				built[cell] = true
+		for c in range(cc - radius, cc + radius + 1):
+			var cell := _cell(clampi(c, 0, w - 1), clampi(r, 0, h - 1))
+			if used.has(cell):
+				built[cell] = true
 
 
 var rng: RandomNumberGenerator
@@ -427,6 +454,28 @@ func _hills() -> void:
 	_outcrops(area / 220)
 	_patches(area / 110, Vector2i(3, 7), [Sight.TAG_SOFT_COVER, BattleMap.TAG_DIFFICULT, "woods"])
 	_patches(area / 140, Vector2i(2, 5), [BattleMap.TAG_DIFFICULT])
+
+
+## Salt flats: dead level white crust for miles, cracked and soft in places (difficult), a few
+## low pressure ridges in straight runs (one level: cover when you crouch behind them), rare rock
+## islands, and abandoned mine spoil heaps. Little cover: the open ground is the danger.
+func _flats() -> void:
+	_fill(func(_c: int, _r: int) -> int: return 0)
+	var area := w * h
+	for i in range(maxi(3, area / 300)):
+		var at := Vector2i(rng.randi_range(2, w - 3), rng.randi_range(2, h - 3))
+		var dir := Vector2i(1, 0) if rng.randf() < 0.5 else Vector2i(0, 1)
+		for k in range(rng.randi_range(4, 8)):
+			var q := at + dir * k
+			if q.x < 0 or q.y < 0 or q.x >= w or q.y >= h:
+				break
+			var cell := _cell(q.x, q.y)
+			if _free(cell):
+				map.column(cell).ground = 1
+				_tag(map.column(cell), ["rock"])
+	_outcrops(area / 400)
+	_patches(area / 120, Vector2i(3, 8), [BattleMap.TAG_DIFFICULT], 0, true)
+	_patches(area / 500, Vector2i(3, 5), ["rubble", BattleMap.TAG_DIFFICULT], 1, true)  # spoil heaps
 
 
 ## A winding river across the map: difficult water cells at the valley floor.
@@ -1268,6 +1317,46 @@ func _ground_at(c: int, r: int) -> int:
 	return map.ground_height(cell) if map.has_cell(cell) else 0
 
 
+# --- Exploring areas ----------------------------------------------------------------------
+
+## Width of the flat band along every edge of an exploring area, so neighbouring areas of a
+## region meet on level ground.
+const AREA_EDGE := 2
+
+
+## The roads every exploring area shares: along the middle row and the middle column, out to
+## all four edges, so walking off one area's east edge comes in on the next one's west edge on
+## the same road.
+func _area_ways() -> void:
+	var row: Array = []
+	for c in range(w):
+		row.append(Vector2i(c, h / 2))
+	_road(row, "road_x")
+	var col: Array = []
+	for r in range(h):
+		col.append(Vector2i(w / 2, r))
+	_road(col, "road_z")
+
+
+## Level ground along the edges (roads kept), the seam to the next area.
+func _area_edges() -> void:
+	for r in range(h):
+		for c in range(w):
+			if c >= AREA_EDGE and r >= AREA_EDGE and c < w - AREA_EDGE and r < h - AREA_EDGE:
+				continue
+			var cell := _cell(c, r)
+			if not map.has_cell(cell):
+				continue
+			var col := map.column(cell)
+			if col.has_tag("road") and col.gap_top == 0:
+				col.ground = 0
+				continue
+			col.ground = 0
+			col.gap_bottom = 0
+			col.gap_top = 0
+			col.tags = PackedStringArray()
+
+
 ## A road along a line of map cells: keeps the ground (it follows the land), bridges water.
 func _road(cells: Array, axis: String) -> void:
 	for cr: Vector2i in cells:
@@ -1283,8 +1372,8 @@ func _road(cells: Array, axis: String) -> void:
 			col.gap_bottom = 0
 			col.gap_top = 1
 			col.tags = PackedStringArray(["road", axis])
-		elif (col.has_tag("building") or col.has_tag("wall")) and built.has(cell):
-			continue
+		elif col.has_tag("building") or col.has_tag("wall"):
+			continue  # roads go round buildings and walls, never through them
 		else:
 			col.tags = PackedStringArray(["road", axis] if not col.has_tag("road") else ["road", "crossing"])
 			col.ground = mini(col.ground, 2)
@@ -1344,6 +1433,14 @@ func _village(cc: int, cr: int, culture: String, landscape: String, street_from:
 		if absi(y - cr) > 3 and rng.randf() < 0.7:
 			plot.call(cc + 2, y, 2, pd)
 		y += pd + 1
+	# Yards and lots between the houses (the levelled site): paved, cobbled or packed earth.
+	for r in range(cr - rad, cr + rad + 1):
+		for c in range(cc - rad - 2, cc + rad + 3):
+			if c < 0 or r < 0 or c >= w or r >= h:
+				continue
+			var cell := _cell(c, r)
+			if map.has_cell(cell) and built.has(cell) and map.column(cell).tags.is_empty():
+				map.column(cell).tags = PackedStringArray(["lot"])
 	# Fields around the village on terraces (levelled plots), with field walls.
 	if landscape in ["grassy_hills", "tundra", "jungle", "toxic_swamp", "desert_mesas"] and culture != "cyberpunk":
 		var want := 5 + rng.randi_range(0, 3)
@@ -1447,6 +1544,33 @@ func _castle(cc: int, cr: int, _culture: String, gate_dir: int) -> void:
 				break  # the second lane only runs over the field of fire
 			_road([Vector2i(c, rr)], "road_x")
 			c += gate_dir
+
+
+## Natural rock never stands in or against anything built: rock within two spaces of a
+## building, wall, road, lot or field is levelled to the ground around it (outcrops placed
+## later keep their own distance). Landscapes that raise ridges first (salt flats, mesas)
+## would otherwise leave a rock wall running into a house.
+func _clear_rock_near_built() -> void:
+	var near := {}
+	for cell in cells:
+		var col := map.column(cell)
+		if col.has_tag("rock"):
+			continue
+		for tag: String in ["building", "house", "keep", "wall", "road", "lot", "farm"]:
+			if col.has_tag(tag):
+				for n in map.grid.cells_within(cell, 2):
+					near[n] = true
+				break
+	for cell in cells:
+		var col := map.column(cell)
+		if not col.has_tag("rock") or not near.has(cell):
+			continue
+		var low := 99
+		for n in map.grid.neighbors(cell):
+			if map.has_cell(n) and not map.column(n).has_tag("rock"):
+				low = mini(low, map.ground_height(n))
+		col.ground = 0 if low == 99 else low
+		col.tags = PackedStringArray()
 
 
 func _rect_blocked(r: Rect2i) -> bool:

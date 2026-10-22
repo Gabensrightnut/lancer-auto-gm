@@ -88,6 +88,8 @@ func rebuild() -> void:
 	_props(rng)
 	_place_npcs()
 	_place_squad()
+	if _kits != null:
+		_kits.set_hub_time(_world, TownLife.period(story))  # lamps and windows by the clock
 	if _cam == null:
 		_cam = Camera3D.new()
 		_cam.fov = 50
@@ -130,7 +132,7 @@ func _environment() -> void:
 	sun.directional_shadow_max_distance = 80.0
 	_world.add_child(sun)
 	if _kits != null:
-		_kits.apply_hub_environment(_culture(), e, sun)
+		_kits.apply_hub_environment(_culture(), e, sun, TownLife.period(story))
 
 
 func _ground(rng: RandomNumberGenerator) -> void:

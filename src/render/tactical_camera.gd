@@ -1,7 +1,8 @@
 class_name TacticalCamera
 extends Node3D
-## Angled overhead camera that orbits a focus point. Right-drag or Q/E rotates, wheel zooms,
-## WASD or middle-drag pans. Smoothly follows `focus` when it moves.
+## Angled overhead camera that orbits a focus point. Keys come from BattleKeys (rebindable):
+## WASD / arrows pan, Q/E rotate, +/- or the wheel zoom, F / Home focus your unit. Mouse:
+## middle-drag orbits, Shift + middle-drag pans, the screen edges pan. Smoothly follows `focus`.
 
 var camera: Camera3D
 var focus := Vector3.ZERO
@@ -17,9 +18,17 @@ var _cur_pitch := pitch
 var _cur_dist := distance
 var _dragging_rotate := false
 var _dragging_pan := false
+## Returns where "focus your unit" goes (PlayerTurn sets it); null/invalid: no-op.
+var focus_target: Callable
+## While set, the camera follows this node (hold-Space tactical view).
+var tether: Node3D
+## Pixels from the window edge that pan the camera (0 turns edge scrolling off).
+var edge_scroll := 6.0
+var enabled_input := true
 
 
 func _init() -> void:
+	BattleKeys.ensure()
 	camera = Camera3D.new()
 	camera.fov = 45.0
 	camera.far = 400.0
@@ -72,6 +81,24 @@ func _process(delta: float) -> void:
 	if not camera.current:
 		return
 	var pan := Vector3.ZERO
+	if enabled_input and edge_scroll > 0.0 and get_window().has_focus():
+		var vp := get_viewport().get_visible_rect().size
+		var mp := get_viewport().get_mouse_position()
+		if Rect2(Vector2.ZERO, vp).has_point(mp):
+			if mp.x < edge_scroll:
+				pan.x -= 1
+			elif mp.x > vp.x - edge_scroll:
+				pan.x += 1
+			if mp.y < edge_scroll:
+				pan.z -= 1
+			elif mp.y > vp.y - edge_scroll:
+				pan.z += 1
+	if Input.is_action_pressed("cam_zoom_in"):
+		distance = maxf(min_distance, distance * (1.0 - 1.5 * delta))
+	if Input.is_action_pressed("cam_zoom_out"):
+		distance = minf(max_distance, distance * (1.0 + 1.5 * delta))
+	if tether and is_instance_valid(tether):
+		focus = tether.global_position + Vector3.UP * 0.8
 	if Input.is_action_pressed("cam_pan_left"):
 		pan.x -= 1
 	if Input.is_action_pressed("cam_pan_right"):
@@ -100,7 +127,13 @@ func _apply() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not camera.current:
+	if not camera.current or not enabled_input:
+		return
+	if event.is_action_pressed("cam_focus") and focus_target.is_valid():
+		var p: Variant = focus_target.call()
+		if p is Vector3:
+			focus = p
+		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
@@ -109,10 +142,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				distance = maxf(min_distance, distance * 0.9)
 			MOUSE_BUTTON_WHEEL_DOWN:
 				distance = minf(max_distance, distance * 1.1)
-			MOUSE_BUTTON_RIGHT:
-				_dragging_rotate = mb.pressed
 			MOUSE_BUTTON_MIDDLE:
-				_dragging_pan = mb.pressed
+				# Middle-drag orbits; with Shift it pans. (Right click is for context menus.)
+				_dragging_pan = mb.pressed and mb.shift_pressed
+				_dragging_rotate = mb.pressed and not mb.shift_pressed
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
 		if _dragging_rotate:

@@ -62,6 +62,7 @@ func setup(db: ContentDB, battle_view: BattleView, events: EventPlayer, layer: C
 	ui.add_child(barks)
 	player.on_table_note = table_notice.show_note
 	player.on_map_changed = func() -> BattleMap: return state.map if state else null
+	player.on_terrain_damage = func() -> Dictionary: return state.terrain_damage if state else {}
 	player.camera = view.tactical
 	turn = PlayerTurn.new()
 	turn.bar = bar

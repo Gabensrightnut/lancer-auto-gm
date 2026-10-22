@@ -85,6 +85,20 @@ static func _make(kind: String, b: Rect2) -> CPUParticles3D:
 			color = Color(0.55, 0.53, 0.5, 0.7)
 			size = 0.035
 			height = 7.0
+		"leaves":
+			# Autumn: leaves twisting down on the wind.
+			p.amount = int(area * 0.06)
+			p.lifetime = 12.0
+			p.direction = Vector3(0.6, -0.4, 0.2)
+			p.spread = 35.0
+			p.gravity = Vector3(0.15, -0.12, 0.05)
+			p.initial_velocity_min = 0.2
+			p.initial_velocity_max = 0.5
+			p.angular_velocity_min = -90.0
+			p.angular_velocity_max = 90.0
+			color = Color(0.85, 0.45, 0.15, 0.95)
+			size = 0.06
+			height = 5.0
 		"motes":
 			p.amount = int(area * 0.08)
 			p.lifetime = 16.0

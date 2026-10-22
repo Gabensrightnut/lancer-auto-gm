@@ -33,8 +33,16 @@ func screenshot_stage(tag: String) -> void:
 	var map_name := spec[0].trim_suffix("_sq")
 	var map: BattleMap
 	var kit := ""
+	if map_name.begins_with("in-"):
+		# in-<interior kind>[~culture], views: eye (from the front door, 1.6 m), top (cutaway),
+		# up (upstairs at eye height), or a room id (standing in that room).
+		var it := map_name.trim_prefix("in-")
+		await _interior(it.get_slice("~", 0), it.get_slice("~", 1) if "~" in it else "old_west", cam)
+		return
 	if map_name.begins_with("hub"):
-		await _hub(map_name.trim_prefix("hub").trim_prefix("-"), cam)
+		# hub-<culture>[~<dawn|day|evening|night>]
+		var hub_tag := map_name.trim_prefix("hub").trim_prefix("-")
+		await _hub(hub_tag.get_slice("~", 0), cam, hub_tag.get_slice("~", 1) if "~" in hub_tag else "day")
 		return
 	var sitrep := ""
 	if "^" in map_name:
@@ -51,6 +59,26 @@ func screenshot_stage(tag: String) -> void:
 		view.set_map(map, (tg["mission"] as Mission).flavor["kit"])
 		view.terrain.show_objectives((tg["mission"] as Mission).zones, (tg["mission"] as Mission).deployment)
 		print("town: ", (tg["mission"] as Mission).briefing, " fairness ok: ", tg["fairness"]["ok"])
+		_place_mechs(map)
+		await _aim_camera(map, cam)
+		return
+	if map_name.begins_with("area"):
+		# area<seed>[+landscape[+culture]] or area<seed>+town+<culture>: an exploring area.
+		var ap := map_name.trim_prefix("area").split("+")
+		var aopts := {"shape": "square" if shape == GridLayout.Shape.SQUARE else "hex"}
+		if ap.size() > 2 and ap[1] == "town":
+			var hrng := RandomNumberGenerator.new()
+			hrng.seed = int(ap[0])
+			aopts["hub"] = {"kind": "town", "culture": ap[2], "seed": int(ap[0]), "spots": HubLayout.spots("town", hrng)}
+		else:
+			if ap.size() > 1:
+				aopts["landscape"] = ap[1]
+			if ap.size() > 2:
+				aopts["culture"] = ap[2]
+		var ar := MissionGenerator.area(int(ap[0]), aopts)
+		map = ar["map"]
+		view.set_map(map, ar["kit"])
+		print("area: ", ar["name"], " ", ar["kit"])
 		_place_mechs(map)
 		await _aim_camera(map, cam)
 		return
@@ -223,8 +251,8 @@ var _hub_root: Node3D
 
 
 ## A small on-foot town laid out like the story hubs (HubLayout), dressed with WorldKits.
-## Tag: hub-<culture> (story or map culture id), views wide (default) or close.
-func _hub(culture: String, cam: String) -> void:
+## Tag: hub-<culture>[~time] (story or map culture id; time of day), views wide or close.
+func _hub(culture: String, cam: String, period: String = "day") -> void:
 	view.visible = false
 	if _hub_root:
 		_hub_root.queue_free()
@@ -239,7 +267,7 @@ func _hub(culture: String, cam: String) -> void:
 	sun.directional_shadow_max_distance = 80.0
 	_hub_root.add_child(sun)
 	view.world_env.environment = e
-	WorldKits.apply_hub_environment(culture, e, sun)
+	WorldKits.apply_hub_environment(culture, e, sun, period)
 	var colors := WorldKits.hub_ground(culture)
 	var ground := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
@@ -274,6 +302,7 @@ func _hub(culture: String, cam: String) -> void:
 	for i in range(4):
 		var p := MeshKit.part(_hub_root, MeshKit.cylinder(0.25, 1.8, 10), MeshKit.paint(Color(0.3, 0.4, 0.55), 0.1, 0.7, 0.0), Vector3(-2.0 + i * 1.3, 0.9, 5.5))
 		p.name = "Person"
+	WorldKits.set_hub_time(_hub_root, period)
 	var c3 := Camera3D.new()
 	c3.fov = 50
 	_hub_root.add_child(c3)
@@ -283,5 +312,64 @@ func _hub(culture: String, cam: String) -> void:
 	else:
 		c3.position = Vector3(0, 22, 30)
 		c3.look_at(Vector3(0, 0, 0))
+	c3.current = true
+	await get_tree().process_frame
+
+
+
+func _interior(kind: String, culture: String, cam: String) -> void:
+	view.visible = false
+	if _hub_root:
+		_hub_root.queue_free()
+	_hub_root = Node3D.new()
+	add_child(_hub_root)
+	var env := WorldEnvironment.new()
+	var e := Environment.new()
+	e.background_mode = Environment.BG_COLOR
+	e.background_color = Color(0.05, 0.05, 0.06)
+	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	e.ambient_light_color = Color(0.6, 0.6, 0.65)
+	e.ambient_light_energy = 0.35
+	e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	e.glow_enabled = true
+	e.ssao_enabled = true
+	env.environment = e
+	_hub_root.add_child(env)
+	view.world_env.environment = e
+	var lay := Interiors.layout(kind, culture, 3)
+	var room := Interiors.build(lay)
+	_hub_root.add_child(room)
+	# People for scale (1.8 m) at a few of the NPC points.
+	var n := 0
+	for pt: Dictionary in lay["points"]:
+		if n >= 5 or not (pt["type"] in ["stand", "work"]):
+			continue
+		n += 1
+		MeshKit.part(_hub_root, MeshKit.cylinder(0.22, 1.75, 10), MeshKit.paint(Color(0.3, 0.4, 0.55), 0.1, 0.7, 0.0),
+			Vector3(float(pt["pos"][0]), float(pt["pos"][1]) + 0.875, float(pt["pos"][2])))
+	var size: Array = lay["size"]
+	var c3 := Camera3D.new()
+	c3.fov = 70
+	c3.near = 0.05
+	_hub_root.add_child(c3)
+	var fh := float(lay["floor_height"])
+	if cam == "top":
+		(room.get_node("Ceiling") as Node3D).visible = false
+		c3.fov = 50
+		c3.position = Vector3(0, maxf(float(size[0]), float(size[1])) * 0.9, float(size[1]) * 0.55)
+		c3.look_at(Vector3(0, 0, 0))
+	elif (lay["rooms"] as Dictionary).has(cam) or cam == "up":
+		var rid := cam if cam != "up" else "upstairs"
+		var rc: Array = lay["rooms"][rid]["rect"]
+		var y := float(lay["rooms"][rid]["floor"]) * fh + 1.6
+		c3.position = Vector3(float(rc[0]) + 0.5, y, float(rc[1]) + float(rc[3]) - 0.4)
+		c3.look_at(Vector3(float(rc[0]) + float(rc[2]), y - 0.3, float(rc[1])))
+	else:
+		# Just inside the front door, looking in at eye height.
+		var door: Dictionary = (lay["doors"] as Array).filter(func(d: Dictionary) -> bool: return "outside" in d["rooms"])[0]
+		var dp: Array = door["pos"]
+		var inward := -Vector3(float(dp[0]), 0, float(dp[2])).normalized() if door["axis"] == "z" else Vector3(0, 0, -signf(float(dp[2])))
+		c3.position = Vector3(float(dp[0]), float(dp[1]) + 1.6, float(dp[2])) + inward * 0.6
+		c3.look_at(c3.position + inward * 4.0 + Vector3(0, -0.4, 0))
 	c3.current = true
 	await get_tree().process_frame

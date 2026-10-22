@@ -84,8 +84,14 @@ func _update_help() -> void:
 	if not _help_open:
 		_help.text = "H: controls"
 		return
-	_help.text = "N new battle   SPACE effects showcase   G grid: %s   B biome: %s   L grid lines   C camera: %s   V speed: %s   K skip to my turn\nRight-drag / Q E rotate   wheel zoom   WASD pan   1-0 actions   F1-F3 overlay examples" % [
-		"HEX" if shape == GridLayout.Shape.HEX else "SQUARE", biome.replace("_", " ").to_upper(), view.camera_mode.to_upper(), String(SPEED_NAMES[_speed_i]).to_upper()]
+	var lines: Array = []
+	for kv: Array in BattleKeys.listing():
+		lines.append("%s: %s" % [kv[1], kv[0]])
+	_help.text = "Mouse: click/drag to move, right click for options, middle-drag orbit (Shift: pan), wheel zoom, screen edges pan.  1-0: action bar\n" + \
+		"   ".join(lines) + "\nDemo: N new battle   F5 effects showcase   F6 speed: %s   F7 biome: %s   F8 grid: %s   F9 grid lines   K skip to my turn" % [
+		String(SPEED_NAMES[_speed_i]).to_upper(), biome.replace("_", " ").to_upper(), "HEX" if shape == GridLayout.Shape.HEX else "SQUARE"]
+	_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_help.custom_minimum_size.x = 1100
 
 
 ## Battle loadouts that differ from the showcase. Avoids weapons whose lancer-data damage is
@@ -188,7 +194,9 @@ func _build_board() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("demo_replay") and not _running:
+	# Demo-only keys live on F5-F9 so the battle controls (BattleKeys) keep the main keys.
+	var fk := (event as InputEventKey).keycode if event is InputEventKey and event.pressed and not event.echo else KEY_NONE
+	if fk == KEY_F5 and not _running:
 		_stop_battle()
 		_build_board()
 		combat_log.clear_log()
@@ -199,17 +207,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		_help_open = not _help_open
 	elif event is InputEventKey and event.pressed and (event as InputEventKey).keycode == KEY_K:
 		player.skip_to_my_turn = true
-	elif event.is_action_pressed("toggle_grid_shape") and not _running:
+	elif fk == KEY_F8 and not _running:
 		shape = GridLayout.Shape.SQUARE if shape == GridLayout.Shape.HEX else GridLayout.Shape.HEX
 		_build_board()
-	elif event.is_action_pressed("toggle_biome") and not _running:
+	elif fk == KEY_F7 and not _running:
 		biome = BIOMES[(BIOMES.find(biome) + 1) % BIOMES.size()]
 		_build_board()
-	elif event.is_action_pressed("toggle_grid_lines"):
+	elif fk == KEY_F9:
 		view.terrain.set_grid_visible(not view.terrain.grid_lines.visible)
-	elif event.is_action_pressed("cam_toggle"):
+	elif event.is_action_pressed("first_person") and (battle == null or not battle.turn.active):
 		_toggle_camera()
-	elif event.is_action_pressed("roll_speed"):
+	elif fk == KEY_F6:
 		_speed_i = (_speed_i + 1) % SPEED_NAMES.size()
 		Fx.speed = EventPlayer.SPEEDS[SPEED_NAMES[_speed_i]]
 	elif event is InputEventKey and event.pressed and not event.echo:
@@ -677,6 +685,10 @@ func _battle_stage(tag: String) -> void:
 			view.tactical.pitch = -48.0
 			view.tactical.snap()
 			await get_tree().create_timer(0.8).timeout
+		"tactical_view":
+			t.set_tactical_view(true)
+			view.tactical.distance = 18.0
+			await get_tree().create_timer(0.8).timeout
 		"barks":
 			var rng := RandomNumberGenerator.new()
 			rng.seed = 8
@@ -806,7 +818,7 @@ func screenshot_stage(tag: String) -> void:
 	world_spec = ""
 	world_mission = null
 	battle_systems = {}
-	if tag in ["barks", "eject", "dismount", "on_foot", "barriers"]:
+	if tag in ["barks", "eject", "dismount", "on_foot", "barriers", "tactical_view"]:
 		await _battle_stage(tag)
 		return
 	if tag.begins_with("fly"):

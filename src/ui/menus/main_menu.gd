@@ -175,8 +175,9 @@ func _show_new() -> void:
 	length.item_selected.connect(func(i: int) -> void: length_note.text = str(fl.get(length_ids[i], {}).get("description", "")) + " Rules like HP and damage never change.")
 	length_note.text += " Rules like HP and damage never change."
 	body.add_child(length_note)
-	# Story campaign (hub, jobs, downtime between missions) or missions only (lobby to battle).
-	var story_mode := {"on": true}
+	# The main campaign (authored, AI GM), a generated story campaign (hub, jobs, downtime
+	# between missions) or missions only (lobby to battle).
+	var story_mode := {"on": true, "main": true}
 	var style := HBoxContainer.new()
 	style.add_theme_constant_override("separation", 8)
 	var group := ButtonGroup.new()
@@ -186,21 +187,33 @@ func _show_new() -> void:
 	arcs.select(arcs.get_item_index(GameFlow.DEFAULT_ARCS))
 	var arcs_field := _field("Campaign length", arcs)
 	var arcs_note := MenuTheme.label("A story is one situation at a hub (a feud, a threat) played out over several jobs. After this many, the campaign ends with an epilogue for each pilot, and the same pilots can start a new one.", 15, MenuTheme.MUTED, true)
-	for pair: Array in [["Story campaign", true], ["Missions only", false]]:
+	var main_note := MenuTheme.label("", 15, MenuTheme.MUTED, true)
+	for mode: Array in PLAY_AS:
 		var b := Button.new()
-		b.text = pair[0]
+		b.text = mode[1]
 		b.toggle_mode = true
 		b.button_group = group
-		b.button_pressed = pair[1]
+		b.button_pressed = mode[0] == "main"
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.tooltip_text = "Between missions your pilots walk a hub town: jobs, people, downtime." if pair[1] else "Straight from one generated mission to the next, with leveling up in between."
+		b.tooltip_text = mode[2]
 		b.toggled.connect(func(on: bool) -> void:
 			if on:
-				story_mode["on"] = pair[1]
-				arcs_field.visible = pair[1]
-				arcs_note.visible = pair[1])
+				story_mode["on"] = mode[0] != "missions"
+				story_mode["main"] = mode[0] == "main"
+				arcs_field.visible = mode[0] == "sandbox"
+				arcs_note.visible = mode[0] == "sandbox"
+				main_note.text = mode[2]
+				gm.disabled = mode[0] == "main"
+				if mode[0] == "main":
+					gm.select(0)
+					gm_note.text = "The main campaign is run by the AI GM.")
 		style.add_child(b)
 	body.add_child(_field("Play as", style))
+	main_note.text = PLAY_AS[0][2]
+	body.add_child(main_note)
+	gm.disabled = true
+	arcs_field.visible = false
+	arcs_note.visible = false
 	body.add_child(arcs_field)
 	body.add_child(arcs_note)
 	var desc := MenuTheme.label("", 15, MenuTheme.MUTED, true)
@@ -218,6 +231,8 @@ func _show_new() -> void:
 			MenuSession.campaign = null
 			MenuSession.campaign = GameFlow.start_story_campaign(MenuSession.store, MenuSession.content(), name_edit.text.strip_edges(), pilots.get_selected_id(),
 				ll.get_selected_id(), LobbyModel.PRESETS[preset.selected], arcs.get_selected_id(), "", length_ids[length.selected])
+			if story_mode["main"]:
+				MenuSession.campaign.options["main_campaign"] = GameFlow.MAIN_CAMPAIGN  # begins after session zero
 			set_gm.call(MenuSession.campaign)
 			MenuSession.go(self, "hub")
 			return
@@ -227,6 +242,13 @@ func _show_new() -> void:
 		MenuSession.campaign = c
 		MenuSession.go(self, "lobby"))
 	body.add_child(go)
+
+
+## "Play as": [id, button, plain description].
+const PLAY_AS := [
+	["main", "Main campaign: The Long Arrival", "The written campaign: a colony ship arrives after three hundred years at a frontier world that others now call home. Chapters with choices that change what comes next, run by the AI GM."],
+	["sandbox", "Generated story", "A story made up as you go: a hub town, jobs, people and downtime, a new situation each time."],
+	["missions", "Missions only", "Straight from one generated mission to the next, with leveling up in between."]]
 
 
 ## A new campaign opened the guided way (GameFlow.start_tutorial): a training base, a

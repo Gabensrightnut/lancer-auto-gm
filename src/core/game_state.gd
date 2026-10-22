@@ -49,6 +49,8 @@ var environments: Array = []
 var terrain_damage: Dictionary = {}
 ## House rule switches the table set: {id: bool} (HouseRuleSwitches; missing = default).
 var house_rules: Dictionary = {}
+## "combat", or "explore" for turn-based exploring (turns for stealth, no fight).
+var turn_mode: String = "combat"
 var dice: Dice
 
 
@@ -89,7 +91,7 @@ func to_dict() -> Dictionary:
 		"acted": Array(acted), "turn_side": turn_side, "first_side": first_side,
 		"intel": intel.duplicate(true), "pending": pending.duplicate(true), "seats": seats.duplicate(true),
 		"rulings": rulings.duplicate(true), "packs": packs.duplicate(true), "dice_state": str(dice.get_state()),
-		"zones": zones.duplicate(true), "environments": environments.duplicate(), "terrain_damage": terrain_damage.duplicate(), "house_rules": house_rules.duplicate(),
+		"zones": zones.duplicate(true), "environments": environments.duplicate(), "terrain_damage": terrain_damage.duplicate(), "house_rules": house_rules.duplicate(), "turn_mode": turn_mode,
 		"objectives": objectives.duplicate(true),
 	}
 
@@ -114,6 +116,7 @@ static func from_dict(d: Dictionary) -> GameState:
 	s.zones = (d.get("zones", []) as Array).duplicate(true)
 	s.terrain_damage = (d.get("terrain_damage", {}) as Dictionary).duplicate()
 	s.house_rules = (d.get("house_rules", {}) as Dictionary).duplicate()
+	s.turn_mode = String(d.get("turn_mode", "combat"))
 	s.environments = (d.get("environments", []) as Array).duplicate()
 	s.objectives = (d.get("objectives", {}) as Dictionary).duplicate(true)
 	if d.has("dice_state"):
