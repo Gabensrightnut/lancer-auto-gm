@@ -56,7 +56,7 @@ static func build(cb: CityBuilder, root: Node3D, faces: Array) -> void:
 	WorldDressing.multi(root, "RoofTanks", MeshKit.cylinder(1.0, 1.0, 10), tanks, rust, true)
 	WorldDressing.multi(root, "Antennas", MeshKit.cylinder(0.008, 1.0, 4), rods, dark, false)
 	WorldDressing.multi(root, "Dishes", MeshKit.cylinder(0.07, 0.015, 10, 0.05), dishes, metal, false)
-	WorldDressing.multi(root, "RebarRoof", MeshKit.cylinder(0.01, 1.0, 4), rebar, rust, false)
+	WorldDressing.multi(root, "RoofRebar", MeshKit.cylinder(0.01, 1.0, 4), rebar, rust, false)
 	WorldDressing.multi(root, "Chimneys", MeshKit.chamfer_box(Vector3.ONE, 0.05), chimneys,
 		MeshKit.mech_material(WorldStyle.color(arch.get("trim", "#5a5048")), 0.0, 0.9, Color.BLACK, false), true)
 	_street_faces(cb, root, faces)
