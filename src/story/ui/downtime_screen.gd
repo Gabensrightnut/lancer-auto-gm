@@ -103,9 +103,10 @@ func refresh() -> void:
 		var box := HBoxContainer.new()
 		box.add_theme_constant_override("separation", 10)
 		card.add_child(box)
-		var face := Portrait.new()
+		var face := PortraitArt.new()
+		face.card = false
 		face.custom_minimum_size = Vector2(72, 88)
-		face.set_look(Portrait.look_for_pilot(p), "neutral")
+		face.set_look(PortraitArt.look_for_pilot(p), "neutral")
 		box.add_child(face)
 		var info := VBoxContainer.new()
 		box.add_child(info)

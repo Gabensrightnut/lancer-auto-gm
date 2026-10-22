@@ -78,6 +78,10 @@ book in a way that changes the setting; parked.
 | Bonded talent: choose a bondmate; replace them between missions only if the relationship changed | Canon | Core p.90 (the talent's mechanical bonuses are the rules engine's) |
 | Campaign endings (triumph / bittersweet / defeat) with an epilogue per pilot; ends after N situations, at LL12, if the squad falls, or when retired | Consistent | LL tops out at 12 (p.18); campaign shape is the table's choice; epilogues are our own text |
 | New campaign with the same pilots: they keep LL, builds and bonds; the dead stay dead | Canon / Consistent | Never lose licensed access (p.31); starting above LL0 is allowed (p.18) |
+| Codex: rule terms, statuses, actions, tags, frames, manufacturers, triggers, backgrounds, downtime, reserves, gear and talents | Canon | lancer-data's own text (Massif's data, shown as-is); our own features listed separately as "Game feature (not a book rule)" |
+| Session zero: who are we, who gives us orders, our history | Consistent | The book's first-session questions (Core p.40-41); the book's d20 tables stay in the book, our lists are our own |
+| Session zero tone, focus and content toggles | Consistent | Only steer our own generators (twists, arcs, banter); no rule changes. "Story first" uses the book's long downtime (p.50) |
+| History answers set starting bonds | Consistent | Freeform bonds between pilots (p.50); our own amounts |
 
 ## When canon allows more than one answer
 
