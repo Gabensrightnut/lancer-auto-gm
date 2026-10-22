@@ -61,5 +61,15 @@
     }
   ],
   "mf_saladin:Defensive Pulse": [],
-  "mf_swallowtail:Tactical Simulation": []
+  "mf_swallowtail:Tactical Simulation": [],
+  "mw_barbarossa_integrated:Fire Apocalypse Rail": [
+    {
+      "op": "fire_rail"
+    }
+  ],
+  "mf_dusk_wing:Hologram Teleport": [
+    {
+      "op": "hologram_teleport"
+    }
+  ]
 }

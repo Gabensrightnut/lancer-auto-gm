@@ -29,6 +29,7 @@ func _init() -> void:
 		PilotActions.Fight.new(), PilotActions.SelfDestruct.new(), PilotActions.Prepare.new(),
 		PilotActions.DropPrepared.new(), SystemActions.CorePower.new(), MoveActions.BonusMove.new(),
 		Rulings.SetRuling.new(), CloseCombat.GrappleContest.new(), AbilityActions.Activate.new(),
+		RestActions.Rest.new(),
 	]:
 		register(h)
 
@@ -57,6 +58,9 @@ func validate(state: GameState, action: Dictionary) -> RuleResult:
 		var actor: Unit = state.unit(action.get("actor", ""))
 		if actor == null:
 			return RuleResult.deny("No such unit.", "")
+		var limit := FrameSystems.action_allowed(state, actor, String(action.get("type", "")))
+		if not limit.ok:
+			return limit
 	if not action.get("params", {}) is Dictionary:
 		return RuleResult.deny("Action params must be a dictionary.", "")
 	return handler.validate(state, action)
@@ -167,7 +171,7 @@ func _restore(state: GameState, snap: Dictionary) -> void:
 		var dst: Unit = state.units[id]
 		for key: String in src.to_dict():
 			dst.set(key, src.get(key))
-	for key in ["round_number", "phase", "active_unit", "acted", "turn_side", "first_side", "intel", "rulings", "seats"]:
+	for key in ["round_number", "phase", "active_unit", "acted", "turn_side", "first_side", "intel", "rulings", "seats", "zones"]:
 		state.set(key, fresh.get(key))
 	state.dice.set_state(String(snap["dice_state"]).to_int())
 	if snap.has("dice_checkpoint"):

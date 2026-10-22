@@ -37,6 +37,11 @@ class Activate:
 					var ok := Abilities.check_spot(state, u, a["deployable"], c)
 					if not ok.ok:
 						return ok
+				var extra := AbilityActions.extra_mines(params)
+				if not extra.is_empty():
+					var mr := AbilityActions.check_extra_mines(state, u, a, extra)
+					if not mr.ok:
+						return mr
 			"action":
 				var ops_ok := AbilityActions.check_ops(state, u, a, params)
 				if not ops_ok.ok:
@@ -64,6 +69,15 @@ class Activate:
 			"deploy":
 				for c: Vector2i in AbilityActions.spots(params):
 					events.append_array(Abilities.deploy(state, u, a, c))
+				var extra := AbilityActions.extra_mines(params)
+				if not extra.is_empty():
+					# Iskander Mine Deployers: up to two more mines next to it, as a free action.
+					u.counters["mine_deployers_round"] = state.round_number
+					var src := Abilities.source_state(u, String(a["source_key"]))
+					for c: Vector2i in extra:
+						if int(src["uses"]) > 0:
+							src["uses"] = int(src["uses"]) - 1
+						events.append_array(Abilities.deploy(state, u, a, c))
 			"recall":
 				events.append_array(Abilities.recall(state, u, a))
 			_:
@@ -76,7 +90,7 @@ class Activate:
 					if hit:
 						events.append_array(Combat.apply_heat(state, target, 2, u.id))
 				if hit:
-					events.append_array(AbilityActions.apply_ops(state, u, a, target))
+					events.append_array(AbilityActions.apply_ops(state, u, a, target, params))
 		return events
 
 
@@ -94,7 +108,7 @@ static func spots(params: Dictionary) -> Array[Vector2i]:
 
 
 ## Applies an ability's encoded ops; unencoded abilities go to the table as text.
-static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit) -> Array[Dictionary]:
+static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, params: Dictionary = {}) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if not a.get("automated", false):
 		events.append({"type": "manual_effect", "unit": u.id, "source": a["name"], "text": a.get("detail", ""),
@@ -124,6 +138,14 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit) ->
 				events.append({"type": "effect_triggered", "unit": u.id, "effect": "Mark for Death", "target": target.id, "rule_ref": "frames: Death's Head core system"})
 			"unfocus":
 				events.append_array(AbilityActions._unfocus(u))
+			"detach":
+				events.append_array(FrameSystems.detach(state, u, "detached"))
+			"hologram_teleport":
+				events.append_array(Zones.hologram_teleport(state, u, params))
+			"fire_rail":
+				events.append_array(FrameSystems.fire_rail(state, u, params))
+			"core_off":
+				events.append_array(FrameSystems.core_off(state, u))
 			"tachyon_target":
 				# Saladin Tachyon Shield: choose a new ally to protect.
 				u.counters["tachyon_target"] = target.id
@@ -143,6 +165,35 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit) ->
 					target.hp = 1
 					events.append({"type": "revived", "unit": target.id, "by": u.id})
 	return events
+
+
+static func extra_mines(params: Dictionary) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for c: Variant in params.get("extra_mines", []):
+		if c is Array and (c as Array).size() >= 2:
+			out.append(Vector2i(int(c[0]), int(c[1])))
+	return out
+
+
+static func check_extra_mines(state: GameState, u: Unit, a: Dictionary, cells: Array[Vector2i]) -> RuleResult:
+	var ref := "frames: Iskander, Mine Deployers"
+	if not Effects.has(u, "mine_deployers") or String(a.get("deployable", {}).get("type", "")) != "Mine":
+		return RuleResult.deny("Only the Iskander's Mine Deployers plant extra mines.", ref)
+	if int(u.counters.get("mine_deployers_round", -1)) == state.round_number:
+		return RuleResult.deny("Mine Deployers is 1/round.", ref)
+	if cells.size() > 2:
+		return RuleResult.deny("Up to two other mines.", ref)
+	var src := Abilities.source_state(u, String(a["source_key"]))
+	if int(src["uses"]) >= 0 and int(src["uses"]) < 1 + cells.size():
+		return RuleResult.deny("Not enough mines left (Limited).", "tags: Limited")
+	for c: Vector2i in cells:
+		var body := Sight.make_body(state, c, state.map.ground_height(c), 0.5)
+		if Sight.distance(state, Sight.body_of(state, u), body) > 1:
+			return RuleResult.deny("The extra mines go in free spaces adjacent to the Iskander.", ref)
+		var ok := Abilities.check_spot(state, u, a["deployable"], c)
+		if not ok.ok:
+			return ok
+	return RuleResult.allow()
 
 
 static func ally_in_sensors(state: GameState, u: Unit, t: Unit) -> RuleResult:
@@ -176,15 +227,30 @@ static func apply_target_ops(state: GameState, u: Unit, ops: Array, ids: Array) 
 			var t := state.unit(String(id))
 			if t == null or not Combat.is_present(t):
 				continue
-			var save := Combat.skill_check(state, t, String(op.get("save", "agility")), "Save vs %s" % op.get("label", "core"), u.save_target, 0, 0, [], true)
-			events.append({"type": "skill_check", "unit": t.id, "check": save})
+			var success := false
+			if not (t.kind == Unit.KIND_DEPLOYABLE and op.get("objects_hit", false)):  # objects are hit automatically
+				var save := Combat.skill_check(state, t, String(op.get("save", "agility")), "Save vs %s" % op.get("label", "core"), u.save_target, 0, 0, [], true)
+				events.append({"type": "skill_check", "unit": t.id, "check": save})
+				success = save["success"]
 			var amount := int(roll["total"])
-			if save["success"]:
+			if success:
 				amount = amount - amount / 2 if op.get("half", false) else 0
 				if op.get("half", false) and Effects.has(t, "heavy_shielding"):
 					amount = mini(amount, 1)
 			if amount > 0:
-				events.append_array(Combat.deal_damage(state, t, [{"type": op.get("type", "Kinetic"), "amount": amount}], {"source": u.id, "area": true}))
+				events.append_array(Combat.deal_damage(state, t, [{"type": op.get("type", "Kinetic"), "amount": amount}], {"source": u.id, "area": true, "ap": op.get("ap", false)}))
+			if success or not Combat.is_present(t):
+				continue
+			# On a failure: conditions (Blackbeard: Prone, then pulled, then Immobilized).
+			for st: Dictionary in op.get("on_fail", []):
+				if st.get("after_pull", false):
+					continue
+				events.append_array(Combat.add_status(state, t, String(st["status"]), u.id, t.id if st.get("duration", "") == "end_next_turn" else ""))
+			if op.get("pull", false):
+				events.append_array(Attacks.pull(state, t, u))
+			for st: Dictionary in op.get("on_fail", []):
+				if st.get("after_pull", false) and Combat.is_present(t):
+					events.append_array(Combat.add_status(state, t, String(st["status"]), u.id, t.id if st.get("duration", "") == "end_next_turn" else ""))
 	return events
 
 
@@ -202,6 +268,16 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 					(" but further than range %d" % int(op["min"])) if op.has("min") else ""], ref)
 			if op.get("los", false) and not Sight.unit_line_of_sight(state, u, t):
 				return RuleResult.deny("No line of sight to the target.", Sight.REF_LOS)
+		if op.get("op", "") == "detach" and not u.counters.has("symbiosis"):
+			return RuleResult.deny("You aren't attached to a host.", "frames: Goblin core system")
+		if op.get("op", "") == "hologram_teleport":
+			var hr := Zones.check_hologram_teleport(state, u, params)
+			if not hr.ok:
+				return hr
+		if op.get("op", "") == "fire_rail":
+			var rr := FrameSystems.check_rail(state, u, params)
+			if not rr.ok:
+				return rr
 		if op.get("op", "") == "tachyon_target":
 			var r := AbilityActions.ally_in_sensors(state, u, state.unit(String(params.get("target", ""))))
 			if not r.ok:

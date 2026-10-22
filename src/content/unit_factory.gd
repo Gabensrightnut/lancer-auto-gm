@@ -297,6 +297,13 @@ static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dic
 	gear_ids.append_array(pilot.get("core_bonuses", []))
 	_add_gear_effects(u, gear_ids, pilot.get("talents", {}))
 	u.loadout["abilities"] = _abilities(db, u, frame, loadout.get("systems", []), pilot.get("talents", {}))
+	if (frame_effects_data().get(frame_id, {}) as Dictionary).get("orochi_choice", false):
+		# Hydra: one OROCHI drone accompanies it; Full Deployment brings all four.
+		for a: Dictionary in u.loadout["abilities"]:
+			if a["source_key"] == "core" and a["kind"] == "deploy":
+				a["orochi"] = true
+		if loadout.has("orochi"):
+			u.loadout["orochi"] = String(loadout["orochi"])
 	return u
 
 
@@ -332,13 +339,22 @@ static func _abilities(db: ContentDB, u: Unit, frame: Dictionary, system_ids: Ar
 		var c := a.duplicate(true)
 		c["requires_core_active"] = true
 		core_src["actions"].append(c)
+	# Our own extra core actions (Drake: deactivate Fortress as a protocol).
+	for a: Dictionary in (frame_effects_data().get(frame.get("id", ""), {}) as Dictionary).get("core_actions", []):
+		var c := a.duplicate(true)
+		c["requires_core_active"] = true
+		core_src["actions"].append(c)
 	_add_source(out, core_src, "core", String(core.get("name", "Core")), String(frame.get("id", "")))
 	var automated: Dictionary = {}
 	for t: Dictionary in u.loadout.get("traits", []):
 		automated[t["name"]] = t.get("automated", false)
 	for t: Dictionary in frame.get("traits", []):
-		if not automated.get(t.get("name", ""), false):
-			_add_source(out, t, "trait:" + String(t.get("name", "")), String(t.get("name", "")), String(frame.get("id", "")))
+		var src := t
+		if automated.get(t.get("name", ""), false):
+			# Automated traits keep only the actions you choose to take (Combat Repair).
+			src = t.duplicate(true)
+			src["actions"] = (t.get("actions", []) as Array).filter(func(a: Dictionary) -> bool: return Abilities.COSTS.has(String(a.get("activation", ""))))
+		_add_source(out, src, "trait:" + String(t.get("name", "")), String(t.get("name", "")), String(frame.get("id", "")))
 	for tid: String in talents:
 		var tal := db.get_entry("talents", tid)
 		for r in range(mini(int(talents[tid]), (tal.get("ranks", []) as Array).size())):
@@ -361,7 +377,7 @@ static func _add_source(out: Array, src: Dictionary, key: String, name: String, 
 		if weapon and act == "":
 			continue
 		var aname := String(a.get("name", name))
-		var ops: Variant = data.get("%s:%s" % [data_id, aname])
+		var ops: Variant = a.get("ops") if a.has("ops") else data.get("%s:%s" % [data_id, aname])
 		out.append({"key": "%s/a%d" % [key, n], "name": aname, "source_key": key, "source_name": name,
 			"kind": "action", "activation": act, "frequency": a.get("frequency", tag_freq),
 			"trigger": a.get("trigger", ""), "detail": a.get("detail", ""), "range": a.get("range", []),
@@ -437,8 +453,13 @@ static func _frame_effects(u: Unit, frame: Dictionary) -> void:
 	for t: Dictionary in frame.get("traits", []):
 		var name := String(t.get("name", ""))
 		var enc: Variant = trait_data.get(name, "manual")
+		# {"effects": [...], "manual": "what the table still applies"}: partly automated.
+		var note := ""
+		if enc is Dictionary:
+			note = String(enc.get("manual", ""))
+			enc = enc.get("effects", [])
 		var automated := enc is Array
-		traits.append({"name": name, "text": t.get("description", ""), "automated": automated})
+		traits.append({"name": name, "text": t.get("description", ""), "automated": automated, "manual_note": note})
 		if automated:
 			for e: Dictionary in enc:
 				var copy := e.duplicate(true)
@@ -454,6 +475,10 @@ static func _frame_effects(u: Unit, frame: Dictionary) -> void:
 		if BONUS_ROLLS.has(b.get("id", "")) and b.has("accuracy"):
 			core_effects.append({"kind": "accuracy", "on": BONUS_ROLLS[b["id"]], "value": int(b["accuracy"])})
 	var enc_core: Variant = data.get("core", "manual")
+	var core_note := ""
+	if enc_core is Dictionary:
+		core_note = String(enc_core.get("manual", ""))
+		enc_core = enc_core.get("effects", [])
 	if enc_core is Array:
 		core_effects.append_array((enc_core as Array).duplicate(true))
 	var core_ops: Array = (data.get("core_ops", []) as Array).duplicate(true)
@@ -462,10 +487,23 @@ static func _frame_effects(u: Unit, frame: Dictionary) -> void:
 	for e: Dictionary in core_effects:
 		e["label"] = core_name
 		e["rule_ref"] = "frames: %s core system" % frame.get("name", "")
+	# Always-on core passives (Manticore: 1/round energy when it takes heat).
+	for e: Dictionary in data.get("core_passive", []):
+		var copy := e.duplicate(true)
+		copy["label"] = String(core.get("passive_name", core_name))
+		copy["rule_ref"] = "frames: %s core system" % frame.get("name", "")
+		effects.append(copy)
 	u.loadout["effects"] = effects
 	u.loadout["traits"] = traits
 	u.loadout["core"] = {"name": core_name, "power": core.get("active_name", ""), "activation": core.get("activation", "Quick"),
-		"text": core.get("active_effect", ""), "effects": core_effects, "ops": core_ops, "automated": enc_core is Array}
+		"text": core.get("active_effect", ""), "effects": core_effects, "ops": core_ops, "automated": enc_core is Array,
+		"manual_note": core_note, "target": (data.get("core_target", {}) as Dictionary).duplicate(true)}
+	if data.get("core_sections", false):
+		u.loadout["core"]["sections"] = true
+	if data.get("core_deploy_all", false):
+		u.loadout["core"]["deploy_all"] = true
+	if data.has("core_zone"):
+		u.loadout["core"]["zone"] = (data["core_zone"] as Dictionary).duplicate(true)
 	# One Core Power per mission, recovered by a Full Repair (Core p.32, 82).
 	u.counters["core_power"] = 1
 

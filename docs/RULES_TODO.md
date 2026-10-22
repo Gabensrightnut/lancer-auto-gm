@@ -29,6 +29,8 @@ keeps the choices. An AI GM answers with the suggested reading and logs it. Code
 | `teleport_move_cost` | Movement a teleporting move uses | the whole move / 1 space | p.63 |
 | `prone_ignore_difficult` | Does "ignore difficult terrain" cancel Prone's extra cost? | cancels / still double | p.77 |
 | `eject_distance` | Where an ejecting pilot lands | exactly 6 in a line / anywhere within 6 | p.71 |
+| `manticore_inferno_self` | Is the Manticore caught in its own charge-die inferno? | yes (a Burst that isn't an attack includes the user) / no | p.64, Manticore core |
+| `hologram_blast_targets` | Dusk Wing Hologram Teleport explosions: who is caught? | hostiles / every character but the Dusk Wing | p.64, Dusk Wing core |
 | `basilisk_failed_save` | Gorgon Basilisk: does a failed save stop the attack? | no attack / attack goes ahead | p.77, Gorgon core |
 
 ## Engine geometry (consistent with the book, which only describes a flat tabletop)
@@ -64,6 +66,10 @@ keeps the choices. An AI GM answers with the suggested reading and logs it. Code
 | Pegasus average damage | The player asks for it per attack (`"average_damage": true`); dice are averaged up, (sides + 1) / 2 each, which matches the trait's table | `attacks.gd` |
 | Raleigh M35 Mjolnir | Its own rule (fire as a free action 1/round when you reload) isn't automated; with the core active and no rounds chambered it deals 0 | `attacks.gd`, `effects.gd` |
 | Trait reactions | Mag Parry is rolled after a hit (the attack "would deal" kinetic damage) and not when the target is Invisible; Warp Shield counts as the Saladin's reaction; Tactical Simulation protects allies, not the Swallowtail itself, and its teleport is optional (answer with `to`); Reactive Code resolves before the Invade's own heat and conditions; Defensive Pulse's reroll on a miss is left to the table | `trait_reactions.gd` |
+| Core system readings | Balor Hive Frenzy's soft cover counts for the Balor and adjacent allies against ranged attacks; Lancaster Supercharger lasts the scene as the book says (lancer-data says until the start of your next turn); Minotaur Maze's first save is at the end of the target's next turn, +1 Accuracy per earlier failed try; Iskander's extra mines each use a charge of the same system; the Apocalypse Die notices a move (even involuntary), Stunned or Jammed at the start of the Barbarossa's turn, which gives the same result as resetting at once; Napoleon's Aegis allows only the listed actions plus free actions and protocols | `frame_systems.gd` |
+| Zones | Mag Field: a ranged kinetic/explosive shot is stopped if exactly one of attacker and target is inside, or if its line crosses the field; all mechs and NPCs count as metal; the Immobilized lasts until the field ends; the Black Witch is affected by its own field; resumed attacks hit allies too, damage rolled once. Genghis cloud: Burst 3 from its own spaces; the 2 burn and 2 heat only during the smoke phase. Holograms: "move adjacent" counts any space on the path next to a hologram | `zones.gd` |
+| Rest (p.82) | The `rest` action works outside combat: heat, statuses and conditions clear, the pilot regains half HP (rounded up), and Repairs are spent as listed; only a wrecked mech takes Repairs from others. Hydra's drone choice and the Manticore's Castigation State are made at a rest; a Full Repair (between missions) is the campaign's job | `rest_actions.gd` |
+| Goblin Symbiosis | "Your Systems, E-Defense and Tech Attack" read as the Systems skill and the two stats; the host uses whichever is better. "Conditions" are the conditions (Core p.77), not other statuses. Using the Goblin's systems (gear) through the host isn't automated. On detaching the Goblin goes to the first free space next to the host | `frame_systems.gd` |
 | Frame trait readings | Tortuga Sentinel counts Overwatch as a reaction attack; Blast Plating resists all damage types from area attacks; Vlad's core resistance applies to attackers within range 3; Shrike Armor damage comes before the attack roll; Kai Bioplating jumps up to Speed across, half Speed up; Iskander's range is measured at each move | `data/game/frame_effects.json`, `gear_effects.json` |
 
 ## Movement audit (Core p.62-63, 77-78 and lancer-data text)
@@ -126,7 +132,7 @@ marked "manual" in `data/game/frame_effects.json`, talents (beyond unlocking tal
 Jockey and Reload (p.75), pilot armor and gear, zero-g
 (p.63), lifting and dragging (p.62), dragging wrecks, objects as attack targets (p.68),
 overshield sources, Scan's other two options, the same-Size grapple contest, Engineering
-retries against a meltdown, rest and Full Repair (p.82), unlicensed mechs (p.74: Impaired
+retries against a meltdown, Full Repair (p.82; rest is automated), unlicensed mechs (p.74: Impaired
 and Slowed), NHP control (p.75).
 
 ## Confirmed

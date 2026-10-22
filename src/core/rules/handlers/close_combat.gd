@@ -26,6 +26,15 @@ static func body_attack(u: Unit, name: String) -> Dictionary:
 	return w
 
 
+## The Grapple attack, with a longer reach for grapple cables (Blackbeard: Range 5).
+static func grapple_attack(u: Unit) -> Dictionary:
+	var w := body_attack(u, "Grapple")
+	var reach := Effects.value(u, "grapple_reach")
+	if reach > 1:
+		w["range"] = [{"type": "Threat", "val": reach}]
+	return w
+
+
 static func _hit(events: Array) -> bool:
 	for e: Dictionary in events:
 		if e["type"] == "attack_rolled":
@@ -82,20 +91,38 @@ class Grapple:
 		return "grapple"
 
 	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		var cable := Effects.value(u, "grapple_reach")
 		var r := CloseCombat._adjacent_target(state, u, params, CloseCombat.REF_GRAPPLE)
+		if not r.ok and cable > 0:
+			var t0 := state.unit(String(params.get("target", "")))
+			r = RuleResult.allow() if t0 != null and t0 != u and Combat.is_present(t0) else r
 		if not r.ok:
 			return r
 		if u.counters.has("grapple"):
 			return RuleResult.deny("You're already in a grapple.", CloseCombat.REF_GRAPPLE)
 		var t := state.unit(String(params["target"]))
-		var p := Attacks.preview(state, u, CloseCombat.body_attack(u, "Grapple"), t, {"improvised": true})
+		var p := Attacks.preview(state, u, CloseCombat.grapple_attack(u), t, {"improvised": true})
 		return RuleResult.allow() if p["ok"] else RuleResult.deny(p["reason"], p["rule_ref"])
 
 	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
 		var t := state.unit(String(params["target"]))
-		var events := Attacks.attack(state, u, CloseCombat.body_attack(u, "Grapple"), t, {"improvised": true})
+		var events := Attacks.attack(state, u, CloseCombat.grapple_attack(u), t, {"improvised": true})
 		if not CloseCombat._hit(events) or not Combat.is_present(t) or t.counters.has("grapple"):
 			return events
+		if Sight.unit_distance(state, u, t) > 1:
+			# Blackbeard Grapple Cable: pulled adjacent by the most direct path, or the grapple
+			# breaks and it doesn't move.
+			var path := Movement.pull_path(state, u, t)
+			var end: Array = path.back()
+			if Sight.distance(state, Sight.make_body(state, Vector2i(end[0], end[1]), int(end[2]), u.size), Sight.body_of(state, t)) > 1:
+				events.append({"type": "grapple_ended", "unit": u.id, "other": t.id, "reason": "No space next to the target: the cable breaks.", "rule_ref": "frames: Blackbeard, Grapple Cable"})
+				return events
+			u.cell = Vector2i(end[0], end[1])
+			u.level = int(end[2])
+			events.append({"type": "moved", "unit": u.id, "path": path, "mode": "dragged", "cost": 0, "rule_ref": "frames: Blackbeard, Grapple Cable"})
+			events.append_array(Abilities.check_mines(state, u, path))
+			events.append_array(Zones.check_path(state, u, path))
+			events.append_array(Combat.after_movement(state))
 		u.counters["grapple"] = {"with": t.id, "attacker": true}
 		t.counters["grapple"] = {"with": u.id, "attacker": false}
 		events.append({"type": "grappled", "unit": u.id, "target": t.id, "rule_ref": CloseCombat.REF_GRAPPLE})

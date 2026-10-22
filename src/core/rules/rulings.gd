@@ -65,6 +65,14 @@ const CATALOG := {
 		"question": "Gorgon Basilisk: hostiles 'must succeed on a Systems save before attacking'. On a failure (Stunned), does the attack still happen?",
 		"options": {"no_attack": "No: the save comes first, and a Stunned character can't attack.", "attack_continues": "Yes: the attack goes ahead, then the attacker is Stunned."},
 		"suggested": "no_attack", "rule_ref": "Core p.77 Stunned; frames: Gorgon core system"},
+	"manticore_inferno_self": {
+		"question": "Manticore core: the charge die's burst 2 inferno isn't an attack. Is the Manticore itself caught in it?",
+		"options": {"includes": "Yes: a Burst that isn't an attack includes the user's space (Core p.64).", "excludes": "No: only the characters around it."},
+		"suggested": "includes", "rule_ref": "Core p.64 Burst; frames: Manticore core system"},
+	"hologram_blast_targets": {
+		"question": "Dusk Wing Hologram Teleport: every hologram explodes (burst 1). Who is caught in the explosions?",
+		"options": {"hostiles": "Hostile characters, like a hologram set off by a hostile.", "everyone_else": "Every character but the Dusk Wing, allies included (a Burst that isn't an attack affects everyone in it)."},
+		"suggested": "hostiles", "rule_ref": "Core p.64 Burst; frames: Dusk Wing core system"},
 	"prone_ignore_difficult": {
 		"question": "Does 'ignore difficult terrain' (Bulwark Mods, Kai Bioplating) also cancel Prone's 'counts as moving in difficult terrain'?",
 		"options": {"cancels": "Yes.", "still_double": "No: Prone still costs double."},

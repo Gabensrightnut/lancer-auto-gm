@@ -84,7 +84,7 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 		out["seeking_payload"] = true
 	var ignores_los := Weapons.has_tag(w, "tg_arcing") or seeking
 	# Area attacks take cover and line of sight from the area's origin (glossary: Blast, Burst).
-	var cover := Sight.cover(state, area_origin if area_origin != null else a_body, t_body, Effects.guardians(state, target))
+	var cover := FrameSystems.extra_cover(state, target, Sight.cover(state, area_origin if area_origin != null else a_body, t_body, Effects.guardians(state, target)), attacker)
 	out["los"] = cover["los"]
 	if not cover["los"] and not ignores_los:
 		return fail.call("No line of sight to the target.", Sight.REF_LOS)
@@ -186,7 +186,8 @@ static func _defense(out: Dictionary, target: Unit, smart: bool) -> void:
 	if smart:
 		out["defense_name"] = "E-Defense"
 		# Smart: targets with no E-Defense count as having 8 (tags: Smart).
-		out["target_number"] = target.edef if target.edef > 0 else 8
+		var edef := FrameSystems.shared_stat(TurnRules.state_of(target), target, "edef") if target.counters.has("hosting") else target.edef
+		out["target_number"] = edef if edef > 0 else 8
 		return
 	out["defense_name"] = "Evasion"
 	var ev := target.evasion
@@ -207,7 +208,16 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 	var afterimage: bool = target.counters.get("afterimage", false)
 	if afterimage:
 		target.counters.erase("afterimage")  # Flicker Field: Invisible the next time it's attacked
-	if target.has_status("Invisible") or afterimage or opts.get("target_invisible", false):
+	var blocked := Zones.blocking_field(state, attacker, target, w, kind) if not opts.has("area_origin") else {}
+	if not blocked.is_empty():
+		# Black Witch Mag Field: the projectile stops at the edge; the field records it.
+		blocked["blocked"] = int(blocked.get("blocked", 0)) + 1
+		events.append({"type": "attack_blocked", "attacker": attacker.id, "target": target.id, "zone": blocked["id"], "rule_ref": Zones.REF_FIELD})
+		attacker.turn["attacked"] = true
+		if not opts.get("skip_spend", false):
+			events.append_array(_spend_weapon(state, attacker, w))
+		return events
+	if target.has_status("Invisible") or afterimage or opts.get("target_invisible", false) or Zones.hidden_by_smoke(state, target, attacker):
 		# 50% chance to miss outright before the roll (statuses: Invisible).
 		var coin := state.dice.die(2)
 		invisible_miss = coin == 1
@@ -324,6 +334,10 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 	var shared: Dictionary = opts.get("shared_damage", {})
 	var damage: Array = w.get("damage", [])
 	var ap := Weapons.has_tag(w, "tg_ap")
+	var obj := FrameSystems.object_damage(attacker, w, target)
+	if not obj.is_empty():
+		damage = obj  # Sherman COREBURN against objects and deployables
+		ap = true
 	var chambers := int(opts.get("chambers", -1))
 	if chambers >= 0:
 		# Raleigh Thunder God: 4 kinetic per loaded round; four or more gain AP and Shred.
@@ -534,6 +548,8 @@ static func roll_damage(state: GameState, expr: String, crit: bool, overkill: bo
 
 ## Knockback / pushes: involuntary straight-line movement (glossary: Involuntary Movement).
 static func knock_back(state: GameState, target: Unit, origin: Vector2i, spaces: int, by: Unit = null) -> Array[Dictionary]:
+	if Effects.has(target, "immovable"):
+		return [{"type": "knockback_blocked", "unit": target.id, "reason": "Immune to involuntary movement.", "rule_ref": Effects.REF}] as Array[Dictionary]
 	if by != null and by.size < target.size and Effects.has(target, "heavy_frame"):
 		return [{"type": "knockback_blocked", "unit": target.id, "reason": "Heavy Frame: smaller characters can't knock it back.", "rule_ref": Effects.REF}] as Array[Dictionary]
 	var path := Movement.push_path(state, target, origin, spaces)
@@ -544,8 +560,35 @@ static func knock_back(state: GameState, target: Unit, origin: Vector2i, spaces:
 	var events: Array[Dictionary] = [{"type": "moved", "unit": target.id, "path": path, "mode": "involuntary", "cost": 0, "rule_ref": "tags: Knockback"}]
 	events.append_array(Effects.punish_movement(state, target))
 	events.append_array(Abilities.check_mines(state, target, path))
+	events.append_array(Zones.check_path(state, target, path))
 	if Movement.placement(state, target.size, target.cell, target.level)["airborne"] and not target.flying:
 		events.append_array(Combat.begin_falling(target, "Knocked off a ledge."))
+	events.append_array(Combat.after_movement(state))
+	return events
+
+
+## Pulled toward `by` until adjacent, or as close as possible (Blackbeard Omni-harpoon):
+## involuntary movement, one space at a time to the free space nearest `by`.
+static func pull(state: GameState, target: Unit, by: Unit) -> Array[Dictionary]:
+	if Effects.has(target, "heavy_frame") and by.size < target.size:
+		return [{"type": "knockback_blocked", "unit": target.id, "reason": "Heavy Frame: smaller characters can't move it.", "rule_ref": Effects.REF}] as Array[Dictionary]
+	return pull_to(state, target, Sight.body_of(state, by), 1)
+
+
+## Involuntary movement toward `goal` until within `reach` (0: onto it) or no closer.
+static func pull_to(state: GameState, target: Unit, goal: Sight.Body, reach: int) -> Array[Dictionary]:
+	if Effects.has(target, "immovable"):
+		return [{"type": "knockback_blocked", "unit": target.id, "reason": "Immune to involuntary movement.", "rule_ref": Effects.REF}] as Array[Dictionary]
+	var path := Movement.pull_path_to(state, target, goal, reach)
+	if path.size() < 2:
+		return [] as Array[Dictionary]
+	var last: Array = path.back()
+	target.cell = Vector2i(last[0], last[1])
+	target.level = int(last[2])
+	var events: Array[Dictionary] = [{"type": "moved", "unit": target.id, "path": path, "mode": "involuntary", "cost": 0, "rule_ref": "glossary: Involuntary Movement"}]
+	events.append_array(Effects.punish_movement(state, target))
+	events.append_array(Abilities.check_mines(state, target, path))
+	events.append_array(Zones.check_path(state, target, path))
 	events.append_array(Combat.after_movement(state))
 	return events
 
@@ -554,9 +597,9 @@ static func knock_back(state: GameState, target: Unit, origin: Vector2i, spaces:
 ## (Core p.64): tech attacks ignore cover and can't crit.
 static func tech_preview(state: GameState, attacker: Unit, target: Unit, opts: Dictionary = {}) -> Dictionary:
 	var out := {"ok": false, "reason": "", "rule_ref": "actions: Invade", "kind": KIND_TECH, "accuracy": 0,
-		"difficulty": 0, "sources": [], "bonus": attacker.tech_attack,
-		"bonus_sources": [{"label": "Tech Attack", "value": attacker.tech_attack}],
-		"defense_name": "E-Defense", "target_number": target.edef if target else 0, "lock_on": false}
+		"difficulty": 0, "sources": [], "bonus": FrameSystems.shared_stat(state, attacker, "tech_attack"),
+		"bonus_sources": [{"label": "Tech Attack", "value": FrameSystems.shared_stat(state, attacker, "tech_attack")}],
+		"defense_name": "E-Defense", "target_number": FrameSystems.shared_stat(state, target, "edef") if target else 0, "lock_on": false}
 	var r := tech_target_check(state, attacker, target)
 	if not r.ok:
 		out["reason"] = r.reason
@@ -592,6 +635,8 @@ static func tech_target_check(state: GameState, user: Unit, target: Unit, action
 		return RuleResult.deny("Jammed: you can't take tech actions.", "statuses: Jammed")
 	if target == null or target.destroyed:
 		return RuleResult.deny("No valid target.", "actions: Quick Tech")
+	if Effects.has(target, "aegis"):
+		return RuleResult.deny("Inside the Trueblack Aegis it's immune to all tech actions.", "frames: Napoleon core system")
 	if target.has_status("Hidden") and target.side != user.side:
 		return RuleResult.deny("Hidden characters can't be targeted.", "statuses: Hidden")
 	if target.has_status("Shut Down"):
@@ -615,7 +660,7 @@ static func tech_attack(state: GameState, attacker: Unit, target: Unit, label: S
 	var hit := false
 	var check := {}
 	var invisible_miss := false
-	if target.has_status("Invisible"):
+	if target.has_status("Invisible") or Zones.hidden_by_smoke(state, target, attacker):
 		var coin := state.dice.die(2)
 		invisible_miss = coin == 1
 		events.append({"type": "invisible_roll", "attacker": attacker.id, "target": target.id, "roll": coin, "missed": invisible_miss, "rule_ref": "statuses: Invisible"})
