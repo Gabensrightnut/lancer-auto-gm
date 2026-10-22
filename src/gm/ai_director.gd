@@ -56,7 +56,7 @@ func run(max_steps: int = 100000) -> int:
 ## Does one piece of AI work. Returns false when there's nothing for the AI to do.
 func step() -> bool:
 	var state := host.state
-	if state.phase == GameState.PHASE_ENDED:
+	if state.phase == GameState.PHASE_ENDED or not host.paused_for.is_empty():
 		return false
 	if mission != null and mission.outcome != "" and not mission.ended:
 		var out := host.submit(NetHost.GM_SEAT, mission.end_action())

@@ -27,6 +27,9 @@ var intel: Dictionary = {}
 var seats: Dictionary = {}
 ## Rulings made on grey areas this campaign: ruling id -> {choice, rule_ref, note}.
 var rulings: Dictionary = {}
+## Content packs this battle uses: [{"id", "name", "version"}] (see src/content/content_pack.gd).
+## Everyone in the game must have the same packs.
+var packs: Array = []
 var dice: Dice
 
 
@@ -66,7 +69,7 @@ func to_dict() -> Dictionary:
 		"round": round_number, "phase": phase, "active_unit": active_unit,
 		"acted": Array(acted), "turn_side": turn_side, "first_side": first_side,
 		"intel": intel.duplicate(true), "seats": seats.duplicate(true),
-		"rulings": rulings.duplicate(true), "dice_state": str(dice.get_state()),
+		"rulings": rulings.duplicate(true), "packs": packs.duplicate(true), "dice_state": str(dice.get_state()),
 	}
 
 
@@ -85,6 +88,7 @@ static func from_dict(d: Dictionary) -> GameState:
 	s.intel = (d.get("intel", {}) as Dictionary).duplicate(true)
 	s.seats = (d.get("seats", {}) as Dictionary).duplicate(true)
 	s.rulings = (d.get("rulings", {}) as Dictionary).duplicate(true)
+	s.packs = (d.get("packs", []) as Array).duplicate(true)
 	if d.has("dice_state"):
 		s.dice.set_state(String(d["dice_state"]).to_int())
 	return s

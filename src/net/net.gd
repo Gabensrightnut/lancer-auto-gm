@@ -49,14 +49,29 @@ func start_hot_seat(state: GameState, engine: RulesEngine, seats: Array, filter:
 
 
 ## Lets remote players join the hosted game. host.room_opened(code) gives the room code.
-func open_online(game_host: NetHost = host) -> void:
-	game_host.open_room(WebRtcTransport.new())
+## Pass the saved room code when resuming a mission so players can rejoin the same room.
+func open_online(game_host: NetHost = host, room_code: String = "") -> void:
+	game_host.open_room(WebRtcTransport.new(), room_code)
 
 
 func join_online(room_code: String, player_name: String, seat: String = "") -> NetClient:
 	leave()
 	client = NetClient.new(WebRtcTransport.new())
+	client.packs = PackLibrary.new().installed_summaries()
+	client.remember_session = true
 	client.join(NetProtocol.normalize_room_code(room_code), player_name, seat)
+	return client
+
+
+## Rejoins the last online game from this computer with the same seat. null if none.
+func rejoin_last() -> NetClient:
+	if NetClient.last_session().is_empty():
+		return null
+	leave()
+	client = NetClient.new(WebRtcTransport.new())
+	client.packs = PackLibrary.new().installed_summaries()
+	client.remember_session = true
+	client.rejoin_last()
 	return client
 
 
@@ -65,6 +80,22 @@ func join_online(room_code: String, player_name: String, seat: String = "") -> N
 func attach_ai(gm_settings: GmSettings = null, mission: Mission = null) -> AiDirector:
 	director = AiDirector.new(host, gm_settings, mission)
 	return director
+
+
+## Picks a saved mission back up on this (host) computer: same state and dice, same seats, same
+## room code online. Play holds until every remote player has reconnected.
+## Returns MissionAutosave.resume()'s result ({host, mission, settings, room, error}).
+func resume_mission(store: SaveStore, campaign_id: String) -> Dictionary:
+	leave()
+	var r := MissionAutosave.resume(store, campaign_id)
+	if r["error"] != "":
+		return r
+	host = r["host"]
+	if not (host.export_seats()["tokens"] as Dictionary).is_empty():
+		open_online(host, r["room"])
+	director = AiDirector.new(host, r["settings"], r["mission"])
+	host.hold_until_back()
+	return r
 
 
 func leave() -> void:

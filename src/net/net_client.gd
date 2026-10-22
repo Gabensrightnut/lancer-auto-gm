@@ -32,6 +32,12 @@ var view: Dictionary = {}
 ## Who the game is waiting on (see waiting_changed).
 var waiting: Dictionary = {}
 var connected := false
+## Content packs installed here, sent to the host so it can check we match the game's.
+var packs: Array = []
+## Remember the seat token on this computer, so rejoin_last() works even after a restart.
+var remember_session := false
+
+const SESSION_FILE := "user://net_session.json"
 var auto_reconnect := true
 
 var _wanted_seat := ""
@@ -89,7 +95,7 @@ func _on_connected(_peer: int) -> void:
 	connected = true
 	transport.send(NetTransport.HOST_PEER, {
 		"t": NetProtocol.HELLO, "version": NetProtocol.game_version(), "name": player_name,
-		"token": token, "seat": _wanted_seat,
+		"token": token, "seat": _wanted_seat, "packs": packs,
 	})
 
 
@@ -128,6 +134,10 @@ func _on_message(_peer: int, msg: Dictionary) -> void:
 		NetProtocol.WELCOME:
 			seat = str(msg.get("seat", ""))
 			token = str(msg.get("token", ""))
+			if remember_session:
+				var f := FileAccess.open(SESSION_FILE, FileAccess.WRITE)
+				if f != null:
+					f.store_string(JSON.stringify({"room": room_code, "seat": seat, "token": token, "name": player_name}))
 			_reconnect_try = -1
 			joined.emit(seat)
 		NetProtocol.REFUSED:
@@ -143,6 +153,26 @@ func _on_message(_peer: int, msg: Dictionary) -> void:
 		NetProtocol.SEATS:
 			seats_changed.emit(msg.get("seats", {}))
 			_set_waiting(msg.get("waiting", {}))
+
+
+## Rejoins the last game this computer was in, taking back the same seat (e.g. after the
+## host resumed a saved mission). Returns false if there's nothing to rejoin.
+func rejoin_last() -> bool:
+	var last := last_session()
+	if last.is_empty():
+		return false
+	token = str(last.get("token", ""))
+	join(str(last["room"]), str(last.get("name", "")), str(last.get("seat", "")))
+	return true
+
+
+static func last_session() -> Dictionary:
+	if not FileAccess.file_exists(SESSION_FILE):
+		return {}
+	var json := JSON.new()
+	if json.parse(FileAccess.get_file_as_string(SESSION_FILE)) != OK or not json.data is Dictionary:
+		return {}
+	return json.data if json.data.has("room") else {}
 
 
 ## "I'll go": ask to take the next turn with `unit_id` (yours, or an AI squadmate's).
