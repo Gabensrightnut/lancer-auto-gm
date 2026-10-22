@@ -318,7 +318,11 @@ func _show_join() -> void:
 			return
 		var client: NetClient = net.join_online(room, name_edit.text.strip_edges(), NetHost.GM_SEAT if as_gm.button_pressed else "")
 		MenuSession.lobby = LobbyModel.for_client(client)
-		client.joined.connect(func(_seat: String) -> void: MenuSession.go(self, "lobby"))
+		client.joined.connect(func(seat: String) -> void:
+			if seat == NetHost.GM_SEAT:
+				MenuSession.settings()  # loads this player's house rules
+				HouseRulesFlow.push(null, null, client)  # the GM's house rules are the game's
+			MenuSession.go(self, "lobby"))
 		client.refused.connect(func(_c: String, why: String) -> void: join_status.text = why)
 		client.join_failed.connect(func(why: String) -> void: join_status.text = why))
 	body.add_child(go)

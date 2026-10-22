@@ -367,6 +367,14 @@ func _rebuild() -> void:
 		"squad": squad, "shape": options["shape"], "sitrep": options["sitrep"], "db": db,
 		"settings": gm_settings_for(options["preset"], str(options.get("fight_length", "standard"))), "players": squad.size()})
 	var state: GameState = gen["state"]
+	if HouseRulesFlow.i_decide(campaign):
+		# The host's battle house rules (or a GM's here); story ones switch through the story.
+		var hr: Dictionary = (campaign.options.get("house_rules", {}) as Dictionary).duplicate()
+		var mine := HouseRulesFlow.my_set()
+		for id: String in mine:
+			if HouseRules.is_battle_rule(id):
+				hr[id] = mine[id]
+		campaign.options["house_rules"] = hr
 	campaign.prepare_mission(state)
 	mission = gen["mission"]
 	if host == null:
@@ -410,6 +418,15 @@ func _on_seats_changed(_table: Dictionary) -> void:
 func _on_lobby_message(seat: String, msg: Dictionary) -> void:
 	if msg.has("ready"):
 		ready[seat] = bool(msg["ready"])
+		_changed()
+	var flipped := HouseRulesFlow.on_message(host, campaign, seat, msg)
+	if not flipped.is_empty():
+		# The GM (a friend online) changed the house rules: this battle and everyone's lobby.
+		if not started:
+			HouseRules.put(host.state, HouseRules.of_campaign(campaign))
+			host.send_updates()
+		for id: String in flipped:
+			messages.append({"kind": "info", "text": HouseRules.announce(id, bool(campaign.options["house_rules"][id]))})
 		_changed()
 
 

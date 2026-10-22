@@ -125,15 +125,21 @@ func squad() -> Array:
 
 # --- Missions ----------------------------------------------------------------------------
 
-## Before a mission starts: the table's rulings and the campaign's packs go into the battle.
+## Before a mission starts: the table's rulings, house rules and the campaign's packs go into
+## the battle.
 func prepare_mission(state: GameState) -> void:
 	state.rulings = rulings.duplicate(true)
+	HouseRules.put(state, HouseRules.of_campaign(self))
 	state.packs = packs.duplicate(true)
 
 
 ## After a mission: keep any new rulings and record the result.
 func record_mission(state: GameState, mission: Mission) -> void:
 	rulings.merge(state.rulings, true)
+	if not state.house_rules.is_empty():
+		var hr: Dictionary = (options.get("house_rules", {}) as Dictionary).duplicate()
+		hr.merge(state.house_rules, true)  # switched during the battle
+		options["house_rules"] = hr
 	history.append({"number": history.size() + 1, "sitrep": mission.sitrep_name, "outcome": mission.outcome,
 		"reason": mission.outcome_reason, "operation": mission.flavor.get("operation", "")})
 	updated_at = int(Time.get_unix_time_from_system())

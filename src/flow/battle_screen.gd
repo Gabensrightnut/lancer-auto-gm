@@ -195,6 +195,11 @@ func _on_view(_seat: String, v: Dictionary, events: Array) -> void:
 
 ## Every batch the seat on screen sees (its own actions too): tutorial lessons and tips.
 func _on_events_seen(_seat: String, events: Array) -> void:
+	for e: Dictionary in events:
+		if str(e.get("type", "")) == "house_rule_changed":
+			var text := HouseRules.announce(str(e.get("id", "")), bool(e.get("on", false)))
+			combat_log.add_line("[color=#c9a0ff]%s[/color]" % text)  # every switch is announced
+			show_banner(text)
 	tutorial.show_events(Tutorial.observe_battle(story, campaign, events, _local_units()))
 
 
@@ -382,6 +387,9 @@ func _story_events(events: Array) -> void:
 				combat_log.add_line("[color=#ff8a7a]%s[/color]" % e.get("text", ""))
 			"battle_end_requested":
 				session.end_by_parley(e)
+			"house_rule_changed":
+				# A story house rule switched mid-battle (the story announces its own).
+				combat_log.add_line("[color=#c9a0ff]%s[/color]" % HouseRules.announce(str(e.get("id", "")), bool(e.get("on", false))))
 			"twist_revealed":
 				if session.is_host and bool(e.get("by_gm", false)) and e.get("twist") is Dictionary:
 					session.gm_reveal_twist(e["twist"])  # a human GM revealed it: narrate it in the battle

@@ -742,6 +742,11 @@ at any time, even mid-campaign. The game stays canon until someone turns one on.
   are ON by your pick; repeating quick tech stays OFF.
 - **Community house rules:** popular ones researched from the Lancer community (forums, Reddit,
   Discord write-ups, GM blogs), each with its source.
+- Built: the House Rules panel in settings lists every switch (the rules engine's and the
+  story's) by source, each with "Not a book rule", where it applies (battle / between missions)
+  and a link to where it's from. A flip applies at once; a human GM's set wins, else the host's;
+  every switch is announced (battle log, lobby, story log) and saved with the campaign. Not yet:
+  marking them in the codex.
 
 ## Rule differences: Lancer Tactics vs. the book
 

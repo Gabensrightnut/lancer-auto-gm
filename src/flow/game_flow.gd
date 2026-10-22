@@ -113,6 +113,13 @@ static func _sync_story_seats(campaign: Campaign) -> void:
 ## builder ({"pilot_update": pilot}). Taken only for the friend's own pilot and only if it's
 ## legal (BuilderModel); what was spent at earlier License Levels stays the host's record.
 static func _on_story_message(campaign: Campaign, seat: String, msg: Dictionary) -> void:
+	if not HouseRulesFlow.on_message(story_host, campaign, seat, msg).is_empty():
+		# The GM (a friend online) changed the house rules between battles.
+		if _story_store != null:
+			_story_store.save_campaign(campaign)
+		if story_session != null:
+			story_session.resync()
+		return
 	if not msg.get("pilot_update") is Dictionary or story_session == null:
 		return
 	var why := apply_pilot_update(campaign, seat, msg["pilot_update"])
