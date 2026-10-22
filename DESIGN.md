@@ -586,6 +586,19 @@ differently without an AI. Each game has a **seed**: share it to replay the same
   Company reps, quartermasters and merchants offer deals by standing (e.g. cheaper repairs
   for company members). The core book doesn't track currency, so the exact amounts are our
   own system, clearly labeled, and never a way around licenses.
+- **Getting mechs around, by the book:** mechs are **3D-printed** from licensed patterns
+  (Core p.31, p.82). With access to a printing facility, a Full Repair during downtime can
+  rebuild your mech or print a brand-new one, so the squad usually travels light and
+  prints at the destination. Printing facilities are part of the world: Union and company
+  bases, big cities, your patron's ship. Remote frontier worlds may have none, so a destroyed
+  mech there stays destroyed until you reach one, or you pay or trade a favor for access.
+- **Travel:** the squad moves between planets on a patron's or company's ship, or buys
+  passage with manna (blink gates between systems). Working for a company or patron
+  means free transport and printer access; going independent means paying your own way.
+- **Favors and jobs:** NPCs offer deals: "clear out the bandits at the old mine and I'll
+  get you into the station's printer bay" or "...and my brother's garage will fix your rig
+  for free". Doing the job earns the favor (a Reserve, a discount, access, information,
+  manna or standing), tracked in the campaign and offered by the procedural GM as side jobs.
 - **Favors and access** still come from **Reserves** and downtime actions as in the book
   (Get Resources, Get Connected, Get Creative, Power at a Cost...).
 - **Supplies by the book:** food, water, repair materials and the like work exactly as
