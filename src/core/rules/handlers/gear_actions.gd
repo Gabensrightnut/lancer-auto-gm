@@ -70,6 +70,8 @@ class UseObject:
 			return RuleResult.deny("Only allied characters can use it.", Abilities.REF)
 		if Sight.unit_distance(state, u, o) > 1:
 			return RuleResult.deny("It must be adjacent.", Abilities.REF)
+		if int(o.counters.get("used_round", -1)) == state.round_number:
+			return RuleResult.deny("It's already been used this round.", Abilities.REF)
 		return RuleResult.allow()
 
 	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
@@ -78,4 +80,8 @@ class UseObject:
 		for op: Dictionary in o.counters["interact"]:
 			if op.get("op", "") == "restock":
 				events.append_array(GearSystems.restock(state, u, o, params))
+			if op.get("op", "") == "reload":
+				# Autoloader Drone: 1/round, an adjacent character reloads a Loading weapon.
+				o.counters["used_round"] = state.round_number
+				events.append_array(GearSystems.reload_one(state, u, String(params.get("weapon", "")), o.name))
 		return events

@@ -143,7 +143,7 @@ cover, line of sight, attack/area/tech previews with hit chance).
 | `unit_folded` / `unit_unfolded` | `unit`, `cell` (Fold Space: off the field until its next turn) |
 | `attached` / `detached` | `unit` (Goblin), `host`, `reason` (Symbiosis). A riding Goblin acts during its host's turn |
 | `area_effect` | `unit`, `cells`, `center` (a grenade or other non-attack area) |
-| `weapon_profile` | `unit`, `weapon`, `profile` (Spin-Up and other profile switches) |
+| `weapon_profile` | `unit`, `weapon`, `profile` (Spin-Up and other profile switches). Attacks may pick `profile` (index) or `pattern` ("Cone"/"Line") for weapons that have several |
 | New actions | `pull_stake` (full: an impaled character's Hull save), `shake_off` {`what`: chains/excommunicate} (full: a Systems save), `use_object` {`object`, `condition`, `weapon`} (an adjacent ally's Restock Drone) |
 | `ruling_needed` | `id`, `question`, `options` {id: text}, `rule_ref`, `trigger_action`: the engine is paused; the host answers `{"type": "set_ruling", "params": {"id", "choice"}}` |
 | `ruling_made` | `id`, `choice`, `text` |

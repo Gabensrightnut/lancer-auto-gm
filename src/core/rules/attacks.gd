@@ -46,6 +46,8 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 		return fail.call("You can't attack yourself.", REF_SKIRMISH)
 	if Effects.has(attacker, "no_attacks"):
 		return fail.call("You can't make attacks of any kind right now (Retractable Profile).", "systems: Retractable Profile")
+	if GearSystems.in_stasis(target):
+		return fail.call("In stasis: it can't be targeted.", "systems: Stasis Generator")
 	var area_origin: Variant = opts.get("area_origin")
 	if Weapons.area(w) != "" and area_origin == null:
 		return fail.call("%s is an area weapon (%s): aim it at a space instead of a target." % [w.get("name", ""), Weapons.area(w)], Areas.REF)
@@ -74,6 +76,10 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 			out["thrown"] = true
 	out["kind"] = kind
 	out["reach"] = reach
+	if Weapons.is_melee(w) and Effects.has(attacker, "no_melee"):
+		return fail.call("With Siege Stabilizers extended you can't make melee attacks.", "systems: Siege Stabilizers")
+	if not Weapons.is_melee(w) and dist <= Effects.value(attacker, "min_attack_range") and Effects.value(attacker, "min_attack_range") > 0:
+		return fail.call("With Siege Stabilizers extended you can't attack within range %d." % Effects.value(attacker, "min_attack_range"), "systems: Siege Stabilizers")
 	var in_reach := Sight.within(state, a_body, t_body, reach)
 	if area_origin == null and in_reach["grey_area"] != "":
 		out["grey_area"] = in_reach["grey_area"]
@@ -135,6 +141,10 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 			acc += int(src["value"])
 		else:
 			diff += int(src["value"])
+	var enc := GearSystems.enclave_difficulty(state, attacker, target)
+	if enc > 0:
+		sources.append(_src("Enclave dome", "difficulty", "systems: Enclave-Pattern Support Shield", enc))
+		diff += enc
 	var shield := GearSystems.shield_difficulty(attacker, target)
 	if shield > 0:
 		sources.append(_src("Projected Shield", "difficulty", "systems: Type-3 Projected Shield", shield))
@@ -164,6 +174,8 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 		out["cover"] = cover
 	elif ranged_like:
 		out["cover"] = cover
+	if WeaponRules.rules(w).get("ignore_difficulty", false):
+		diff = 0  # Shatterhead: the final roll is never affected by Difficulty
 	out["accuracy"] = acc
 	out["difficulty"] = diff
 	out["sources"] = sources
@@ -265,6 +277,10 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 	events.append_array(pre["events"])
 	if pre["cancel"]:
 		return events
+	var blink := GearSystems.blinkfield(state, attacker, target)
+	events.append_array(blink["events"])
+	if blink["resist"]:
+		pre["resist_all"] = true
 	for src: Dictionary in pre["sources"]:
 		(p["sources"] as Array).append(src)
 		p["difficulty"] = int(p["difficulty"]) + int(src["value"])
@@ -305,6 +321,12 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 			# Gorgon Metastatic Paralysis: a 1-2 misses and Stuns the attacker.
 			result = "miss"
 			check["paralysis"] = true
+	var ip_events: Array[Dictionary] = []
+	if kind == KIND_RANGED and result != "miss":
+		var ip := GearSystems.interdiction_point(state, attacker, target, int(check.get("total", 0)))
+		ip_events = ip["events"]
+		if ip["missed"]:
+			result = "miss"  # Stasis Bolt: the attack automatically misses
 	events.append({"type": "attack_rolled", "attacker": attacker.id, "target": target.id,
 		"weapon": w.get("key", ""), "weapon_name": w.get("name", ""), "kind": kind, "check": check,
 		"result": result, "cover": p["cover"].get("cover", "none") if p["cover"] is Dictionary else "none",
@@ -316,6 +338,7 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		result = "crit"  # Markerlight: a weak spot
 		events[events.size() - 1]["result"] = "crit"
 		events[events.size() - 1]["markerlight"] = true
+	events.append_array(ip_events)
 	if result != "miss":
 		var par := TraitReactions.parry(state, attacker, w, target)
 		events.append_array(par["events"])
@@ -655,6 +678,9 @@ static func roll_damage(state: GameState, expr: String, crit: bool, overkill: bo
 
 ## Knockback / pushes: involuntary straight-line movement (glossary: Involuntary Movement).
 static func knock_back(state: GameState, target: Unit, origin: Vector2i, spaces: int, by: Unit = null) -> Array[Dictionary]:
+	var anchor := GearSystems.flash_anchor(state, target, "knockback")
+	if anchor["prevented"]:
+		return anchor["events"]
 	if Effects.has(target, "immovable"):
 		return [{"type": "knockback_blocked", "unit": target.id, "reason": "Immune to involuntary movement.", "rule_ref": Effects.REF}] as Array[Dictionary]
 	if by != null and by.size < target.size and Effects.has(target, "heavy_frame"):
@@ -684,6 +710,9 @@ static func pull(state: GameState, target: Unit, by: Unit) -> Array[Dictionary]:
 
 ## Involuntary movement toward `goal` until within `reach` (0: onto it) or no closer.
 static func pull_to(state: GameState, target: Unit, goal: Sight.Body, reach: int, max_steps: int = 100) -> Array[Dictionary]:
+	var anchor := GearSystems.flash_anchor(state, target, "pull")
+	if anchor["prevented"]:
+		return anchor["events"]
 	if Effects.has(target, "immovable"):
 		return [{"type": "knockback_blocked", "unit": target.id, "reason": "Immune to involuntary movement.", "rule_ref": Effects.REF}] as Array[Dictionary]
 	var path := Movement.pull_path_to(state, target, goal, reach, max_steps)
@@ -760,6 +789,8 @@ static func tech_target_check(state: GameState, user: Unit, target: Unit, action
 		return RuleResult.deny("No valid target.", "actions: Quick Tech")
 	if Effects.has(target, "aegis"):
 		return RuleResult.deny("Inside the Trueblack Aegis it's immune to all tech actions.", "frames: Napoleon core system")
+	if GearSystems.in_stasis(target):
+		return RuleResult.deny("In stasis: it can't be targeted.", "systems: Stasis Generator")
 	if GearSystems.iceout(state, target) or GearSystems.iceout(state, user):
 		return RuleResult.deny("Inside an ICEOUT field: immune to tech actions, and none can be taken.", "systems: ICEOUT Drone")
 	if target.has_status("Hidden") and target.side != user.side:

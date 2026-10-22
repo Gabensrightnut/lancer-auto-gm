@@ -66,5 +66,14 @@
   },
   "mw_autogun": {
     "no_attack": true
+  },
+  "mw_shatterhead_colony_missiles": {
+    "ignore_difficulty": true
+  },
+  "mw_tachyon_lance": {
+    "backblast": true
+  },
+  "mw_annihilator": {
+    "splash": 1
   }
 }

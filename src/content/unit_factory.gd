@@ -400,6 +400,9 @@ static func _add_source(out: Array, src: Dictionary, key: String, name: String, 
 		var over: Variant = data.get("deploy:%s:%s" % [data_id, raw.get("name", "")])
 		if over is Dictionary:
 			d.merge(over, true)
+			if over.get("skip", false):
+				m += 1
+				continue  # used through an action instead (Clamp Bombs)
 		var dkey := "%s/d%d" % [key, m]
 		out.append({"key": dkey, "name": "Deploy " + String(d.get("name", "")), "source_key": key, "source_name": name,
 			"kind": "deploy", "activation": String(d.get("activation", "Quick")) if String(d.get("activation", "Quick")) != "None" else "Quick",

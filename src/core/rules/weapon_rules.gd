@@ -25,6 +25,22 @@ static func rules(w: Dictionary) -> Dictionary:
 	return w.get("rules", {})
 
 
+## The weapon as fired with a chosen profile or pattern (params.profile: index;
+## params.pattern: "Cone"/"Line"... for weapons that list more than one). Never changes the
+## loadout's own copy.
+static func variant(w: Dictionary, params: Dictionary) -> Dictionary:
+	var out := w
+	if params.has("profile") and (w.get("profiles", []) as Array).size() > 1 and not rules(w).has("spin_up") and not w.get("integrated", false):
+		out = w.duplicate(true)
+		Weapons.set_profile(out, int(params["profile"]))
+	if params.has("pattern"):
+		var pat := String(params["pattern"])
+		if Weapons.AREA_TYPES.has(pat) and Weapons.range_value(w, pat) > 0:
+			out = out.duplicate(true)
+			out["range"] = (out["range"] as Array).filter(func(r: Dictionary) -> bool: return not Weapons.AREA_TYPES.has(r.get("type", "")) or r["type"] == pat)
+	return out
+
+
 ## The weapon's on-hit (and on-crit) conditions in one shape: [{status, save, until}].
 static func hit_statuses(w: Dictionary, crit: bool) -> Array:
 	var out: Array = []

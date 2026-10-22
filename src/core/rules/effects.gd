@@ -303,6 +303,7 @@ static func turn_started(state: GameState, u: Unit) -> Array[Dictionary]:
 			events.append_array(Combat.add_status(state, u, String(e["status"]), String(e.get("label", "trait"))))
 	events.append_array(FrameSystems.turn_started(state, u))
 	events.append_array(GearSystems.horus_turn_started(state, u))
+	events.append_array(GearSystems.ha_turn_started(state, u))
 	return events
 
 
@@ -333,6 +334,8 @@ static func turn_ending(state: GameState, u: Unit) -> Array[Dictionary]:
 			"target": u.id, "chambers": u.counters["chambers"], "rule_ref": "frames: Raleigh core system"})
 	events.append_array(GearSystems.impaled_turn_end(state, u))
 	events.append_array(GearSystems.horus_turn_ending(state, u))
+	events.append_array(GearSystems.ha_turn_ending(state, u))
+	events.append_array(GearSystems.clamp_turn_end(state, u))
 	if has(u, "reload_if_idle") and not u.turn.get("attacked", false):
 		GearSystems.reloaded(u)
 		for w: Dictionary in u.loadout.get("weapons", []):

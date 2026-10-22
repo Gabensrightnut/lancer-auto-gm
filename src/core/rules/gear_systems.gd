@@ -531,6 +531,7 @@ static func status_ended(u: Unit, status: String) -> void:
 ## cloaking field end when their user takes damage.
 static func took_damage(state: GameState, u: Unit, source: String) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
+	spoil_cooler(u)
 	var src := state.unit(source)
 	if src != null:
 		src.counters["mirage"] = (src.counters.get("mirage", []) as Array).filter(func(m: Dictionary) -> bool: return not (m.get("stalk", false) and m.get("who", "") == u.id))
@@ -870,9 +871,12 @@ static func _excommunicate(state: GameState, u: Unit, ex: Dictionary) -> Array[D
 	return events
 
 
-## After a voluntary move on its own turn: Banish heat, Excommunicate.
+## After a voluntary move on its own turn: Banish heat, Excommunicate, Clamp Bombs, Auto-Cooler.
 static func horus_moved(state: GameState, u: Unit, spaces: int) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
+	spoil_cooler(u)
+	if u.counters.has("clamp_bombs") and state.active_unit == u.id:
+		u.counters["clamp_bombs"]["moved"] = int(u.counters["clamp_bombs"].get("moved", 0)) + spaces
 	var b: Dictionary = u.counters.get("banish", {})
 	if not b.is_empty() and u.has_status("Banished"):
 		var add := mini(2 * spaces, 6 - int(b.get("heat", 0)))
@@ -914,4 +918,385 @@ static func scorpion(state: GameState, attacker: Unit, target: Unit) -> Array[Di
 			events.append_array(Combat.add_status(state, attacker, "Impaired", o.id, attacker.id))
 			events.append_array(Combat.apply_heat(state, attacker, 2, o.id))
 		break
+	return events
+
+
+# --- Harrison Armory systems ----------------------------------------------------------
+
+## Effects a system switches on and off with the same action (Siege Stabilizers).
+static func toggle(state: GameState, u: Unit, label: String, effects: Array) -> Array[Dictionary]:
+	for e: Dictionary in u.counters.get("active_effects", []):
+		if e.get("label", "") == label:
+			return remove_effects(state, u, label)
+	return Effects.activate(state, u, effects, label, "scene")
+
+
+## Reload one Loading weapon (External Ammo Feed, Autoloader Drone).
+static func reload_one(state: GameState, u: Unit, key: String, source: String) -> Array[Dictionary]:
+	var w := Weapons.find(u, key)
+	if w.is_empty():
+		for x: Dictionary in u.loadout.get("weapons", []):
+			if Weapons.has_tag(x, "tg_loading") and not Weapons.state_of(u, x)["loaded"]:
+				w = x
+				break
+	if w.is_empty():
+		return [] as Array[Dictionary]
+	Weapons.state_of(u, w)["loaded"] = true
+	reloaded(u)
+	return [{"type": "reloaded", "unit": u.id, "weapon": w["key"], "source": source}] as Array[Dictionary]
+
+
+## Flak Launcher: a flying character saves (Agility) or lands at once (no damage), is Slowed
+## and can't fly until the end of its next turn.
+static func flak(state: GameState, u: Unit, t: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var save := Combat.skill_check(state, t, "agility", "Save vs Flak Launcher", u.save_target, 0, 0, [], true)
+	events.append({"type": "skill_check", "unit": t.id, "check": save, "rule_ref": "systems: Flak Launcher"})
+	if save["success"]:
+		return events
+	if t.flying:
+		var start := [t.cell.x, t.cell.y, t.level]
+		var lv := state.map.ground_height(t.cell)
+		t.level = lv
+		t.flying = false
+		events.append({"type": "moved", "unit": t.id, "path": [start, [t.cell.x, t.cell.y, lv]], "mode": "fall", "cost": 0, "note": "lands without damage"})
+	events.append_array(Combat.add_status(state, t, "Slowed", u.id, t.id))
+	events.append_array(Combat.add_status(state, t, "Grounded", u.id, t.id))
+	return events
+
+
+## Explosive Vents: 1/round, when it clears all heat or takes stress, burst 1: 2 heat and 2 burn.
+static func vents(state: GameState, u: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if not Effects.has(u, "explosive_vents") or int(u.counters.get("vents_round", -1)) == state.round_number or not Combat.is_present(u):
+		return events
+	u.counters["vents_round"] = state.round_number
+	events.append({"type": "effect_triggered", "unit": u.id, "effect": "Explosive Vents", "target": u.id, "rule_ref": "systems: Explosive Vents"})
+	var ids: Array = state.units.keys()
+	ids.sort()
+	for id: String in ids:
+		var o := state.unit(id)
+		if o != u and Combat.is_present(o) and o.kind != Unit.KIND_DEPLOYABLE and Sight.unit_distance(state, u, o) <= 1:
+			events.append_array(Combat.deal_damage(state, o, [{"type": "Burn", "amount": 2}, {"type": "Heat", "amount": 2}], {"source": u.id}))
+	return events
+
+
+## Napalm Grenade: a line 5 from where it lands toward params.toward; Agility save, 2 burn or 1.
+static func napalm(state: GameState, u: Unit, op: Dictionary, params: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var aim: Vector2i = TurnAction.cell_param(params, "aim")
+	var toward: Variant = TurnAction.cell_param(params, "toward")
+	_mark_launcher(state, u, op, aim)
+	var cells: Array = [[aim.x, aim.y]]
+	if toward != null and toward != aim:
+		var line := state.map.grid.line(aim, toward)
+		for i in range(1, mini(5, line.size())):
+			cells.append([line[i].x, line[i].y])
+	events.append({"type": "area_effect", "unit": u.id, "cells": cells, "center": [aim.x, aim.y], "rule_ref": "systems: HAVOK Charges"})
+	var ids: Array = state.units.keys()
+	ids.sort()
+	for id: String in ids:
+		var o := state.unit(id)
+		if not Combat.is_present(o) or o.kind == Unit.KIND_DEPLOYABLE:
+			continue
+		var inside := false
+		for c in state.map.grid.footprint(o.cell, o.size):
+			inside = inside or cells.has([c.x, c.y])
+		if not inside:
+			continue
+		var save := Combat.skill_check(state, o, "agility", "Save vs Napalm Grenade", u.save_target, 0, 0, [], true)
+		events.append({"type": "skill_check", "unit": o.id, "check": save})
+		events.append_array(Combat.deal_damage(state, o, [{"type": "Burn", "amount": 1 if save["success"] else 2}], {"source": u.id}))
+	return events
+
+
+## Auto-Cooler / AGNI and other start/end of turn heat systems.
+static func ha_turn_started(state: GameState, u: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if u.counters.get("auto_cooler", false):
+		u.counters.erase("auto_cooler")
+		events.append({"type": "effect_triggered", "unit": u.id, "effect": "Auto-Cooler", "target": u.id, "rule_ref": "systems: Auto-Cooler"})
+		events.append_array(Combat.clear_heat(u, "Auto-Cooler"))
+		events.append_array(vents(state, u))
+	if Effects.has(u, "deep_well") and u.has_status("Danger Zone"):
+		# Deep Well Heat Sink: Resistance to heat for the rest of the turn.
+		var active: Array = u.counters.get("active_effects", [])
+		active.append({"kind": "resist", "damage": ["Heat"], "label": "Deep Well Heat Sink", "expires": {"unit": u.id, "when": "end", "count": 1}})
+		u.counters["active_effects"] = active
+	return events
+
+
+static func ha_turn_ending(state: GameState, u: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if u.counters.get("agni", false):
+		u.counters.erase("agni")
+		events.append({"type": "effect_triggered", "unit": u.id, "effect": "AGNI Protocol", "target": u.id, "rule_ref": "systems: AGNI-Class NHP"})
+		events.append_array(Combat.clear_heat(u, "AGNI Protocol"))
+		events.append_array(vents(state, u))
+		var foot: Array[Vector2i] = []
+		foot.assign(state.map.grid.footprint(u.cell, u.size))
+		var ids: Array = state.units.keys()
+		ids.sort()
+		for id: String in ids:
+			var o := state.unit(id)
+			var d := Sight.unit_distance(state, u, o) if o != u else 99
+			if o == u or not Combat.is_present(o) or o.kind == Unit.KIND_DEPLOYABLE or d > 2:
+				continue
+			var save := Combat.skill_check(state, o, "engineering", "Save vs AGNI vent", u.save_target, 0, 0, [], true)
+			events.append({"type": "skill_check", "unit": o.id, "check": save})
+			if not save["success"]:
+				events.append_array(Combat.deal_damage(state, o, [{"type": "Burn", "amount": 2}], {"source": u.id}))
+				events.append_array(Attacks.knock_back(state, o, u.cell, 3 - d, u))
+		events.append_array(Zones.add(state, {"kind": "smoke", "owner": u.id, "label": "AGNI vent", "center": [u.cell.x, u.cell.y],
+			"cells": Zones.cells_around(state, foot, 2), "expires": {"unit": u.id, "when": "end", "count": 1}, "rule_ref": "systems: AGNI-Class NHP"}))
+	if u.counters.has("grounded_check"):
+		if not u.turn.get("moved", false):
+			u.counters.erase("grounded_check")
+			if u.has_status("Slowed") and u.statuses["Slowed"].get("source", "") == "Gravity Grenade":
+				events.append_array(Combat.remove_status(u, "Slowed", "no voluntary movement for a full turn"))
+	return events
+
+
+## The Auto-Cooler is spoiled by damage, movement or exceeding the Heat Cap.
+static func spoil_cooler(u: Unit) -> void:
+	u.counters.erase("auto_cooler")
+
+
+## Gravity Grenade: the target saves (Agility) or is Slowed until a turn of its own with no
+## voluntary movement.
+static func gravity_grenade(state: GameState, u: Unit, t: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var save := Combat.skill_check(state, t, "agility", "Save vs Gravity Grenade", u.save_target, 0, 0, [], true)
+	events.append({"type": "skill_check", "unit": t.id, "check": save, "rule_ref": "systems: Grounding Charges"})
+	if not save["success"]:
+		events.append_array(Combat.add_status(state, t, "Slowed", "Gravity Grenade"))
+		t.counters["grounded_check"] = true
+	return events
+
+
+## Grounding Mine, detonated remotely: one character within 5 of it saves (Hull) or is pulled
+## to it and knocked Prone (flyers land).
+static func grounding_mine(state: GameState, u: Unit, t: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var mine: Unit = null
+	for m: Unit in state.units.values():
+		if m.counters.get("owner", "") == u.id and m.name == "Grounding Mine" and not m.destroyed and m.counters.get("armed", false) and Sight.unit_distance(state, m, t) <= 5:
+			mine = m
+	if mine == null:
+		return events
+	mine.destroyed = true
+	events.append({"type": "mine_triggered", "mine": mine.id, "unit": t.id, "text": mine.counters.get("text", ""), "rule_ref": "systems: Grounding Charges"})
+	var save := Combat.skill_check(state, t, "hull", "Save vs Grounding Mine", u.save_target, 0, 0, prone_save_sources(t), true)
+	events.append({"type": "skill_check", "unit": t.id, "check": save})
+	if save["success"]:
+		return events
+	t.flying = false
+	events.append_array(Attacks.pull_to(state, t, Sight.body_of(state, mine), 0))
+	events.append_array(Combat.add_status(state, t, "Prone", u.id))
+	return events
+
+
+## Repulser Field: burst 2, Hull save or knocked 2 away; then every mine in the area goes off.
+static func repulser(state: GameState, u: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var ids: Array = state.units.keys()
+	ids.sort()
+	for id: String in ids:
+		var o := state.unit(id)
+		if o == u or not Combat.is_present(o) or o.kind == Unit.KIND_DEPLOYABLE or Sight.unit_distance(state, u, o) > 2:
+			continue
+		var save := Combat.skill_check(state, o, "hull", "Save vs Repulser Field", u.save_target, 0, 0, prone_save_sources(o), true)
+		events.append({"type": "skill_check", "unit": o.id, "check": save, "rule_ref": "systems: Repulser Field"})
+		if not save["success"]:
+			events.append_array(Attacks.knock_back(state, o, u.cell, 2, u))
+	for id: String in ids:
+		var m := state.unit(id)
+		if m != null and not m.destroyed and m.counters.get("deploy_type", "") == "Mine" and Sight.unit_distance(state, u, m) <= 2:
+			events.append_array(Abilities.detonate(state, m, u))
+	return events
+
+
+## Clamp Bombs: Engineering save or they clamp on; they go off at the end of the target's
+## next turn (1d6+3 AP explosive, half to adjacent characters) unless it moves 4+ spaces.
+static func clamp_bombs(state: GameState, u: Unit, t: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var save := Combat.skill_check(state, t, "engineering", "Save vs Clamp Bombs", u.save_target, 0, 0, [], true)
+	events.append({"type": "skill_check", "unit": t.id, "check": save, "rule_ref": "systems: Clamp Bombs"})
+	if not save["success"]:
+		t.counters["clamp_bombs"] = {"by": u.id, "turns": 2 if state.active_unit == t.id else 1, "moved": 0}
+		events.append_array(Combat.add_status(state, t, "Clamp Bombs", u.id))
+	return events
+
+
+static func clamp_turn_end(state: GameState, t: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var cb: Dictionary = t.counters.get("clamp_bombs", {})
+	if cb.is_empty():
+		return events
+	if int(cb.get("moved", 0)) >= 4:
+		t.counters.erase("clamp_bombs")
+		return Combat.remove_status(t, "Clamp Bombs", "shaken off")
+	cb["moved"] = 0
+	cb["turns"] = int(cb["turns"]) - 1
+	if int(cb["turns"]) > 0:
+		return events
+	t.counters.erase("clamp_bombs")
+	events.append_array(Combat.remove_status(t, "Clamp Bombs", "detonated"))
+	var roll := state.dice.roll("1d6+3")
+	var dmg := int(roll["total"])
+	events.append_array(Combat.deal_damage(state, t, [{"type": "Explosive", "amount": dmg}], {"ap": true, "source": String(cb["by"])}))
+	for o: Unit in state.units.values():
+		if o != t and Combat.is_present(o) and o.kind != Unit.KIND_DEPLOYABLE and Sight.unit_distance(state, o, t) <= 1:
+			events.append_array(Combat.deal_damage(state, o, [{"type": "Explosive", "amount": dmg - dmg / 2}], {"ap": true, "source": String(cb["by"])}))
+	return events
+
+
+## Stasis Generator: Stunned, immune to all damage and effects, can't be moved or targeted,
+## until the end of its next turn (1/scene each; hostiles may save, Engineering).
+static func stasis(state: GameState, u: Unit, t: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var once: Array = t.counters.get("stasis_used", [])
+	if once.has(u.id):
+		return [{"type": "no_effect", "target": t.id, "reason": "Only once per scene on each character."}] as Array[Dictionary]
+	once.append(u.id)
+	t.counters["stasis_used"] = once
+	if t.side != u.side:
+		var save := Combat.skill_check(state, t, "engineering", "Save vs Stasis Generator", u.save_target, 0, 0, [], true)
+		events.append({"type": "skill_check", "unit": t.id, "check": save, "rule_ref": "systems: Stasis Generator"})
+		if save["success"]:
+			return events
+	events.append_array(Combat.add_status(state, t, "Stunned", u.id, t.id))
+	events.append_array(Combat.add_status(state, t, "In Stasis", u.id, t.id))
+	var active: Array = t.counters.get("active_effects", [])
+	var exp := {"unit": t.id, "when": "end", "count": 2 if state.active_unit == t.id else 1}
+	for e: Dictionary in [{"kind": "immune", "damage": "All"}, {"kind": "immovable"}]:
+		var c := e.duplicate()
+		c["label"] = "Stasis Generator"
+		c["expires"] = exp.duplicate()
+		active.append(c)
+	t.counters["active_effects"] = active
+	return events
+
+
+static func in_stasis(t: Unit) -> bool:
+	return t != null and t.has_status("In Stasis")
+
+
+## Enclave-Pattern Support Shield: a burst 3 dome until the end of your next turn; you're
+## Immobilized; attacks from outside against characters inside get +1 Difficulty.
+static func enclave(state: GameState, u: Unit) -> Array[Dictionary]:
+	var foot: Array[Vector2i] = []
+	foot.assign(state.map.grid.footprint(u.cell, u.size))
+	var events := Zones.add(state, {"kind": "enclave", "owner": u.id, "label": "Enclave dome", "center": [u.cell.x, u.cell.y],
+		"cells": Zones.cells_around(state, foot, 3), "expires": {"unit": u.id, "when": "end", "count": 2 if state.active_unit == u.id else 1},
+		"rule_ref": "systems: Enclave-Pattern Support Shield"})
+	events.append_array(Combat.add_status(state, u, "Immobilized", "Enclave-Pattern Support Shield", u.id))
+	return events
+
+
+static func enclave_difficulty(state: GameState, attacker: Unit, target: Unit) -> int:
+	for z: Dictionary in Zones.of_kind(state, "enclave"):
+		if Zones.contains(state, z, target) and not Zones.contains(state, z, attacker):
+			return 1
+	return 0
+
+
+## Blinkfield Intervention (the dome's owner, 2 heat): Resistance to an attack inside the dome.
+static func blinkfield(state: GameState, attacker: Unit, target: Unit) -> Dictionary:
+	var out := {"events": [] as Array[Dictionary], "resist": false}
+	for z: Dictionary in Zones.of_kind(state, "enclave"):
+		var owner := state.unit(String(z.get("owner", "")))
+		if owner == null or not Zones.contains(state, z, target) or not Reactions.can_react(owner, "blinkfield", state).ok:
+			continue
+		var auto := {"take": target.side == owner.side}
+		var d := Reactions.offer(state, owner, "blinkfield", {"attacker": attacker.id, "target": target.id, "suggested": auto}, auto)
+		if not d.get("take", false):
+			continue
+		Reactions._mark_used(owner, "blinkfield", state)
+		out["events"].append({"type": "reaction", "unit": owner.id, "reaction": "blinkfield", "target": target.id, "rule_ref": "systems: Enclave-Pattern Support Shield"})
+		out["events"].append_array(Combat.apply_heat(state, owner, 2, "Blinkfield Intervention"))
+		out["resist"] = true
+		return out
+	return out
+
+
+## Flash Anchor: when a character in its Sensors and line of sight would be pushed, pulled,
+## knocked back or knocked Prone, its owner may take 2 heat to prevent it (and that character is
+## immune to it until the start of its next turn).
+static func flash_anchor(state: GameState, target: Unit, what: String) -> Dictionary:
+	var out := {"events": [] as Array[Dictionary], "prevented": false}
+	if int(target.counters.get("anchored_round", -1)) == state.round_number:
+		out["prevented"] = true
+		return out
+	for o: Unit in state.units.values():
+		if not Effects.has(o, "flash_anchor") or o.side != target.side or not Combat.is_present(o):
+			continue
+		if o != target and (Sight.unit_distance(state, o, target) > o.sensors or not Sight.unit_line_of_sight(state, o, target)):
+			continue
+		if not Reactions.can_react(o, "flash_lock", state).ok:
+			continue
+		var auto := {"take": true}
+		var d := Reactions.offer(state, o, "flash_lock", {"target": target.id, "what": what, "suggested": auto}, auto)
+		if not d.get("take", false):
+			continue
+		Reactions._mark_used(o, "flash_lock", state)
+		target.counters["anchored_round"] = state.round_number
+		out["events"].append({"type": "reaction", "unit": o.id, "reaction": "flash_lock", "target": target.id, "what": what, "rule_ref": "systems: Flash Anchor"})
+		out["events"].append_array(Combat.apply_heat(state, o, 2, "Flash Lock"))
+		out["prevented"] = true
+		return out
+	return out
+
+
+## Stasis Bolt (charged): Interdiction Point, a contested ranged attack roll against a ranged
+## attack on you or an ally within range 5; win, and the attack misses.
+static func interdiction_point(state: GameState, attacker: Unit, target: Unit, attack_total: int) -> Dictionary:
+	var out := {"events": [] as Array[Dictionary], "missed": false}
+	for o: Unit in state.units.values():
+		if not o.counters.get("stasis_bolt", false) or o.side != target.side or not Combat.is_present(o) or Sight.unit_distance(state, o, target) > 5:
+			continue
+		if not Reactions.can_react(o, "interdiction_point", state).ok:
+			continue
+		var auto := {"take": true}
+		var d := Reactions.offer(state, o, "interdiction_point", {"attacker": attacker.id, "target": target.id, "suggested": auto}, auto)
+		if not d.get("take", false):
+			continue
+		Reactions._mark_used(o, "interdiction_point", state)
+		o.counters.erase("stasis_bolt")
+		var roll := state.dice.check(o.grit, 0, 0, 0, [])
+		out["missed"] = int(roll["total"]) >= attack_total
+		out["events"].append({"type": "reaction", "unit": o.id, "reaction": "interdiction_point", "target": target.id, "roll": roll, "against": attack_total, "missed": out["missed"], "rule_ref": "systems: Stasis Bolt"})
+		return out
+	return out
+
+
+## Plasma Gauntlet (Danger Zone only): an adjacent character saves (Agility) or takes 4d6 AP
+## energy and is knocked Prone; half on a success. You take half of it as heat and are Stunned.
+static func plasma_gauntlet(state: GameState, u: Unit, t: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var roll := state.dice.roll("4d6")
+	var save := Combat.skill_check(state, t, "agility", "Save vs Plasma Gauntlet", u.save_target, 0, 0, prone_save_sources(t), true)
+	events.append({"type": "skill_check", "unit": t.id, "check": save, "rule_ref": "systems: Plasma Gauntlet"})
+	var dmg := int(roll["total"])
+	if save["success"]:
+		dmg -= dmg / 2
+	events.append_array(Combat.deal_damage(state, t, [{"type": "Energy", "amount": dmg}], {"ap": true, "source": u.id}))
+	if not save["success"] and Combat.is_present(t):
+		events.append_array(Combat.add_status(state, t, "Prone", u.id))
+	events.append_array(Combat.apply_heat(state, u, dmg - dmg / 2, "Plasma Gauntlet"))
+	events.append_array(Combat.add_status(state, u, "Stunned", "Plasma Gauntlet", "", u.id))
+	return events
+
+
+## External Batteries: destroyed when it takes structure damage, 1d6 AP explosive to it.
+static func batteries_blow(state: GameState, u: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for s: Dictionary in u.loadout.get("systems", []):
+		if s.get("id", "") != "ms_external_batteries" or Abilities.source_state(u, String(s["key"]))["destroyed"]:
+			continue
+		Abilities.source_state(u, String(s["key"]))["destroyed"] = true
+		u.loadout["effects"] = (u.loadout.get("effects", []) as Array).filter(func(e: Dictionary) -> bool: return e.get("label", "") != "ms_external_batteries")
+		events.append({"type": "equipment_destroyed", "unit": u.id, "system": s["key"], "name": "External Batteries"})
+		var roll := state.dice.roll("1d6")
+		events.append_array(Combat.deal_damage(state, u, [{"type": "Explosive", "amount": int(roll["total"])}], {"ap": true, "unreducible": true, "source": u.id}))
 	return events

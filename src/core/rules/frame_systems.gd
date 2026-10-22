@@ -446,6 +446,8 @@ static func on_stabilize(state: GameState, u: Unit, params: Dictionary) -> Array
 	if not _weapon(u, ZF4).is_empty():
 		events.append_array(set_charges(u, zf4_charges(u) + (2 if Effects.has(u, "coreburn") else 1)))
 	events.append_array(vent_heat(state, u))
+	if params.get("main", "") == "cool" or u.kind == Unit.KIND_NPC:
+		events.append_array(GearSystems.vents(state, u))  # Explosive Vents: cleared all heat
 	if params.get("mathur_stop", false) and Effects.has(u, "mathur_stop") and params.get("main", "") == "cool":
 		events.append_array(Combat.apply_heat(state, u, u.heat_cap - u.heat_cap / 2, "Mathur Stop"))
 	return events

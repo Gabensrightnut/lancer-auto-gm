@@ -97,6 +97,10 @@ static func sources(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 						or int(info.get("distance", 0)) <= 5:
 					continue
 		out.append(e)
+	if attacker.turn.has("lucifer") and Weapons.damage_types(attacker, w).has("Energy"):
+		# LUCIFER: bonus damage equal to your heat just after activating it, once.
+		out.append({"value": int(attacker.turn["lucifer"]), "label": "LUCIFER Protocol"})
+		attacker.turn.erase("lucifer")
 	var lock := {"value": 3, "label": "Hunter Lock", "per": "round"}
 	if String(attacker.counters.get("hunter_lock", "")) == target.id and not _used_this_round(state, attacker, lock):
 		out.append(lock)  # Hunter Lock: the first successful attack each round, +3

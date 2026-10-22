@@ -184,5 +184,36 @@
     {
       "kind": "lightning_generator"
     }
+  ],
+  "ms_explosive_vents": [
+    {
+      "kind": "explosive_vents"
+    }
+  ],
+  "ms_flash_anchor": [
+    {
+      "kind": "flash_anchor"
+    }
+  ],
+  "ms_reactor_stabilizer": [
+    {
+      "kind": "reactor_stabilizer"
+    }
+  ],
+  "ms_external_batteries": [
+    {
+      "kind": "reach_bonus",
+      "range": 5,
+      "threat": 1,
+      "damage_type": "Energy"
+    },
+    {
+      "kind": "external_batteries"
+    }
+  ],
+  "ms_deep_well_heat_sink": [
+    {
+      "kind": "deep_well"
+    }
   ]
 }

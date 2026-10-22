@@ -121,11 +121,15 @@ static func can_activate(state: GameState, u: Unit, a: Dictionary) -> RuleResult
 	return RuleResult.allow()
 
 
-## Heat (Self) of the system an ability comes from (tags: Heat X (Self)).
-static func heat_self(u: Unit, a: Dictionary) -> int:
+## Heat (Self) of the system an ability comes from (tags: Heat X (Self)); dice are rolled.
+static func heat_self(state: GameState, u: Unit, a: Dictionary) -> int:
 	for s: Dictionary in u.loadout.get("systems", []):
-		if String(s.get("key", "")) == String(a.get("source_key", "")):
-			return Weapons.tag_value(s, "tg_heat_self")
+		if String(s.get("key", "")) != String(a.get("source_key", "")):
+			continue
+		for t: Dictionary in s.get("tags", []):
+			if t.get("id", "") == "tg_heat_self":
+				var v := str(t.get("val", 1))
+				return int(state.dice.roll(v)["total"]) if "d" in v else int(v)
 	return 0
 
 

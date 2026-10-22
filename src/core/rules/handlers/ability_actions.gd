@@ -65,7 +65,7 @@ class Activate:
 		var events: Array[Dictionary] = [{"type": "activated", "unit": u.id, "ability": a["key"], "name": a["name"],
 			"source": a.get("source_name", ""), "activation": a.get("activation", ""), "automated": a.get("automated", false),
 			"detail": a.get("detail", ""), "rule_ref": Abilities.REF}]
-		var self_heat := Abilities.heat_self(u, a)
+		var self_heat := Abilities.heat_self(state, u, a)
 		if self_heat > 0:
 			events.append_array(Combat.apply_heat(state, u, self_heat, "Heat (Self): " + String(a.get("source_name", ""))))
 		match a.get("kind", "action"):
@@ -159,6 +159,39 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				for m: Unit in state.units.values().duplicate():
 					if m.counters.get("owner", "") == u.id and m.name == String(op.get("deployable", "")) and not m.destroyed and m.counters.get("armed", false):
 						events.append_array(Abilities.detonate(state, m, u))
+			"toggle":
+				events.append_array(GearSystems.toggle(state, u, String(op.get("label", a["name"])), op.get("effects", [])))
+			"reload":
+				events.append_array(GearSystems.reload_one(state, u, String(params.get("weapon", "")), String(a["name"])))
+			"flak":
+				events.append_array(GearSystems.flak(state, u, target))
+			"napalm":
+				events.append_array(GearSystems.napalm(state, u, op, params))
+			"auto_cooler":
+				u.counters["auto_cooler"] = true
+			"agni":
+				u.counters["agni"] = true
+			"gravity_grenade":
+				events.append_array(GearSystems.gravity_grenade(state, u, target))
+			"grounding_mine":
+				events.append_array(GearSystems.grounding_mine(state, u, target))
+			"repulser":
+				events.append_array(GearSystems.repulser(state, u))
+			"clamp_bombs":
+				events.append_array(GearSystems.clamp_bombs(state, u, target))
+			"charge_bolt":
+				u.counters["stasis_bolt"] = true
+			"stasis":
+				events.append_array(GearSystems.stasis(state, u, target))
+			"enclave":
+				events.append_array(GearSystems.enclave(state, u))
+			"plasma_gauntlet":
+				events.append_array(GearSystems.plasma_gauntlet(state, u, target))
+			"extra_actions":
+				u.turn["free_quick"] = int(u.turn.get("free_quick", 0)) + int(op.get("quick", 2))
+			"stabilize_quick":
+				var stab: TurnAction = RulesEngine.registry["stabilize"]
+				events.append_array(stab.apply(state, u, params))
 			"eject_power_cores", "beckon", "summon", "smite", "sear", "logic_bomb", "banish", "chains", "excommunicate", "ophidian_trek", "fold_space", "hunter_lock":
 				events.append_array(GearSystems.horus_effect(state, u, target, op, params))
 			"electropulse":
@@ -198,6 +231,8 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 						events.append_array(Zones.remove(state, String(z["id"]), "deactivated"))
 			"turn_flag":
 				u.turn[String(op.get("flag", ""))] = true
+			"lucifer":
+				u.turn["lucifer"] = u.heat  # its Heat (Self) is already taken
 			"spin_up", "spin_down":
 				events.append_array(WeaponRules.spin(state, u, String(op.get("weapon", "")), op["op"] == "spin_up"))
 			"blast_save":
@@ -383,6 +418,19 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 			var pv := Attacks.preview(state, u, fw, state.unit(String(params.get("target", ""))), {"fired_by_rule": true})
 			if not pv["ok"]:
 				return RuleResult.deny(pv["reason"], pv["rule_ref"])
+		if op.get("op", "") == "napalm":
+			var nr := GearSystems.check_aimed(state, u, op, params)
+			if not nr.ok:
+				return nr
+		if op.get("requires_status", "") != "" and not u.has_status(String(op["requires_status"])):
+			return RuleResult.deny("This system can only be used in the %s." % op["requires_status"], "systems: " + String(a.get("source_name", "")))
+		if op.get("op", "") == "stabilize_quick":
+			var stab: TurnAction = RulesEngine.registry["stabilize"]
+			var sr := stab.check(state, u, params)
+			if not sr.ok:
+				return sr
+		if op.get("op", "") == "flak" and state.unit(String(params.get("target", ""))) != null and not state.unit(String(params.get("target", ""))).flying:
+			return RuleResult.deny("Choose a flying character.", "systems: Flak Launcher")
 		if op.get("op", "") == "javelin":
 			var jr := GearSystems.check_javelin(state, u, params)
 			if not jr.ok:
