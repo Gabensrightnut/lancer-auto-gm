@@ -97,7 +97,7 @@ static func make_material(s: Dictionary) -> ShaderMaterial:
 	for k: String in pairs:
 		if g.has(k):
 			m.set_shader_parameter(pairs[k], WorldStyle.color(g[k]))
-	for k: String in ["strata", "soil_depth", "wetness", "vein_strength"]:
+	for k: String in ["strata", "soil_depth", "wetness", "vein_strength", "columnar"]:
 		if g.has(k):
 			m.set_shader_parameter(k, float(g[k]))
 	return m
@@ -281,6 +281,8 @@ func _build_blocks() -> void:
 			elif structure_cells.has(other):
 				# Buildings draw their own walls down to their foot; keep ours below it.
 				theirs = [Vector2(_bottom, minf(top_y(other), top))]
+			if kind == KIND_CRYSTAL:
+				continue  # crystal prisms (WorldDressing) form the sides
 			for s in _subtract(spans, theirs):
 				sides.append([a, b, s, outward, base_col, Vector2(flags, top)])
 				for p: Vector3 in [a, b]:
@@ -344,9 +346,14 @@ func _fan(st: SurfaceTool, center: Vector3, corners: PackedVector2Array, y: floa
 
 
 func _build_grid_lines() -> void:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	st.set_color(Color(1, 1, 1, 1))
+	# Two-tone lines: a soft dark band under a light core, so the grid reads on bright sand
+	# and snow as well as on dark rock and night streets.
+	var dark := SurfaceTool.new()
+	dark.begin(Mesh.PRIMITIVE_TRIANGLES)
+	dark.set_color(Color(1, 1, 1, 1))
+	var light := SurfaceTool.new()
+	light.begin(Mesh.PRIMITIVE_TRIANGLES)
+	light.set_color(Color(1, 1, 1, 1))
 	for cell in map.cells():
 		if is_chasm(cell):
 			continue
@@ -355,13 +362,21 @@ func _build_grid_lines() -> void:
 		if col.gap_top > 0:
 			ys.append(col.gap_bottom * GridLayout.LEVEL_HEIGHT)
 		for y in ys:
-			add_outline(st, cell, y + 0.012, 0.04, 0.035)
+			add_outline(dark, cell, y + 0.01, 0.025, 0.06)
+			add_outline(light, cell, y + 0.014, 0.04, 0.03)
 	grid_lines = MeshInstance3D.new()
 	grid_lines.name = "GridLines"
-	grid_lines.mesh = st.commit()
-	grid_lines.material_override = MeshKit.overlay_material(WorldStyle.color(WorldStyle.value(style, "grid_color", [0.9, 0.97, 1.0, 0.26])))
+	grid_lines.mesh = light.commit()
+	grid_lines.material_override = MeshKit.overlay_material(WorldStyle.color(WorldStyle.value(style, "grid_color", [0.92, 0.97, 1.0, 0.32])))
 	grid_lines.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(grid_lines)
+	var under := MeshInstance3D.new()
+	under.name = "GridShade"
+	under.mesh = dark.commit()
+	under.material_override = MeshKit.overlay_material(WorldStyle.color(WorldStyle.value(style, "grid_shade", [0.0, 0.0, 0.0, 0.22])))
+	under.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# Hidden and shown with the grid.
+	grid_lines.add_child(under)
 
 
 ## Adds a flat band just inside a cell's outline (used for grid lines and overlays).

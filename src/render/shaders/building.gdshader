@@ -26,6 +26,8 @@ uniform vec3 neon_a : source_color = vec3(1.0, 0.2, 0.7);
 uniform vec3 neon_b : source_color = vec3(0.1, 0.9, 1.0);
 uniform float wet = 0.0;
 uniform float arched = 0.0;
+// Roof surface: 0 tar and gravel, 1 clay tiles, 2 wood shingles, 3 white panels, 4 corrugated metal.
+uniform int roof_style = 0;
 
 varying vec4 vc;
 varying vec4 cu;
@@ -147,6 +149,29 @@ void fragment() {
 		vec2 g = abs(fract(p * 1.2) - 0.5);
 		float seam = smoothstep(0.47, 0.49, max(g.x, g.y));
 		col = roof_color * (0.75 + 0.4 * n) * (1.0 - 0.3 * seam);
+		if (roof_style == 1 || roof_style == 2) {
+			// Overlapping rows of tiles or shingles.
+			float rows = roof_style == 1 ? 10.0 : 14.0;
+			vec2 q = vec2(p.x * rows * 0.6, p.y * rows);
+			q.x += step(1.0, mod(floor(q.y), 2.0)) * 0.5;
+			vec2 f = fract(q);
+			float edge_shade = smoothstep(0.0, 0.25, f.y);
+			float gap = smoothstep(0.05, 0.0, abs(f.x - 0.5) - 0.45);
+			col = roof_color * (0.7 + 0.35 * hash(floor(q))) * (0.6 + 0.4 * edge_shade) * (1.0 - 0.4 * gap);
+			col *= 0.85 + 0.25 * n;
+			h = f.y - gap;
+			seam = 0.0;
+		} else if (roof_style == 3) {
+			vec2 g2 = abs(fract(p * 0.8) - 0.5);
+			float s2 = smoothstep(0.48, 0.49, max(g2.x, g2.y));
+			col = roof_color * (0.95 + 0.08 * n) * (1.0 - 0.25 * s2);
+			h = -s2;
+		} else if (roof_style == 4) {
+			float rib = 0.5 + 0.5 * sin(p.x * 60.0);
+			col = roof_color * (0.75 + 0.3 * rib) * (0.8 + 0.3 * n);
+			col = mix(col, vec3(0.35, 0.18, 0.1), smoothstep(0.55, 0.75, fbm(p * 2.0 + seed)) * 0.6);
+			h = rib;
+		}
 		col *= 1.0 - 0.3 * smoothstep(0.65, 0.8, fbm(p * 0.8 + seed * 9.0));
 		float pud = smoothstep(0.66, 0.7, fbm(p * 0.6 + 4.0)) * max(wet, 0.3);
 		col *= 1.0 - 0.35 * pud;

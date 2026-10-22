@@ -137,6 +137,28 @@ static func plant(species: String, leaf: Color, bark: Color, variant: int = 0) -
 			add(st, blob(0.55, k + "c", 0.08, 0.45, 12), Transform3D(Basis(), Vector3(0, h, 0)), Color(leaf.r * 0.5, leaf.g * 0.5, leaf.b * 0.5, 0.35), 0.7)
 			# Glowing gills under the cap.
 			add(st, _arrays(MeshKit.cylinder(0.5, 0.05, 12, 0.15)), Transform3D(Basis(), Vector3(0, h - 0.12, 0)), Color(leaf.r, leaf.g, leaf.b, 0.0), 0.0)
+		"cherry":
+			# Blossom tree: a crooked trunk and wide flat clouds of blossom.
+			var h := 1.2 + 0.4 * _r(k, 0)
+			var bend := Vector3(0.25 * (_r(k, 1) - 0.5), 0, 0.25 * (_r(k, 2) - 0.5))
+			_trunk(st, Vector3.ZERO, Vector3(0, h * 0.5, 0) + bend, 0.08, 0.06, bark)
+			_trunk(st, Vector3(0, h * 0.5, 0) + bend, Vector3(0.1, h * 0.8, 0) - bend, 0.06, 0.03, bark)
+			var crown := Vector3(0, h * 0.85, 0)
+			for i in range(7):
+				var a := TAU * i / 7.0 + _r(k, i + 40)
+				var p := crown + Vector3(cos(a) * 0.45, 0.05 + 0.2 * _r(k, i + 50), sin(a) * 0.45)
+				add(st, blob(0.28 + 0.08 * _r(k, i + 60), k + str(i), 0.25, 0.6, 9), Transform3D(Basis(), p), lf.lightened(0.1 * _r(k, i + 70)), 0.35)
+			add(st, blob(0.4, k + "core", 0.2, 0.6, 10), Transform3D(Basis(), crown + Vector3(0, 0.2, 0)), lf, 0.4)
+		"glow_cap":
+			# A little glowing mushroom, about 1 unit tall before scaling.
+			_trunk(st, Vector3.ZERO, Vector3(0, 0.6, 0), 0.08, 0.06, bark)
+			add(st, blob(0.32, k + "c", 0.1, 0.5, 9), Transform3D(Basis(), Vector3(0, 0.62, 0)), Color(leaf.r, leaf.g, leaf.b, 0.0), 0.0)
+		"glow_frond":
+			for i in range(3):
+				var a := TAU * i / 3.0 + _r(k, i)
+				var tip := Vector3(cos(a) * 0.35, 0.9, sin(a) * 0.35)
+				_trunk(st, Vector3.ZERO, tip, 0.05, 0.015, Color(leaf.r * 0.5, leaf.g * 0.5, leaf.b * 0.5, 0.3))
+				add(st, blob(0.07, k + str(i), 0.1, 1.3, 6), Transform3D(Basis(), tip), Color(leaf.r, leaf.g, leaf.b, 0.0), 0.0)
 		"bamboo":
 			for i in range(5):
 				var a := TAU * i / 5.0 + _r(k, i)

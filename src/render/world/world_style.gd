@@ -52,6 +52,8 @@ static func resolve(kit: String) -> Dictionary:
 	if parts.size() > 1 and cults.has(parts[1]):
 		style = merge(style, (cults[parts[1]] as Dictionary).duplicate(true))
 		style["culture"] = parts[1]
+		style["culture_name"] = (cults[parts[1]] as Dictionary).get("name", parts[1])
+		style["name"] = (lands[land_id] as Dictionary).get("name", land_id)
 	style["kit"] = "%s/%s" % [land_id, style["culture"]] if style["culture"] != "" else land_id
 	return style
 

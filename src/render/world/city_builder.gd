@@ -107,6 +107,7 @@ static func make_material(arch: Dictionary) -> ShaderMaterial:
 	for k: String in nums:
 		if arch.has(k):
 			m.set_shader_parameter(nums[k], float(arch[k]))
+	m.set_shader_parameter("roof_style", {"tar": 0, "tiles": 1, "shingles": 2, "panels": 3, "metal": 4}.get(str(arch.get("roof_surface", "tar")), 0))
 	var cols := {"trim": "trim", "glass": "glass", "window_light": "window_light", "shop_light": "shop_light", "roof": "roof_color",
 		"fire": "fire_color", "neon_a": "neon_a", "neon_b": "neon_b"}
 	for k: String in cols:
@@ -147,13 +148,7 @@ func build(root: Node3D) -> void:
 				var w := a.distance_to(bb)
 				var cu := Color(w, top, 0.0, float(b["type"]))
 				_wall(st, a, bb, bottom, top, out, vcol, cu)
-				# Parapet: the wall rises a few centimeters, then caps back to the roof.
-				if not _broken_parapet(c, i):
-					_wall(st, a, bb, top, top + PARAPET, out, vcol, cu)
-					var ia := a - out * 0.05
-					var ib := bb - out * 0.05
-					_wall(st, ib, ia, top, top + PARAPET, -out, vcol, cu)
-					_cap(st, a, bb, ib, ia, top + PARAPET, vcol, cu)
+				_roof_edge(st, c, i, a, bb, top, out, vcol, cu)
 				if bottom <= 0.05:
 					faces.append([a, bb, out, bottom, top, bi])
 	var mi := MeshInstance3D.new()
@@ -162,6 +157,68 @@ func build(root: Node3D) -> void:
 	mi.material_override = material
 	root.add_child(mi)
 	CityProps.build(self, root, faces)
+
+
+## The roof's rim along one open edge, in the culture's style (all under 0.15 high):
+## parapet, battlement (merlons and gaps), eaves (a thin sloped overhang; upturned at the
+## ends for "eaves_up"), chrome (a rounded bright band) or none.
+func _roof_edge(st: SurfaceTool, c: Vector2i, i: int, a: Vector3, b: Vector3, top: float, out: Vector3, vcol: Color, cu: Color) -> void:
+	var edge := str(arch.get("roof_edge", "parapet"))
+	if edge == "none" or _broken_parapet(c, i):
+		return
+	match edge:
+		"battlement":
+			var n := maxi(2, int(round(a.distance_to(b) / 0.16)))
+			for k in range(n):
+				var t0 := float(k) / n
+				var t1 := float(k + 1) / n
+				var hgt := 0.13 if k % 2 == 0 else 0.05
+				_rim(st, a.lerp(b, t0), a.lerp(b, t1), top, top + hgt, out, 0.07, vcol, cu)
+		"eaves", "eaves_up":
+			var reach := float(arch.get("eave_reach", 0.12))
+			var drop := 0.07
+			var lift := 0.06 if edge == "eaves_up" else 0.0
+			var roof := Color(WorldStyle.color(arch.get("roof", "#3a3a3a")))
+			roof.a = vcol.a
+			var oa := a + out * reach + Vector3.UP * (top - drop + lift)
+			var ob := b + out * reach + Vector3.UP * (top - drop + lift)
+			var ia := Vector3(a.x, top + 0.02, a.z)
+			var ib := Vector3(b.x, top + 0.02, b.z)
+			var mid := (oa + ob) * 0.5 - Vector3.UP * lift
+			var rcu := Color(cu.r, cu.g, cu.b, cu.a)
+			_slab(st, [ia, ib, ob, mid, oa], vcol, rcu)
+		"chrome":
+			_rim(st, a, b, top, top + 0.05, out, 0.03, Color(0.85, 0.87, 0.9, vcol.a), Color(cu.r, top + 0.05, cu.b, 3.0))
+		_:
+			_rim(st, a, b, top, top + PARAPET, out, 0.05, vcol, cu)
+
+
+## A low wall on the roof's edge: outer face, inner face and cap.
+func _rim(st: SurfaceTool, a: Vector3, b: Vector3, y0: float, y1: float, out: Vector3, thick: float, vcol: Color, cu: Color) -> void:
+	_wall(st, a, b, y0, y1, out, vcol, cu)
+	var ia := a - out * thick
+	var ib := b - out * thick
+	_wall(st, ib, ia, y0, y1, -out, vcol, cu)
+	_cap(st, a, b, ib, ia, y1, vcol, cu)
+
+
+## A sloped roof skirt from the wall top out to the eave line (polygon fan, both faces).
+static func _slab(st: SurfaceTool, pts: Array, vcol: Color, cu: Color) -> void:
+	var n := ((pts[1] as Vector3) - (pts[0] as Vector3)).cross((pts[2] as Vector3) - (pts[0] as Vector3)).normalized()
+	if n.y < 0.0:
+		n = -n
+	for side in [1.0, -1.0]:
+		for k in range(1, pts.size() - 1):
+			var tri := [pts[0], pts[k], pts[k + 1]]
+			var tn := ((tri[1] as Vector3) - (tri[0] as Vector3)).cross((tri[2] as Vector3) - (tri[0] as Vector3))
+			if (tn.dot(n) > 0.0) == (side > 0.0):
+				tri = [tri[0], tri[2], tri[1]]
+			for v: Vector3 in tri:
+				st.set_color(vcol)
+				st.set_custom(0, cu)
+				st.set_normal(n * side)
+				st.set_uv(Vector2(v.x, v.z))
+				st.add_vertex(v)
 
 
 ## Where a wall facing `other` starts: the top of whatever is next door.

@@ -22,6 +22,8 @@ static func build(t: TerrainRenderer, root: Node3D) -> void:
 	_rough(t, root)
 	_woods(t, root)
 	_rocks(t, root)
+	_crystals(t, root)
+	_glow_plants(t, root)
 	_railings(t, root)
 	WorldHazards.build(t, root)
 	WorldHorizon.build(t, root)
@@ -333,3 +335,73 @@ static func _railings(t: TerrainRenderer, root: Node3D) -> void:
 			bars.append(Transform3D((basis * Basis.from_scale(Vector3(along.length(), 0.06, 0.025))), center + Vector3(mid.x, top + 0.03, mid.y)))
 	var mat := MeshKit.mech_material(WorldStyle.col(t.style, "ground.wall", Color(0.6, 0.58, 0.55)).lightened(0.1), 0.2, 0.8, Color.BLACK, false)
 	multi(root, "Railings", MeshKit.chamfer_box(Vector3.ONE, 0.002), bars, mat, true)
+
+
+# --- Alien life ---------------------------------------------------------------------------
+
+## Small bioluminescent plants on open alien ground (flora.glow_plants colors): glowing caps
+## and fronds, all below the flat-decoration height.
+static func _glow_plants(t: TerrainRenderer, root: Node3D) -> void:
+	var colors := _colors(t, "flora.glow_plants")
+	if colors.is_empty():
+		return
+	var bark := WorldStyle.col(t.style, "flora.bark", Color(0.2, 0.15, 0.25))
+	var groups := {}
+	for c in t.map.cells():
+		var kind := t.surface(c)
+		if t.structure_cells.has(c) or not (kind == TerrainRenderer.KIND_GROUND or kind == TerrainRenderer.KIND_ROUGH):
+			continue
+		var key := "gp" + str(c)
+		for i in range(3):
+			if WorldRand.f(key, i) > 0.4:
+				continue
+			var col: Color = _pick(colors, WorldRand.f(key, i + 10))
+			var species := "glow_cap" if WorldRand.f(key, i + 20) < 0.5 else "glow_frond"
+			var g := "%s|%s" % [species, col.to_html()]
+			if not groups.has(g):
+				groups[g] = [species, col, []]
+			var s := 0.09 + 0.06 * WorldRand.f(key, i + 30)
+			(groups[g][2] as Array).append(Transform3D(Basis(Vector3.UP, WorldRand.f(key, i + 40) * TAU).scaled(Vector3.ONE * s), t.random_point(c, key, i + 50)))
+	var mat := foliage_material(0.03, 1.0, 0.0)
+	for g: String in groups:
+		var e: Array = groups[g]
+		multi(root, "GlowPlants", Flora.plant(e[0], e[1], bark, 0), e[2], mat, false)
+
+
+## Crystal columns become clusters of tall glowing prisms packed inside the cell, with the
+## tallest just reaching the column's top, so the shape matches the solid column exactly.
+static func _crystals(t: TerrainRenderer, root: Node3D) -> void:
+	var col := WorldStyle.col(t.style, "ground.crystal", Color(0.35, 0.75, 1.0))
+	var lists: Array = [[], [], []]
+	for c in t.map.cells():
+		if t.surface(c) != TerrainRenderer.KIND_CRYSTAL or t.structure_cells.has(c):
+			continue
+		var top := t.top_y(c)
+		var low := top
+		for n in t.map.grid.neighbors(c):
+			low = minf(low, t.floor_y(n) if t.map.has_cell(n) else 0.0)
+		var key := "cx" + str(c)
+		var center := t.map.grid.to_world(c)
+		var full := top - low + 0.045
+		# A core prism that fills the cell up to the top, ringed by shorter leaning shards.
+		lists[0].append(Transform3D(Basis(Vector3.UP, WorldRand.f(key, 0) * TAU) * Basis.from_scale(Vector3(0.5, full, 0.5)), Vector3(center.x, low - 0.05, center.z)))
+		for i in range(6):
+			var a := TAU * i / 6.0 + WorldRand.f(key, i + 1) * 0.6
+			var p := center + Vector3(cos(a), 0, sin(a)) * 0.32
+			var hgt := full * (0.45 + 0.5 * WorldRand.f(key, i + 10))
+			var r := 0.13 + 0.08 * WorldRand.f(key, i + 20)
+			var tilt := Basis(Vector3.UP, a) * Basis(Vector3.FORWARD, -0.12 - 0.12 * WorldRand.f(key, i + 30))
+			lists[1 + i % 2].append(Transform3D(tilt * Basis.from_scale(Vector3(r, hgt, r)), Vector3(p.x, low - 0.05, p.z)))
+	var mesh := MeshKit.cylinder(1.0, 1.0, 6, 0.85)
+	# Shift the prism so its foot is at the origin.
+	var arrays := mesh.get_mesh_arrays()
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	for k in range(verts.size()):
+		verts[k].y += 0.5
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	var am := ArrayMesh.new()
+	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	for i in range(3):
+		var tint := col.lerp(Color(0.9, 0.6, 1.0), 0.2 * i)
+		var mat := MeshKit.paint(tint.darkened(0.5), 0.6, 0.08, 0.0, tint * (0.6 + 0.3 * i))
+		multi(root, "Crystals", am, lists[i], mat, true)

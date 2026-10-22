@@ -25,6 +25,7 @@ static func build(t: TerrainRenderer, root: Node3D) -> void:
 		return h
 	_land(t, root, b, height_fn)
 	_river_water(t, root, rivers)
+	Landmarks.build(t, root, b, height_fn)
 	_forest(t, root, b, height_fn, float(hz.get("forest", 0.0)))
 	var far_kind := str(hz.get("far", "mountains"))
 	if far_kind in ["mountains", "mesas", "volcanoes"]:
@@ -45,6 +46,11 @@ static func build(t: TerrainRenderer, root: Node3D) -> void:
 			_ring(root, b, t.style, "foothills", 150.0, 4, 20.0, 18.0)
 	if hz.get("storm", false):
 		_storm(root, b, t.style)
+	if hz.get("beasts", false):
+		var beasts := SkyBeasts.new()
+		beasts.name = "SkyBeasts"
+		beasts.setup(b, WorldStyle.col(t.style, "horizon.beast_color", Color(0.5, 0.9, 1.0)))
+		root.add_child(beasts)
 
 
 ## Liquids that reach the board's edge carry on outside: a meandering channel for each run
@@ -466,7 +472,8 @@ static func _megastructures(root: Node3D, b: Rect2) -> void:
 	var lines := MeshKit.paint(Color(0.05, 0.05, 0.05), 0.2, 0.3, 0.0, Color(0.35, 0.9, 1.0))
 	var c := Vector3(b.get_center().x, -1.0, b.get_center().y)
 	var arch := Node3D.new()
-	arch.position = c + Vector3(-70, 0, -95)
+	var far := maxf(b.size.x, b.size.y) * 0.5
+	arch.position = c + Vector3(-90, 0, -150 - far)
 	arch.rotation_degrees.y = 20
 	root.add_child(arch)
 	for s: float in [-1.0, 1.0]:
@@ -482,12 +489,12 @@ static func _megastructures(root: Node3D, b: Rect2) -> void:
 	tm.ring_segments = 10
 	ring.mesh = tm
 	ring.material_override = stone
-	ring.position = c + Vector3(95, 18, -40)
+	ring.position = c + Vector3(150 + far, 18, -90)
 	ring.rotation_degrees = Vector3(90, -60, 8)
 	root.add_child(ring)
-	for i in range(7):
-		var a := deg_to_rad(-150.0 + i * 38.0 + WorldRand.f("ob", i) * 12.0)
-		var r := 80.0 + 30.0 * WorldRand.f("obr", i)
+	for i in range(4):
+		var a := deg_to_rad(-150.0 + i * 70.0 + WorldRand.f("ob", i) * 20.0)
+		var r := 140.0 + far + 40.0 * WorldRand.f("obr", i)
 		var p := c + Vector3(cos(a) * r, 0, sin(a) * r * 0.9)
 		var h := 25.0 + 40.0 * WorldRand.f("obh", i)
 		var ob := MeshKit.part(root, SmoothKit.loft([{"y": 0.0, "w": 5.0, "d": 5.0, "n": 6.0}, {"y": h * 0.9, "w": 2.6, "d": 2.6, "n": 6.0}, {"y": h, "w": 0.3, "d": 0.3, "n": 6.0}]), stone, p)

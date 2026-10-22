@@ -20,7 +20,7 @@ func test_same_seed_same_mission() -> void:
 
 func test_map_is_grassy_hills_in_size_range() -> void:
 	for mission_seed in [1, 2, 3]:
-		var s: GameState = _gen(mission_seed)["state"]
+		var s: GameState = _gen(mission_seed, {"landscape": "grassy_hills"})["state"]
 		var n := s.map.cells().size()
 		expect(n >= 20 * 20 * 0.75 and n <= 40 * 40, "size %d" % n)
 		var heights := {}
@@ -32,6 +32,28 @@ func test_map_is_grassy_hills_in_size_range() -> void:
 			difficult += 1 if s.map.column(c).has_tag(BattleMap.TAG_DIFFICULT) else 0
 		expect(heights.size() >= 3, "rolling hills: several heights")
 		expect(soft > 0 and difficult > 0, "woods and difficult ground")
+
+
+func test_every_landscape_has_terrain_to_fight_over() -> void:
+	for land: String in TerrainGen.LANDSCAPES:
+		for mission_seed in [11, 12]:
+			var g := _gen(mission_seed, {"landscape": land})
+			var s: GameState = g["state"]
+			var m: Mission = g["mission"]
+			expect(str(m.flavor.get("kit", "")).begins_with(land), "%s kit %s" % [land, m.flavor.get("kit", "")])
+			var cover := 0
+			var difficult := 0
+			for c in s.map.cells():
+				var col := s.map.column(c)
+				cover += 1 if col.ground >= 2 or col.has_tag(Sight.TAG_SOFT_COVER) else 0
+				difficult += 1 if col.has_tag(BattleMap.TAG_DIFFICULT) else 0
+			expect(cover > 10, "%s has cover (%d)" % [land, cover])
+			expect(difficult > 0, "%s has difficult ground" % land)
+			# Deployment ground stays low and safe.
+			for side: String in m.deployment:
+				for c: Array in m.deployment[side]:
+					var col := s.map.column(Vector2i(c[0], c[1]))
+					expect(col.ground <= 1 and not col.has_tag(BattleMap.TAG_DANGEROUS) and not col.has_tag(BattleMap.TAG_IMPASSABLE), "%s deploy %s is safe" % [land, c])
 
 
 func test_forces_are_legal_and_deployed_in_their_zones() -> void:

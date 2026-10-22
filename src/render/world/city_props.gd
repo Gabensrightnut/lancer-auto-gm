@@ -60,6 +60,7 @@ static func build(cb: CityBuilder, root: Node3D, faces: Array) -> void:
 	WorldDressing.multi(root, "Chimneys", MeshKit.chamfer_box(Vector3.ONE, 0.05), chimneys,
 		MeshKit.mech_material(WorldStyle.color(arch.get("trim", "#5a5048")), 0.0, 0.9, Color.BLACK, false), true)
 	_street_faces(cb, root, faces)
+	_street_props(cb, root)
 
 
 ## Shop signs and awnings over street-level facades, neon blade signs and holo ads higher up.
@@ -133,3 +134,66 @@ static func _holo(root: Node3D, key: String, at: Vector3, basis: Basis, w: float
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.transform = Transform3D(basis, at + Vector3.UP * (top - h * 0.5 - 0.25))
 	root.add_child(mi, true)
+
+
+## Street furniture on open ground next to buildings: lamps (thin poles with a glowing head,
+## at the cell's edge), barrels and crates (below flat-decoration height).
+## architecture.street: {"lamps": 0..1, "lamp_color", "lamp_style": "post"/"lantern"/"torch",
+## "barrels": 0..1, "crates": 0..1}
+static func _street_props(cb: CityBuilder, root: Node3D) -> void:
+	var t := cb.t
+	var street: Dictionary = cb.arch.get("street", {})
+	if street.is_empty():
+		return
+	var lamp_col := WorldStyle.color(street.get("lamp_color", "#ffd8a0"))
+	var style := str(street.get("lamp_style", "post"))
+	var poles: Array = []
+	var heads: Array = []
+	var barrels: Array = []
+	var crates: Array = []
+	var lights := 0
+	var corners: PackedVector2Array = MeshKit.cell_shape(t.map.grid)["corners"]
+	for c in t.map.cells():
+		if t.structure_cells.has(c) or t.surface(c) != TerrainRenderer.KIND_GROUND or t.map.column(c).has_tag(Sight.TAG_SOFT_COVER):
+			continue
+		var next_to := false
+		for n in t.map.grid.neighbors(c):
+			if t.structure_cells.has(n):
+				next_to = true
+				break
+		if not next_to:
+			continue
+		var key := "st" + str(c)
+		var base := t.map.grid.to_world(c) + Vector3.UP * t.top_y(c)
+		if WorldRand.f(key, 0) < float(street.get("lamps", 0.0)):
+			var k := int(WorldRand.f(key, 1) * corners.size())
+			var p := base + Vector3(corners[k].x, 0, corners[k].y) * 0.9
+			var h := 0.75 if style == "post" else 0.45
+			poles.append(Transform3D(Basis.from_scale(Vector3(1, h, 1)), p + Vector3.UP * h * 0.5))
+			heads.append(Transform3D(Basis(), p + Vector3.UP * (h + 0.03)))
+			if lights < 14 and WorldRand.f(key, 2) < 0.5:
+				lights += 1
+				var l: OmniLight3D
+				if style == "torch":
+					var fl := FlickerLight.new()
+					fl.base_energy = 1.2
+					l = fl
+				else:
+					l = OmniLight3D.new()
+				l.light_color = lamp_col
+				l.light_energy = 1.2
+				l.omni_range = 2.5
+				l.position = p + Vector3.UP * (h - 0.05)
+				root.add_child(l)
+		if WorldRand.f(key, 3) < float(street.get("barrels", 0.0)):
+			for i in range(1 + int(WorldRand.f(key, 4) * 3.0)):
+				barrels.append(Transform3D(Basis.from_scale(Vector3(0.06, 0.14, 0.06)), t.random_point(c, key, 10 + i, 0.6) + Vector3.UP * 0.07))
+		if WorldRand.f(key, 5) < float(street.get("crates", 0.0)):
+			for i in range(1 + int(WorldRand.f(key, 6) * 3.0)):
+				var s := 0.1 + 0.06 * WorldRand.f(key, 20 + i)
+				crates.append(Transform3D(Basis(Vector3.UP, WorldRand.f(key, 30 + i) * TAU) * Basis.from_scale(Vector3.ONE * s), t.random_point(c, key, 40 + i, 0.6) + Vector3.UP * s * 0.5))
+	var dark := MeshKit.mech_material(Color(0.12, 0.12, 0.13), 0.6, 0.5, Color.BLACK, false)
+	WorldDressing.multi(root, "LampPoles", MeshKit.cylinder(0.012, 1.0, 5), poles, dark, false)
+	WorldDressing.multi(root, "LampHeads", MeshKit.sphere(0.03, 6), heads, MeshKit.mech_material(lamp_col, 0.0, 0.5, lamp_col * 3.0, false), false)
+	WorldDressing.multi(root, "Barrels", MeshKit.cylinder(1.0, 1.0, 10), barrels, MeshKit.mech_material(WorldStyle.color(street.get("barrel_color", "#5a4030")), 0.3, 0.7, Color.BLACK, false), true)
+	WorldDressing.multi(root, "Crates", MeshKit.chamfer_box(Vector3.ONE, 0.06), crates, MeshKit.mech_material(WorldStyle.color(street.get("crate_color", "#7a6040")), 0.0, 0.9, Color.BLACK, false), true)

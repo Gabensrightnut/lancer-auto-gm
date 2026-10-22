@@ -181,7 +181,19 @@
 			"saturation": 1.05,
 			"contrast": 1.08,
 			"exposure": 1.0
-		}
+		},
+		"grid_color": [
+			1.0,
+			0.97,
+			0.9,
+			0.45
+		],
+		"grid_shade": [
+			0.25,
+			0.1,
+			0.0,
+			0.35
+		]
 	},
 	"tundra": {
 		"name": "frozen tundra",
@@ -266,7 +278,19 @@
 			"saturation": 0.95,
 			"contrast": 1.05,
 			"exposure": 0.95
-		}
+		},
+		"grid_color": [
+			0.95,
+			0.98,
+			1.0,
+			0.5
+		],
+		"grid_shade": [
+			0.05,
+			0.12,
+			0.25,
+			0.35
+		]
 	},
 	"volcanic": {
 		"name": "volcanic badlands",
@@ -284,7 +308,8 @@
 			"wall": "#5a524c",
 			"strata": 1.3,
 			"soil_depth": 0.08,
-			"wetness": 0.0
+			"wetness": 0.0,
+			"columnar": 1.0
 		},
 		"liquid": {
 			"kind": "lava",
@@ -333,10 +358,10 @@
 		},
 		"light": {
 			"sun_color": "#ff9a6a",
-			"sun_energy": 1.6,
+			"sun_energy": 1.9,
 			"sun_pitch": -22.0,
 			"sun_yaw": -80.0,
-			"ambient": 0.45,
+			"ambient": 0.6,
 			"fill_color": "#ff6a3a",
 			"fill_energy": 0.25,
 			"fog_color": "#6a3a30",
@@ -351,7 +376,7 @@
 			"bloom": 0.08,
 			"saturation": 1.1,
 			"contrast": 1.1,
-			"exposure": 1.1
+			"exposure": 1.35
 		}
 	},
 	"alien_wilds": {
@@ -369,7 +394,7 @@
 			"hazard": "#ff6a26",
 			"wall": "#3a3842",
 			"veins": "#33f2e6",
-			"vein_strength": 1.2,
+			"vein_strength": 0.9,
 			"crystal": "#59bfff",
 			"strata": 1.2,
 			"soil_depth": 0.1,
@@ -414,7 +439,9 @@
 			"far": "megastructures",
 			"far_color": "#2a1e30",
 			"far_height": 60.0,
-			"storm": true
+			"storm": true,
+			"beasts": true,
+			"beast_color": "#7af0ff"
 		},
 		"particles": "spores",
 		"sky": {
@@ -549,5 +576,217 @@
 			"exposure": 1.0
 		},
 		"urban": true
+	},
+	"crystal_fields": {
+		"base": "alien_wilds",
+		"name": "crystal fields",
+		"ground": {
+			"style": "sand",
+			"top_a": "#b8c4d8",
+			"top_b": "#d4dcea",
+			"top_dry": "#a0a8c0",
+			"soil": "#6a6a80",
+			"rock_a": "#8a8ca0",
+			"rock_b": "#4a4a60",
+			"rough": "#9a9cb0",
+			"crystal": "#8ad8ff",
+			"vein_strength": 0.0,
+			"wetness": 0.0,
+			"strata": 2.0
+		},
+		"liquid": {
+			"kind": "toxic",
+			"shallow": "#5ae0ff",
+			"deep": "#0a2a40"
+		},
+		"flora": {
+			"grass": 2,
+			"grass_colors": [
+				"#8a90b0",
+				"#a0a8c8"
+			],
+			"glow_plants": [
+				"#8ad8ff",
+				"#c8a0ff"
+			],
+			"woods": [
+				"glow_fungus",
+				"alien_tree"
+			],
+			"leaf_colors": [
+				"#8ad8ff",
+				"#c8a0ff"
+			],
+			"bark": "#3a3a50",
+			"stones": "#8a8ca0"
+		},
+		"horizon": {
+			"land": "spires",
+			"land_height": 12.0,
+			"far": "megastructures",
+			"far_color": "#5a5a78",
+			"storm": false,
+			"beasts": true,
+			"beast_color": "#c8b0ff",
+			"haze_color": "#c8d0e8"
+		},
+		"particles": "dust",
+		"sky": {
+			"top": "#3a4a7a",
+			"horizon": "#d8d0e8",
+			"ground": "#6a6a80",
+			"haze_color": "#fff0e0",
+			"haze": 0.6,
+			"clouds": 0.25,
+			"cloud_color": "#f0e8ff",
+			"cloud_shade": "#8a88a8",
+			"sun_glow": 1.2,
+			"stars": 0.3,
+			"nebula": 0.0,
+			"planet": 1.0,
+			"planet_dir": [
+				0.35,
+				0.3,
+				-0.88
+			],
+			"planet_size": 0.45,
+			"planet_color": "#d8b088",
+			"planet_rings": 1.0,
+			"moon_a": 1.0,
+			"moon_a_dir": [
+				-0.6,
+				0.55,
+				-0.6
+			],
+			"moon_a_size": 0.06,
+			"moon_b": 1.0,
+			"moon_b_dir": [
+				-0.25,
+				0.7,
+				-0.65
+			],
+			"moon_b_size": 0.02
+		},
+		"light": {
+			"sun_color": "#fff4e8",
+			"sun_energy": 2.4,
+			"sun_pitch": -32.0,
+			"sun_yaw": 120.0,
+			"ambient": 0.6,
+			"fill_color": "#a0b0ff",
+			"fill_energy": 0.3,
+			"fog_color": "#b8c0d8",
+			"fog_density": 0.003,
+			"fog_aerial": 0.5,
+			"volumetric": 0.0,
+			"glow": 0.9,
+			"bloom": 0.06,
+			"saturation": 1.0,
+			"contrast": 1.05,
+			"exposure": 1.0
+		}
+	},
+	"toxic_marsh": {
+		"base": "alien_wilds",
+		"name": "toxic marsh",
+		"ground": {
+			"style": "moss",
+			"top_a": "#2a3a14",
+			"top_b": "#3e4a18",
+			"top_dry": "#5a5a20",
+			"soil": "#2a2414",
+			"rock_a": "#3a3a2a",
+			"rock_b": "#1a1a12",
+			"rough": "#3a3a1e",
+			"veins": "#c8ff40",
+			"vein_strength": 0.6,
+			"crystal": "#c8ff60",
+			"wetness": 1.0
+		},
+		"liquid": {
+			"kind": "toxic",
+			"shallow": "#a8ff30",
+			"deep": "#142a08"
+		},
+		"flora": {
+			"grass": 6,
+			"grass_colors": [
+				"#4a5a1e",
+				"#5a6a24",
+				"#3a4a18"
+			],
+			"glow_plants": [
+				"#c8ff40",
+				"#ff8a30",
+				"#60ffb0"
+			],
+			"woods": [
+				"alien_tree",
+				"glow_fungus",
+				"dead_tree"
+			],
+			"leaf_colors": [
+				"#c8ff40",
+				"#ff8a30"
+			],
+			"bark": "#2a2418",
+			"stones": "#3a3a2a"
+		},
+		"horizon": {
+			"land": "hills",
+			"land_height": 6.0,
+			"far": "spires",
+			"far_color": "#2a3020",
+			"storm": true,
+			"storm_color": "#3e4a24",
+			"beasts": true,
+			"beast_color": "#c8ff60",
+			"haze_color": "#8a9a50"
+		},
+		"particles": "spores",
+		"sky": {
+			"top": "#1a2410",
+			"horizon": "#8a9a40",
+			"ground": "#141a0a",
+			"haze_color": "#d8ff60",
+			"haze": 0.5,
+			"clouds": 0.6,
+			"cloud_color": "#6a7a3a",
+			"cloud_shade": "#1a2010",
+			"sun_glow": 0.6,
+			"stars": 0.0,
+			"nebula": 0.0,
+			"planet": 1.0,
+			"planet_dir": [
+				-0.7,
+				0.25,
+				-0.65
+			],
+			"planet_size": 0.55,
+			"planet_color": "#a89060",
+			"planet_rings": 0.0,
+			"moon_a": 0.0
+		},
+		"light": {
+			"sun_color": "#e8ffb0",
+			"sun_energy": 1.6,
+			"sun_pitch": -28.0,
+			"sun_yaw": 60.0,
+			"ambient": 0.5,
+			"fill_color": "#a0ff60",
+			"fill_energy": 0.2,
+			"fog_color": "#4a5a24",
+			"fog_density": 0.007,
+			"fog_aerial": 0.5,
+			"volumetric": 0.01,
+			"volumetric_albedo": "#a0b070",
+			"volumetric_emission": "#0a1400",
+			"volumetric_emission_energy": 0.4,
+			"glow": 1.0,
+			"bloom": 0.08,
+			"saturation": 1.1,
+			"contrast": 1.05,
+			"exposure": 1.15
+		}
 	}
 }

@@ -32,7 +32,17 @@ func screenshot_stage(tag: String) -> void:
 	var map: BattleMap
 	var kit := ""
 	if map_name.begins_with("gen"):
-		var g := MissionGenerator.generate(int(map_name.trim_prefix("gen")), {"db": content, "shape": "square" if shape == GridLayout.Shape.SQUARE else "hex"})
+		# gen<seed>[+landscape[+culture]][+size]
+		var parts := map_name.trim_prefix("gen").split("+")
+		var opts := {"db": content, "shape": "square" if shape == GridLayout.Shape.SQUARE else "hex"}
+		if parts.size() > 1:
+			opts["landscape"] = parts[1]
+		if parts.size() > 2:
+			opts["culture"] = parts[2]
+		if parts.size() > 3:
+			opts["size"] = int(parts[3])
+		var g := MissionGenerator.generate(int(parts[0]), opts)
+		print("briefing: ", (g["mission"] as Mission).briefing)
 		map = (g["state"] as GameState).map
 		kit = (g["mission"] as Mission).flavor.get("kit", "grassy_hills")
 	else:

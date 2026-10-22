@@ -24,6 +24,8 @@ uniform vec3 wall_col : source_color = vec3(0.5, 0.48, 0.45);
 uniform float strata = 1.0;
 uniform float soil_depth = 0.3;
 uniform float wetness = 0.0;
+// 1 = columnar basalt: tall hexagonal joints on cliff faces.
+uniform float columnar = 0.0;
 
 varying vec3 wpos;
 varying vec4 vcol;
@@ -90,6 +92,12 @@ vec3 stone(vec2 p, float y, out float rough, out float relief) {
 	c *= 0.9 + 0.12 * noise(vec2(p.x * 9.0, y * 0.8));
 	rough = 0.78 + 0.15 * n;
 	relief = n * 0.7 + band * 0.25 - fr * 0.6;
+	if (columnar > 0.5) {
+		float jx = p.x * 2.6 + noise(vec2(y * 0.6, p.x)) * 0.4;
+		float joint = smoothstep(0.06, 0.0, abs(fract(jx) - 0.5) - 0.44);
+		c = mix(rock_b, rock_a, 0.3 + 0.4 * hash(vec2(floor(jx), 3.0)) + 0.2 * n) * (1.0 - 0.6 * joint);
+		relief = n * 0.3 - joint;
+	}
 	return c;
 }
 
@@ -123,7 +131,8 @@ vec3 ground_top(vec2 p, float lip, out float rough, out vec3 emit, out float rel
 		c = mix(top_a, top_b, smoothstep(0.3, 0.7, n1));
 		c = mix(c, top_dry, smoothstep(0.6, 0.78, n2) * 0.7);
 		c *= 0.75 + 0.45 * n3;
-		float v = smoothstep(0.03, 0.0, abs(fbm(p * 0.9 + 3.0) - 0.5)) * smoothstep(0.35, 0.6, n2);
+		// Thin veins along a few long, slowly pulsing channels (not everywhere).
+		float v = smoothstep(0.018, 0.0, abs(fbm(p * 0.45 + 3.0) - 0.5)) * smoothstep(0.5, 0.7, fbm3(p * 0.2 + 8.0));
 		emit = vein_col * v * vein_strength * (0.8 + 0.2 * sin(TIME * 1.5 + p.x));
 		c = mix(c, vein_col * 0.2, v * 0.5);
 	} else if (top_style == 4) {
