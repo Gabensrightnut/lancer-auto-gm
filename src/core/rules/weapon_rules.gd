@@ -51,6 +51,8 @@ static func crit_bonus(w: Dictionary) -> String:
 
 static func on_hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, crit: bool) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
+	if crit and rules(w).get("on_crit_pull", false) and Combat.is_present(target):
+		events.append_array(Attacks.pull(state, target, attacker))  # Nanobot Whip
 	var pull: Dictionary = rules(w).get("on_hit_pull", {})
 	if not pull.is_empty() and Combat.is_present(target):
 		# Magnetic Cannon: Hull save or pulled toward the attacker.

@@ -159,6 +159,29 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				for m: Unit in state.units.values().duplicate():
 					if m.counters.get("owner", "") == u.id and m.name == String(op.get("deployable", "")) and not m.destroyed and m.counters.get("armed", false):
 						events.append_array(Abilities.detonate(state, m, u))
+			"eject_power_cores", "beckon", "summon", "smite", "sear", "logic_bomb", "banish", "chains", "excommunicate", "ophidian_trek", "fold_space", "hunter_lock":
+				events.append_array(GearSystems.horus_effect(state, u, target, op, params))
+			"electropulse":
+				events.append_array(GearSystems.electropulse(state, u))
+			"emp_pulse":
+				events.append_array(GearSystems.emp_pulse(state, u))
+			"lightning":
+				events.append_array(GearSystems.lightning(state, u, 2, false))
+			"eye_of_horus":
+				events.append_array(Effects.activate(state, u, [{"kind": "eye_of_horus"}], "Eye of Horus", "end_next_turn"))
+				for o: Unit in state.units.values():
+					if o.side != u.side and Combat.is_present(o) and Sight.unit_distance(state, u, o) <= u.sensors:
+						ViewFilter.reveal_in_state(state, u.side, o.id)
+			"swarm_body":
+				events.append_array(Zones.add(state, {"kind": "swarm_body", "owner": u.id, "anchor": u.id, "radius": 1, "cells": [], "center": [u.cell.x, u.cell.y],
+					"at": [u.cell.x, u.cell.y, u.level], "still": -1, "label": "Swarm Body", "rule_ref": "systems: Swarm Body"}))
+			"interdiction":
+				events.append_array(Zones.add(state, {"kind": "interdiction", "owner": u.id, "anchor": u.id, "radius": 3, "cells": [], "center": [u.cell.x, u.cell.y],
+					"label": "Interdiction Field", "rule_ref": "systems: Interdiction Field"}))
+				events.append_array(Combat.add_status(state, u, "Slowed", "Interdiction Field"))
+			"fire_weapon":
+				var fw := Weapons.find(u, String(a["source_key"]).trim_prefix("w:"))
+				events.append_array(Attacks.attack(state, u, fw, target, {"fired_by_rule": true}))
 			"ferrous_lash":
 				events.append_array(GearSystems.ferrous_lash(state, u, target, params))
 			"shrike_code", "mirage", "stalk_prey", "terrify", "tracking_bug", "markerlight":
@@ -231,7 +254,7 @@ static func check_target_op(state: GameState, u: Unit, op: Dictionary, t: Unit, 
 		"other":
 			if t == u:
 				return RuleResult.deny("Choose another character.", ref)
-	var reach := 1 if spec.get("adjacent", false) else int(spec.get("range", 5))
+	var reach := 1 if spec.get("adjacent", false) else (u.sensors if str(spec.get("range", 5)) == "sensors" else int(spec.get("range", 5)))
 	if Sight.unit_distance(state, u, t) > reach:
 		return RuleResult.deny("It must be %s." % ("adjacent" if reach == 1 else "within range %d" % reach), ref)
 	if spec.get("los", false) and not Sight.unit_line_of_sight(state, u, t):
@@ -355,6 +378,11 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 				any = any or (m.counters.get("owner", "") == u.id and m.name == String(op.get("deployable", "")) and not m.destroyed and m.counters.get("armed", false))
 			if not any:
 				return RuleResult.deny("No armed %s to detonate." % op.get("deployable", ""), "tags: Mine")
+		if op.get("op", "") == "fire_weapon":
+			var fw := Weapons.find(u, String(a["source_key"]).trim_prefix("w:"))
+			var pv := Attacks.preview(state, u, fw, state.unit(String(params.get("target", ""))), {"fired_by_rule": true})
+			if not pv["ok"]:
+				return RuleResult.deny(pv["reason"], pv["rule_ref"])
 		if op.get("op", "") == "javelin":
 			var jr := GearSystems.check_javelin(state, u, params)
 			if not jr.ok:

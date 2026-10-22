@@ -57,5 +57,14 @@
   },
   "mw_pinaka_missiles": {
     "blasts": 2
+  },
+  "mw_nanobot_whip": {
+    "on_crit_pull": true
+  },
+  "mw_arc_projector": {
+    "chain": 3
+  },
+  "mw_autogun": {
+    "no_attack": true
   }
 }

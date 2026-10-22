@@ -318,6 +318,10 @@ static func deploy(state: GameState, owner: Unit, a: Dictionary, cell: Vector2i)
 	u.loadout = {"weapons": [], "systems": [], "effects": []}
 	var events: Array[Dictionary] = []
 	state.add_unit(u)
+	if d.has("anchored_zone"):
+		var spec: Dictionary = d["anchored_zone"]
+		events.append_array(Zones.add(state, {"kind": spec["kind"], "owner": owner.id, "anchor": u.id, "radius": int(spec.get("radius", 1)),
+			"label": u.name, "cells": [], "center": [cell.x, cell.y], "rule_ref": "systems: " + u.name}))
 	if d.has("zone_size"):
 		u.counters["zone_size"] = int(d["zone_size"])
 	if d.has("aegis_dice"):
@@ -327,7 +331,9 @@ static func deploy(state: GameState, owner: Unit, a: Dictionary, cell: Vector2i)
 		u.counters["armed"] = false
 		u.statuses["Hidden"] = {"source": owner.id}
 	if d.has("aura"):
-		u.counters["aura"] = String(d["aura"])  # ICEOUT Drone, Lotus Projector
+		u.counters["aura"] = String(d["aura"])  # ICEOUT Drone, Lotus Projector, Sentinel Drone
+	if d.has("fail_status"):
+		u.counters["fail_status"] = (d["fail_status"] as Dictionary).duplicate()  # Mesmer Mine
 	if d.has("interact"):
 		u.counters["interact"] = (d["interact"] as Array).duplicate(true)
 	if not u.counters["turret"]:
@@ -402,6 +408,20 @@ static func detonate(state: GameState, m: Unit, trigger: Unit) -> Array[Dictiona
 			radius = int(r.get("val", 1))
 	var center := Sight.body_of(state, m)
 	m.destroyed = true
+	var fs: Dictionary = m.counters.get("fail_status", {})
+	if not fs.is_empty() and owner != null:
+		var r := int(fs.get("burst", 1))
+		var ids: Array = state.units.keys()
+		ids.sort()
+		for id: String in ids:
+			var o := state.unit(id)
+			if o == m or not Combat.is_present(o) or o.kind == Unit.KIND_DEPLOYABLE or Sight.distance(state, center, Sight.body_of(state, o)) > r:
+				continue
+			var save := Combat.skill_check(state, o, String(fs.get("save", "systems")), "Save vs %s" % m.name, owner.save_target, 0, 0, [], true)
+			events.append({"type": "skill_check", "unit": o.id, "check": save, "rule_ref": "tags: Mine"})
+			if not save["success"]:
+				events.append_array(Combat.add_status(state, o, String(fs["status"]), owner.id, o.id))
+		return events
 	if m.counters.has("zone_size"):
 		events.append_array(GearSystems.smoke_mine(state, m, trigger))
 		return events

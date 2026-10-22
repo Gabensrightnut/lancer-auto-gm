@@ -49,10 +49,12 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 	var area_origin: Variant = opts.get("area_origin")
 	if Weapons.area(w) != "" and area_origin == null:
 		return fail.call("%s is an area weapon (%s): aim it at a space instead of a target." % [w.get("name", ""), Weapons.area(w)], Areas.REF)
-	if target.has_status("Hidden") and target.side != attacker.side and area_origin == null:
+	if target.has_status("Hidden") and target.side != attacker.side and area_origin == null and not GearSystems.sees_through(state, attacker, target):
 		return fail.call("Hidden characters can't be targeted by attacks.", "statuses: Hidden")
 	if not Combat.is_present(target):
 		return fail.call("No valid target.", REF_SKIRMISH)
+	if w.get("no_attack", false) and not opts.get("fired_by_rule", false):
+		return fail.call("%s can't make normal attacks; it's fired through its own rule." % w.get("name", ""), "weapons: " + String(w.get("name", "")))
 	if not opts.get("skip_spend", false):
 		var ready := weapon_ready(attacker, w, opts.get("improvised", false))
 		if not ready.ok:
@@ -238,6 +240,9 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		if not opts.get("skip_spend", false):
 			events.append_array(_spend_weapon(state, attacker, w))
 		return events
+	events.append_array(GearSystems.sentinel_fire(state, attacker))
+	if not Combat.is_present(attacker):
+		return events
 	if attacker.counters.has("shrike_code"):
 		events.append_array(Combat.apply_heat(state, attacker, 2, "Shrike Code"))  # 2 heat whenever it attacks
 	var invisible: bool = target.has_status("Invisible") or afterimage or opts.get("target_invisible", false) or Zones.hidden_by_smoke(state, target, attacker) \
@@ -403,6 +408,8 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 	for i in range(damage.size()):
 		var d: Dictionary = damage[i]
 		var dtype := Weapons.swapped_type(attacker, String(d.get("type", "Kinetic")))
+		if dtype == "Variable" and String(opts.get("damage_type", "")) in ["Kinetic", "Explosive", "Energy"]:
+			dtype = String(opts["damage_type"])  # you set its damage type (tags: Set Damage Type)
 		var r := average_roll(str(d.get("val", "0"))) if average else _shared_roll(state, shared, i, str(d.get("val", "0")), crit, Weapons.has_tag(w, "tg_overkill"))
 		overkill_heat += int(r["overkill_heat"])
 		events.append({"type": "damage_rolled", "attacker": attacker.id, "target": target.id, "damage_type": dtype, "roll": r, "crit": crit, "rule_ref": REF_CRIT if crit else Combat.REF_HARM})
@@ -732,6 +739,9 @@ static func tech_preview(state: GameState, attacker: Unit, target: Unit, opts: D
 			continue
 		sources.append(_src(String(e.get("label", "")), "difficulty", Effects.REF, int(e.get("value", 1))))
 		out["difficulty"] = int(out["difficulty"]) + int(e.get("value", 1))
+	if Effects.has(attacker, "adjacent_tech_accuracy") and Sight.unit_distance(state, attacker, target) <= 1:
+		sources.append(_src("Scanner Swarm", "accuracy", "systems: Scanner Swarm"))
+		out["accuracy"] = int(out["accuracy"]) + 1
 	for src: Dictionary in Effects.accuracy_sources(attacker, ["attack", "tech_attack"]):
 		sources.append(src)
 		var key := "accuracy" if src["kind"] == "accuracy" else "difficulty"
@@ -784,6 +794,7 @@ static func tech_attack(state: GameState, attacker: Unit, target: Unit, label: S
 	events.append_array(pre["events"])
 	if pre["cancel"]:
 		return {"events": events, "hit": false}
+	events.append_array(GearSystems.sentinel_fire(state, attacker))
 	if attacker.counters.has("shrike_code"):
 		events.append_array(Combat.apply_heat(state, attacker, 2, "Shrike Code"))
 	if p.has("black_ice"):
@@ -807,4 +818,6 @@ static func tech_attack(state: GameState, attacker: Unit, target: Unit, label: S
 	Effects.attacked(state, attacker, "tech")
 	if hit:
 		events.append_array(TraitReactions.tech_hit(state, attacker, target))
+	else:
+		events.append_array(GearSystems.scorpion(state, attacker, target))
 	return {"events": events, "hit": hit}

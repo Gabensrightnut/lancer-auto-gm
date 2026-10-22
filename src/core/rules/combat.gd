@@ -674,6 +674,8 @@ static func _is_character(u: Unit) -> bool:
 
 ## On the battlefield: not destroyed, and not a pilot riding inside a mech.
 static func is_present(u: Unit) -> bool:
+	if u != null and u.counters.has("folded"):
+		return false  # Fold Space: off the battlefield until the start of its next turn
 	if u == null or u.destroyed:
 		return false
 	var inside := String(u.counters.get("mounted_in", ""))

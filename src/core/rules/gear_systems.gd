@@ -462,6 +462,8 @@ static func seen_as_invisible(state: GameState, attacker: Unit, target: Unit) ->
 static func sees_through(state: GameState, attacker: Unit, target: Unit) -> bool:
 	if (target.counters.get("tracked_by", []) as Array).has(attacker.id):
 		return true
+	if Effects.has(attacker, "eye_of_horus") and Sight.unit_distance(state, attacker, target) <= attacker.sensors:
+		return true  # Eye of Horus: no Hidden or Invisible against you within Sensors
 	for o: Unit in state.units.values():
 		if o.counters.get("aura", "") == "lotus" and not o.destroyed and o.side != target.side and Sight.unit_distance(state, o, target) <= 2:
 			return true
@@ -521,6 +523,8 @@ static func status_ended(u: Unit, status: String) -> void:
 			u.counters.erase("shrike_code")
 		"Lock On":
 			u.counters.erase("marked_by")
+		"Banished":
+			u.counters.erase("banish")
 
 
 ## Stalk Prey ends when the hunter takes damage from that target; Active Camouflage and the
@@ -649,4 +653,265 @@ static func singularity(state: GameState, u: Unit) -> Array[Dictionary]:
 		u.level = int(last[2])
 		events.append({"type": "moved", "unit": u.id, "path": plan["path"], "mode": "teleport", "cost": 0})
 		events.append_array(Combat.after_movement(state))
+	return events
+
+
+# --- HORUS systems --------------------------------------------------------------------
+
+static func _pay_energy(state: GameState, u: Unit, expr: String, label: String) -> Array[Dictionary]:
+	var roll := state.dice.roll(expr)
+	var events: Array[Dictionary] = [{"type": "effect_triggered", "unit": u.id, "effect": label, "target": u.id, "rule_ref": "systems: " + label}]
+	events.append_array(Combat.deal_damage(state, u, [{"type": "Energy", "amount": int(roll["total"])}], {"ap": true, "source": u.id}))
+	return events
+
+
+## HORUS invades and tech hits. Most effects need the target; some cost the user AP energy.
+static func horus_effect(state: GameState, u: Unit, t: Unit, op: Dictionary, params: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	match String(op.get("op", "")):
+		"eject_power_cores":
+			var used: Array = t.counters.get("power_cores_ejected", [])
+			if used.has(u.id):
+				return events  # 1/scene on each character
+			used.append(u.id)
+			t.counters["power_cores_ejected"] = used
+			events.append_array(Combat.add_status(state, t, "Jammed", u.id, t.id))
+			for o: Unit in state.units.values():
+				if o != t and Combat.is_present(o) and o.kind != Unit.KIND_DEPLOYABLE and Sight.unit_distance(state, o, t) <= 1:
+					events.append_array(Combat.deal_damage(state, o, [{"type": "Energy", "amount": 2}], {"source": u.id}))
+		"beckon":
+			events.append_array(_pay_energy(state, u, "1d6+2", "Beckoner"))
+			if t.kind != Unit.KIND_MECH or t.size < u.size or not Combat.is_present(u):
+				events.append({"type": "no_effect", "target": t.id, "reason": "Beckon needs a mech the same Size or larger."})
+				return events
+			var uc := u.cell
+			var ul := u.level
+			u.cell = t.cell
+			u.level = t.level
+			t.cell = uc
+			t.level = ul
+			events.append({"type": "moved", "unit": u.id, "path": [[uc.x, uc.y, ul], [u.cell.x, u.cell.y, u.level]], "mode": "teleport", "cost": 0})
+			events.append({"type": "moved", "unit": t.id, "path": [[u.cell.x, u.cell.y, u.level], [uc.x, uc.y, ul]], "mode": "teleport", "cost": 0})
+			events.append_array(Combat.after_movement(state))
+		"summon":
+			var ids: Array = state.units.keys()
+			ids.sort()
+			for id: String in ids:
+				var o := state.unit(id)
+				if o != t and Combat.is_present(o) and o.kind != Unit.KIND_DEPLOYABLE and Sight.unit_distance(state, o, t) <= 3:
+					events.append_array(Attacks.pull(state, o, t))
+		"smite":
+			events.append_array(_pay_energy(state, u, "1d6", "Smite"))
+			var once: Array = t.counters.get("smitten", [])
+			if once.has(u.id):
+				return events  # each character can only be Stunned by this once per scene
+			var save := Combat.skill_check(state, t, "systems", "Save vs Smite", u.save_target, 0, 0, [], true)
+			events.append({"type": "skill_check", "unit": t.id, "check": save, "rule_ref": "systems: Smite"})
+			if not save["success"]:
+				once.append(u.id)
+				t.counters["smitten"] = once
+				events.append_array(Combat.add_status(state, t, "Stunned", u.id, t.id))
+		"sear":
+			events.append_array(_pay_energy(state, u, "1d6", "Sear"))
+			var n := 0
+			for o: Unit in state.units.values():
+				if o != t and Combat.is_present(o) and o.kind != Unit.KIND_DEPLOYABLE and o.size >= 1.0 and Sight.unit_distance(state, o, t) <= 1:
+					n += 1
+			if n > 0:
+				events.append_array(Combat.apply_heat(state, t, mini(6, 2 * n), u.id))
+		"logic_bomb":
+			var ids: Array = state.units.keys()
+			ids.sort()
+			for id: String in ids:
+				var o := state.unit(id)
+				if o.side == u.side or not Combat.is_present(o) or o.kind == Unit.KIND_DEPLOYABLE or Sight.unit_distance(state, o, t) > 2:
+					continue
+				var save := Combat.skill_check(state, o, "systems", "Save vs Logic Bomb", u.save_target, 0, 0, [], true)
+				events.append({"type": "skill_check", "unit": o.id, "check": save, "rule_ref": "systems: Viral Logic Suite"})
+				if not save["success"]:
+					events.append_array(Combat.add_status(state, o, "Slowed", "Logic Bomb"))
+					o.counters["logic_bomb"] = true  # until it ends a turn next to nobody
+		"banish":
+			t.counters["banish"] = {"by": u.id, "heat": 0}
+			events.append_array(Combat.add_status(state, t, "Banished", u.id, t.id))
+		"chains":
+			_one_at_a_time(state, u, "chains")
+			events.append_array(Combat.apply_heat(state, t, 4, u.id))
+			t.counters["chains"] = {"by": u.id, "save_target": u.save_target}
+		"excommunicate":
+			_one_at_a_time(state, u, "excommunicate")
+			t.counters["excommunicate"] = {"by": u.id, "save_target": u.save_target}
+		"ophidian_trek":
+			var n := int(state.dice.roll("1d6+1")["total"])
+			var path := Movement.pull_path_to(state, t, Sight.body_of(state, u), 1, n)
+			var last: Array = path.back()
+			events.append({"type": "moved", "unit": t.id, "path": [path[0], last], "mode": "teleport", "cost": 0, "rule_ref": "systems: Metafold Carver"})
+			t.cell = Vector2i(last[0], last[1])
+			t.level = int(last[2])
+			events.append_array(Combat.after_movement(state))
+		"fold_space":
+			t.counters["folded"] = [t.cell.x, t.cell.y, t.level]
+			events.append({"type": "unit_folded", "unit": t.id, "rule_ref": "systems: Metafold Carver"})
+		"hunter_lock":
+			if u.counters.has("hunter_lock") and state.unit(String(u.counters["hunter_lock"])) != null and Combat.is_present(state.unit(String(u.counters["hunter_lock"]))):
+				return events
+			u.counters["hunter_lock"] = t.id
+			events.append({"type": "effect_triggered", "unit": u.id, "effect": "Hunter Lock", "target": t.id, "rule_ref": "systems: Hunter Lock"})
+	return events
+
+
+static func _one_at_a_time(state: GameState, u: Unit, key: String) -> void:
+	for o: Unit in state.units.values():
+		if String(o.counters.get(key, {}).get("by", "")) == u.id:
+			o.counters.erase(key)
+
+
+## Electropulse: hostiles in Sensors next to any drone or deployable take 2 energy.
+static func electropulse(state: GameState, u: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var ids: Array = state.units.keys()
+	ids.sort()
+	for id: String in ids:
+		var o := state.unit(id)
+		if o.side == u.side or not Combat.is_present(o) or o.kind == Unit.KIND_DEPLOYABLE or Sight.unit_distance(state, u, o) > u.sensors:
+			continue
+		for d: Unit in state.units.values():
+			if d.kind == Unit.KIND_DEPLOYABLE and not d.destroyed and Sight.unit_distance(state, d, o) <= 1:
+				events.append_array(Combat.deal_damage(state, o, [{"type": "Energy", "amount": 2}], {"source": u.id}))
+				break
+	return events
+
+
+## EMP Pulse: you're Stunned until the end of your next turn; characters in burst 1 that
+## aren't Biological save (Systems) or are Stunned too (1/scene each).
+static func emp_pulse(state: GameState, u: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var ids: Array = state.units.keys()
+	ids.sort()
+	for id: String in ids:
+		var o := state.unit(id)
+		if o == u or not Combat.is_present(o) or o.kind == Unit.KIND_PILOT or o.kind == Unit.KIND_DEPLOYABLE or Sight.unit_distance(state, u, o) > 1:
+			continue
+		if (o.counters.get("emp_stunned", []) as Array).has(u.id):
+			continue
+		var save := Combat.skill_check(state, o, "systems", "Save vs EMP Pulse", u.save_target, 0, 0, [], true)
+		events.append({"type": "skill_check", "unit": o.id, "check": save, "rule_ref": "systems: EMP Pulse"})
+		if not save["success"]:
+			var once: Array = o.counters.get("emp_stunned", [])
+			once.append(u.id)
+			o.counters["emp_stunned"] = once
+			events.append_array(Combat.add_status(state, o, "Stunned", u.id, o.id))
+	events.append_array(Combat.add_status(state, u, "Stunned", "EMP Pulse", u.id))
+	return events
+
+
+## Lightning Generator: energy to every character and object next to you (2; 4 AP when it
+## goes off by itself in the Danger Zone).
+static func lightning(state: GameState, u: Unit, amount: int, ap: bool) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var ids: Array = state.units.keys()
+	ids.sort()
+	for id: String in ids:
+		var o := state.unit(id)
+		if o != u and Combat.is_present(o) and Sight.unit_distance(state, u, o) <= 1:
+			events.append_array(Combat.deal_damage(state, o, [{"type": "Energy", "amount": amount}], {"ap": ap, "source": u.id}))
+	return events
+
+
+## Start of a turn: HORUS effects that run by themselves.
+static func horus_turn_started(state: GameState, u: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if Effects.has(u, "lightning_generator") and u.has_status("Danger Zone"):
+		events.append({"type": "effect_triggered", "unit": u.id, "effect": "Lightning Generator", "target": u.id, "rule_ref": "systems: Lightning Generator"})
+		events.append_array(Combat.apply_heat(state, u, 1, "Lightning Generator"))
+		events.append_array(lightning(state, u, 4, true))
+	if u.counters.has("folded"):
+		var at: Array = u.counters["folded"]
+		u.counters.erase("folded")
+		events.append({"type": "unit_unfolded", "unit": u.id, "cell": at, "rule_ref": "systems: Metafold Carver"})
+	var ex: Dictionary = u.counters.get("excommunicate", {})
+	if not ex.is_empty():
+		events.append_array(_excommunicate(state, u, ex))
+	return events
+
+
+## End of a turn: Chains of Prometheus, Logic Bomb clearing, Banish's heat bookkeeping.
+static func horus_turn_ending(state: GameState, u: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var ch: Dictionary = u.counters.get("chains", {})
+	var by := state.unit(String(ch.get("by", "")))
+	if by != null and Combat.is_present(by) and Sight.unit_distance(state, u, by) > 3:
+		events.append({"type": "effect_triggered", "unit": by.id, "effect": "Chains of Prometheus", "target": u.id, "rule_ref": "systems: Aggressive System Sync"})
+		events.append_array(Combat.apply_heat(state, u, 2, by.id))
+	if u.counters.get("logic_bomb", false):
+		var alone := true
+		for o: Unit in state.units.values():
+			alone = alone and (o == u or not Combat.is_present(o) or o.kind == Unit.KIND_DEPLOYABLE or Sight.unit_distance(state, o, u) > 1)
+		if alone:
+			u.counters.erase("logic_bomb")
+			if u.has_status("Slowed") and u.statuses["Slowed"].get("source", "") == "Logic Bomb":
+				events.append_array(Combat.remove_status(u, "Slowed", "ended a turn next to nobody"))
+	return events
+
+
+## Excommunicate: the first time in a round it starts its turn next to an ally (or moves next
+## to one), both take 3 heat.
+static func _excommunicate(state: GameState, u: Unit, ex: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if int(ex.get("round", -1)) == state.round_number:
+		return events
+	for o: Unit in state.units.values():
+		if o != u and o.side == u.side and Combat.is_present(o) and o.kind != Unit.KIND_DEPLOYABLE and Sight.unit_distance(state, o, u) <= 1:
+			ex["round"] = state.round_number
+			events.append({"type": "effect_triggered", "unit": String(ex.get("by", "")), "effect": "Excommunicate", "target": u.id, "rule_ref": "systems: Aggressive System Sync"})
+			events.append_array(Combat.apply_heat(state, u, 3, String(ex.get("by", ""))))
+			events.append_array(Combat.apply_heat(state, o, 3, String(ex.get("by", ""))))
+			break
+	return events
+
+
+## After a voluntary move on its own turn: Banish heat, Excommunicate.
+static func horus_moved(state: GameState, u: Unit, spaces: int) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var b: Dictionary = u.counters.get("banish", {})
+	if not b.is_empty() and u.has_status("Banished"):
+		var add := mini(2 * spaces, 6 - int(b.get("heat", 0)))
+		if add > 0:
+			b["heat"] = int(b.get("heat", 0)) + add
+			events.append_array(Combat.apply_heat(state, u, add, String(b.get("by", ""))))
+	var ex: Dictionary = u.counters.get("excommunicate", {})
+	if not ex.is_empty() and state.active_unit == u.id:
+		events.append_array(_excommunicate(state, u, ex))
+	return events
+
+
+## Sentinel drones: hostiles in their burst 2 take 3 kinetic before making any attack.
+static func sentinel_fire(state: GameState, attacker: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for d: Unit in state.units.values():
+		if d.counters.get("aura", "") != "sentinel" or d.destroyed or d.side == attacker.side or Sight.unit_distance(state, d, attacker) > 2:
+			continue
+		events.append({"type": "effect_triggered", "unit": d.id, "effect": "Sentinel Drone", "target": attacker.id, "rule_ref": "systems: Sentinel Drone"})
+		events.append_array(Combat.deal_damage(state, attacker, [{"type": "Kinetic", "amount": 3}], {"source": String(d.counters.get("owner", ""))}))
+	return events
+
+
+## //SCORPION: when you or an adjacent ally is missed by a tech attack, the attacker becomes
+## Impaired and takes 2 heat, or becomes Jammed (the owner chooses; default Impaired + heat).
+static func scorpion(state: GameState, attacker: Unit, target: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for o: Unit in state.units.values():
+		if not Effects.has(o, "scorpion") or o.side != target.side or not Combat.is_present(o) or Sight.unit_distance(state, o, target) > (0 if o == target else 1):
+			continue
+		var auto := {"take": true, "choice": "impaired"}
+		var d := Reactions.offer(state, o, "scorpion", {"attacker": attacker.id, "options": ["impaired", "jammed"], "suggested": auto}, auto)
+		if not d.get("take", false):
+			continue
+		events.append({"type": "effect_triggered", "unit": o.id, "effect": "//SCORPION", "target": attacker.id, "rule_ref": "systems: //SCORPION V70.1"})
+		if String(d.get("choice", "impaired")) == "jammed":
+			events.append_array(Combat.add_status(state, attacker, "Jammed", o.id, attacker.id))
+		else:
+			events.append_array(Combat.add_status(state, attacker, "Impaired", o.id, attacker.id))
+			events.append_array(Combat.apply_heat(state, attacker, 2, o.id))
+		break
 	return events

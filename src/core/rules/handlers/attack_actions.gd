@@ -118,6 +118,25 @@ static func _run(state: GameState, u: Unit, a: Dictionary, aux: bool) -> Array[D
 	if not p["ok"]:
 		# An earlier attack in the same action changed things (target destroyed, pushed away).
 		return [{"type": "attack_skipped", "attacker": u.id, "weapon": a["weapon"], "target": a["target"], "reason": p["reason"], "rule_ref": p["rule_ref"]}] as Array[Dictionary]
+	if int(WeaponRules.rules(w).get("chain", 0)) > 0 and a.has("chain"):
+		# Arc Projector: on a hit, another target within range 3 of the last, 1 heat each, no
+		# bonus damage, nobody twice.
+		var events: Array[Dictionary] = Attacks.attack(state, u, w, target, opts)
+		var last := target
+		var hit := CloseCombat._hit(events)
+		for id: Variant in a["chain"]:
+			var nxt := state.unit(String(id))
+			if not hit or nxt == null or nxt == target or not Combat.is_present(nxt) or Sight.unit_distance(state, last, nxt) > int(WeaponRules.rules(w)["chain"]):
+				break
+			events.append_array(Combat.apply_heat(state, u, 1, String(w.get("name", ""))))
+			var o2 := opts.duplicate()
+			o2["skip_spend"] = true
+			o2["no_bonus_damage"] = true
+			var more := Attacks.attack(state, u, w, nxt, o2)
+			events.append_array(more)
+			hit = CloseCombat._hit(more)
+			last = nxt
+		return events
 	if WeaponRules.rules(w).get("line_attack", false):
 		# Impact Lance: also attacks every character on the line to the target, 1 heat each
 		# past the first.

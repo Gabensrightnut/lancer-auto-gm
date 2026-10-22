@@ -551,6 +551,8 @@ static func weapon_profile(w: Dictionary, key: String, mount: int) -> Dictionary
 	var r: Variant = weapon_effects_data().get(String(w.get("id", "")))
 	if r is Dictionary:
 		out["rules"] = (r as Dictionary).duplicate(true)
+		if r.get("no_attack", false):
+			out["no_attack"] = true  # fired only through its own rule (Autogun)
 	if key != "" and w.has("profiles") and (w["profiles"] as Array).size() > 1:
 		var all: Array = []
 		for i in range((w["profiles"] as Array).size()):

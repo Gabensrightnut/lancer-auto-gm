@@ -169,5 +169,20 @@
     {
       "kind": "singularity_motivator"
     }
+  ],
+  "ms_scanner_swarm": [
+    {
+      "kind": "adjacent_tech_accuracy"
+    }
+  ],
+  "ms___scorpion_v70.1": [
+    {
+      "kind": "scorpion"
+    }
+  ],
+  "ms_lightning_generator": [
+    {
+      "kind": "lightning_generator"
+    }
   ]
 }

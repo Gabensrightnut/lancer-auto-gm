@@ -29,6 +29,8 @@ const REACTION := "reaction"
 static func takes_turns(u: Unit) -> bool:
 	if u.kind == Unit.KIND_PILOT and not u.destroyed and u.counters.has("mounted_in"):
 		return Combat.is_present(u)  # acts through its mech, unless the mech was destroyed
+	if u.counters.has("folded") and not u.destroyed:
+		return true  # Fold Space: it comes back at the start of its next turn
 	var st := state_of(u)
 	if st != null and FrameSystems.riding(st, u):
 		return false  # Goblin Symbiosis: acts during its host's turn instead

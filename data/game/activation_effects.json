@@ -415,5 +415,143 @@
     {
       "op": "stuncrown"
     }
+  ],
+  "ms___scorpion_v70.1:Activate //SCORPION": [],
+  "ms_h0r_os_system_upgrade_i:Eject Power Cores": [
+    {
+      "op": "eject_power_cores"
+    }
+  ],
+  "ms_beckoner:Beckon": [
+    {
+      "op": "beckon"
+    }
+  ],
+  "ms_beckoner:Summon": [
+    {
+      "op": "summon"
+    }
+  ],
+  "ms_smite:Smite": [
+    {
+      "op": "smite"
+    }
+  ],
+  "ms_smite:Sear": [
+    {
+      "op": "sear"
+    }
+  ],
+  "ms_viral_logic_suite:Logic Bomb": [
+    {
+      "op": "logic_bomb"
+    }
+  ],
+  "ms_viral_logic_suite:Banish": [
+    {
+      "op": "banish"
+    }
+  ],
+  "ms_metafold_carver:Ophidian Trek": [
+    {
+      "op": "ophidian_trek"
+    }
+  ],
+  "ms_metafold_carver:Fold Space": [
+    {
+      "op": "fold_space"
+    }
+  ],
+  "ms_aggressive_system_sync:Chains of Prometheus": [
+    {
+      "op": "chains",
+      "tech_attack": true
+    }
+  ],
+  "ms_aggressive_system_sync:Excommunicate": [
+    {
+      "op": "excommunicate",
+      "tech_attack": true
+    }
+  ],
+  "ms_hunter_lock:Hunter Lock": [
+    {
+      "op": "hunter_lock",
+      "label": "Hunter Lock",
+      "target": {
+        "who": "other",
+        "range": "sensors"
+      }
+    }
+  ],
+  "ms_puppetmaster:Electropulse": [
+    {
+      "op": "electropulse"
+    }
+  ],
+  "ms_emp_pulse:EMP Pulse": [
+    {
+      "op": "emp_pulse"
+    }
+  ],
+  "ms_lightning_generator:Lightning Generator": [
+    {
+      "op": "lightning"
+    }
+  ],
+  "ms_swarm_body:Swarm Body": [
+    {
+      "op": "swarm_body"
+    }
+  ],
+  "ms_interdiction_field:Interdiction Field": [
+    {
+      "op": "interdiction"
+    }
+  ],
+  "actions:ms_interdiction_field": [
+    {
+      "name": "Deactivate Interdiction Field",
+      "activation": "Quick",
+      "detail": "End the field.",
+      "ops": [
+        {
+          "op": "remove_zone",
+          "kind": "interdiction"
+        }
+      ]
+    }
+  ],
+  "deploy:ms_hive_drone:Hive Drone": {
+    "anchored_zone": {
+      "kind": "hive",
+      "radius": 2
+    }
+  },
+  "deploy:ms_sentinel_drone:Sentinel Drone": {
+    "aura": "sentinel"
+  },
+  "deploy:ms_tempest_drone:Tempest Drone": {
+    "anchored_zone": {
+      "kind": "tempest",
+      "radius": 1
+    }
+  },
+  "deploy:ms_mesmer_charges:Mesmer Mine": {
+    "fail_status": {
+      "status": "Immobilized",
+      "save": "systems",
+      "burst": 2
+    }
+  },
+  "mw_autogun:Fire Autogun": [
+    {
+      "op": "fire_weapon"
+    }
+  ],
+  "ms_eye_of_horus:Eye of HORUS": [
+    {
+      "op": "eye_of_horus"
+    }
   ]
 }

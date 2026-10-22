@@ -97,6 +97,9 @@ static func sources(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 						or int(info.get("distance", 0)) <= 5:
 					continue
 		out.append(e)
+	var lock := {"value": 3, "label": "Hunter Lock", "per": "round"}
+	if String(attacker.counters.get("hunter_lock", "")) == target.id and not _used_this_round(state, attacker, lock):
+		out.append(lock)  # Hunter Lock: the first successful attack each round, +3
 	var crit_extra := WeaponRules.crit_bonus(w)
 	if crit_extra != "" and info.get("crit", false):
 		out.append({"value": crit_extra, "label": String(w.get("name", ""))})
