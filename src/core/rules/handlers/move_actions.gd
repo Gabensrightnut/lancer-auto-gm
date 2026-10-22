@@ -29,6 +29,25 @@ static func _plan_result(plan: Dictionary) -> RuleResult:
 	return RuleResult.allow()
 
 
+## After reactions to the start of a move (Overwatch), can the move still happen? Returns a
+## `movement_cancelled` event if not, else {}.
+static func _still_can_move(state: GameState, u: Unit, params: Dictionary, mode: String) -> Dictionary:
+	var why := ""
+	if not Combat.is_present(u):
+		why = "Destroyed before moving."
+	else:
+		var r := _can_move_voluntarily(u)
+		if not r.ok:
+			why = r.reason
+		else:
+			var plan := _plan(state, u, params, mode)
+			if not plan["ok"]:
+				why = plan["reason"]
+	if why == "":
+		return {}
+	return {"type": "movement_cancelled", "unit": u.id, "reason": why, "rule_ref": Movement.REF_MOVE}
+
+
 ## Moves along a planned path and applies everything that follows.
 static func _do_move(state: GameState, u: Unit, plan: Dictionary, mode: String, fly: bool) -> Array[Dictionary]:
 	var path: Array = plan["path"]
@@ -78,11 +97,17 @@ class Move:
 		return MoveActions._plan_result(MoveActions._plan(state, u, params, Movement.MODE_MOVE))
 
 	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+		var events := Reactions.overwatch(state, u)
+		var r := MoveActions._still_can_move(state, u, params, Movement.MODE_MOVE)
+		if not r.is_empty():
+			events.append(r)
+			return events
 		var plan := MoveActions._plan(state, u, params, Movement.MODE_MOVE)
 		u.turn["move_spent"] = int(u.turn.get("move_spent", 0)) + int(plan["cost"])
 		if plan["stopped_by"] != "":
 			u.turn["move_spent"] = u.speed  # lose any unused movement (statuses: Engaged)
-		return MoveActions._do_move(state, u, plan, "walk", bool(params.get("fly", false)))
+		events.append_array(MoveActions._do_move(state, u, plan, "walk", bool(params.get("fly", false))))
+		return events
 
 
 class Boost:
@@ -103,8 +128,13 @@ class Boost:
 		return MoveActions._plan_result(MoveActions._plan(state, u, params, Movement.MODE_BOOST))
 
 	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+		var events := Reactions.overwatch(state, u)
+		var r := MoveActions._still_can_move(state, u, params, Movement.MODE_BOOST)
+		if not r.is_empty():
+			events.append(r)
+			return events
 		var plan := MoveActions._plan(state, u, params, Movement.MODE_BOOST)
-		var events := MoveActions._do_move(state, u, plan, "boost", bool(params.get("fly", false)))
+		events.append_array(MoveActions._do_move(state, u, plan, "boost", bool(params.get("fly", false))))
 		if u.has_status("Hidden"):
 			# Using BOOST removes HIDDEN after it resolves (statuses: Hidden).
 			events.append_array(Combat.remove_status(u, "Hidden", "boosted"))

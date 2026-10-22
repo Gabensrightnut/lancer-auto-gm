@@ -43,6 +43,10 @@ func view_for(state: GameState, seat: String) -> Dictionary:
 	full.erase("dice_state")
 	full.erase("seed")
 	full["intel"] = {seat_side: state.intel.get(seat_side, {})} if seat_side != "" else {}
+	if not state.pending.is_empty():
+		# The rewind point and earlier answers stay on the host.
+		full["pending"] = {"id": state.pending["id"], "unit": state.pending["unit"],
+			"reaction": state.pending["reaction"], "context": state.pending.get("context", {})}
 	var units := {}
 	for id: String in state.units:
 		var u: Unit = state.units[id]

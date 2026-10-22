@@ -263,7 +263,11 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 ## Applies a hit's damage parts, letting the target Brace if its reaction policy says so.
 static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array, ap: bool) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
-	var brace := _wants_brace(target, parts, ap)
+	var brace := false
+	if Reactions.can_react(target, "brace").ok and not parts.is_empty():
+		var d := Reactions.offer(state, target, "brace", {"attacker": attacker.id, "damage": parts, "ap": ap},
+			{"take": _wants_brace(target, parts, ap)})
+		brace = d.get("take", false)
 	if brace:
 		events.append_array(Reactions.brace(state, target, attacker.id))
 	events.append_array(Combat.deal_damage(state, target, parts, {"source": attacker.id, "ap": ap, "resist_all": brace}))
@@ -273,7 +277,7 @@ static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array,
 ## Brace policy "on_structure": brace when this hit would take the last of the target's HP.
 ## (A choice the player makes ahead of time; see Reactions.)
 static func _wants_brace(target: Unit, parts: Array, ap: bool) -> bool:
-	if target.counters.get("brace_policy", "never") != "on_structure" or not Reactions.can_react(target, "brace").ok:
+	if Reactions.policy(target, "brace") != "on_structure":
 		return false
 	var dmg := 0
 	for p: Dictionary in parts:

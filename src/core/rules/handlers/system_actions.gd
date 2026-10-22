@@ -220,3 +220,27 @@ class SetBracePolicy:
 		var u := state.unit(action["actor"])
 		u.counters["brace_policy"] = action["params"]["policy"]
 		return [{"type": "reaction_policy", "unit": u.id, "reaction": "brace", "policy": action["params"]["policy"]}] as Array[Dictionary]
+
+
+class SetReactionPolicy:
+	extends ActionHandler
+	## Not a game action: how the engine handles one of this unit's reactions.
+	## params: {"reaction": "overwatch" | "brace" | "prepared", "policy": "ask" | "auto" |
+	## "never" | "on_structure" (Brace only)}. Allowed any time. See Reactions.
+
+	func type() -> String:
+		return "set_reaction_policy"
+
+	func validate(_state: GameState, action: Dictionary) -> RuleResult:
+		var p: Dictionary = action.get("params", {})
+		if not Reactions.POLICIES.has(p.get("policy", "")) or String(p.get("reaction", "")) == "":
+			return RuleResult.deny("Give a reaction and a policy (ask, auto, never, on_structure).", "")
+		return RuleResult.allow()
+
+	func resolve(state: GameState, action: Dictionary) -> Array[Dictionary]:
+		var u := state.unit(action["actor"])
+		var p: Dictionary = action["params"]
+		var set: Dictionary = u.counters.get("reaction_policy", {})
+		set[p["reaction"]] = p["policy"]
+		u.counters["reaction_policy"] = set
+		return [{"type": "reaction_policy", "unit": u.id, "reaction": p["reaction"], "policy": p["policy"]}] as Array[Dictionary]
