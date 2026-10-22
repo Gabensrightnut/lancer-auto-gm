@@ -129,7 +129,7 @@ class Hide:
 class Search:
 	extends TurnAction
 	## Quick action: contested Systems vs the target's Agility, target within SENSORS
-	## (actions: Search). PROVISIONAL: a tie keeps the target Hidden. params: {"target"}
+	## (Core p.70). The searcher started the contest, so it wins ties (Core p.13). params: {"target"}
 
 	func type() -> String:
 		return "search"
@@ -153,7 +153,7 @@ class Search:
 			return events
 		var mine := Combat.skill_check(state, u, "systems", "Search: Systems", 0)
 		var theirs := Combat.skill_check(state, target, "agility", "Stay hidden: Agility", 0)
-		var found: bool = int(mine["total"]) > int(theirs["total"])
+		var found: bool = int(mine["total"]) >= int(theirs["total"])
 		events.append({"type": "searched", "unit": u.id, "target": target.id, "found": found, "check": mine, "contest": theirs, "rule_ref": "actions: Search"})
 		if found:
 			events.append_array(Combat.remove_status(target, "Hidden", "found by " + u.id))
@@ -255,7 +255,7 @@ class CorePower:
 		if u.loadout.get("core", {}).is_empty():
 			return RuleResult.deny("This mech has no core system.", "frames: core_system")
 		if int(u.counters.get("core_power", 0)) <= 0:
-			return RuleResult.deny("Core Power already used this mission.", "PROVISIONAL Core: Core Power (docs/RULES_TODO.md)")
+			return RuleResult.deny("Core Power already used this mission (a Full Repair recovers it).", "Core p.32, 82 Core System")
 		var act := _activation(u)
 		if act == "Reaction" or act == "None":
 			return RuleResult.deny("This core system is a %s; it isn't automated yet, so the table applies it." % ("reaction" if act == "Reaction" else "passive effect"), "frames: core_system")

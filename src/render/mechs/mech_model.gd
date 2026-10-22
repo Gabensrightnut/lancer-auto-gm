@@ -29,15 +29,41 @@ var meshes: Array[GeometryInstance3D] = []
 ## Nodes that spin or bob on their own (nanite clouds, drones, halos): [{node, axis, speed}]
 var spinners: Array = []
 
-var _walk_t := 0.0
-var _walk_amount := 0.0
+## Locomotion style from data/game/locomotion.json: biped, digitigrade, quadruped, hexapod,
+## tracked, hover, winged. Visual only.
+var gait := "biped"
+## Gait phase in radians. Each step is PI; the mover advances it by distance travelled so
+## feet are planted (phase a multiple of PI) exactly when the model reaches a cell.
+var walk_phase := 0.0
+## 0 = standing, 1 = full stride (fades in and out).
+var walk_amount := 0.0
+## Flying with wings/thrusters (gait "winged"/"hover" style motion) instead of walking.
+var airborne := false
+var _idle_t := 0.0
+
+static var _locomotion: Dictionary = {}
+
+
+## The gait a frame uses (data/game/locomotion.json).
+static func gait_for(frame_id: String) -> String:
+	if _locomotion.is_empty():
+		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/game/locomotion.json"))
+		_locomotion = d if d is Dictionary else {"default": {"gait": "biped"}, "frames": {}}
+	var f: Dictionary = (_locomotion.get("frames", {}) as Dictionary).get(frame_id, _locomotion.get("default", {}))
+	return String(f.get("gait", "biped"))
+
+
+## Steps per cell crossed, so the stride scales with Size and a whole number of steps
+## covers each space (Size 1/2: 4, Size 1: 2, Size 2 and up: 1).
+func steps_per_cell() -> int:
+	return maxi(1, roundi(2.0 / maxf(size, 0.5)))
 
 
 func _process(delta: float) -> void:
 	for s: Dictionary in spinners:
 		(s["node"] as Node3D).rotate(s["axis"], s["speed"] * delta)
-	if _walk_amount > 0.001:
-		_walk_t += delta * 7.0
+	if walk_amount > 0.001 or airborne or gait == "hover":
+		_idle_t += delta
 		_apply_walk()
 
 
@@ -77,25 +103,59 @@ func arm_for(weapon_id: String) -> String:
 	return ""
 
 
-## Walking: 0 = standing, 1 = full stride.
+## Walking: 0 = standing, 1 = full stride (kept for callers that don't drive the phase).
 func set_walk(amount: float) -> void:
-	_walk_amount = amount
+	walk_amount = amount
 	if amount <= 0.001:
-		_walk_t = 0.0
+		walk_phase = roundf(walk_phase / PI) * PI
 		_apply_walk()
 
 
 func _apply_walk() -> void:
-	for i in range(legs.size()):
+	var a := walk_amount
+	var rest_y: float = pelvis.get_meta("rest_y", pelvis.position.y) if pelvis else 0.0
+	var g := gait
+	if airborne and g != "tracked":
+		g = "winged" if g == "winged" else "hover"
+	match g:
+		"hover", "winged":
+			# Legs tucked, body bobbing on thrusters/wings and leaning into the move.
+			for leg: Dictionary in legs:
+				var base: Vector3 = leg["base"]
+				(leg["hip"] as Node3D).rotation_degrees.x = base.x - 20.0 * (a if airborne else 0.3)
+				(leg["knee"] as Node3D).rotation_degrees.x = base.y + (25.0 if base.y >= 0.0 else -25.0) * (a if airborne else 0.3)
+			if pelvis:
+				pelvis.position.y = rest_y + (0.04 + 0.025 * sin(_idle_t * 3.0)) * (1.0 if airborne or g == "hover" else 0.0)
+				pelvis.rotation_degrees.x = -10.0 * a
+			return
+		"tracked":
+			if pelvis:
+				pelvis.position.y = rest_y + 0.006 * sin(walk_phase * 4.0) * a
+			return
+	# Legged gaits: which legs move together.
+	var n := legs.size()
+	for i in range(n):
 		var leg: Dictionary = legs[i]
-		var phase := _walk_t + (PI if i == 1 else 0.0)
+		var offset := 0.0
+		match g:
+			"quadruped":
+				offset = PI if i in [1, 2] else 0.0  # diagonal pairs (legs ordered FR, FL, RR, RL)
+			"hexapod":
+				offset = PI if i % 2 == 1 else 0.0  # alternating tripods
+			_:
+				offset = PI if i % 2 == 1 else 0.0
+		var phase := walk_phase + offset
 		var base: Vector3 = leg["base"]
-		var a := _walk_amount
-		(leg["hip"] as Node3D).rotation_degrees.x = base.x + sin(phase) * 28.0 * a
-		(leg["knee"] as Node3D).rotation_degrees.x = base.y - maxf(0.0, cos(phase)) * 35.0 * a * (1.0 if base.y <= 0.0 else -1.0)
-		(leg["ankle"] as Node3D).rotation_degrees.x = base.z
+		var swing := sin(phase)
+		var lift := maxf(0.0, sin(phase))
+		var hip_amp := 24.0 if g != "digitigrade" else 18.0
+		(leg["hip"] as Node3D).rotation_degrees.x = base.x + swing * hip_amp * a
+		var bend := 1.0 if base.y <= 0.0 else -1.0
+		(leg["knee"] as Node3D).rotation_degrees.x = base.y - lift * 38.0 * a * bend
+		(leg["ankle"] as Node3D).rotation_degrees.x = base.z + lift * 12.0 * a * bend
 	if pelvis:
-		pelvis.position.y = pelvis.get_meta("rest_y", pelvis.position.y) + absf(sin(_walk_t)) * 0.02 * _walk_amount
+		pelvis.position.y = rest_y + absf(sin(walk_phase)) * 0.018 * a
+		pelvis.rotation_degrees.z = sin(walk_phase) * 2.0 * a
 
 
 ## Raises an arm to point its weapon at a world position (or lowers it with `on = false`).

@@ -27,8 +27,9 @@ func _init() -> void:
 	_bottom = float(a[8]) if a.size() > 8 else 0.97
 	var db := ContentDB.new()
 	db.load_all()
-	var art := Image.load_from_file(art_path)
-	var w := int(H * float(art.get_width()) / art.get_height())
+	var multi := art_path == "-"
+	var art := Image.load_from_file(art_path) if not multi else null
+	var w := int(H * float(art.get_width()) / art.get_height()) if art else int(H * 0.95)
 	var frame := db.frame(frame_id)
 	var mounts: Array = []
 	var fm: Array = frame.get("mounts", [])
@@ -36,8 +37,15 @@ func _init() -> void:
 		mounts.append({"mount": fm[i], "weapons": [weapons[i]] if i < weapons.size() and weapons[i] != "" else []})
 	var model := MechBuilder.build(frame, {"mounts": mounts}, db)
 	model.scale = Vector3.ONE / model.size  # compare at unit height
-	var shot := await _render(model, w, yaw, pitch, null)
-	var panels: Array = [art, shot]
+	var panels: Array = []
+	if multi:
+		# No art: front, 3/4 and back views of the model.
+		for y: float in [yaw, yaw + 40.0, yaw + 180.0]:
+			var mm := MechBuilder.build(frame, {"mounts": mounts}, db)
+			mm.scale = Vector3.ONE / mm.size
+			panels.append(await _render(mm, w, y, pitch, null))
+	else:
+		panels = [art, await _render(model, w, yaw, pitch, null)]
 	if guide != "":
 		var g := _load_glb(guide)
 		if g:
@@ -119,15 +127,25 @@ func _render(n: Node3D, w: int, yaw: float, pitch: float, match: Node3D) -> Imag
 		await process_frame
 		box = _bounds(n)
 	var body := _bounds(n, true) if not match else box
-	# Body spans [_top, _bottom] of the frame height, like the figure in the art.
-	var size := body.size.y / (_bottom - _top)
-	var center := body.get_center()
-	center.y = body.position.y + body.size.y * 0.5 + size * ((_bottom + _top) * 0.5 - 0.5)
+	# Fit the body's box as the camera sees it: its projected height spans [_top, _bottom] of
+	# the frame (like the figure in the art), and it never spills off the sides.
+	var dir := Basis.from_euler(Vector3(deg_to_rad(pitch), deg_to_rad(yaw), 0)) * Vector3(0, 0, -1)
+	var view := Transform3D(Basis.looking_at(-dir, Vector3.UP), Vector3.ZERO).inverse()
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for i in range(8):
+		var c := view * body.get_endpoint(i)
+		lo = Vector2(minf(lo.x, c.x), minf(lo.y, c.y))
+		hi = Vector2(maxf(hi.x, c.x), maxf(hi.y, c.y))
+	var aspect := float(w) / H
+	var size := maxf((hi.y - lo.y) / (_bottom - _top), (hi.x - lo.x) / aspect * 1.04)
+	# Screen-space centre: horizontally centred, vertically placed per _top/_bottom.
+	var mid := Vector2((lo.x + hi.x) * 0.5, (lo.y + hi.y) * 0.5 + size * ((_bottom + _top) * 0.5 - 0.5))
+	var center := view.affine_inverse() * Vector3(mid.x, mid.y, (view * body.get_center()).z)
 	var cam := Camera3D.new()
 	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
 	cam.size = size
 	world.add_child(cam)
-	var dir := Basis.from_euler(Vector3(deg_to_rad(pitch), deg_to_rad(yaw), 0)) * Vector3(0, 0, -1)
 	# The model faces -Z, so the camera sits on the -Z side looking back at it.
 	cam.position = center + dir * 10.0
 	cam.look_at(center)

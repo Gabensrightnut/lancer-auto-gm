@@ -18,7 +18,6 @@ var engine: RulesEngine
 var order_bar: TurnOrderBar
 var bar: ActionBar
 var turn: PlayerTurn
-var popup: SkillCheckPopup
 var banner: Label
 ## Set by screenshot staging to pick units without clicks.
 var auto_pick := ""
@@ -40,9 +39,6 @@ func setup(db: ContentDB, battle_view: BattleView, events: EventPlayer, layer: C
 	bar = ActionBar.new()
 	bar.visible = false
 	ui.add_child(bar)
-	popup = SkillCheckPopup.new()
-	ui.add_child(popup)
-	player.popup = popup
 	banner = Label.new()
 	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	banner.add_theme_constant_override("outline_size", 10)

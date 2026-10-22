@@ -1,102 +1,141 @@
 # Rules to confirm
 
-Rules the code currently assumes but that haven't been checked against the core book yet.
-When one is confirmed, fix the code if needed, add the book reference, and move it to
+Rules the code assumes but the core book doesn't settle. Checked against the LANCER core
+book (free version, `local/books/core.txt`, never committed); page references are
+"Core p.N". When one is settled, fix the code if needed, add the reference, and move it to
 "Confirmed". Any difference from Lancer Tactics goes in DESIGN.md's Rule differences table
 for the user to decide. Code that depends on a row here is marked `PROVISIONAL`.
 
-## Open
+## Open (the book doesn't say, or only says it for a flat tabletop)
 
 | Rule | Current assumption | Where in code |
 |---|---|---|
-| Square grid diagonals | Diagonal step = 1 space (Chebyshev distance), 8 neighbors | `square_grid.gd` |
-| Hex footprints for big mechs | Size 2 = 3-hex triangle, Size 3 = 7-hex flower | `hex_grid.gd` |
-| Big mechs on uneven ground | Table ruling `big_mech_uneven_ground` ("allow" / "forbid"); asked the first time a move needs it | `movement.gd`, `move_actions.gd` |
-| Turn order | Sides alternate activations; the side chosen at `start_combat` picks first every round; when one side runs out, the other side's units act in a row | `turn_rules.gd` |
-| Splitting the standard move | Allowed: move, act, move the rest | `move_actions.gd` (Move) |
-| Climbing cost per step | A step that goes up or down d levels costs 1 + 2d; going down costs the same as up; no free "small step"; no height limit | `movement.gd` |
-| Moving through characters | Allies can be passed through but not stopped on; hostile characters and deployables block | `movement.gd` |
-| Flight cost and terrain | Flight costs max(ground distance, height change); flying ignores difficult terrain; a straight line follows the grid line | `movement.gd` |
-| Distance in 3D | Larger of ground distance and height gap between the two bodies; used for range, threat, Sensors and adjacency (engagement) | `sight.gd` |
-| Character height | A character fills Size levels (rounded up to 1) above its footprint | `sight.gd`, `movement.gd` |
-| Line of sight in 3D | Clear straight line from any sample point of the attacker (middle of each level it fills, top of its head) to any of the target's; only solid terrain blocks; characters don't | `sight.gd` |
-| Hard cover | +2 Difficulty when solid terrain within 1 space of the target hides at least half of its height from the attacker while some of it is visible; terrain further away gives no cover | `sight.gd` |
-| Soft cover | +1 Difficulty when the target is in, or every clear line to it passes through, a column tagged `soft_cover` (whole column above the ground); hard and soft don't stack | `sight.gd` |
-| Cover and tech attacks | Cover doesn't apply to tech attacks (only ranged attacks, per Fight/Thrown text) | `attacks.gd` |
-| Engagement and Hidden | Two characters are Engaged only if adjacent and neither is Hidden | `combat.gd` |
-| Halving | Resistance/Brace halving rounds the damage taken up | `combat.gd` |
-| Armor with several damage types | Armor is subtracted once per hit, from the damage types in listed order | `combat.gd` |
-| Damage past 0 HP | Lost; HP resets to full after marking 1 structure | `combat.gd` |
-| Unforced checks and saves | Succeed on 10+ (Direct Hit Hull check, meltdown/burn/dangerous Engineering checks, flyers' Agility save) | `combat.gd` |
-| Falling distance | The whole fall happens at the end of the current turn | `combat.gd` |
-| Reactor meltdown | Explodes like Self Destruct (Burst 2, 4d6 explosive, Agility save for half vs the mech's Save Target, half rounds up); no Engineering retry yet | `combat.gd`, `pilots.gd` |
-| Dangerous terrain damage type | Kinetic unless the column is also tagged `dangerous_energy` / `dangerous_explosive` / `dangerous_burn` | `combat.gd` |
-| Reactions | Each reaction once per round, refreshed at the start of the unit's turn | `reactions.gd` |
-| Reaction decisions | Player units are asked (engine pauses); GM units decide automatically until the GM AI exists: take Overwatch, take prepared actions, Brace only under an explicit `on_structure` policy | `reactions.gd` |
-| NPCs and Brace | NPCs can't Brace (lancer-data has NPC versions of Overwatch, Ram, Grapple, Stabilize, Improvised Attack but not of Brace) | `reactions.gd` |
-| Overwatch weapons | Any weapon whose THREAT reaches the mover, except Ordnance, Superheavy and area weapons; Engaged/cover modifiers apply as usual | `reactions.gd` |
-| Area templates | Line and Cone start at the user's footprint space nearest the aim and take cover/LOS from the user; Cone width grows evenly from 1 to X; templates are flat and catch characters whose footprint is in them within X levels of the origin; characters out of LOS of the origin aren't hit (unless Arcing/Seeking); damage is rolled once and a crit on any target rolls the extra dice once; Line/Cone "Range" variants not supported | `areas.gd` |
-| Grapple | Same-Size grapples immobilize nobody (the start-of-turn contested Hull check isn't automated); Break Free needs a higher Hull total (ties hold); the smaller character is dragged by the same step and the grapple ends if it can't follow; only two-character grapples | `close_combat.gd` |
-| Jump | Horizontal: straight line up to half Speed at the jumper's height (crosses pits and lower ground, not taller terrain), lands on the highest ground at or below; vertical: 1 space over, up max(1, Size) levels; Slowed and Prone characters can't jump; replaces the standard move | `close_combat.gd` |
-| Prepare | Only movement triggers so far (a character moves adjacent / within a range); the prepared action targets "trigger" | `pilot_actions.gd`, `reactions.gd` |
-| Pilots | Base stats from rules.json; no heat cap (heat becomes energy damage); the pilot of a destroyed mech climbs out into a free adjacent space; Eject lands in any free space within 6 (no path check); mechs and pilots hand the rest of the turn to each other on Eject/Dismount/Mount | `pilots.gd`, `pilot_actions.gd` |
-| Self Destruct timing | "Within the following two rounds" read as your next turn (delay 1) or the one after (delay 2), chosen when you start it | `pilot_actions.gd` |
-| Core Power | One per mission, spent on activation; a Protocol core is free and only at the start of your turn; Reaction/passive cores aren't activated through the engine yet | `system_actions.gd` |
-| Frame trait readings | Tortuga Sentinel counts Overwatch as a reaction attack; Blast Plating resists all damage types from area attacks; Vlad's core resistance applies to attackers within range 3 of the Vlad; Shrike Armor damage happens before the attack roll | `data/game/frame_effects.json` |
-| Search ties | A tie keeps the target Hidden | `system_actions.gd` |
-| "Variable" damage type | Treated as Kinetic until damage-type choice exists | `combat.gd` |
-| Reliable on a miss | Uses the weapon's first damage type | `attacks.gd` |
-| Pilot stat bonuses | HP + GRIT + 2/Hull; Repair Cap +1 per 2 Hull; Evasion +1/Agility; Speed +1 per 2 Agility; E-Defense and Tech Attack +1/Systems; Heat Cap +1/Engineering; Limited +1 per 2 Engineering; Save Target + GRIT | `unit_factory.gd`, `weapons.gd` |
-| Mount capacities | Main and Heavy hold 1 weapon, Main/Aux holds Main + Aux, Aux/Aux holds 2 Aux, Flex holds 1 Main or 2 Aux (sizes that fit come from rules.json) | `unit_factory.gd` |
-| License ranks | One license rank per License Level (ranks add up to at most LL); each license rank 1-3. Items unlock at their lancer-data `license_level` (frames at 2); talent gear needs its talent rank; gear with no license or talent (integrated weapons) can't be installed | `unit_factory.gd` |
-| Superheavy mounting | A Superheavy weapon needs a Heavy mount plus one other mount left empty | `unit_factory.gd` |
-| High ground | No general bonus assumed | rules engine |
+| Hex footprints for big mechs | Size 2 = 3-hex triangle, Size 3 = 7-hex flower. The book only says Size N is N spaces on each side (p.59, 79) | `hex_grid.gd` |
+| Big mechs on uneven ground | Table ruling `big_mech_uneven_ground` ("allow" / "forbid"), asked the first time a move needs it | `movement.gd`, `move_actions.gd` |
+| Climbing cost per step | Climbing is half speed (p.63); a step up or down d levels costs 1 + 2d; down costs the same as up; no height limit | `movement.gd` |
+| Flight and difficult terrain | Flying ignores difficult terrain on the ground | `movement.gd` |
+| Distance in 3D | Larger of ground distance and height gap; adjacency including vertical is confirmed (p.62), range/threat/sensors in 3D aren't spelled out | `sight.gd` |
+| Line of sight sampling | Lines between the middles of the spaces a character fills (plus the top of its head); only terrain and wrecks block; characters don't (p.66: they never grant cover) | `sight.gd` |
+| Cover geometry in 3D | The book's tests are for a flat map (p.66). Flanking uses lines from the attacker's spaces to the target's spaces or the top of its head; the soft-cover line runs between the centers of the two bodies; a column's terrain "size" is its height above the target's base; cover next to the attacker no taller than it is ignored unless it is also next to the target | `sight.gd` |
+| Soft cover zones | A column tagged `soft_cover` (smoke, foliage) is soft cover over its whole height | `sight.gd` |
+| Heat overflow | Over the cap, "the excess beyond what was required to exceed" (p.81) read as heat − (cap + 1) | `combat.gd` |
+| Unforced saves | Saves nobody forces (flyers' Agility save after structure/stress damage, p.63) need 10+; forced saves use the forcer's Save Target (p.13) | `combat.gd` |
+| Reactor explosion save | Agility save against the exploding mech's Save Target (p.72, 81 don't name one) | `pilots.gd` |
+| Dangerous terrain damage type | "Depending on the hazard" (p.62): Kinetic unless the column is tagged `dangerous_energy` / `dangerous_explosive` / `dangerous_burn` | `combat.gd` |
+| Reaction decisions | Player units are asked (engine pauses); GM/AI seats answer with `Reactions.suggested_answer`: take Overwatch and prepared actions, Brace when the hit would take the last HP | `reactions.gd`, `src/gm/ai_director.gd` |
+| NPCs and Brace | NPCs can't Brace (lancer-data has NPC versions of Overwatch, Ram, Grapple, Stabilize, Improvised Attack but not of Brace); NPC rules aren't in the free book | `reactions.gd` |
+| Overwatch weapons | Any weapon whose THREAT reaches the mover except Ordnance (tag), Superheavy (can't Skirmish, p.70) and area weapons | `reactions.gd` |
+| Area templates | Cone width grows evenly from 1 to X; templates are flat and catch characters within X levels of the origin; Line/Cone start at the user's space nearest the aim; characters out of line of sight of the origin aren't hit (unless Arcing/Seeking); a crit on any target rolls the extra dice once. Line/Cone/Burst with a listed Range (origin within range, p.64) not supported yet | `areas.gd` |
+| Grapple | Same-Size contest at the start of a turn (p.69) isn't automated: nobody is Immobilized; only two-character grapples | `close_combat.gd` |
+| Jump | Horizontal: straight line at the jumper's height (crosses pits and lower ground, not taller terrain), lands on the highest ground at or below; vertical rises max(1, Size); Slowed and Prone can't jump | `close_combat.gd` |
+| Prepare triggers | Only movement triggers so far (a character moves adjacent / within a range); the book allows any "When X, then Y" (p.72) | `pilot_actions.gd`, `reactions.gd` |
+| Pilot of a destroyed mech | Climbs out into a free adjacent space ("you may still exit it as normal", p.80); the wreck stops protecting it (p.74) | `combat.gd`, `pilots.gd` |
+| Eject | Lands in any free space within 6 (no straight-line or path check) | `pilot_actions.gd` |
+| Self Destruct timing | "Within the following two rounds" read as your next turn (delay 1) or the one after (delay 2) | `pilot_actions.gd` |
+| Frame trait readings | Tortuga Sentinel counts Overwatch as a reaction attack; Blast Plating resists all damage types from area attacks; Vlad's core resistance applies to attackers within range 3; Shrike Armor damage comes before the attack roll | `data/game/frame_effects.json` |
+| Teleport moves | A teleporting standard move or Boost (Mourning Cloak core) reaches up to that move's budget and uses all of it; the book says a teleport "counts as moving 1 space" (p.63) | `movement.gd`, `move_actions.gd` |
+| Ignoring difficult terrain while Prone | Bulwark Mods / Kai Bioplating also cancel Prone's "counts as moving in difficult terrain" | `movement.gd` |
+| After-attack moves | Taken right away (lost if another action comes first); only on your own turn, so the Skirmisher talent's "before" option and its use after Overwatch aren't supported yet | `move_actions.gd`, `effects.gd` |
+| Kai Bioplating jumps | "Up to full Speed across and half Speed up, in any combination" read as: horizontal jumps up to Speed, vertical jumps rise up to half Speed (rounded up) | `close_combat.gd` |
+| Iskander's Broad-Sweep Seeder | Range 50 measured from the Iskander at the time of each move (the text says the hostiles within range 50 when it fires); jumps count as movement other than the standard move | `effects.gd` |
+| Mech building limits | Each license rank 1-3, ranks add up to at most LL (p.31: +1 rank per LL, ranks bought in order) | `unit_factory.gd` |
+
+## Movement audit (Core p.62-63, 77-78 and lancer-data text)
+
+Only rule text grants movement; a frame's look never does (a mech that looks like it floats
+still pays for difficult terrain unless a rule says otherwise). Tests:
+`tests/unit/test_rules_movement*.gd`.
+
+| Source | Rule | Status |
+|---|---|---|
+| Core p.62 | Standard move, splitting, adjacency, obstruction by Size, allies never obstruct, mechs pass pilots, engagement stop, provoking, Disengage | automated |
+| Core p.62 | Involuntary movement: straight line, no reactions/engagement, blocked by obstructions (passes smaller characters, can't end in occupied spaces) | automated |
+| Core p.62 | Difficult terrain (x2), dangerous terrain (Engineering check, once per round) | automated |
+| Core p.62 | Lifting and dragging (Slowed / Immobilized) | not yet |
+| Core p.63 | Jumping, climbing (half speed), falling (10 per round, 3 AP per 3, max 9) | automated |
+| Core p.63 | Flight: straight line, ignores obstructions, immune to Prone, must move or fall, falls if Immobilized/Stunned, Agility save, 10-space ceiling; Hover | automated |
+| Core p.63 | Teleportation | automated |
+| Core p.63 | Zero-g / underwater (Slowed without propulsion, can't fall, can fly) | not yet |
+| Core p.77-78 | Prone (Slowed, difficult, stand up), Slowed (only the standard move), Immobilized (no voluntary movement), Stunned, Engaged, Hidden (Boost reveals) | automated |
+| Core p.69 | Grapple: smaller is Immobilized and dragged along; no Boost | automated (same-Size contest not yet) |
+| Everest core | Boost as a free action 1/turn | automated |
+| Blackbeard | Lock/Kill: Boost while grappling | automated; Grapple Cable (range 5, pulled adjacent) and core not yet |
+| Drake, Barbarossa | Heavy Frame: not pushed/pulled/knocked Prone/back by smaller | automated; Drake core (Immobilized, immune to involuntary movement) not yet |
+| Nelson | Skirmisher: 1 space after attacking, ignores engagement, no reactions; core: 4 spaces | automated |
+| Tortuga core | Overwatch hits Immobilize | not yet |
+| Dusk Wing | Hover | automated; core (hologram teleport) not yet |
+| Mourning Cloak core | Teleport on Boost and standard move | automated; Blinkspace Jump not yet |
+| Swallowtail | Integrated Cloak (Invisible if it didn't move) | automated |
+| Iskander core | Damage on hostile non-standard movement | automated |
+| Minotaur | Localized Maze (hostiles can't pass through its space and always stop when Engaged with it) | automated |
+| Black Witch, Balor, Barbarossa, Goblin, Hydra, Death's Head, Lancaster cores | Difficult zones, Immobilize, Apocalypse Die reset on moving, riding a host, drones | not yet |
+| Bulwark Mods | Ignore difficult terrain | automated |
+| High-Stress Mag Clamps | Climb at normal speed | automated (wall-walking and falling when knocked Prone not yet) |
+| Type-I Flight System | Count any movement as flying, Size+1 heat on turns flown | automated |
+| Rapid Burst Jump Jet System | Fly when Boosting, land or fall | automated |
+| Flicker Field Projector | Invisible against the next attack after a standard move or Boost | automated |
+| Reinforced Cabling, Ramjet, Singularity Motivator, FADE Cloak, Ferrous Lash, Beckoner, Metafold Carver, Mimic Mesh, Puppetmaster, Cable Winch, MULE Harness, Webjaw Snare, Caltrop Launcher, Perimeter Command Plate, Grounding Charges, Flak Launcher, Tesseract, Interdiction Field, H0R_OS upgrades, Hunter Logic Suite, Mesmer Charges, Viral Logic Suite, Siege Stabilizers, Retractable Profile, HyperDense Armor, deployable mines/drones | Activated systems, deployables or choices | not yet (need system activation / deployables) |
+| Weapons | Impaler Nailgun (Immobilize), Magnetic Cannon / Gravity Gun / Nanobot Whip (pull), Fold Knife (teleport on crit), Assault Cannon / Leviathan spin-up (Slowed), Pinaka (Slowed) | not yet (on-hit effects and profiles) |
+| Talents | Skirmisher II (2 spaces after a Skirmish) | automated (after only, own turn) |
+| Talents | Ace I (+1 Agility while flying) | automated; Ace II-III, Hunter, Infiltrator III, Juggernaut, Brawler, Brutal, Siege Specialist, Stormbringer, Hacker, Heavy Gunner, Crack Shot, Duelist, Vanguard, Grease Monkey | not yet |
+| Core bonuses | Integrated Nerveweave (+2 Boost), All-Theater Movement Suite, Kai Bioplating, Fomorian Frame, Ghostweave (Invisible on own turn) | automated (Ghostweave's "stays Invisible if you only moved, hid or Boosted" not yet) |
+| Pilot gear | Mobility Hardsuit (fly, land by end of turn) | automated |
+| EVA Module | Fly and not Slowed in zero-g | not yet (no zero-g) |
 
 ## Not implemented yet
 
-Deployables and drones, system activations (Quick/Full Activation of systems), NPC multiple
-activations and templates (Elite, Ultra...), Recharge, choosing a weapon profile, mod effects,
-frame traits and core systems marked "manual" in `data/game/frame_effects.json` (about half:
-anything needing bonus damage, deployables, extra reactions, teleport, choices), talents
-(beyond unlocking talent gear), Jockey, pilot armor and gear, teleport, zero-g, lifting and
-dragging, bonus damage, overshield sources, Scan's other two options, the same-Size grapple
-contest, Engineering retries against a meltdown, Full Repair and resting.
+Deployables and drones, system activations (Activate), NPC templates and multiple
+activations, Recharge, weapon profile choice, mod effects, frame traits and core systems
+marked "manual" in `data/game/frame_effects.json`, talents (beyond unlocking talent gear),
+bonus damage (p.67), Jockey and Reload (p.75), pilot armor and gear, zero-g
+(p.63), lifting and dragging (p.62), dragging wrecks, objects as attack targets (p.68),
+overshield sources, Scan's other two options, the same-Size grapple contest, Engineering
+retries against a meltdown, rest and Full Repair (p.82), unlicensed mechs (p.74: Impaired
+and Slowed), NHP control (p.75).
 
-## Confirmed (from lancer-data rule text)
+## Confirmed
 
 | Rule | Source |
 |---|---|
-| Size 1/2 and Size 1 occupy one space; Size = spaces per side | glossary: Size |
-| Jammed: can't use comms, attack (except Improvised/Grapple/Ram), react, or take/benefit from tech actions | statuses: Jammed |
-| Hidden: can't be targeted, no engagement, enemies know approximate location; removed by attacking, forcing saves, reactions, Boost, losing cover | statuses: Hidden, actions: Hide |
-| Hide: not Engaged, and out of enemies' line of sight, behind hard cover big enough to conceal you, fully inside soft cover, or Invisible | actions: Hide |
-| Search: contested Systems vs Agility, target within Sensors | actions: Search |
-| Engaged: +1 Difficulty on ranged attacks; moving into engagement with equal or larger Size stops movement and loses the rest | statuses: Engaged |
-| Falling: 3 AP kinetic per 3 spaces, max 9; counts as involuntary movement | glossary: Falling/Fall Damage |
-| Flight: up to Speed in any direction, in a straight line; must move 1+ space per turn or fall; Immobilized/Stunned flyers fall; Agility save after structure/stress damage; immune to Prone; Hover needn't move or go straight | glossary: Flight/Hover |
-| Climbing costs double (half speed) | glossary: Jumping and Climbing |
-| Difficult terrain: each space moved into costs 2 | glossary: Difficult Terrain |
-| Dangerous terrain: Engineering check or 5 damage on entering (first time in a round) or ending the turn there, once per round | glossary: Dangerous Terrain |
-| Involuntary movement: straight line, no engagement or reactions, blocked by obstructions | glossary: Involuntary Movement |
-| Blast/Burst: cover and line of sight from the blast center / the character | glossary: Blast, Burst |
-| Accuracy/Difficulty: cancel 1:1, roll d6s, keep highest | core rules (implemented in `dice.gd`) |
-| Turn actions: standard move + 2 quick or 1 full; quick actions can't repeat except Quick Tech with different options or via Overcharge | actions: Move, Overcharge, Quick Tech |
-| Overcharge: once per turn, extra quick action as a free action; heat 1, 1d3, 1d6, then 1d6+4 | actions: Overcharge, rules.json |
-| Boost: quick action, at least 1 space up to Speed | actions: Boost |
-| Skirmish (one weapon + different Aux on same mount, no Superheavy) and Barrage (two weapons or one Superheavy, + Aux per fired mount) | actions: Skirmish, Barrage |
-| Ranged attacks are affected by cover; melee isn't (Thrown is) | actions: Fight, tags: Thrown |
-| Critical hit: 20+ on melee/ranged; damage dice rolled twice, highest kept | glossary: Critical Hits |
-| Damage order: increases (Exposed), Armor, then Resistance | glossary: Harm/Calculating Damage |
-| Exposed doubles kinetic/explosive/energy; Shredded ignores Armor and Resistance | statuses: Exposed, Shredded |
-| Heat over cap: 1 stress, clear all heat, overheating check; no heat cap means energy damage instead | glossary: Heat Capacity |
-| 0 HP: 1 structure, HP resets, structure check; 0 structure/stress destroys | glossary: HP, Structure, Stress |
-| Structure and Overheating tables (lowest d6 per point marked; two 1s worst) | tables.json |
-| Burn: immediate damage ignoring Armor, marked; end of turn Engineering check clears or deals it again | glossary: Burn |
-| Lock On: +1 Accuracy when consumed by a hostile attacker | statuses: Lock On, actions: Lock On |
-| Invisible: 50% miss before the roll; Prone: +1 Accuracy, Slowed, difficult movement, stand up instead of standard move; Stunned: no actions, Evasion max 5, auto-fail Hull/Agility | statuses |
-| Slowed: no Boost; Immobilized: no voluntary movement; Impaired: +1 Difficulty on attacks, checks, saves | statuses |
-| Brace: resistance to the triggering hit, +1 Difficulty on other attacks and no reactions until end of next turn, next turn only one quick action | actions: Brace |
-| Stabilize options; Shut Down / Boot Up; Scan; Invade + Fragment Signal | actions |
-| Tags: Accurate, Inaccurate, AP, Reliable, Knockback, Loading, Limited, Ordnance, Smart (no E-Def counts as 8), Seeking, Arcing, Overkill, Heat (Self/Target), Burn, Threat (default 1) | tags.json, glossary: Threat |
-| GRIT = half LL rounded up; SP = frame + GRIT + 1 per 2 Systems | glossary: GRIT, System Points |
-| Max License Level 12 | rules.json: max_pilot_level |
+| Square grid: diagonal moves are adjacent moves; adjacency includes diagonal and vertical | Core p.62 |
+| Size N = N spaces on each side and N high; under 1 rounds up; Size 1/2 and 1 share one space | Core p.59, 79 |
+| Turn order: players first; sides alternate; leftovers act in turn; the side that didn't take the last turn starts the next round | Core p.60 |
+| Two quick or one full action plus a standard move; no repeating an action except free actions and reactions; Quick Tech repeats with different options | Core p.61, 68, 69 |
+| Standard move can be split around actions, which must fully resolve first | Core p.62 |
+| Obstruction: same Size or larger blocks; smaller can be passed; allies never obstruct; no ending in an occupied space; mechs pass unmounted pilots | Core p.62, 74 |
+| Engaged: +1 Difficulty on ranged attacks; becoming Engaged by an equal-or-larger hostile stops the move; further moves while Engaged don't stop | Core p.62 |
+| Starting a move in a hostile's THREAT can trigger Overwatch; Disengage avoids reactions and engagement | Core p.62, 71, 73 |
+| Involuntary movement: straight line, no reactions or engagement, blocked by obstructions | Core p.62 |
+| Difficult terrain costs 2 per space; dangerous terrain: Engineering check or 5 damage, once per round | Core p.62 |
+| Climbing is half speed; jumping (half speed horizontal, Size up vertical); ending a jump mid-air falls at the end of the move | Core p.63 |
+| Falling: starts at the end of the current turn, then at the end of each of the faller's turns, 10 spaces per round, 3 AP kinetic per 3 spaces, max 9 | Core p.63 |
+| Teleportation: free space in range, start and end on a surface you can move on, ignores obstructions/LOS/engagement, no reactions, counts as 1 space, Immobilized stops it, occupied destination fails | Core p.63 |
+| Flight: Speed in any direction, straight line, ignores obstructions if physically possible, immune to Prone; must move or fall; falls if Immobilized/Stunned; Agility save after structure/stress damage; more than 10 above any surface: only move/Boost, no reactions; hover | Core p.63 |
+| Critical hits: 20+ on melee/ranged, damage dice rolled twice keeping the best | Core p.64 |
+| Range and Threat measured from any edge; Threat 1 by default | Core p.64, 73 |
+| Area patterns: one attack roll per target, damage rolled once; Blast cover/LOS from its center; Burst from the user, who isn't affected; Cone starts 1 wide, X wide at the end | Core p.64 |
+| Melee attacks and tech attacks ignore cover; ranged attacks: soft +1, hard +2 Difficulty | Core p.64 |
+| Line of sight: a line to some part of the target; Arcing ignores LOS but not cover; Seeking ignores both | Core p.65 |
+| Invisible: 50% miss before the roll; can always Hide | Core p.65 |
+| Cover: hard only if adjacent and the cover is at least the target's Size, and not flanked; obscured by non-adjacent hard cover = soft; center-to-center line test for soft; no stacking; characters only grant cover with Guardian | Core p.66 |
+| Damage order: increases (Exposed), Armor (once per source), then Resistance; Armor and AP; burn ignores Armor; heat isn't damage but Resistance applies | Core p.67 |
+| Always round up | Core p.12 |
+| Characters without a Heat Cap (Biological, drones) take energy damage instead of heat | Core p.67, 74 |
+| Immunity ignores the damage/effect entirely | Core p.68 |
+| "Until the end of your next turn" means the next turn, even if applied during your turn | Core p.68, 77 |
+| Actions: Boost, Grapple, Hide, Quick Tech (Bolster, Lock On, Scan, Invade/Fragment Signal), Ram, Search, Skirmish, Barrage, Disengage, Full Tech, Improvised Attack, Stabilize, Boot Up, Mount/Dismount (full), Eject (quick), Prepare, Self-Destruct, Shut Down, Overcharge (1, 1d3, 1d6, 1d6+4) | Core p.69-73 |
+| Reactions: each once until the start of your next turn; one reaction per turn; Brace and Overwatch | Core p.61, 73 |
+| Free actions only on your turn; Protocols only at the start of a turn, once per turn | Core p.61, 73 |
+| Contested checks: highest wins, ties go to whoever started the contest; checks succeed on 10+ | Core p.13 |
+| Pilots: HP 6 + Grit, Evasion 10, E-Defense 10, Size 1/2, Speed 4; add Grit to attacks and saves; Biological (immune to tech except Lock On and Scan); don't engage or obstruct mechs; pilot actions; actions shared with the mech | Core p.74, 76 |
+| Statuses and conditions (Danger Zone, Down and Out, Engaged, Exposed, Hidden, Invisible, Prone, Shut Down, Immobilized, Impaired, Jammed, Lock On, Shredded, Slowed, Stunned) | Core p.77-78 |
+| Structure: at 0 HP, 1 structure, structure check, HP to full, then the excess; 0 structure destroys; Structure Damage table | Core p.80 |
+| Overheating: over the cap, 1 stress, overheating check, clear heat, then the excess; 0 stress melts down at the end of the next turn; Overheating table | Core p.81 |
+| Reactor meltdown: pilot killed, Burst 2, Agility save or 4d6 explosive (half on success), no wreck | Core p.81 |
+| Destroyed mechs are wreckage: hard cover, difficult terrain | Core p.82 |
+| Mounts: Main, Heavy, Aux/Aux, Main/Aux (Main + Aux or two Aux), Flex (one Main or two Aux); Superheavy needs a Heavy mount plus one other | Core p.32 |
+| SP = frame + Grit + 1 per 2 Systems; Grit = half LL rounded up | Core p.33, 78 |
+| Mech skill bonuses: Grit to HP/Save Target/SP/attacks; Hull +2 HP, +1 Repair Cap per 2; Agility +1 Evasion, +1 Speed per 2; Systems +1 E-Def and Tech Attack, +1 SP per 2; Engineering +1 Heat Cap, +1 Limited use per 2 | Core p.34-35 |
+| Licenses: +1 rank per LL up to 12, ranks I-III in order, rank II unlocks the frame; GMS and the Everest always available | Core p.31 |
+| Core system: usually once per mission; Full Repair recovers it | Core p.32, 82 |
+| High ground: no general rule (only some talents mention it) | Core (no rule found) |

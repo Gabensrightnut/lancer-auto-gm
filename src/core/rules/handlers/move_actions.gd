@@ -16,6 +16,9 @@ static func _plan(state: GameState, u: Unit, params: Dictionary, mode: String) -
 	var to: Variant = TurnAction.cell_param(params, "to")
 	if to == null:
 		return {"ok": false, "reason": "Say where to move (params.to = [x, y]).", "rule_ref": Movement.REF_MOVE}
+	if Effects.has(u, "teleport_moves") and mode != Movement.MODE_BONUS:
+		# "You teleport when you Boost or make a standard move" (Mourning Cloak core).
+		return Movement.plan_teleport(state, u, to, int(params.get("level", -1)), mode)
 	return Movement.plan(state, u, to, int(params.get("level", -1)), mode, bool(params.get("fly", false)))
 
 
@@ -58,8 +61,10 @@ static func _do_move(state: GameState, u: Unit, plan: Dictionary, mode: String, 
 	u.level = int(last[2])
 	u.turn["moved"] = true
 	var placed := Movement.placement(state, u.size, u.cell, u.level)
-	u.flying = fly and not placed["standing"] and not placed["uneven"]
-	var anim := "fly" if fly else mode
+	u.flying = (fly or plan.get("teleport", false)) and not placed["standing"] and not placed["uneven"]
+	if fly and u.flight == "" and Effects.has(u, "optional_flight"):
+		u.turn["flew_optional"] = true  # heat at the end of the turn (Type-I Flight System...)
+	var anim := "teleport" if plan.get("teleport", false) else ("fly" if fly else mode)
 	var events: Array[Dictionary] = [{"type": "moved", "unit": u.id, "path": path, "mode": anim,
 		"cost": plan["cost"], "stopped_by": plan["stopped_by"], "rule_ref": Movement.REF_MOVE}]
 	if plan["stopped_by"] != "":
@@ -74,6 +79,11 @@ static func _do_move(state: GameState, u: Unit, plan: Dictionary, mode: String, 
 					dtype = t
 			events.append_array(Combat.dangerous_roll(state, u, dtype))
 			break
+	# Jump Jets: flying on a Boost must end on a surface, or the mech falls at once.
+	if mode == "boost" and fly and u.flight == "" and not Effects.has(u, "optional_flight") and Effects.has(u, "boost_flight") and u.flying:
+		events.append_array(Combat.begin_falling(u, "Jump jets: the Boost didn't end on a surface."))
+		events.append_array(Combat.fall_unit(state, u))
+	events.append_array(Effects.moved(state, u, mode))
 	events.append_array(CloseCombat.drag_partner(state, u, from, from_level))
 	events.append_array(Combat.after_movement(state))
 	events.append_array(Reactions.prepared_triggers(state, u))
@@ -82,7 +92,7 @@ static func _do_move(state: GameState, u: Unit, plan: Dictionary, mode: String, 
 
 class Move:
 	extends TurnAction
-	## Standard move: up to SPEED, may be split around other actions (PROVISIONAL).
+	## Standard move: up to SPEED, may be split around other actions (Core p.62).
 
 	func type() -> String:
 		return "move"
@@ -106,14 +116,17 @@ class Move:
 		return MoveActions._plan_result(MoveActions._plan(state, u, params, Movement.MODE_MOVE))
 
 	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
-		var events := Reactions.overwatch(state, u)
+		var teleport := Effects.has(u, "teleport_moves")
+		var events: Array[Dictionary] = []
+		if not teleport:
+			events = Reactions.overwatch(state, u)  # teleports don't provoke (Core p.63)
 		var r := MoveActions._still_can_move(state, u, params, Movement.MODE_MOVE)
 		if not r.is_empty():
 			events.append(r)
 			return events
 		var plan := MoveActions._plan(state, u, params, Movement.MODE_MOVE)
 		u.turn["move_spent"] = int(u.turn.get("move_spent", 0)) + int(plan["cost"])
-		if plan["stopped_by"] != "":
+		if plan["stopped_by"] != "" or teleport:
 			u.turn["move_spent"] = u.speed  # lose any unused movement (statuses: Engaged)
 		events.append_array(MoveActions._do_move(state, u, plan, "walk", bool(params.get("fly", false))))
 		return events
@@ -126,6 +139,9 @@ class Boost:
 	func type() -> String:
 		return "boost"
 
+	func kinds() -> Array:
+		return [Unit.KIND_MECH, Unit.KIND_NPC, Unit.KIND_PILOT]
+
 	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
 		var r := MoveActions._can_move_voluntarily(u)
 		if not r.ok:
@@ -137,7 +153,9 @@ class Boost:
 		return MoveActions._plan_result(MoveActions._plan(state, u, params, Movement.MODE_BOOST))
 
 	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
-		var events := Reactions.overwatch(state, u)
+		var events: Array[Dictionary] = []
+		if not Effects.has(u, "teleport_moves"):
+			events = Reactions.overwatch(state, u)
 		var r := MoveActions._still_can_move(state, u, params, Movement.MODE_BOOST)
 		if not r.is_empty():
 			events.append(r)
@@ -148,6 +166,41 @@ class Boost:
 			# Using BOOST removes HIDDEN after it resolves (statuses: Hidden).
 			events.append_array(Combat.remove_status(u, "Hidden", "boosted"))
 			events.append_array(Combat.refresh_engagement(state))
+		return events
+
+
+class BonusMove:
+	extends TurnAction
+	## A free move granted right after attacking (Nelson's Skirmisher: 1 space, 4 with its core;
+	## the Skirmisher talent: 2 after a Skirmish). Ignores engagement, doesn't provoke, and
+	## can't be taken while Immobilized or Slowed. It must come before any other action.
+	## params: {"to": [x, y], "level", "fly"}
+
+	func type() -> String:
+		return "bonus_move"
+
+	func cost() -> String:
+		return "move"
+
+	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		if int(u.turn.get("bonus_move", 0)) <= 0:
+			return RuleResult.deny("No extra move available right now (it comes right after an attack that grants it).", Effects.REF)
+		var r := MoveActions._can_move_voluntarily(u)
+		if not r.ok:
+			return r
+		if u.has_status("Slowed") or u.has_status("Prone"):
+			return RuleResult.deny("Slowed: no special moves from traits or talents.", "Core p.78 Slowed")
+		u.turn["ignore_engagement_now"] = true
+		var plan := MoveActions._plan(state, u, params, Movement.MODE_BONUS)
+		u.turn.erase("ignore_engagement_now")
+		return MoveActions._plan_result(plan)
+
+	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+		u.turn["ignore_engagement_now"] = true
+		var plan := MoveActions._plan(state, u, params, Movement.MODE_BONUS)
+		u.turn["bonus_move"] = 0
+		var events := MoveActions._do_move(state, u, plan, "bonus", bool(params.get("fly", false)))
+		u.turn.erase("ignore_engagement_now")
 		return events
 
 
@@ -187,6 +240,9 @@ class Disengage:
 
 	func type() -> String:
 		return "disengage"
+
+	func kinds() -> Array:
+		return [Unit.KIND_MECH, Unit.KIND_NPC, Unit.KIND_PILOT]
 
 	func cost() -> String:
 		return TurnRules.FULL

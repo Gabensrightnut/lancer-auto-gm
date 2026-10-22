@@ -17,12 +17,11 @@ extends RefCounted
 const REF_MOUNTS := "rules.json: mount_fittings"
 const REF_SP := "glossary: System Points"
 const REF_LICENSE := "lancer-data: license / license_level"
-## PROVISIONAL (docs/RULES_TODO.md "License ranks"): one license rank per License Level,
-## ranks 1-3 per license.
-const REF_LICENSE_RANKS := "PROVISIONAL Core: License ranks (docs/RULES_TODO.md)"
+## One license rank per License Level, ranks I-III per license (Core p.31).
+const REF_LICENSE_RANKS := "Core p.31 License ranks"
 const MAX_LICENSE_RANK := 3
-## PROVISIONAL (docs/RULES_TODO.md "Mount capacities"): how many weapons each mount holds.
-## Fittings (which sizes fit) come from rules.json; "Flex" holds one Main or two Auxiliary.
+## How many weapons each mount holds (Core p.32); which sizes fit comes from rules.json.
+## "Flex" holds one Main or two Auxiliary; Main/Aux holds Main + Aux or two Aux.
 const MOUNT_SLOTS := {
 	"Main": ["Main"],
 	"Heavy": ["Heavy"],
@@ -32,6 +31,7 @@ const MOUNT_SLOTS := {
 }
 const NPC_TEMPLATES := "res://data/game/npc_templates.json"
 const FRAME_EFFECTS := "res://data/game/frame_effects.json"
+const GEAR_EFFECTS := "res://data/game/gear_effects.json"
 ## lancer-data core_system active_bonuses ids -> the roll type they give Accuracy on.
 const BONUS_ROLLS := {"attack": "attack", "check": "check", "save": "save", "tech_attack": "tech_attack"}
 
@@ -98,10 +98,10 @@ static func check_loadout(db: ContentDB, frame_id: String, loadout: Dictionary, 
 					problems.append({"reason": "%s can't go on a %s." % [mod["name"], w0.get("type", "")], "rule_ref": "tags: Mod"})
 				elif (mod.get("restricted_sizes", []) as Array).has(w0.get("mount", "")):
 					problems.append({"reason": "%s can't go on a %s weapon." % [mod["name"], w0.get("mount", "")], "rule_ref": "tags: Mod"})
-	# PROVISIONAL (RULES_TODO "Superheavy mounting"): a Superheavy weapon also takes up one
+	# A Superheavy weapon needs a Heavy mount and one other mount (Core p.32): it takes up one
 	# other mount, which must be left empty.
 	if superheavy_mounts.size() > empty_mounts.size():
-		problems.append({"reason": "A Superheavy weapon needs a Heavy mount plus one other empty mount.", "rule_ref": "PROVISIONAL Core: Superheavy (docs/RULES_TODO.md)"})
+		problems.append({"reason": "A Superheavy weapon needs a Heavy mount plus one other empty mount.", "rule_ref": "Core p.32 Mounts"})
 	var seen_unique := {}
 	var ai_count := 0
 	for sid: String in loadout.get("systems", []):
@@ -213,10 +213,9 @@ static func _has_tag(entry: Dictionary, tag_id: String) -> bool:
 
 
 ## A player mech from a frame and loadout. Doesn't check legality (call check_loadout).
-## PROVISIONAL (docs/RULES_TODO.md "Pilot stat bonuses"): HASE and GRIT bonuses from the
-## core book's mech stats: HP + GRIT + 2/Hull, Repair Cap + 1 per 2 Hull, Evasion +1/Agility,
-## Speed +1 per 2 Agility, E-Defense and Tech Attack +1/Systems, Heat Cap +1/Engineering,
-## Save Target + GRIT. SP is from the glossary.
+## Mech skill and GRIT bonuses (Core p.34-35): HP + GRIT + 2/Hull, Repair Cap + 1 per 2 Hull,
+## Evasion +1/Agility, Speed +1 per 2 Agility, E-Defense and Tech Attack +1/Systems, Heat Cap
+## +1/Engineering, Save Target + GRIT, SP + GRIT + 1 per 2 Systems.
 static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dictionary, pilot: Dictionary = {}) -> Unit:
 	var frame := db.frame(frame_id)
 	var st: Dictionary = frame.get("stats", {})
@@ -269,7 +268,48 @@ static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dic
 			n += 1
 	u.loadout = {"frame": frame_id, "mounts": mounts, "weapons": weapons, "systems": systems}
 	_frame_effects(u, frame)
+	# Passive effects of systems, core bonuses and talents (data/game/gear_effects.json).
+	var gear_ids: Array = []
+	for s: Dictionary in systems:
+		gear_ids.append(s["id"])
+	gear_ids.append_array(pilot.get("core_bonuses", []))
+	_add_gear_effects(u, gear_ids, pilot.get("talents", {}))
 	return u
+
+
+static var _gear_data: Dictionary = {}
+
+
+static func gear_effects_data() -> Dictionary:
+	if _gear_data.is_empty():
+		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(GEAR_EFFECTS))
+		_gear_data = d if d is Dictionary else {}
+	return _gear_data
+
+
+## Adds encoded effects for gear ids (systems, core bonuses, pilot gear) and talents
+## ({talent_id: rank}; ranks are cumulative). Size steps apply at once (Fomorian Frame).
+static func _add_gear_effects(u: Unit, ids: Array, talents: Dictionary) -> void:
+	var data := gear_effects_data()
+	var effects: Array = u.loadout.get("effects", [])
+	var add := func(list: Array, source: String) -> void:
+		for e: Dictionary in list:
+			var copy := e.duplicate(true)
+			copy["label"] = source
+			copy["rule_ref"] = "lancer-data: " + source
+			effects.append(copy)
+			if copy["kind"] == "size_step":
+				u.size = minf(3.0, 1.0 if u.size < 1.0 else u.size + 1.0)
+	for id: String in ids:
+		if data.get(id) is Array:
+			add.call(data[id], id)
+	for t: String in talents:
+		var ranks: Variant = data.get(t)
+		if ranks is Dictionary:
+			for r in range(1, int(talents[t]) + 1):
+				if (ranks as Dictionary).has(str(r)):
+					add.call(ranks[str(r)], "%s rank %d" % [t, r])
+	u.loadout["effects"] = effects
 
 
 static var _frame_data: Dictionary = {}
@@ -319,7 +359,7 @@ static func _frame_effects(u: Unit, frame: Dictionary) -> void:
 	u.loadout["traits"] = traits
 	u.loadout["core"] = {"name": core_name, "power": core.get("active_name", ""), "activation": core.get("activation", "Quick"),
 		"text": core.get("active_effect", ""), "effects": core_effects, "automated": enc_core is Array}
-	# PROVISIONAL (RULES_TODO "Core power"): 1 Core Power per mission, used up on activation.
+	# One Core Power per mission, recovered by a Full Repair (Core p.32, 82).
 	u.counters["core_power"] = 1
 
 
@@ -418,5 +458,6 @@ static func build_pilot(db: ContentDB, id: String, pilot: Dictionary, side: Stri
 		prof["size"] = "Pilot"
 		weapons.append(prof)
 		i += 1
-	p.loadout = {"weapons": weapons, "systems": []}
+	p.loadout = {"weapons": weapons, "systems": [], "effects": []}
+	_add_gear_effects(p, pilot.get("gear", []), {})
 	return p

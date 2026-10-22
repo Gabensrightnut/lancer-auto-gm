@@ -23,6 +23,11 @@ Code layout and contracts: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   - Graphics are not the bottleneck: Godot 4's renderer does real-time lighting, shadows,
     PBR materials, glow and GPU particles, plenty for mechs on a battlefield.
 - **Art style:** full 3D with real lighting, shadows and materials (PBR). No pixel art.
+- **Canon first, checked from several angles:** every rule, lore detail and system is checked
+  against the core book (page cited), and where the book is thin, against other official
+  Massif material and Lancer Tactics, and for how it plays at the table. Anything that isn't
+  canon is parked as "your own story additions" until you choose to add it. The canon log is
+  `docs/CANON.md`.
 - **Reference game: Lancer Tactics.** It's the closest thing to a real Lancer video game, so the
   overall look, UI and how systems are shown are based on it, and it's the tiebreaker whenever
   a visual or system is unclear. Studied from its public trailers, screenshots, store page and
@@ -571,6 +576,35 @@ differently without an AI. Each game has a **seed**: share it to replay the same
 - Dialogue is written as data (scenes, lines, choices, conditions, effects) so the procedural
   GM (section 9) can assemble scenes from it and new story content can be added without code.
 
+### Out of the mech: hubs, people and trade
+- Pilots get out of their mechs and walk around towns, bases and stations in real time:
+  talk to locals, faction contacts and company reps, take jobs, and use downtime actions.
+  In combat, pilots can dismount, fight on foot and remount under the book's pilot rules.
+- **Money, canon version:** the setting has money. **Manna** is the universal currency on
+  every market outside the Core (Core p.10), and non-core worlds also use **local currencies**
+  (p.126). But the rules deliberately don't track currency (p.18): access to mechs and gear
+  comes from licenses, and your pilot is assumed to get what they're licensed for "by
+  influence, patronage, wealth, or rank" (p.31). So in the game, manna and local money appear
+  in the story (prices in dialogue, bribes, deals) but there's no tracked wallet.
+- **Mechs are printed, never shipped (canon):** printing facilities are "ubiquitous on most
+  occupied worlds" (p.82). With a **Full Repair** (10 hours in a secure location) you rebuild a
+  mech or print any mech you're licensed for. You're licensed to field one mech at a time;
+  printing a new one shuts down the old one. You never lose access to licensed gear (p.31).
+  Mercenaries work the same way: licenses come with them, not shipping.
+- **Custom mechs (canon):** you can change your mech's look and layout within reason; how it
+  looks has no effect on gameplay (p.32). That's what the customizer does.
+- **Favors and jobs, canon version:** missions start by establishing the **Reserves** the
+  squad brings (p.40); Reserves (resources, favors, access, allies) are what NPCs give for
+  jobs done. Downtime actions cover getting things through people: Get a Damn Drink, Get
+  Connected, Get Creative, Get Focused, Get Organized, Power at a Cost, Scrounge and Barter
+  (p.53-55). A company rep or local contact offering "clear out the bandits and I'll owe you"
+  pays out as a Reserve, run through these rules.
+- **Story inspiration from real campaigns:** official modules, actual plays and campaign
+  write-ups are researched for structure, mission types, arcs and pacing (written up in
+  `docs/research/`), then turned into original story tables. Nothing copied.
+- **Everything else** we came up with that the book doesn't support is parked in
+  "Parked: your own story additions" below, not built until you say so.
+
 ### Progression
 - **Everyone starts at the bottom, like D&D level 1:** by the book, new pilots start at
   **License Level 0** with only GMS starter gear (the Everest frame and GMS weapons/systems).
@@ -637,6 +671,21 @@ pixel art).
 4. **Campaign:** the full narrative loop, progression, saves, procedural missions.
 5. **Polish:** effects coverage, animations, audio, accessibility, customization, human GM.
 
+## Parked: your own story additions (not built until you say)
+
+Ideas that are fun but not canon LANCER. Kept here so they're not lost; the game stays canon
+until you decide to turn any of these on as your own campaign rules.
+
+- Tracked wallet: manna and local currency with prices for food, drinks, lodging, travel,
+  information, pilot supplies and repair kits; mission pay; selling salvage.
+- Printer scarcity: frontier worlds without printers, paying for printer access, a destroyed
+  mech staying destroyed until you reach a printer.
+- Paid travel: company/patron members ride free, independents buy passage.
+- "Can't afford it? Fight for it": an unaffordable deal turns into a generated combat job;
+  lose and the deal is off, but you can come back and pay with scrap, a spare mech, manna or
+  local money.
+- Buying food and water as a survival need.
+
 ## Rule differences: Lancer Tactics vs. the book
 
 Whenever Lancer Tactics handles a rule differently from the tabletop book, it's listed here
@@ -696,7 +745,8 @@ each with a narrow, self-contained brief, and a new piece only starts once one f
 - [ ] NPC book / NPC data
 - [ ] Campaign books you want to run
 - [x] Godot 4.7.2 installed at `A:\godot`
-- [ ] Godot export templates (1.3 GB, needed to build the .exe) and Blender
+- [x] Blender 5.2.2 at `A:/blender-5.2.2-windows-x64`
+- [ ] Godot export templates (1.3 GB, needed to build the .exe)
 - [x] Repo visibility: **public**. Only our own code and Massif's published data go in it;
       rulebook text stays local and is never committed.
 - [x] Online connection method: **peer-to-peer (WebRTC)**. Note: some strict networks may

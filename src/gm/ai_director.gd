@@ -103,7 +103,10 @@ func play_turn(u: Unit) -> void:
 	var plan := ai.plan_turn(know, u.id, _orders_for(u))
 	if settings.explain:
 		_log(u.id, plan["log"])
-	for action: Dictionary in plan["steps"]:
+	var steps: Array = plan["steps"]
+	if u.turn.get("braced", false):
+		steps = _braced_steps(steps)
+	for action: Dictionary in steps:
 		if u.destroyed or host.state.active_unit != u.id:
 			break
 		var out := host.submit(u.controller, action)
@@ -116,6 +119,16 @@ func play_turn(u: Unit) -> void:
 			_refused(u, action, out["result"])
 	if host.state.active_unit == u.id and host.state.pending.is_empty():
 		host.submit(u.controller, {"type": "end_turn", "actor": u.id})
+
+
+## After Bracing, a unit's next turn is one quick action only: no normal move, no full or
+## free actions (Core p.73). Keeps the first quick action of the plan.
+static func _braced_steps(steps: Array) -> Array:
+	for a: Dictionary in steps:
+		var h: Variant = RulesEngine.registry.get(String(a.get("type", "")))
+		if h is TurnAction and (h as TurnAction).cost_for(a.get("params", {})) == TurnRules.QUICK and not a.has("free_via"):
+			return [a]
+	return []
 
 
 ## Answers the engine's pending reaction question when an AI-played unit is being asked.

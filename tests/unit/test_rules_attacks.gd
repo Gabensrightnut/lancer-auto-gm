@@ -228,7 +228,7 @@ func test_hp_to_zero_marks_structure_and_checks() -> void:
 	t.hp = 3
 	var out := _shoot([15, 6, 5])
 	expect_eq(t.structure, 3)
-	expect_eq(t.hp, 10, "HP resets; excess is lost (PROVISIONAL)")
+	expect_eq(t.hp, 7, "HP resets to full, then takes the 3 excess (Core p.80)")
 	var check: Dictionary = F.events_of(out, "structure_check")[0]
 	expect_eq(check["outcome"], "Glancing Blow")
 	expect(t.has_status("Impaired"))

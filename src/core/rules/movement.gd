@@ -14,13 +14,21 @@ extends RefCounted
 ## - Prone: Slowed and moves as if in difficult terrain (statuses: Prone).
 ## - Involuntary movement: straight line, no engagement stops, blocked by obstructions
 ##   (glossary: Involuntary Movement).
+## - Obstruction (Core p.62): hostile characters and objects (wrecks, deployables) the same
+##   Size as the mover or larger block it; smaller ones can be passed; allies never obstruct;
+##   mechs always pass through pilots on foot (p.74); no one ends a move in an occupied space.
+## - Flying ignores obstructions when physically possible (p.63); flyers more than 10 spaces
+##   above any surface can only move and Boost, and can't climb past that after acting.
 ## PROVISIONAL (docs/RULES_TODO.md "Movement"): a step up or down d levels costs 1 + 2d;
-## climbing down costs the same as up; allies can be passed through but not stopped on;
-## hostile characters and deployables block; a big mech on uneven ground is a table ruling;
+## climbing down costs the same as up; a big mech on uneven ground is a table ruling;
 ## flying ignores difficult terrain; a footprint needs room for `Size` levels of height.
 
 const MODE_MOVE := "move"
 const MODE_BOOST := "boost"
+## Extra movement granted by a trait or talent (e.g. Nelson's Skirmisher): budget in
+## turn["bonus_move"], ignores engagement, doesn't provoke.
+const MODE_BONUS := "bonus"
+const REF_TELEPORT := "Core p.63 Teleportation"
 const RULING_UNEVEN := "big_mech_uneven_ground"
 const REF_ENGAGED := "statuses: Engaged"
 const REF_DIFFICULT := "glossary: Difficult Terrain"
@@ -92,11 +100,47 @@ static func uneven_choice(state: GameState) -> String:
 static func _others(state: GameState, u: Unit) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for o: Unit in state.units.values():
-		if o == u or not Combat.is_present(o):
+		if o == u:
 			continue
-		var blocks := o.side != u.side or o.kind == Unit.KIND_DEPLOYABLE
-		out.append({"body": Sight.body_of(state, o), "unit": o, "blocks": blocks})
+		var wreck: bool = o.destroyed and o.kind == Unit.KIND_MECH and not o.counters.get("vaporized", false)
+		if not Combat.is_present(o) and not wreck:
+			continue
+		var object: bool = wreck or o.kind == Unit.KIND_DEPLOYABLE
+		var blocks: bool = (object or o.side != u.side) and o.size >= u.size
+		if o.kind == Unit.KIND_PILOT and u.kind != Unit.KIND_PILOT:
+			blocks = false  # mechs can always move through unmounted humans (Core p.62)
+		if Effects.has(o, "maze") and o.side != u.side:
+			blocks = true  # Minotaur Localized Maze: hostiles can't pass through it for any reason
+		out.append({"body": Sight.body_of(state, o), "unit": o, "blocks": blocks, "wreck": wreck})
 	return out
+
+
+## Spaces covered by wreckage are difficult terrain (Core p.82).
+static func _wreck_cells(others: Array[Dictionary]) -> Dictionary:
+	var out := {}
+	for o in others:
+		if o.get("wreck", false):
+			for c in (o["body"] as Sight.Body).cells:
+				out[c] = true
+	return out
+
+
+## Spaces above the highest surface under the unit's footprint.
+static func altitude(state: GameState, size: float, anchor: Vector2i, level: int) -> int:
+	var below := 0
+	for c in state.map.grid.footprint(anchor, size):
+		var col := state.map.column(c)
+		if col == null:
+			continue
+		for lv in [col.ground, col.gap_bottom]:
+			if lv <= level:
+				below = maxi(below, lv)
+	return level - below
+
+
+## Flying more than 10 spaces above every surface: only move and Boost (Core p.63).
+static func above_ceiling(state: GameState, u: Unit) -> bool:
+	return u.flying and altitude(state, u.size, u.cell, u.level) > 10
 
 
 static func _overlaps(a: Sight.Body, b: Sight.Body) -> bool:
@@ -115,8 +159,10 @@ static func _engagers(state: GameState, u: Unit, body: Sight.Body, others: Array
 		return out
 	for o in others:
 		var ou: Unit = o["unit"]
-		if ou.side == u.side or ou.kind == Unit.KIND_DEPLOYABLE or ou.has_status("Hidden"):
+		if ou.side == u.side or ou.kind == Unit.KIND_DEPLOYABLE or ou.has_status("Hidden") or not Combat.is_present(ou):
 			continue
+		if ou.kind == Unit.KIND_PILOT and u.kind != Unit.KIND_PILOT:
+			continue  # pilots don't cause mechs to become Engaged (Core p.74)
 		if Sight.distance(state, body, o["body"]) <= 1:
 			out.append(ou)
 	return out
@@ -124,7 +170,7 @@ static func _engagers(state: GameState, u: Unit, body: Sight.Body, others: Array
 
 ## Does entering this body stop the move? Returns the hostile that stops it, or null.
 static func _stopper(state: GameState, u: Unit, body: Sight.Body, others: Array[Dictionary], engaged_at_start: Array[Unit]) -> Unit:
-	if u.turn.get("disengaged", false):
+	if u.turn.get("disengaged", false) or u.turn.get("ignore_engagement_now", false):
 		return null
 	for e in _engagers(state, u, body, others):
 		if not engaged_at_start.has(e) and (e.size >= u.size or Effects.has(e, "maze")):
@@ -142,8 +188,19 @@ static func _blocked_by_unit(body: Sight.Body, others: Array[Dictionary], ending
 ## Movement budget left for a standard move or Boost this turn.
 static func budget(u: Unit, mode: String) -> int:
 	if mode == MODE_BOOST:
-		return u.speed
+		return u.speed + Effects.value(u, "boost_bonus")  # e.g. Integrated Nerveweave: +2
+	if mode == MODE_BONUS:
+		return int(u.turn.get("bonus_move", 0))
 	return maxi(0, u.speed - int(u.turn.get("move_spent", 0)))
+
+
+## Can `u` fly for this move? Only what the rules grant counts, never how a mech looks: a
+## flight trait/system (flight, hover), "count any movement as flying" (Type-I Flight System,
+## All-Theater Movement Suite, Mobility Hardsuit), or flying when Boosting (Jump Jets).
+static func can_fly(u: Unit, mode: String) -> bool:
+	if u.flight != "" or Effects.has(u, "optional_flight"):
+		return true
+	return mode == MODE_BOOST and Effects.has(u, "boost_flight")
 
 
 ## The cheapest legal path to a destination, with its cost and everything the movement arrow
@@ -156,8 +213,8 @@ static func plan(state: GameState, u: Unit, dest: Vector2i, level: int = -1, mod
 	var out := {"ok": false, "reason": "", "rule_ref": REF_MOVE, "path": [], "cost": 0,
 		"budget": budget(u, mode), "remaining": 0, "needs_boost": false, "stopped_by": "",
 		"warnings": [], "grey_area": ""}
-	if fly and u.flight == "":
-		out["reason"] = "This mech can't fly."
+	if fly and not can_fly(u, mode):
+		out["reason"] = "Nothing lets this mech fly%s." % (" (only its Boost can)" if Effects.has(u, "boost_flight") else "")
 		out["rule_ref"] = REF_FLIGHT
 		return out
 	var start_place := placement(state, u.size, u.cell, u.level)
@@ -206,6 +263,42 @@ static func plan(state: GameState, u: Unit, dest: Vector2i, level: int = -1, mod
 	return out
 
 
+## TELEPORT (Core p.63): to any free space within range (here: the move's budget), starting
+## and ending on a surface the unit can normally move on (non-flyers can't teleport into the
+## air); ignores obstructions, line of sight and engagement, doesn't provoke; counts as moving
+## 1 space; affected by Immobilized; an occupied destination makes it fail.
+## PROVISIONAL (RULES_TODO "Teleport moves"): a teleporting standard move or Boost uses all of
+## that move.
+static func plan_teleport(state: GameState, u: Unit, dest: Vector2i, level: int = -1, mode: String = MODE_MOVE) -> Dictionary:
+	var out := {"ok": false, "reason": "", "rule_ref": REF_TELEPORT, "path": [], "cost": 1,
+		"budget": budget(u, mode), "remaining": 0, "needs_boost": false, "stopped_by": "",
+		"warnings": [], "grey_area": "", "teleport": true}
+	var levels: Array[int] = []
+	if level >= 0:
+		levels.append(level)
+	else:
+		levels = surface_levels(state, u.size, dest)
+	var others := _others(state, u)
+	for lv in levels:
+		var place := placement(state, u.size, dest, lv)
+		if not place["ok"] or (place["airborne"] and not can_fly(u, mode)):
+			continue
+		var body := Sight.make_body(state, dest, lv, u.size)
+		if Sight.distance(state, Sight.body_of(state, u), body) > int(out["budget"]):
+			out["reason"] = "Too far to teleport: up to %d spaces." % out["budget"]
+			continue
+		if _blocked_by_unit(body, others, true):
+			out["reason"] = "That space is occupied, so the teleport would fail."
+			continue
+		out["path"] = [[u.cell.x, u.cell.y, u.level], [dest.x, dest.y, lv]]
+		out["ok"] = true
+		out["reason"] = ""
+		return out
+	if out["reason"] == "":
+		out["reason"] = "No space to land there."
+	return out
+
+
 ## Every place the unit could move to with its remaining budget (for greying out spaces).
 ## Returns {"budget": int, "spaces": [{"cell": [x, y], "level": int, "cost": int,
 ## "stops": bool (an Engaged stop), "ruling": bool (needs the uneven-ground ruling)}]}.
@@ -241,6 +334,12 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool) -> Dictionar
 	var done := {}
 	var top := _max_ground(state) + cap + GridLayout.spaces_per_side(u.size)
 	var prone := u.has_status("Prone")
+	var wreck_cells := _wreck_cells(others)
+	# Bulwark Mods / Kai Bioplating: ignore difficult terrain. Kai Bioplating / High-Stress Mag
+	# Clamps: climb at normal speed. PROVISIONAL: ignoring difficult terrain also covers
+	# Prone's "counts as moving in difficult terrain".
+	var ignore_difficult := Effects.has(u, "ignore_difficult")
+	var climb_cost := 1 if Effects.has(u, "climb_normal") else 2
 	while not open.is_empty():
 		var best := 0
 		for i in range(1, open.size()):
@@ -272,7 +371,9 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool) -> Dictionar
 			if not _clearance(state, u.size, here, k.z, nb, lv):
 				continue
 			var body := Sight.make_body(state, nb, lv, u.size)
-			if _blocked_by_unit(body, others, false):
+			if not fly and _blocked_by_unit(body, others, false):
+				continue
+			if fly and u.turn.get("acted", false) and altitude(state, u.size, nb, lv) > 10:
 				continue
 			var difficult := false
 			var dangerous := false
@@ -280,13 +381,14 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool) -> Dictionar
 				if here_cells.has(c):
 					continue
 				var col := state.map.column(c)
-				difficult = difficult or col.has_tag(BattleMap.TAG_DIFFICULT)
+				difficult = difficult or col.has_tag(BattleMap.TAG_DIFFICULT) or wreck_cells.has(c)
 				dangerous = dangerous or col.has_tag(BattleMap.TAG_DANGEROUS)
+			difficult = difficult and not ignore_difficult
 			var cost := 1
 			if not fly:
-				if difficult or prone:
+				if difficult or (prone and not ignore_difficult):
 					cost = 2
-				cost += 2 * absi(lv - k.z)
+				cost += climb_cost * absi(lv - k.z)
 			var total: int = node["cost"] + cost
 			if total > cap:
 				continue
@@ -391,8 +493,10 @@ static func _straight_flight(state: GameState, u: Unit, dest: Vector2i, level: i
 		if not place["ok"]:
 			return {"found": false, "reason": "Flight path blocked: " + String(place["reason"]), "rule_ref": REF_FLIGHT}
 		var body := Sight.make_body(state, c, lv, u.size)
-		if _blocked_by_unit(body, others, i == n):
-			return {"found": false, "reason": "Flight path blocked by another character.", "rule_ref": REF_FLIGHT}
+		if i == n and _blocked_by_unit(body, others, true):
+			return {"found": false, "reason": "That space is occupied.", "rule_ref": REF_FLIGHT}
+		if i == n and u.turn.get("acted", false) and altitude(state, u.size, c, lv) > 10:
+			return {"found": false, "reason": "After acting you can't fly more than 10 spaces above the ground.", "rule_ref": "Core p.63 Flight"}
 		path.append([c.x, c.y, lv])
 		var stopper := _stopper(state, u, body, others, engaged_at_start)
 		if stopper:
@@ -409,7 +513,8 @@ static func _warnings(state: GameState, u: Unit, path: Array, result: Dictionary
 		if n.get("difficult", false):
 			out.append({"type": "difficult", "text": "Difficult terrain: this space costs 2.", "rule_ref": REF_DIFFICULT, "at": p})
 		if int(n.get("climb", 0)) > 0:
-			out.append({"type": "climb", "text": "Climbing %d level(s): costs 2 per level." % n["climb"], "rule_ref": REF_CLIMB, "at": p})
+			var per := 1 if Effects.has(u, "climb_normal") else 2
+			out.append({"type": "climb", "text": "Climbing %d level(s): costs %d per level." % [n["climb"], per], "rule_ref": REF_CLIMB, "at": p})
 		var dangerous: bool = n.get("dangerous", false)
 		if fly:
 			var col := state.map.column(Vector2i(p[0], p[1]))
@@ -463,13 +568,15 @@ static func push_path(state: GameState, u: Unit, origin: Vector2i, spaces: int) 
 		if not place["ok"]:
 			break
 		var body := Sight.make_body(state, c, u.level, u.size)
-		var hit := false
-		for o in others:
-			if _overlaps(body, o["body"]):
-				hit = true
-		if hit:
-			break
+		if _blocked_by_unit(body, others, false):
+			break  # blocked by an obstruction: same Size or larger (Core p.62)
 		path.append([c.x, c.y, u.level])
+	# It can pass smaller characters and allies but can't end in an occupied space.
+	while path.size() > 1:
+		var last: Array = path.back()
+		if not _blocked_by_unit(Sight.make_body(state, Vector2i(last[0], last[1]), u.level, u.size), others, true):
+			break
+		path.pop_back()
 	return path
 
 

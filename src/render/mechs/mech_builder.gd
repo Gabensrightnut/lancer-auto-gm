@@ -45,11 +45,14 @@ func _build(frame: Dictionary, loadout: Dictionary, content: ContentDB, size_ove
 	_m.manufacturer = mfr
 	var stats: Dictionary = frame.get("stats", {})
 	_m.size = size_override if size_override > 0 else float(stats.get("size", 1))
+	_m.gait = MechModel.gait_for(_m.frame_id)
 	var body := Node3D.new()
 	body.name = "Body"
 	_m.add_child(body)
-	var sculpted := FrameSculpts.has(_m.frame_id)
-	if sculpted:
+	var sculpted := MechAsset.has(_m.frame_id) or FrameSculpts.has(_m.frame_id)
+	if MechAsset.has(_m.frame_id) and MechAsset.build(_m.frame_id, _m, body):
+		pass
+	elif FrameSculpts.has(_m.frame_id):
 		FrameSculpts.sculpt(_m.frame_id, _m, body)
 	else:
 		_legs(body)
@@ -294,8 +297,13 @@ func _weapons(loadout: Dictionary, content: ContentDB) -> void:
 					prefs = SLOT_PREFS["_heavy"]
 				_:
 					prefs = SLOT_PREFS["_default"]
-		if w.get("mount") == "Auxiliary" and type == "Melee":
+		if type == "Melee" and _m.has_meta("melee_hand"):
+			var mh: String = _m.get_meta("melee_hand")
+			prefs = ["hand_" + mh, "hand_" + ("r" if mh == "l" else "l")]
+		elif w.get("mount") == "Auxiliary" and type == "Melee":
 			prefs = ["forearm_l", "forearm_r", "hand_l", "hand_r"]
+			if _m.has_meta("custom_pose"):
+				prefs = ["hand_l", "hand_r", "forearm_l", "forearm_r"]
 		var slot := ""
 		for p: String in prefs:
 			if not _m.slot_weapon.has(p):

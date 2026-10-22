@@ -8,8 +8,8 @@ extends RefCounted
 ## +1 Difficulty while Engaged), Critical Hits, Lock On, Invisible, Hidden, Prone, Impaired,
 ## Stunned, Brace, Jammed, and the tags Accurate, Inaccurate, AP, Reliable, Knockback, Loading,
 ## Limited, Ordnance, Smart, Seeking, Arcing, Thrown, Threat, Overkill, Heat (Self/Target), Burn.
-## PROVISIONAL (docs/RULES_TODO.md): cover doesn't apply to tech attacks or melee; Reliable
-## damage uses the weapon's first damage type; tech attacks can't crit.
+## Melee and tech attacks ignore cover; crits are for melee and ranged attacks (Core p.64).
+## Reliable damage on a miss uses the weapon's first damage type.
 
 const REF_SKIRMISH := "actions: Skirmish"
 const REF_BARRAGE := "actions: Barrage"
@@ -188,7 +188,10 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 	var events: Array[Dictionary] = []
 	var kind: String = p["kind"]
 	var invisible_miss := false
-	if target.has_status("Invisible"):
+	var afterimage: bool = target.counters.get("afterimage", false)
+	if afterimage:
+		target.counters.erase("afterimage")  # Flicker Field: Invisible the next time it's attacked
+	if target.has_status("Invisible") or afterimage:
 		# 50% chance to miss outright before the roll (statuses: Invisible).
 		var coin := state.dice.die(2)
 		invisible_miss = coin == 1
@@ -229,6 +232,7 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 	if attacker.has_status("Hidden"):
 		events.append_array(Combat.remove_status(attacker, "Hidden", "attacked"))
 		events.append_array(Combat.refresh_engagement(state))
+	Effects.attacked(state, attacker, String(opts.get("action", "attack")))
 	return events
 
 
@@ -288,7 +292,7 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array, ap: bool, area: bool = false) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	var brace := false
-	if Reactions.can_react(target, "brace").ok and not parts.is_empty():
+	if Reactions.can_react(target, "brace", state).ok and not parts.is_empty():
 		var d := Reactions.offer(state, target, "brace", {"attacker": attacker.id, "damage": parts, "ap": ap},
 			{"take": _wants_brace(target, parts, ap)})
 		brace = d.get("take", false)
@@ -388,6 +392,7 @@ static func knock_back(state: GameState, target: Unit, origin: Vector2i, spaces:
 	var last: Array = path.back()
 	target.cell = Vector2i(last[0], last[1])
 	var events: Array[Dictionary] = [{"type": "moved", "unit": target.id, "path": path, "mode": "involuntary", "cost": 0, "rule_ref": "tags: Knockback"}]
+	events.append_array(Effects.punish_movement(state, target))
 	if Movement.placement(state, target.size, target.cell, target.level)["airborne"] and not target.flying:
 		events.append_array(Combat.begin_falling(target, "Knocked off a ledge."))
 	events.append_array(Combat.after_movement(state))
@@ -395,7 +400,7 @@ static func knock_back(state: GameState, target: Unit, origin: Vector2i, spaces:
 
 
 ## A tech attack: d20 + Tech Attack vs E-Defense. Range is SENSORS and needs line of sight
-## (actions: Invade). PROVISIONAL: no cover, no crits.
+## (Core p.64): tech attacks ignore cover and can't crit.
 static func tech_preview(state: GameState, attacker: Unit, target: Unit, opts: Dictionary = {}) -> Dictionary:
 	var out := {"ok": false, "reason": "", "rule_ref": "actions: Invade", "kind": KIND_TECH, "accuracy": 0,
 		"difficulty": 0, "sources": [], "bonus": attacker.tech_attack,
@@ -431,7 +436,7 @@ static func tech_preview(state: GameState, attacker: Unit, target: Unit, opts: D
 
 ## Shared checks for any tech action at a target: within SENSORS and line of sight, not
 ## Hidden, not Shut Down, and the user not Jammed.
-static func tech_target_check(state: GameState, user: Unit, target: Unit) -> RuleResult:
+static func tech_target_check(state: GameState, user: Unit, target: Unit, action: String = "") -> RuleResult:
 	if user.has_status("Jammed"):
 		return RuleResult.deny("Jammed: you can't take tech actions.", "statuses: Jammed")
 	if target == null or target.destroyed:
@@ -440,6 +445,8 @@ static func tech_target_check(state: GameState, user: Unit, target: Unit) -> Rul
 		return RuleResult.deny("Hidden characters can't be targeted.", "statuses: Hidden")
 	if target.has_status("Shut Down"):
 		return RuleResult.deny("Shut Down mechs are immune to tech actions.", "statuses: Shut Down")
+	if target.kind == Unit.KIND_PILOT and action != "scan" and action != "lock_on":
+		return RuleResult.deny("Pilots on foot are BIOLOGICAL: immune to tech actions except Lock On and Scan.", "Core p.74 Fighting on the Ground")
 	if Sight.unit_distance(state, user, target) > user.sensors:
 		return RuleResult.deny("Out of Sensors range (%d)." % user.sensors, "glossary: Sensors")
 	if not Sight.unit_line_of_sight(state, user, target):
@@ -471,4 +478,5 @@ static func tech_attack(state: GameState, attacker: Unit, target: Unit, label: S
 	if attacker.has_status("Hidden"):
 		events.append_array(Combat.remove_status(attacker, "Hidden", "attacked"))
 		events.append_array(Combat.refresh_engagement(state))
+	Effects.attacked(state, attacker, "tech")
 	return {"events": events, "hit": hit}

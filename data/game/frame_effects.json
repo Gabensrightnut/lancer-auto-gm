@@ -38,7 +38,10 @@
     },
     "core": "manual"
   },
-  "mf_nelson": {"traits": {"Momentum": "manual", "Skirmisher": "manual"}, "core": "manual"},
+  "mf_nelson": {
+    "traits": {"Momentum": "manual", "Skirmisher": [{"kind": "after_attack_move", "spaces": 1, "after": "attack"}]},
+    "core": [{"kind": "after_attack_move", "spaces": 4, "after": "attack"}]
+  },
   "mf_raleigh": {
     "traits": {
       "Full Metal Jacket": [{"kind": "reload_if_idle"}],
@@ -95,9 +98,12 @@
         {"kind": "accuracy", "on": "save", "skill": "agility", "value": 1}
       ]
     },
+    "core": [{"kind": "teleport_moves"}]
+  },
+  "mf_swallowtail": {
+    "traits": {"Integrated Cloak": [{"kind": "status_if_still", "status": "Invisible"}], "Prophetic Scanners": "manual"},
     "core": "manual"
   },
-  "mf_swallowtail": {"traits": {"Integrated Cloak": "manual", "Prophetic Scanners": "manual"}, "core": "manual"},
   "mf_balor": {
     "traits": {"Scouring Swarm": "manual", "Regeneration": [{"kind": "regenerate", "fraction": 0.25}], "Self-Perpetuating": "manual"},
     "core": "manual"
@@ -147,7 +153,10 @@
     "traits": {"Insulated": [{"kind": "immune", "damage": "Burn"}], "Emergency Vent": [{"kind": "vent_on_structure"}]},
     "core": "manual"
   },
-  "mf_iskander": {"traits": {"Assault Launcher": "manual", "Mine Deployers": "manual", "Skeleton Key": "manual"}, "core": "manual"},
+  "mf_iskander": {
+    "traits": {"Assault Launcher": "manual", "Mine Deployers": "manual", "Skeleton Key": "manual"},
+    "core": [{"kind": "punish_movement", "damage": 3, "range": 50}]
+  },
   "mf_napoleon": {"traits": {"Heavy Shielding": "manual", "Flash Aegis": "manual"}, "core": "manual"},
   "mf_saladin": {
     "traits": {"Reinforced Frame": [{"kind": "immune", "status": "Shredded"}], "Guardian": [{"kind": "guardian"}], "Warp Shield": "manual"},
