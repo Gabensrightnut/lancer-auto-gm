@@ -57,6 +57,10 @@ static func build_mission(campaign: Campaign, story: StoryState, db: ContentDB, 
 		gen_opts["landscape"] = hook["landscape"]
 	if hook.has("map_culture"):
 		gen_opts["culture"] = hook["map_culture"]
+	# A fight in the hub itself: world-maps builds the battle from the town's own layout.
+	var town := MissionHooks.town_for(story, hook)
+	if not town.is_empty():
+		gen_opts["town"] = town
 	if bool(hook.get("tutorial", false)):
 		# The drill: a small map, gentle GM, training targets only.
 		var tm: Dictionary = Tutorial.data().get("mission", {})
@@ -80,6 +84,7 @@ static func build_mission(campaign: Campaign, story: StoryState, db: ContentDB, 
 	mission.flavor["arrived_spent"] = bool(story.flags.get("arrived_spent:%s" % hook.get("operation", ""), false))
 	if hook.has("operation"):
 		mission.flavor["operation"] = hook["operation"]
+	mission.flavor["town"] = town
 	var manual: Array = []
 	for entry: Dictionary in gen_opts["squad"]:
 		var seat := str(entry["seat"])
@@ -93,7 +98,7 @@ static func build_mission(campaign: Campaign, story: StoryState, db: ContentDB, 
 		pu.hp = clampi(StoryEffects.current_hp(story, campaign, pid), 0, pu.max_hp)
 		pu.armor = StoryEffects.pilot_armor(p)
 		Pilots.seat(state, pu, mech)
-		if bool(hook.get("on_foot", false)):
+		if bool(hook.get("on_foot", false)) or bool(town.get("on_foot", false)):
 			var spot: Variant = Pilots.free_adjacent(state, mech)
 			if spot != null:
 				Pilots.unseat(state, pu, mech, spot[0], spot[1])

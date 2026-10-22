@@ -396,6 +396,12 @@ func _combat_from_scene(story: StoryState, campaign: Campaign, spec: Dictionary)
 		hook["sitrep"] = str(spec["sitrep"])
 	hook["on_foot"] = bool(spec.get("on_foot", false))
 	hook["from_scene"] = true
+	# A fight that breaks out in a conversation happens right there, outside their door.
+	if bool(spec.get("in_town", true)) and not story.hub.is_empty():
+		hook["in_town"] = true
+		var npc_spot := str(story.npcs.get(str(spec.get("patron", "")), {}).get("spot", ""))
+		var spots: Array = (story.hub.get("spots", []) as Array).map(func(s: Dictionary) -> String: return str(s["id"]))
+		hook["town_spot"] = npc_spot if spots.has(npc_spot) else str(spec.get("town_spot", "plaza"))
 	story.current_hook = hook
 	story.downtime["actions_left"] = {}
 	story.pending_choice = {}

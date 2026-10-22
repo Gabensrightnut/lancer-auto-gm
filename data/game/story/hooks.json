@@ -321,7 +321,8 @@
       ],
       "question": [
         "Can you deal with this before it follows you home?"
-      ]
+      ],
+      "in_town": true
     },
     "stolen_goods": {
       "weight": 1,
@@ -1088,6 +1089,80 @@
       "failure": [
         {
           "set_flag": "drill_rough"
+        }
+      ]
+    },
+    "defend_town": {
+      "weight": 2,
+      "in_town": true,
+      "town_spot": "plaza",
+      "sitreps": [
+        "sitrep_holdout",
+        "sitrep_control"
+      ],
+      "title": [
+        "The Fight Comes Home",
+        "Hold the Streets",
+        "Raid on {hub}"
+      ],
+      "objective": [
+        "{enemy} are hitting {hub} itself. Meet them in the streets around {spot} and drive them off.",
+        "Hold {spot} in the middle of {hub} until {enemy} give up."
+      ],
+      "stakes": [
+        "These are the people you drink with. If the town falls, so does everything you've built here.",
+        "If {enemy} take the square, nobody in {hub} will feel safe again."
+      ],
+      "question": [
+        "Can the squad keep the fight away from the people of {hub}?"
+      ],
+      "success": [
+        {
+          "standing": "$hub.faction",
+          "add": 1
+        }
+      ],
+      "failure": [
+        {
+          "standing": "$hub.faction",
+          "add": -1
+        }
+      ]
+    },
+    "standoff": {
+      "weight": 1,
+      "board": false,
+      "in_town": true,
+      "on_foot": true,
+      "town_spot": "bar",
+      "sitreps": [
+        "sitrep_standardcombat"
+      ],
+      "title": [
+        "Standoff at {spot}",
+        "Showdown",
+        "Guns Out in {hub}"
+      ],
+      "objective": [
+        "They've got you surrounded outside {spot}. Get to your mechs and end this.",
+        "The street outside {spot} is full of {enemy}. Fight your way out."
+      ],
+      "stakes": [
+        "Everyone in {hub} is watching from the windows.",
+        "Lose here and the whole town sees it."
+      ],
+      "question": [
+        "Who walks away from {spot}?"
+      ],
+      "success": [
+        {
+          "clear_flag": "in_trouble"
+        }
+      ],
+      "failure": [
+        {
+          "standing": "$hub.faction",
+          "add": -1
         }
       ]
     }
