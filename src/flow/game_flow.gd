@@ -219,14 +219,17 @@ const DEFAULT_ARCS := 3
 const ARC_CHOICES := {1: "Short: 1 story", 2: "2 stories", 3: "Standard: 3 stories", 5: "Long: 5 stories"}
 
 
-## A new story campaign (no tutorial): the squad at a town hub, jobs on the board, briefing
-## first. Seat p1 is played here; the other pilots are AI squadmates with personas that fit
-## them (friends can take their seats online). `arcs` = campaign length. Saved before it returns.
+## A new story campaign (no tutorial): the squad at a town hub, briefing first. Seat p1 is
+## played here; the other pilots are AI squadmates with personas that fit them (friends can
+## take their seats online). `arcs` = campaign length. Session zero comes first (Core p.40-41,
+## the hub shows SessionZeroScreen): the job board fills only after it, so the table's choices
+## (focus, content left out) shape the first jobs. Saved before it returns.
 static func start_story_campaign(store: SaveStore, db: ContentDB, campaign_name: String, pilots: int, start_ll: int, preset: String, arcs: int = DEFAULT_ARCS) -> Campaign:
 	var c := Campaign.create(campaign_name, {"start_ll": start_ll, "gm_preset": preset})
 	c.options["story"] = true
 	c.options["campaign_arcs"] = arcs
 	c.options["teaching_hints"] = true
+	c.options["session_zero_pending"] = true
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([c.id, "names"])
 	var names := NameGen.new(rng)
@@ -239,10 +242,29 @@ static func start_story_campaign(store: SaveStore, db: ContentDB, campaign_name:
 		var p: Dictionary = c.pilots[ids[i]]
 		events.append_array(story_engine.submit(story, c, {"type": "set_seat", "seat": "gm", "params": {"seat": "p%d" % (i + 1), "pilot": p["id"],
 			"ai": i > 0, "persona": Squadmate.suggest(p)}})["events"])
-	events.append_array(story_engine.submit(story, c, {"type": "enter_hub", "seat": "gm", "params": {"kind": "town", "seed": int(hash([c.id, "hub"])) % 100000}})["events"])
+	events.append_array(story_engine.submit(story, c, {"type": "enter_hub", "seat": "gm", "params": {"kind": "town", "seed": _first_hub_seed(c), "no_jobs": true}})["events"])
 	story_events = events
 	save_story(c, store)
 	return c
+
+
+static func _first_hub_seed(c: Campaign) -> int:
+	return int(hash([c.id, "hub"])) % 100000
+
+
+## True while a new story campaign waits for its session zero.
+static func session_zero_pending(campaign: Campaign) -> bool:
+	return campaign != null and bool(campaign.options.get("session_zero_pending", false))
+
+
+## Session zero was applied (SessionZeroScreen.done): the first jobs go on the board now.
+## Returns their events. `engine` = the hub's engine (so friends online see the board too).
+static func finish_session_zero(campaign: Campaign, store: SaveStore, engine: StoryEngine = null) -> Array:
+	campaign.options.erase("session_zero_pending")
+	var e: StoryEngine = engine if engine != null else story_engine
+	var r := e.submit(story, campaign, {"type": "enter_hub", "seat": "gm", "params": {"kind": str(story.hub.get("kind", "town")), "seed": int(story.hub.get("seed", _first_hub_seed(campaign)))}})
+	save_story(campaign, store)
+	return r.get("events", [])
 
 
 ## After a campaign ends: a new one with the same living pilots (CampaignLoop.sequel), saved

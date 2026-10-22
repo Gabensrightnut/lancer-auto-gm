@@ -28,6 +28,10 @@ var tutorial: TutorialPanel
 var narration: NarrationPopup
 ## AI squadmates' barks over their mechs (story campaigns).
 var bubbles: SpeechBubbles
+## The rules reference (CodexPanel): from the pause menu, or the Codex key (F1) on whatever is
+## hovered (an action on the bar, or a mech's frame).
+var codex: CodexPanel
+var _hover_term := ""
 ## The campaign's story (host), for the tutorial's lessons and which tips were shown. A friend
 ## in someone else's game gets a fresh one (tips only; the host keeps the campaign).
 var story: StoryState
@@ -69,6 +73,9 @@ func _ready() -> void:
 	session.log_line.connect(func(t: String) -> void: combat_log.add_line("[color=#9aa4b2]%s[/color]" % t))
 	session.refused.connect(func(why: String, ref: String) -> void: show_banner("Not allowed: %s" % why) if ref == "" else show_banner("Not allowed: %s (%s)" % [why, ref]))
 	order_bar.i_will_go.connect(_on_i_will_go)
+	bar.action_hovered.connect(func(a: Dictionary, on: bool) -> void:
+		if on:
+			_hover_term = str(a.get("name", "")))
 	if session.is_host and MenuSession.campaign != null:
 		campaign = MenuSession.campaign
 		story = GameFlow.open_story(campaign, content)
@@ -84,6 +91,8 @@ func _ready() -> void:
 	# Screenshot staging (tools/screenshot.gd ... battle.tscn out.png frames stage:turn).
 	if "stage:turn" in OS.get_cmdline_user_args():
 		_stage_turn.call_deferred()
+	if "stage:codex" in OS.get_cmdline_user_args():
+		codex.open.call_deferred("Overcharge")
 	if "stage:twist" in OS.get_cmdline_user_args():
 		_stage_twist.call_deferred()
 
@@ -517,6 +526,7 @@ func _build_ui() -> void:
 	narration = NarrationPopup.new()
 	narration.theme = MenuTheme.theme()
 	ui.add_child(narration)
+	codex = CodexPanel.new()
 	tutorial = TutorialPanel.new()
 	ui.add_child(tutorial)
 	var menu := Button.new()
@@ -535,6 +545,13 @@ func _build_ui() -> void:
 	handoff_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	handoff_layer.visible = false
 	ui.add_child(handoff_layer)
+	var codex_dim := ColorRect.new()
+	codex_dim.color = Color(0, 0, 0, 0.6)
+	codex_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	codex_dim.visible = false
+	ui.add_child(codex_dim)
+	ui.add_child(codex)  # above everything else
+	codex.visibility_changed.connect(func() -> void: codex_dim.visible = codex.visible)
 
 
 ## In-battle menu: the game is saved after every turn, so leaving is safe.
@@ -588,6 +605,15 @@ func _open_menu() -> void:
 		hints.button_pressed = Tutorial.hints_on(campaign)
 		hints.toggled.connect(func(on: bool) -> void: campaign.options["teaching_hints"] = on)
 		b.add_child(hints)
+	var term := hovered_term()
+	var codex_btn := Button.new()
+	codex_btn.text = "Codex: look up \"%s\"" % term if term != "" else "Codex (rules reference)"
+	codex_btn.custom_minimum_size = Vector2(0, 50)
+	codex_btn.tooltip_text = "Search any rule, status, action, frame or piece of gear. In battle, F1 opens it on whatever you're pointing at."
+	codex_btn.pressed.connect(func() -> void:
+		menu_layer.visible = false
+		codex.open(term))
+	b.add_child(codex_btn)
 	for item in [["Back to the battle", func() -> void: menu_layer.visible = false],
 			["Settings", func() -> void: _leave("settings")],
 			["Save and quit to main menu", func() -> void: _leave("main")]]:
@@ -598,6 +624,29 @@ func _open_menu() -> void:
 		b.add_child(btn)
 	center.add_child(p)
 	menu_layer.visible = true
+
+
+## What the player last pointed at, for the Codex: a mech under the mouse (its frame or
+## name), else the last action hovered on the action bar.
+func hovered_term() -> String:
+	var id := view.labels.hover_unit if view != null and view.labels != null else ""
+	if id != "" and view.units.has(id):
+		var u: Dictionary = (view.units[id] as MechView).unit
+		var frame := content.frame(str(u.get("content_id", "")))
+		return str(frame.get("name", u.get("name", ""))) if not frame.is_empty() else str(u.get("name", ""))
+	return _hover_term
+
+
+func _unhandled_input(ev: InputEvent) -> void:
+	if InputMap.has_action("codex") and ev.is_action_pressed("codex"):
+		if codex.visible:
+			codex.visible = false
+		else:
+			codex.open(hovered_term())
+		get_viewport().set_input_as_handled()
+	elif codex.visible and ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE:
+		codex.visible = false
+		get_viewport().set_input_as_handled()
 
 
 ## Nobody plays from another computer, so stopping the AI keeps nobody waiting.

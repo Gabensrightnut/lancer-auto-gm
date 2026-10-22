@@ -5,6 +5,9 @@ extends Control
 var side: VBoxContainer
 var join_status: Label
 var continue_button: Button
+## The rules reference (the story's CodexPanel), over the menu.
+var codex: CodexPanel
+var codex_dim: ColorRect
 
 
 func _ready() -> void:
@@ -55,9 +58,13 @@ func _ready() -> void:
 	var tutorial_button := MenuTheme.big_button("Tutorial", "pilot", MenuTheme.GOOD)
 	tutorial_button.pressed.connect(_show_tutorial)
 	left.add_child(tutorial_button)
+	var codex_button := MenuTheme.big_button("Codex", "compendium")
+	codex_button.tooltip_text = "The rules reference: search any rule, status, action, frame or piece of gear."
+	codex_button.pressed.connect(func() -> void: codex.open(""))
 	var join_button := MenuTheme.big_button("Join online", "orbital", MenuTheme.maker_color("IPS-N"))
 	join_button.pressed.connect(_show_join)
 	left.add_child(join_button)
+	left.add_child(codex_button)
 	var settings_button := MenuTheme.big_button("Settings", "system")
 	settings_button.pressed.connect(func() -> void:
 		MenuSession.back_to = "main"
@@ -83,6 +90,16 @@ func _ready() -> void:
 		_show_new()
 	else:
 		_show_continue()
+	codex_dim = ColorRect.new()
+	codex_dim.color = Color(0, 0, 0, 0.75)
+	codex_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	codex_dim.visible = false
+	add_child(codex_dim)
+	codex = CodexPanel.new()
+	add_child(codex)
+	codex.visibility_changed.connect(func() -> void: codex_dim.visible = codex.visible)
+	if "stage:codex" in OS.get_cmdline_user_args():
+		codex.open.call_deferred("engaged")  # screenshots
 	(continue_button if not saves.is_empty() else new_button).grab_focus()
 
 
@@ -317,3 +334,9 @@ static func _field(label_text: String, control: Control) -> VBoxContainer:
 	v.add_child(MenuTheme.label(label_text.to_upper(), 14, MenuTheme.MUTED))
 	v.add_child(control)
 	return v
+
+
+func _unhandled_input(ev: InputEvent) -> void:
+	if codex != null and codex.visible and ev is InputEventKey and ev.pressed and (ev as InputEventKey).keycode == KEY_ESCAPE:
+		codex.visible = false
+		get_viewport().set_input_as_handled()

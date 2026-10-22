@@ -16,6 +16,7 @@ extends Node
 ## and other players' pilots glide to where their player has them.
 
 const HUB_SCENE := "res://scenes/explore/hub.tscn"
+const SESSION_ZERO_SCENE := "res://scenes/story/session_zero.tscn"
 ## Seconds between position updates sent.
 const SEND_EVERY := 0.15
 
@@ -45,7 +46,10 @@ func _ready() -> void:
 		# Opened on its own (screenshots, development): the tutorial's opening, saved apart
 		# from the player's campaigns.
 		MenuSession.store = SaveStore.new("user://example_saves")
-		campaign = GameFlow.start_tutorial(MenuSession.store, db)
+		if "stage:session_zero" in OS.get_cmdline_user_args():
+			campaign = GameFlow.start_story_campaign(MenuSession.store, db, "Example", 3, 0, "Standard")
+		else:
+			campaign = GameFlow.start_tutorial(MenuSession.store, db)
 		MenuSession.campaign = campaign
 	GameFlow.open_story(campaign, db)
 	_seat = _my_seat()
@@ -71,6 +75,23 @@ func _ready() -> void:
 		_open_menu.call_deferred()
 	elif "stage:retire" in OS.get_cmdline_user_args():
 		_retire.call_deferred()
+	if GameFlow.session_zero_pending(campaign) and not "stage:menu" in OS.get_cmdline_user_args():
+		_show_session_zero()
+
+
+## Before a new campaign's first briefing: who the squad is, who gives the orders, history
+## between the pilots, tone and content (the story's SessionZeroScreen, Core p.40-41).
+func _show_session_zero() -> void:
+	var sz := (load(SESSION_ZERO_SCENE) as PackedScene).instantiate() as SessionZeroScreen
+	var layer := CanvasLayer.new()
+	layer.layer = 8
+	add_child(layer)
+	layer.add_child(sz)
+	sz.bind(hub.engine, hub.story, campaign)
+	sz.done.connect(func(events: Array) -> void:
+		layer.queue_free()
+		hub._handle(events)
+		hub._handle(GameFlow.finish_session_zero(campaign, MenuSession.store, hub.engine)))
 
 
 func _on_story_events(events: Array) -> void:
