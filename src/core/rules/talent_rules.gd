@@ -144,6 +144,80 @@ static func improvised(u: Unit, base: Dictionary) -> Dictionary:
 	return w
 
 
+## Siege Specialist 1, Jackhammer Round: a Size 1 section of an object within a Cannon's Range
+## (a deployable, or "terrain:x,y") takes 10 AP kinetic automatically.
+static func check_jackhammer(state: GameState, u: Unit, t: Unit) -> RuleResult:
+	var ref := "talents: Siege Specialist"
+	if t == null or t.destroyed or t.kind != Unit.KIND_DEPLOYABLE:
+		return RuleResult.deny("Choose an object: cover, a deployable, a building or terrain (params.target).", ref)
+	var reach := -1
+	for w: Dictionary in u.loadout.get("weapons", []):
+		if String(w.get("type", "")) == "Cannon" and not Weapons.state_of(u, w).get("destroyed", false):
+			reach = maxi(reach, Weapons.range_for(u, w))
+	if reach < 0:
+		return RuleResult.deny("You need a Cannon.", ref)
+	if Sight.unit_distance(state, u, t) > reach:
+		return RuleResult.deny("It must be within your Cannon's Range (%d)." % reach, ref)
+	return RuleResult.allow()
+
+
+## Characters next to the target are knocked back 2 spaces from it and take 2 kinetic.
+static func jackhammer(state: GameState, u: Unit, t: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = [{"type": "effect_triggered", "unit": u.id, "effect": "Jackhammer Round", "target": t.id,
+		"rule_ref": "talents: Siege Specialist"}]
+	var near: Array[Unit] = []
+	for o: Unit in state.units.values():
+		if o != t and Combat.is_present(o) and o.kind != Unit.KIND_DEPLOYABLE and Sight.unit_distance(state, o, t) <= 1:
+			near.append(o)
+	near.sort_custom(func(a: Unit, b: Unit) -> bool: return a.id < b.id)
+	events.append_array(Combat.deal_damage(state, t, [{"type": "Kinetic", "amount": 10}], {"ap": true, "source": u.id}))
+	for o in near:
+		events.append_array(Combat.deal_damage(state, o, [{"type": "Kinetic", "amount": 2}], {"source": u.id}))
+		if Combat.is_present(o):
+			events.append_array(Attacks.knock_back(state, o, t.cell, 2, u))
+	return events
+
+
+## Juggernaut 2, Kinetic Mass Transfer (1/round): a Ram's knockback stopped by another
+## character makes it Hull save or be knocked Prone; stopped by an obstruction (terrain, a
+## wall), the target takes 1d6 kinetic. `from`: where the target was; `spaces`: the knockback.
+static func kinetic_mass_transfer(state: GameState, u: Unit, t: Unit, origin: Vector2i, from: Vector2i, spaces: int) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if not Effects.has(u, "kinetic_mass_transfer") or int(u.counters.get("kmt_round", -1)) == state.round_number:
+		return events
+	if spaces <= 0 or t.destroyed or Effects.has(t, "immovable"):
+		return events
+	var moved := state.map.grid.distance(from, t.cell)
+	if moved >= spaces:
+		return events
+	# The next space along the push line: what stopped it.
+	var dir := from - origin
+	if dir == Vector2i.ZERO:
+		return events
+	var d := maxi(1, state.map.grid.distance(origin, from))
+	var line := state.map.grid.line(from, from + dir * (spaces / d + 2))
+	if moved + 1 >= line.size():
+		return events
+	var next: Vector2i = line[moved + 1]
+	var blocker: Unit = null
+	for o: Unit in state.units.values():
+		if o != t and o != u and Combat.is_present(o) and o.kind != Unit.KIND_DEPLOYABLE and state.map.grid.footprint(o.cell, o.size).has(next):
+			blocker = o
+	u.counters["kmt_round"] = state.round_number
+	var ref := "talents: Juggernaut"
+	if blocker != null:
+		var save := Combat.skill_check(state, blocker, "hull", "Kinetic Mass Transfer: Hull save", u.save_target, 0, 0, [], true)
+		events.append({"type": "skill_check", "unit": blocker.id, "check": save, "rule_ref": ref})
+		if not save["success"]:
+			events.append_array(Combat.add_status(state, blocker, "Prone", u.id))
+	else:
+		var roll := state.dice.roll("1d6")
+		events.append({"type": "effect_triggered", "unit": u.id, "effect": "Kinetic Mass Transfer", "target": t.id,
+			"text": "Rammed into an obstruction: 1d6 kinetic.", "rule_ref": ref})
+		events.append_array(Combat.deal_damage(state, t, [{"type": "Kinetic", "amount": int(roll["total"]), "roll": roll}], {"source": u.id}))
+	return events
+
+
 ## Before an attack roll: Weave, Siege Specialist Impact, first-attack bookkeeping.
 ## Returns {events, auto_miss}.
 static func before_roll(state: GameState, attacker: Unit, w: Dictionary, target: Unit, kind: String, opts: Dictionary) -> Dictionary:

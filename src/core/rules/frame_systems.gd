@@ -417,6 +417,13 @@ static func _discharge(state: GameState, u: Unit, e: Dictionary) -> Array[Dictio
 	var op := {"op": "save_damage", "save": String(e.get("save", "engineering")), "damage": String(e.get("damage", "6d6")), "type": "Energy",
 		"half": true, "ap": true, "label": label, "objects_hit": true}
 	events.append_array(AbilityActions.apply_target_ops(state, u, [op], ids))
+	# Destructible terrain in the burst is an object too: hit automatically (Core p.58, p.68).
+	var rolled := 0
+	for ev: Dictionary in events:
+		if ev.get("type", "") == "damage_rolled":
+			rolled = int(ev["roll"]["total"])
+	var cells := Zones.cells_around(state, state.map.grid.footprint(u.cell, u.size), burst)
+	events.append_array(TerrainDamage.damage_area(state, cells, rolled, "Energy", true, u.id))
 	return events
 
 

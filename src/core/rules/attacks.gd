@@ -678,7 +678,8 @@ static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array,
 	events.append_array(sim["events"])
 	resist_all = resist_all or sim["resist_all"]
 	var brace := false
-	if not unreducible and Reactions.can_react(target, "brace", state).ok and not parts.is_empty():
+	# Objects (deployables, terrain) don't Brace.
+	if not unreducible and target.kind != Unit.KIND_DEPLOYABLE and Reactions.can_react(target, "brace", state).ok and not parts.is_empty():
 		var d := Reactions.offer(state, target, "brace", {"attacker": attacker.id, "damage": parts, "ap": ap},
 			{"take": _wants_brace(target, parts, ap)})
 		brace = d.get("take", false)
