@@ -114,6 +114,9 @@ class Hide:
 	func type() -> String:
 		return "hide"
 
+	func kinds() -> Array:
+		return [Unit.KIND_MECH, Unit.KIND_NPC, Unit.KIND_PILOT]
+
 	func check(state: GameState, u: Unit, _params: Dictionary) -> RuleResult:
 		return Combat.can_hide(state, u)
 
@@ -130,6 +133,9 @@ class Search:
 
 	func type() -> String:
 		return "search"
+
+	func kinds() -> Array:
+		return [Unit.KIND_MECH, Unit.KIND_NPC, Unit.KIND_PILOT]
 
 	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
 		var target := state.unit(String(params.get("target", "")))

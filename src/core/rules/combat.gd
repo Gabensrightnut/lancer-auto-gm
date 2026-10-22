@@ -80,8 +80,14 @@ static func skill_check(state: GameState, u: Unit, skill: String, label: String,
 	if u.has_status("Impaired"):
 		diff += 1
 		all_sources.append({"label": "Impaired", "kind": "difficulty", "type": "difficulty", "value": 1, "rule_ref": "statuses: Impaired"})
+	var acc := accuracy
+	if u.has_status("Bolstered"):
+		# +2 Accuracy on the next skill check or save (actions: Bolster), then it's used up.
+		acc += 2
+		all_sources.append({"label": "Bolstered", "kind": "accuracy", "type": "accuracy", "value": 2, "rule_ref": "actions: Bolster"})
+		u.statuses.erase("Bolstered")
 	var bonus := int(u.get(skill)) if SKILLS.has(skill) else 0
-	var record := state.dice.check(bonus, accuracy, diff, target, all_sources)
+	var record := state.dice.check(bonus, acc, diff, target, all_sources)
 	record["bonus_sources"] = [{"label": skill.capitalize(), "value": bonus}]
 	record["bonuses"] = record["bonus_sources"]
 	record["target_label"] = "Save Target" if target != CHECK_TARGET else "Check (10+)"
@@ -158,6 +164,9 @@ static func lose_hp(state: GameState, u: Unit, amount: int, source: String) -> A
 	u.hp -= amount
 	events.append({"type": "hp_changed", "unit": u.id, "hp": maxi(u.hp, 0), "overshield": u.overshield, "source": source})
 	if u.hp > 0:
+		return events
+	if u.kind == Unit.KIND_PILOT:
+		events.append_array(Pilots.pilot_hit_zero(state, u, source))
 		return events
 	if u.kind == Unit.KIND_DEPLOYABLE or u.max_structure <= 0:
 		events.append_array(destroy(state, u, "Reduced to 0 HP."))
@@ -377,15 +386,19 @@ static func _start_meltdown(state: GameState, u: Unit, turns: int) -> Array[Dict
 
 
 static func tick_meltdown(state: GameState, u: Unit) -> Array[Dictionary]:
+	if u.counters.has("self_destruct") and not u.destroyed:
+		u.counters["self_destruct"] = int(u.counters["self_destruct"]) - 1
+		if int(u.counters["self_destruct"]) <= 0:
+			u.counters.erase("self_destruct")
+			return Pilots.explode(state, u, "Self Destruct.")
 	if not u.counters.has("meltdown") or u.destroyed:
 		return [] as Array[Dictionary]
 	u.counters["meltdown"] = int(u.counters["meltdown"]) - 1
 	if int(u.counters["meltdown"]) > 0:
 		return [] as Array[Dictionary]
 	u.counters.erase("meltdown")
-	var events: Array[Dictionary] = [{"type": "reactor_meltdown", "unit": u.id,
-		"note": "PROVISIONAL: the explosion isn't modelled yet.", "rule_ref": REF_OVERHEAT}]
-	events.append_array(destroy(state, u, "Reactor meltdown."))
+	var events: Array[Dictionary] = [{"type": "reactor_meltdown", "unit": u.id, "rule_ref": REF_OVERHEAT}]
+	events.append_array(Pilots.explode(state, u, "Reactor meltdown."))
 	return events
 
 
@@ -397,6 +410,12 @@ static func destroy(state: GameState, u: Unit, why: String) -> Array[Dictionary]
 	var events: Array[Dictionary] = [{"type": "unit_destroyed", "unit": u.id, "reason": why}]
 	for status: String in u.statuses.keys():
 		events.append_array(remove_status(u, status, "destroyed"))
+	# PROVISIONAL (RULES_TODO "Pilots"): the pilot of a destroyed mech climbs out next to it.
+	var pilot := Pilots.pilot_of(state, u)
+	if pilot != null and not pilot.destroyed and pilot.counters.get("mounted_in", "") == u.id:
+		var spot: Variant = Pilots.free_adjacent(state, u)
+		if spot != null:
+			events.append_array(Pilots.unseat(state, pilot, u, spot[0], spot[1]))
 	events.append_array(refresh_engagement(state))
 	return events
 
@@ -432,20 +451,29 @@ static func fall_all(state: GameState) -> Array[Dictionary]:
 		var unsupported: bool = Movement.placement(state, u.size, u.cell, u.level)["airborne"]
 		if not u.counters.get("falling", false) and not (unsupported and not u.flying):
 			continue
-		u.counters.erase("falling")
-		var start := u.level
-		var lv := u.level
-		while lv > 0 and Movement.placement(state, u.size, u.cell, lv)["airborne"]:
-			lv -= 1
-		u.level = lv
-		u.flying = false
-		var dist := start - lv
-		events.append({"type": "moved", "unit": u.id, "mode": "fall", "path": [[u.cell.x, u.cell.y, start], [u.cell.x, u.cell.y, lv]], "cost": 0})
-		var dmg := mini(9, (dist / 3) * 3)
-		if dmg > 0:
-			events.append_array(deal_damage(state, u, [{"type": "Kinetic", "amount": dmg}], {"ap": true, "source": "fall"}))
+		events.append_array(fall_unit(state, u))
 	if not events.is_empty():
 		events.append_array(refresh_engagement(state))
+	return events
+
+
+## Drops `u` to the ground below: 3 AP kinetic per 3 spaces, max 9 (glossary: Falling).
+static func fall_unit(state: GameState, u: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	u.counters.erase("falling")
+	var start := u.level
+	var lv := u.level
+	while lv > 0 and Movement.placement(state, u.size, u.cell, lv)["airborne"]:
+		lv -= 1
+	u.level = lv
+	u.flying = false
+	var dist := start - lv
+	if dist <= 0:
+		return events
+	events.append({"type": "moved", "unit": u.id, "mode": "fall", "path": [[u.cell.x, u.cell.y, start], [u.cell.x, u.cell.y, lv]], "cost": 0, "rule_ref": REF_FALL})
+	var dmg := mini(9, (dist / 3) * 3)
+	if dmg > 0:
+		events.append_array(deal_damage(state, u, [{"type": "Kinetic", "amount": dmg}], {"ap": true, "source": "fall"}))
 	return events
 
 
@@ -579,8 +607,9 @@ static func refresh_hidden(state: GameState) -> Array[Dictionary]:
 	return events
 
 
-## After any movement: engagement, Hidden, falling flags.
+## After any movement: engagement, Hidden, grapples.
 static func after_movement(state: GameState) -> Array[Dictionary]:
 	var events := refresh_hidden(state)
 	events.append_array(refresh_engagement(state))
+	events.append_array(CloseCombat.check_grapples(state))
 	return events

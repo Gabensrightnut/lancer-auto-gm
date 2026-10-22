@@ -8,6 +8,8 @@ extends RefCounted
 ## check that the sending seat controls `actor` (Unit.controller) before submitting.
 
 var _handlers: Dictionary = {}  # type -> ActionHandler
+## type -> handler, shared, for rules that run another action (Prepare, Full Tech).
+static var registry: Dictionary = {}
 
 
 func _init() -> void:
@@ -20,6 +22,12 @@ func _init() -> void:
 		SystemActions.Overcharge.new(), SystemActions.Stabilize.new(), SystemActions.Hide.new(),
 		SystemActions.Search.new(), SystemActions.ShutDown.new(), SystemActions.BootUp.new(),
 		SystemActions.SetBracePolicy.new(), SystemActions.SetReactionPolicy.new(),
+		CloseCombat.Ram.new(), CloseCombat.Grapple.new(), CloseCombat.EndGrapple.new(),
+		CloseCombat.BreakFree.new(), CloseCombat.Jump.new(),
+		TechActions.Bolster.new(), TechActions.FullTech.new(),
+		PilotActions.Eject.new(), PilotActions.Dismount.new(), PilotActions.Mount.new(),
+		PilotActions.Fight.new(), PilotActions.SelfDestruct.new(), PilotActions.Prepare.new(),
+		PilotActions.DropPrepared.new(),
 	]:
 		register(h)
 
@@ -27,6 +35,7 @@ func _init() -> void:
 func register(handler: ActionHandler) -> void:
 	assert(not _handlers.has(handler.type()), "duplicate action type " + handler.type())
 	_handlers[handler.type()] = handler
+	registry[handler.type()] = handler
 
 
 func has_action(type: String) -> bool:

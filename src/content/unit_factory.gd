@@ -319,3 +319,27 @@ static func build_npc(id: String, template: Dictionary) -> Unit:
 		i += 1
 	u.loadout = {"weapons": weapons, "systems": []}
 	return u
+
+
+## A pilot on foot from rules.json base stats and pilot gear weapons (pilot_gear.json).
+## pilot: {"name", "ll", "weapons": ["pg_light_a_c", ...]}
+static func build_pilot(db: ContentDB, id: String, pilot: Dictionary, side: String = "players", controller: String = "gm") -> Unit:
+	var r := db.rules
+	var base := {"hp": r.get("base_pilot_hp", 6), "evasion": r.get("base_pilot_evasion", 10),
+		"edef": r.get("base_pilot_edef", 10), "speed": r.get("base_pilot_speed", 4),
+		"sensors": r.get("base_pilot_sensors", 5), "save_target": r.get("base_pilot_save_target", 10)}
+	var p := Pilots.make_pilot(id, String(pilot.get("name", id)), side, controller, grit(int(pilot.get("ll", 0))), base)
+	var weapons: Array = []
+	var i := 0
+	for gid: String in pilot.get("weapons", []):
+		var g := db.get_entry("pilot_gear", gid)
+		if g.is_empty():
+			continue
+		var prof := weapon_profile(g, "p%d" % i, -1)
+		# Pilot gear has no weapon type; a weapon with only a Threat is melee.
+		prof["type"] = "Melee" if Weapons.range_value(prof, "Range") == 0 else "Ranged"
+		prof["size"] = "Pilot"
+		weapons.append(prof)
+		i += 1
+	p.loadout = {"weapons": weapons, "systems": []}
+	return p

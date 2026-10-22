@@ -128,3 +128,49 @@ static func overwatch(state: GameState, mover: Unit) -> Array[Dictionary]:
 		events.append({"type": "reaction", "unit": h.id, "reaction": "overwatch", "trigger": mover.id, "weapon": key, "rule_ref": REF_OVERWATCH})
 		events.append_array(Attacks.attack(state, h, Weapons.find(h, key), mover, {}))
 	return events
+
+
+## After a voluntary move by `mover`: anyone holding a prepared action whose trigger matches
+## takes it now, as a reaction (actions: Prepare).
+static func prepared_triggers(state: GameState, mover: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if state.reaction_run.get("in_prepared", false) or not Combat.is_present(mover):
+		return events
+	var ids: Array = state.units.keys()
+	ids.sort()
+	for id: String in ids:
+		var p := state.unit(id)
+		if p == mover or not p.counters.has("prepared") or not Combat.is_present(p):
+			continue
+		if p.has_status("Stunned") or p.has_status("Jammed"):
+			continue
+		var prep: Dictionary = p.counters["prepared"]
+		var trig: Dictionary = prep["trigger"]
+		var who: String = trig.get("who", "any")
+		if (who == "hostile" and p.side == mover.side) or (who == "ally" and p.side != mover.side):
+			continue
+		var reach := 1 if trig.get("event", "") == "moves_adjacent" else int(trig.get("range", 1))
+		if Sight.unit_distance(state, p, mover) > reach:
+			continue
+		var d := offer(state, p, "prepared", {"trigger": mover.id, "action": prep["action"], "text": prep.get("text", "")}, {"take": true})
+		if not d.get("take", false):
+			continue
+		var action: Dictionary = prep["action"]
+		var params: Dictionary = (action.get("params", {}) as Dictionary).duplicate(true)
+		for k: String in params:
+			if params[k] is String and params[k] == "trigger":
+				params[k] = mover.id
+		p.counters.erase("prepared")
+		_mark_used(p, "prepared")
+		var h: TurnAction = RulesEngine.registry[action["type"]]
+		var r := h.check(state, p, params)
+		events.append({"type": "prepared_triggered", "unit": p.id, "trigger": mover.id, "action": action["type"], "ok": r.ok, "reason": r.reason, "rule_ref": "actions: Prepare"})
+		if not r.ok:
+			continue
+		var running := state.reaction_run.is_empty()
+		state.reaction_run["in_prepared"] = true
+		events.append_array(h.apply(state, p, params))
+		state.reaction_run.erase("in_prepared")
+		if running:
+			state.reaction_run.clear()
+	return events

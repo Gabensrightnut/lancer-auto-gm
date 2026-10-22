@@ -231,6 +231,9 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 	var total := 0
 	var shared: Dictionary = opts.get("shared_damage", {})
 	var damage: Array = w.get("damage", [])
+	if Weapons.has_tag(w, "tg_archaic") and target.kind != Unit.KIND_PILOT:
+		damage = []  # Archaic weapons can't harm mechs (tags: Archaic).
+		events.append({"type": "no_effect", "target": target.id, "reason": "Archaic weapons can't harm mechs.", "rule_ref": "tags: Archaic"})
 	for i in range(damage.size()):
 		var d: Dictionary = damage[i]
 		var r := _shared_roll(state, shared, i, String(d.get("val", "0")), crit, Weapons.has_tag(w, "tg_overkill"))

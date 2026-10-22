@@ -52,6 +52,8 @@ static func _still_can_move(state: GameState, u: Unit, params: Dictionary, mode:
 static func _do_move(state: GameState, u: Unit, plan: Dictionary, mode: String, fly: bool) -> Array[Dictionary]:
 	var path: Array = plan["path"]
 	var last: Array = path.back()
+	var from := u.cell
+	var from_level := u.level
 	u.cell = Vector2i(last[0], last[1])
 	u.level = int(last[2])
 	u.turn["moved"] = true
@@ -72,7 +74,9 @@ static func _do_move(state: GameState, u: Unit, plan: Dictionary, mode: String, 
 					dtype = t
 			events.append_array(Combat.dangerous_roll(state, u, dtype))
 			break
+	events.append_array(CloseCombat.drag_partner(state, u, from, from_level))
 	events.append_array(Combat.after_movement(state))
+	events.append_array(Reactions.prepared_triggers(state, u))
 	return events
 
 
@@ -86,12 +90,17 @@ class Move:
 	func cost() -> String:
 		return "move"
 
+	func kinds() -> Array:
+		return [Unit.KIND_MECH, Unit.KIND_NPC, Unit.KIND_PILOT]
+
 	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
 		var r := MoveActions._can_move_voluntarily(u)
 		if not r.ok:
 			return r
 		if u.turn.get("braced", false):
 			return RuleResult.deny("After Bracing you can't move normally this turn.", TurnRules.REF_BRACE)
+		if u.turn.get("prepared_lock", false):
+			return RuleResult.deny("After Preparing an action you can't move until it triggers or your next turn.", "actions: Prepare")
 		if u.turn.get("stood_up", false) or Movement.budget(u, Movement.MODE_MOVE) <= 0:
 			return RuleResult.deny("You've used your standard move this turn (Boost to move again).", Movement.REF_MOVE)
 		return MoveActions._plan_result(MoveActions._plan(state, u, params, Movement.MODE_MOVE))
@@ -123,7 +132,7 @@ class Boost:
 			return r
 		if u.has_status("Slowed") or u.has_status("Prone"):
 			return RuleResult.deny("Slowed (Prone characters are Slowed too): your only movement is your standard move, so no Boost.", "statuses: Slowed, Prone")
-		if u.counters.get("grappled", false):
+		if u.counters.has("grapple"):
 			return RuleResult.deny("Grappling characters can't Boost.", "actions: Grapple")
 		return MoveActions._plan_result(MoveActions._plan(state, u, params, Movement.MODE_BOOST))
 
@@ -151,6 +160,9 @@ class StandUp:
 
 	func cost() -> String:
 		return "move"
+
+	func kinds() -> Array:
+		return [Unit.KIND_MECH, Unit.KIND_NPC, Unit.KIND_PILOT]
 
 	func check(_state: GameState, u: Unit, _params: Dictionary) -> RuleResult:
 		if not u.has_status("Prone"):
