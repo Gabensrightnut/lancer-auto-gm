@@ -69,9 +69,12 @@ renderer + UI on each client (animate events, show the view)
 
 Emitted by the rules engine (`src/core/rules/`), in the order things happen. Every event that
 applies a rule carries `rule_ref`. Rolls carry the full `Dice.check()` record plus
-`bonus_sources` ([{label, value}]) and, for attacks, `defense`; each Accuracy/Difficulty
-source in `check.sources` is `{label, kind: "accuracy"/"difficulty", value, rule_ref}`.
+`bonus_sources` ([{label, value}], also as `bonuses`) and `target_label` ("Evasion",
+"E-Defense", "Save Target", "Check (10+)"); each Accuracy/Difficulty source in
+`check.sources` is `{label, kind (also as type): "accuracy"/"difficulty", value, rule_ref}`.
 Clients get events through `ViewFilter.events_for(state, seat, events)`.
+Read-only previews for overlays are in `RulesQueries` (movement arrow, reachable spaces,
+cover, line of sight, attack/area/tech previews with hit chance).
 
 | type | fields |
 |---|---|
@@ -79,7 +82,7 @@ Clients get events through `ViewFilter.events_for(state, seat, events)`.
 | `round_started` | `round`, `side` (side that picks first) |
 | `next_side` | `side` (side that picks the next unit to act) |
 | `turn_started` / `turn_ended` | `unit` (+ `round` on start) |
-| `moved` | `unit`, `path` (array of `[x, y, level]`), `mode` (`walk`/`boost`/`fly`/`fall`/`involuntary`), `cost`, `stopped_by` |
+| `moved` | `unit`, `path` (array of `[x, y, level]`), `mode` (`walk`/`boost`/`fly`/`fall`/`involuntary`/`jump`/`dragged`), `cost`, `stopped_by` |
 | `movement_stopped` | `unit`, `by` (hostile that Engaged it), `reason` |
 | `disengaged` | `unit` |
 | `attack_rolled` | `attacker`, `target`, `weapon` (loadout key), `weapon_name`, `kind` (`melee`/`ranged`), `check`, `result` (`hit`/`miss`/`crit`), `cover` (`none`/`soft`/`hard`), `cover_cells`, `invisible_miss`, `lock_on_consumed` |
@@ -87,7 +90,7 @@ Clients get events through `ViewFilter.events_for(state, seat, events)`.
 | `invisible_roll` | `attacker`, `target`, `roll` (d2), `missed` |
 | `damage_rolled` | `attacker`, `target`, `damage_type`, `crit`, `roll` (`expr`, `dice`, `kept`, `bonus`, `total`, `overkill_heat`) |
 | `reliable_damage` | `attacker`, `target`, `amount` |
-| `damage_dealt` | `target`, `source`, `amount` (taken), `damage_type`, `roll` (before reductions), `exposed`, `armor_reduced`, `resisted` |
+| `damage_dealt` | `target`, `source`, `amount` (taken), `damage_type`, `roll` (before reductions), `exposed`, `armor_reduced`, `resisted`, `hp` and `overshield` (after), `immune` |
 | `hp_changed` | `unit`, `hp`, `overshield`, `source` |
 | `burn_marked` / `burn_cleared` | `unit`, `amount`, `total` |
 | `heat_changed` | `unit`, `amount`, `total`, `source` |
@@ -109,6 +112,19 @@ Clients get events through `ViewFilter.events_for(state, seat, events)`.
 | `scanned` | `unit`, `target`, `side` |
 | `tech_attack` | `attacker`, `target`, `check`, `result` (`hit`/`miss`), `effect`, `invisible_miss`, `lock_on_consumed` |
 | `tech_action` | `unit`, `target`, `action` (`lock_on`, `invade` on an ally) |
+| `reaction_offered` | `id`, `unit` (who decides), `reaction` (`brace`/`overwatch`/`prepared`), `context`, `trigger_action`. The engine is paused: answer with `{"type": "react", "actor": unit, "params": {"take": bool, ...}}` (Overwatch: `weapon`) |
+| `movement_cancelled` | `unit`, `reason` (a reaction made the move impossible) |
+| `area_attack` | `attacker`, `weapon`, `weapon_name`, `pattern`, `size`, `cells` [[x, y]], `origin` [x, y, level], `targets` |
+| `ram` / `grapple` results | `attack_rolled` + `status_added` (Prone/Immobilized); `grappled` {`unit`, `target`}; `grapple_ended` {`unit`, `other`, `reason`}; `contested_check` {`unit`, `against`, `check`, `contest`, `success`} |
+| `prepared` / `prepared_triggered` / `prepared_lost` | `unit`, `action`, `trigger`, `text` / `ok`, `reason` |
+| `ejected` | `unit` (mech), `pilot` |
+| `pilot_left_mech` / `pilot_mounted` | `unit` (pilot), `mech`, `cell` |
+| `self_destruct_started` | `unit`, `turns` |
+| `reactor_explosion` | `unit`, `reason`, `roll`, `targets` |
+| `core_power` | `unit`, `core`, `power`, `text`, `automated` |
+| `effect_triggered` | `unit`, `effect` (trait name), `target` |
+| `status_blocked` / `no_effect` / `knockback_blocked` | `unit`/`target`, `reason` (immunity, Heavy Frame, Archaic...) |
+| `tech_action` / `action_skipped` | `unit`, `target`, `action` (`lock_on`, `bolster`, `invade` on an ally) / `reason` |
 | `deployed` | `unit`, `object` (not emitted yet) |
 
 ## Commands
