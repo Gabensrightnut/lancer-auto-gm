@@ -75,6 +75,8 @@ func step() -> bool:
 		if not host.is_ai_seat(NetHost.GM_SEAT):
 			return false  # A human GM starts the fight.
 		var first := mission.first_side if mission != null else Mission.PLAYERS
+		if mission != null and bool(mission.flavor.get("explore_first", false)):
+			return _explore_step(first)
 		return (host.submit(NetHost.GM_SEAT, {"type": "start_combat", "params": {"first_side": first}})["result"] as RuleResult).ok
 	if mission != null:
 		var carry := mission.carry_action()
@@ -251,6 +253,58 @@ func _choose_activation(units: Array[Unit]) -> Unit:
 			best_score = score
 			best = u
 	return best
+
+
+# --- Exploring before the fight (DESIGN.md "Exploring vs. fighting") ------------------------
+
+## Spaces between the squad and the enemy at which the fight starts (our pacing: about where
+## they'd see each other across open ground).
+const CONTACT := 10
+## Units within this many spaces of the first contact take part; the rest keep exploring and
+## can join later (join_combat).
+const FIGHT_RADIUS := 16
+
+
+## While the squad explores in real time: AI squadmates follow the nearest person on their
+## side; once the squad and the enemy are within CONTACT, the fight starts around them.
+func _explore_step(first: String) -> bool:
+	var state := host.state
+	for p: Unit in state.units_on_side(Mission.PLAYERS):
+		if p.destroyed:
+			continue
+		for e: Unit in state.units_on_side(Mission.ENEMIES):
+			if not e.destroyed and state.map.grid.distance(p.cell, e.cell) <= CONTACT:
+				var mid := Vector2i((p.cell.x + e.cell.x) / 2, (p.cell.y + e.cell.y) / 2)
+				_log("", "Contact: %s sees the enemy. The fight starts." % p.name)
+				return (host.submit(NetHost.GM_SEAT, {"type": "start_combat", "params": {"first_side": first, "center": [mid.x, mid.y], "radius": FIGHT_RADIUS}})["result"] as RuleResult).ok
+	return _follow_step()
+
+
+## AI squadmates exploring follow the nearest person on their side (the user: AI players follow
+## whatever you do), one step per call, keeping a couple of spaces back.
+func _follow_step() -> bool:
+	var state := host.state
+	var people: Array[Unit] = []
+	for u: Unit in state.units_on_side(Mission.PLAYERS):
+		if not u.destroyed and not host.is_ai_seat(u.controller):
+			people.append(u)
+	if people.is_empty():
+		return false
+	for u: Unit in state.units_on_side(Mission.PLAYERS):
+		if u.destroyed or not host.is_ai_seat(u.controller) or str(orders.get(u.id, {}).get("explore", "follow")) == "stay":
+			continue
+		var lead := people[0]
+		for p: Unit in people:
+			if state.map.grid.distance(u.cell, p.cell) < state.map.grid.distance(u.cell, lead.cell):
+				lead = p
+		var d := state.map.grid.distance(u.cell, lead.cell)
+		if d <= 3:
+			continue
+		var line := state.map.grid.line(u.cell, lead.cell)
+		for i in range(mini(u.speed, line.size() - 3), 0, -1):
+			if (host.submit_ai({"type": "explore_move", "actor": u.id, "params": {"to": [line[i].x, line[i].y]}})["result"] as RuleResult).ok:
+				return true
+	return false
 
 
 func _orders_for(u: Unit) -> Dictionary:

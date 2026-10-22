@@ -161,7 +161,55 @@ func _stage_twist() -> void:
 		"objective": lesson.get("objective", ""), "rule_ref": lesson.get("rule_ref", ""), "step": 4, "of": Tutorial.lessons().size()}])
 
 
+## Exploring: the unit that walks when the ground is clicked, and the banner saying so.
+var _explorer := ""
+var _explore_label: Label
+
+
+func _update_explore_banner() -> void:
+	var on := _loaded and not _ended and session.exploring() and not turn.active
+	if on and _explore_label == null:
+		_explore_label = MenuTheme.label("", 18, Color(0.6, 0.95, 0.75))
+		_explore_label.add_theme_constant_override("outline_size", 6)
+		_explore_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+		_explore_label.position = Vector2(get_viewport().get_visible_rect().size.x / 2.0 - 360, 170)
+		ui.add_child(_explore_label)
+	if _explore_label != null:
+		_explore_label.visible = on
+		if on:
+			var setup := str(session.view.get("phase", "")) == GameState.PHASE_SETUP
+			_explore_label.text = ("EXPLORING: click the ground to walk (no turns). The fight starts when you meet the enemy." if setup
+				else "You're outside the fight: walk there and you join it from the next round.")
+
+
+## Exploring: left click on the ground walks your unit there (a click on one of your units
+## picks which one walks).
+func _explore_click(ev: InputEvent) -> bool:
+	if not (ev is InputEventMouseButton and ev.pressed and (ev as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT):
+		return false
+	if turn.active or not session.exploring():
+		return false
+	var mine := session.exploring_units()
+	if mine.is_empty():
+		return false
+	var cell: Variant = turn.cell_at_screen((ev as InputEventMouseButton).position)
+	if cell == null:
+		return false
+	for id: String in mine:
+		var u: Dictionary = session.view["units"][id]
+		if Vector2i(int(u["cell"][0]), int(u["cell"][1])) == cell:
+			_explorer = id
+			return true
+	if not _explorer in mine:
+		_explorer = str(mine[0])
+	var why := session.walk_to(_explorer, cell)
+	if why != "":
+		show_banner(why)
+	return true
+
+
 func _process(delta: float) -> void:
+	_update_explore_banner()
 	# The in-battle menu really pauses the AI when everyone in the game is at this screen.
 	session.busy = _draining or player.playing or turn.busy or narration.visible or (dialogue != null and dialogue.visible) or (menu_layer.visible and _can_pause())
 	session.poll(delta)
@@ -968,6 +1016,9 @@ func hovered_term() -> String:
 
 
 func _unhandled_input(ev: InputEvent) -> void:
+	if _explore_click(ev):
+		get_viewport().set_input_as_handled()
+		return
 	if gm_panel != null and ev is InputEventKey and ev.pressed and not ev.echo and (ev as InputEventKey).keycode == KEY_G:
 		gm_panel.visible = not gm_panel.visible
 		if gm_panel.visible:

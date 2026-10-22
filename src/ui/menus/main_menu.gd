@@ -161,6 +161,7 @@ func _show_new() -> void:
 	gm.item_selected.connect(func(i: int) -> void: gm_note.text = LobbyModel.GM_CHOICES[i][2])
 	body.add_child(gm_note)
 	var set_gm := func(c: Campaign) -> void:
+		c.options["explore_first"] = true  # DESIGN "Exploring vs. fighting": no turns before contact
 		c.options["human_gm"] = gm.selected > 0
 		c.options["gm_where"] = "remote" if gm.selected == 2 else "local"
 		MenuSession.store.save_campaign(c)

@@ -403,6 +403,8 @@ static func start_mission(lobby: LobbyModel, store: SaveStore) -> BattleSession:
 	if lobby.gm_status() == "here":
 		local_seats.append(NetHost.GM_SEAT)  # a human GM at this screen watches from the GM seat
 	local_seats.sort()
+	if bool(lobby.campaign.options.get("explore_first", false)):
+		(r["mission"] as Mission).flavor["explore_first"] = true  # walk in real time until contact
 	session = BattleSession.for_host(r["host"], r["director"], r["mission"], local_seats, save)
 	(r["host"] as NetHost).ai_squad_auto = bool(lobby.options.get("ai_squad_auto", true))
 	save.save_now()  # Even quitting before the first turn ends can be continued.
