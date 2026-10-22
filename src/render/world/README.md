@@ -197,3 +197,18 @@ shutters on workshops and printer bays). Landing pads and plazas return an empty
 | "" (frontier) | prefab metal and concrete, struts and awnings | crates, barrels, lamp posts | well |
 
 Preview: `world_preview.tscn` tags `hub-<culture>` (e.g. `hub-medieval_tech`, `hub-union_core`).
+
+## Map editor
+
+`scenes/editor/map_editor.tscn` (`src/ui/editor/`): paint height (raise, lower, level), terrain
+presets in plain words (woods, water, fire, lava, rubble, rock, wall, building, chasm...),
+breakable/sturdy, deployment zones and sitrep zones; pick landscape, culture, weather and
+sitrep ("Lay out zones" uses SitrepLayout); a live fairness panel (MapFairness); mirror
+painting for symmetric maps; new blank / generated maps; save and load in user://maps/;
+"Play this map" emits `play_requested(doc)` for the caller to start a mission with
+`{"map_doc": doc}`.
+
+Every edit is a GM action (`MapEditorModel` -> `gm_edit_terrain` / `gm_edit_objectives`).
+Before a mission it runs on a private GameState; live, `start_live(engine, state, kit)` uses
+the mission's own, and `edited(events)` gives the host the events to send to every seat
+(clients refresh the board on `terrain_edited` and the zones on `objectives_changed`).
