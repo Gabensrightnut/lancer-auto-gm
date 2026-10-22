@@ -71,7 +71,9 @@ func resolve(state: GameState, action: Dictionary) -> Array[Dictionary]:
 		var holder := grant_holder(state, u, params)
 		Effects.use_grant(holder, Effects.grant(holder, String(params["free_via"]), type(), cost() == TurnRules.QUICK))
 	var c := _cost(params)
-	if c != "move":
+	if u.turn.get("no_spend", false):
+		u.turn.erase("no_spend")  # the action didn't happen (False Idol: they don't lose it)
+	elif c != "move":
 		TurnRules.spend(u, c, economy_name())
 	return events
 

@@ -44,6 +44,8 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 		return fail.call("No valid target.", REF_SKIRMISH)
 	if GearSystems.intangible(attacker) or GearSystems.intangible(target):
 		return fail.call("Intangible (FADE Cloak): it can't interact or be interacted with.", "systems: FADE Cloak")
+	if GearSystems.fooled_by(attacker, target):
+		return fail.call("Fooled by a False Idol: it can't target this character until the end of its next turn.", "systems: H0R_OS System Upgrade II")
 	if target == attacker:
 		return fail.call("You can't attack yourself.", REF_SKIRMISH)
 	if Effects.has(attacker, "no_attacks"):
@@ -287,6 +289,12 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 	if afterimage:
 		target.counters.erase("afterimage")  # Flicker Field: Invisible the next time it's attacked
 	events.append_array(GearSystems.battlefield_awareness(state, attacker, target))  # Mimic Mesh
+	if not opts.get("reaction", false) and not opts.get("fired_by_rule", false):
+		var idol := GearSystems.false_idol(state, attacker, target)
+		events.append_array(idol["events"])
+		if idol["fooled"]:
+			attacker.turn["no_spend"] = true  # they don't lose the action
+			return events
 	var barrier := Zones.wall_field_between(state, attacker, target)
 	if barrier.get("flavor", "") == "stasis" and kind != KIND_TECH and not target.has_status("Invisible"):
 		# Stasis Barrier: on 4+ on 1d6 the attack is consumed with no effect at all.

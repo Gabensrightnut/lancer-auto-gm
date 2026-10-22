@@ -75,6 +75,9 @@ class Activate:
 			"deploy":
 				for c: Vector2i in AbilityActions.spots(params):
 					events.append_array(Abilities.deploy(state, u, a, c))
+				if String(a.get("deployable", {}).get("name", "")).contains("False Idol"):
+					for dep: Dictionary in AbilityActions._deployed(events):
+						events.append_array(GearSystems.idol_made(state, u, state.unit(String(dep["id"])), params))
 				if String(a.get("deployable", {}).get("name", "")) == "Assassin Drone":
 					for dep: Dictionary in AbilityActions._deployed(events):
 						events.append_array(GearSystems.assassin_area(state, u, state.unit(String(dep["id"])), params))
@@ -290,6 +293,9 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				events.append_array(GearSystems.mesmer(state, u, target))
 			"mimic_mesh":
 				events.append_array(GearSystems.mimic_mesh(state, u, target))
+			"provoke_mimic":
+				GearSystems.mimic_roll(state, u)
+				events.append({"type": "effect_triggered", "unit": u.id, "effect": "Mimic Gun provoked", "target": u.id, "rule_ref": "weapons: Mimic Gun"})
 			"pcp":
 				events.append_array(GearSystems.print_pcp(state, u, params))
 			"guide_flock":

@@ -411,3 +411,32 @@ func test_perimeter_command_plate_and_assassin_drone() -> void:
 	F.load_dice(s, [15])
 	out = F.act(e, s, "move", "t", {"to": [7, 4]})
 	expect_eq(t.hp, 37, "Area Denial: 3 kinetic as it entered the area")
+
+
+func test_false_idol() -> void:
+	_setup(["ms_h0r_os_system_upgrade_ii"], Vector2i(4, 0))
+	var out := F.act(e, s, "activate", "a", {"ability": _key("Deploy Construct Other: False Idol"), "to": [3, 3]})
+	expect(F.ok(out), F.reason(out))
+	F.act(e, s, "end_turn", "a")
+	F.act(e, s, "start_turn", "t")
+	F.load_dice(s, [3])  # the Systems save fails
+	out = F.act(e, s, "skirmish", "t", {"weapon": "0:0", "target": "a"})
+	expect(F.ok(out))
+	expect_eq(F.events_of(out, "attack_rolled").size(), 0, "fooled: no attack on the real Goblin")
+	expect(not t.turn.get("taken", []).has("skirmish"), "it doesn't lose the action")
+	expect(not F.ok(F.act(e, s, "skirmish", "t", {"weapon": "0:0", "target": "a"})), "can't target the real one now")
+
+
+func test_mimic_gun() -> void:
+	_setup([], Vector2i(4, 0))
+	s.units.erase("a")
+	a = UnitFactory.build_mech(db(), "a", "mf_standard_pattern_i_everest", {"mounts": [{"weapons": []}, {"weapons": []}, {"weapons": ["mw_mimic_gun"]}], "systems": []}, {"ll": 12})
+	a.side = "players"
+	s.add_unit(a)
+	var w := Weapons.find(a, "2:0")
+	F.load_dice(s, [8, 12, 3])
+	GearSystems.mimic_roll(s, a)
+	expect_eq(Weapons.range_for(a, w), 8, "X")
+	expect_eq(WeaponRules.damage_override(a, w, t)[0]["val"], "5", "1 + half of 8")
+	GearSystems.mimic_cycle(a)
+	expect_eq(Weapons.range_for(a, w), 12, "then Y")
