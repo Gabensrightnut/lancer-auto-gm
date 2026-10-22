@@ -20,3 +20,8 @@ series: how each frame plays at the table, plus visuals.
 | https://www.youtube.com/watch?v=vvDVdI8apGQ | Sunzi (HA, supplement) | look, play (not in core data) |
 | https://www.youtube.com/watch?v=1zMDwWH3dDs | Nelson (IPS-N) | builds |
 | https://www.youtube.com/watch?v=HhUJZr3Ys3c | Team comp | squad builds, AI squadmate roles |
+
+## Other sources
+The user allows any other source too: other YouTubers, actual plays, Lancer Tactics footage,
+fan art, wikis, Reddit, community guides. Same rules: look up only what's needed, reference
+only, the book decides rules and canon, never sign in or pay.
