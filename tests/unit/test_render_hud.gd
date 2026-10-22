@@ -291,3 +291,10 @@ func test_terrain_hits_show_damage() -> void:
 	Fx.speed = 1.0
 	ep.free()
 	view.free()
+
+
+func test_keybind_file_matches_the_code() -> void:
+	var d := BattleKeys.defaults()
+	for a: String in BattleKeys.ACTIONS:
+		expect(d.has(a), "keybinds.json has %s" % a)
+		expect_eq((d[a] as Array).slice(1), (BattleKeys.ACTIONS[a] as Array).slice(1), "%s keys match" % a)
