@@ -139,7 +139,7 @@ func _apply_walk() -> void:
 		var offset := 0.0
 		match g:
 			"quadruped":
-				offset = PI if i in [1, 2] else 0.0  # diagonal pairs
+				offset = PI if i in [1, 2] else 0.0  # diagonal pairs (legs ordered FR, FL, RR, RL)
 			"hexapod":
 				offset = PI if i % 2 == 1 else 0.0  # alternating tripods
 			_:
