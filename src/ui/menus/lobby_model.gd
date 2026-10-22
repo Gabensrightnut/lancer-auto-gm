@@ -38,6 +38,8 @@ var ready: Dictionary = {}
 var messages: Array = []
 ## What the host last sent (joining players).
 var remote: Dictionary = {}
+## The host started the mission (joining players move to the battle).
+var started := false
 
 
 ## A host lobby for `the_campaign`. The first seat is yours, the rest start as AI pilots.
@@ -206,7 +208,7 @@ func can_start() -> bool:
 
 ## What joining players see (sent over the network on every change).
 func summary() -> Dictionary:
-	return {"options": options.duplicate(), "rows": rows(), "problems": start_problems(),
+	return {"options": options.duplicate(), "rows": rows(), "problems": start_problems(), "started": started,
 		"campaign": campaign.name, "packs": campaign.packs.duplicate(true),
 		"briefing": mission.briefing if mission != null else ""}
 
@@ -218,6 +220,8 @@ func start() -> Dictionary:
 	if not problems.is_empty():
 		return {"error": problems[0]}
 	var director := AiDirector.new(host, GmSettings.from_preset(options["preset"]), mission)
+	started = true
+	_broadcast()
 	return {"host": host, "director": director, "mission": mission}
 
 
@@ -285,6 +289,7 @@ func _on_lobby_message(seat: String, msg: Dictionary) -> void:
 
 func _on_remote_lobby(data: Dictionary) -> void:
 	remote = data
+	started = bool(data.get("started", false))
 	options = (data.get("options", {}) as Dictionary).duplicate()
 	changed.emit()
 

@@ -5,7 +5,8 @@ what the game must do and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how c
 
 ## Commands
 
-Godot is at `A:/godot/Godot_v4.7.2-stable_win64_console.exe` (not on PATH).
+Godot is at `A:/godot/Godot_v4.7.2-stable_win64_console.exe` (not on PATH). Blender 5.2.2 is at
+`A:/blender-5.2.2-windows-x64/blender.exe` (mech models are built by bpy scripts in tools/blender/).
 
 ```bash
 G=A:/godot/Godot_v4.7.2-stable_win64_console.exe

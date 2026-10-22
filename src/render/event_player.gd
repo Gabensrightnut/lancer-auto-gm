@@ -16,7 +16,10 @@ const SPEED_INSTANT := 0.0
 const SPEEDS := {"cinematic": 0.7, "normal": 1.0, "fast": 1.8, "debug": 4.0, "instant": 0.0}
 
 var battle: BattleView
-var rolls: RollDisplay
+## Roll results pop up as numbers over the board (no dice graphics).
+var popups: RollPopups
+## Last damage roll per target, so the damage pop-up's breakdown can show the dice.
+var _last_damage_roll: Dictionary = {}
 var combat_log: CombatLog
 ## Called with (attacker_name) when a unit in `local_units` is hacked (HUD glitch).
 var on_local_hacked: Callable
@@ -35,14 +38,13 @@ var skip_to_my_turn := false
 var on_banner: Callable
 ## Called with (unit_id) when a unit's turn starts.
 var on_turn_started: Callable
-var popup: SkillCheckPopup
 var _saved_speed := 1.0
 var _skipping := false
 
 
-func _init(view: BattleView, roll_display: RollDisplay, log_panel: CombatLog) -> void:
+func _init(view: BattleView, roll_popups: RollPopups, log_panel: CombatLog) -> void:
 	battle = view
-	rolls = roll_display
+	popups = roll_popups
 	combat_log = log_panel
 	name = "EventPlayer"
 
@@ -91,13 +93,8 @@ func play_event(e: Dictionary) -> void:
 		"next_side", "combat_started":
 			pass
 		"damage_rolled":
-			if rolls and Fx.speed > 0.0 and Fx.speed <= 1.0:
-				var r: Dictionary = e.get("roll", {})
-				var rolls_list: Array = []
-				for d: Variant in r.get("dice", []):
-					rolls_list.append({"sides": 6, "value": int(d)})
-				await rolls.play_damage({"damage_type": e.get("damage_type", "Kinetic"), "amount": int(r.get("total", 0)),
-					"roll": {"rolls": rolls_list, "bonus": int(r.get("bonus", 0))}})
+			# Rolled instantly; shown with the damage_dealt pop-up that follows.
+			_last_damage_roll[String(e.get("target", ""))] = e.get("roll", {})
 		"hp_changed":
 			_set_stat(e.get("unit", ""), "hp", int(e.get("hp", 0)))
 			_set_stat(e.get("unit", ""), "overshield", int(e.get("overshield", 0)))
@@ -110,8 +107,11 @@ func play_event(e: Dictionary) -> void:
 		"skill_check":
 			var c: Dictionary = (e.get("check", {}) as Dictionary).duplicate()
 			_log("%s: %s check, %d vs %d: %s" % [_name(e.get("unit", "")), c.get("skill", ""), int(c.get("total", 0)), int(c.get("target", 10)), "success" if c.get("success", false) else "failure"])
-			if popup and Fx.speed > 0.0:
-				await popup.play(c)
+			var mv := _view(e.get("unit", ""))
+			if popups and mv:
+				var ok: bool = c.get("success", false)
+				popups.show_check(_above(mv), c, "success" if ok else "fail")
+				await Fx.wait(self, 0.6)
 		"burn_marked":
 			_set_stat(e.get("unit", ""), "burn", int(e.get("total", 0)))
 			_log("%s is marked with %d burn." % [_name(e.get("unit", "")), int(e.get("amount", 0))])
@@ -166,6 +166,11 @@ func _follow(e: Dictionary) -> void:
 			camera.frame_pair(a.global_position, end, 6.0)
 	elif e.get("type") in ["turn_started", "heat_changed", "status_added", "structure_check", "stress_check", "unit_destroyed", "destroyed"]:
 		camera.look_at_point(a.global_position + Vector3.UP * 0.6, 7.0)
+
+
+## Where roll pop-ups appear: just above a unit's nameplate.
+func _above(mv: MechView) -> Vector3:
+	return mv.global_position + Vector3.UP * (mv.model.height + 0.75)
 
 
 ## The weapon's content id for a loadout key (rules events name weapons by key).
@@ -228,9 +233,14 @@ func _moved(e: Dictionary) -> void:
 	if Fx.speed <= 0.0:
 		mv.place(_cell_of(last), int(last[2]) if last.size() > 2 else 0)
 		return
-	var step_time := {"walk": 0.32, "boost": 0.2, "fly": 0.24, "involuntary": 0.15}.get(mode, 0.3) as float
-	if mode == "walk" or mode == "boost":
-		mv.model.set_walk(1.0)
+	# Time per space: bigger mechs take longer, heavier strides.
+	var step_time := ({"walk": 0.42, "boost": 0.28, "fly": 0.3, "involuntary": 0.15}.get(mode, 0.35) as float) * (0.85 + 0.15 * maxf(mv.model.size, 0.5))
+	var model := mv.model
+	var legged := mode == "walk" or mode == "boost"
+	model.airborne = mode == "fly"
+	if legged or mode == "fly":
+		var fade := mv.create_tween()
+		fade.tween_property(model, "walk_amount", 1.0, Fx.t(0.15))
 	var thruster: Node3D = null
 	if mode == "fly" or mode == "jump" or mode == "boost":
 		thruster = MeshKit.part(mv, MeshKit.sphere(0.08, 10), MeshKit.fx_material(Color(0.5, 0.8, 1.0), 4.0), Vector3(0, 0.05, 0.1))
@@ -262,12 +272,20 @@ func _moved(e: Dictionary) -> void:
 					mv.position = p2, 0.0, 1.0, Fx.t(step_time * 1.6))
 			else:
 				tw.tween_property(mv, "position", target, Fx.t(step_time))
+			if legged:
+				# Advance the gait by whole steps per cell, so feet land as the cell is reached.
+				var steps := model.steps_per_cell()
+				var t2 := mv.create_tween()
+				t2.tween_property(model, "walk_phase", model.walk_phase + steps * PI, Fx.t(step_time * (1.6 if hop else 1.0)))
 			await tw.finished
 			if mode == "boost":
 				Fx.dust(battle.fx_root, target, 3, Color(0.55, 0.52, 0.48, 0.5), 0.3, 0.4, 0.8)
 			elif mode == "involuntary":
 				Fx.dust(battle.fx_root, target, 4, Color(0.55, 0.52, 0.48, 0.6), 0.3, 0.4, 0.8)
-	mv.model.set_walk(0.0)
+	model.airborne = false
+	var stop := mv.create_tween()
+	stop.tween_property(model, "walk_amount", 0.0, Fx.t(0.15))
+	stop.tween_callback(func() -> void: model.set_walk(0.0))
 	if thruster:
 		thruster.queue_free()
 	mv.place(_cell_of(last), int(last[2]) if last.size() > 2 else battle.map.ground_height(_cell_of(last)))
@@ -295,18 +313,12 @@ func _attack(e: Dictionary) -> void:
 	await Fx.wait(self, pre_attack_pause)
 	if not is_instance_valid(att) or not is_instance_valid(tgt):
 		return
-	if rolls and not check.is_empty():
-		await rolls.play_check(check, result, "%s  →  %s" % [wname.to_upper(), String(tgt.unit.get("name", "")).to_upper()])
-	if not is_instance_valid(att) or not is_instance_valid(tgt):
-		return
 	if Fx.speed > 0.0:
 		await _attack_anim(att, tgt, wid, w, style, hit, result == "crit")
 	if not is_instance_valid(tgt) or not is_instance_valid(att):
 		return
-	if not hit:
-		Fx.float_text(battle.fx_root, tgt.body_center() + Vector3.UP * 0.3, "MISS", Color(0.8, 0.8, 0.85))
-	elif result == "crit":
-		Fx.float_text(battle.fx_root, tgt.body_center() + Vector3.UP * 0.5, "CRIT!", RollDisplay.GOLD, 84)
+	if popups and not check.is_empty():
+		popups.show_check(_above(tgt), check, result)
 	if arm != "":
 		att.model.aim_arm(arm, Vector3.ZERO, false)
 	await Fx.wait(self, 0.2)
@@ -441,12 +453,16 @@ func _damage(e: Dictionary) -> void:
 	var mv := _view(e["target"])
 	var amount := int(e.get("amount", 0))
 	var dtype := String(e.get("damage_type", "Kinetic"))
-	_log("%s takes %d %s damage." % [_name(e["target"]), amount, dtype.to_lower()])
-	if rolls and Fx.speed > 0.0 and Fx.speed <= SPEED_FULL and (e.get("roll", {}) as Dictionary).has("rolls"):
-		await rolls.play_damage(e)
+	var de := e.duplicate()
+	if not de.has("roll") or (de["roll"] as Dictionary).is_empty():
+		de["roll"] = _last_damage_roll.get(String(e["target"]), {})
+	_last_damage_roll.erase(String(e["target"]))
+	var breakdown := RollDisplay.damage_bbcode(de)
+	_log("%s takes %d %s damage: %s" % [_name(e["target"]), amount, dtype.to_lower(), breakdown])
 	if mv == null:
 		return
-	Fx.float_text(battle.fx_root, mv.body_center() + Vector3.UP * 0.2, "-%d" % amount, RollDisplay.damage_color(dtype), 80)
+	if popups:
+		popups.show_damage(_above(mv), amount, dtype, breakdown)
 	if dtype == "Heat":
 		return
 	if e.has("hp"):
@@ -467,9 +483,10 @@ func _heat(e: Dictionary) -> void:
 	mv.unit["heat"] = int(e.get("total", 0))
 	if amount < 0:
 		Fx.steam(battle.fx_root, mv.global_position + Vector3.UP * mv.model.height * 0.7, mv.model.size)
-		Fx.float_text(battle.fx_root, mv.body_center() + Vector3.UP * 0.3, "VENT %d" % amount, Color(0.85, 0.92, 1.0), 64)
-	else:
-		Fx.float_text(battle.fx_root, mv.body_center() + Vector3.UP * 0.4, "+%d HEAT" % amount, Color(1.0, 0.55, 0.15), 64)
+		if popups:
+			popups.show_text(_above(mv), "%d" % amount, "VENT", Color(0.85, 0.92, 1.0), "", "heat")
+	elif popups:
+		popups.show_text(_above(mv), "+%d" % amount, "", Color(1.0, 0.6, 0.25), "%d / %d heat" % [int(e.get("total", 0)), int(mv.unit.get("heat_cap", 0))], "heat")
 	# Glow ramps toward the new heat level.
 	var from := float(mv.unit.get("heat", 0) - amount)
 	var to := float(mv.unit.get("heat", 0))
@@ -543,8 +560,11 @@ func _check_card(e: Dictionary) -> void:
 		else:
 			Fx.light_flash(battle.fx_root, c, Color(1.0, 0.4, 0.1), 6.0, 4.0, 0.8)
 			Fx.steam(battle.fx_root, c, mv.model.size)
-	if rolls:
-		await rolls.show_card(title, ["%s: roll %s" % [String(mv.unit.get("name", "")) if mv else "", roll_text], String(e.get("outcome", ""))], Color(1.0, 0.45, 0.3) if is_structure else Color(1.0, 0.65, 0.2))
+	if popups and mv:
+		popups.show_text(_above(mv), roll_text, String(e.get("outcome", "")).to_upper(),
+			Color(1.0, 0.5, 0.35) if is_structure else Color(1.0, 0.7, 0.3), "%s check: rolled %s → %s" % [title.capitalize(), roll_text, e.get("outcome", "")],
+			"structure" if is_structure else "reactor")
+		await Fx.wait(self, 0.8)
 
 
 func _deployed(e: Dictionary) -> void:
@@ -604,22 +624,22 @@ func _tech(e: Dictionary) -> void:
 	_log("%s hacks %s (%s): %s" % [_name(e["attacker"]), _name(e["target"]), effect, RollDisplay.formula_bbcode(check, result)])
 	await _turn_to(att, tgt.global_position)
 	await Fx.wait(self, pre_attack_pause)
-	if rolls and not check.is_empty():
-		await rolls.play_check(check, result, "TECH ATTACK: %s  →  %s" % [effect.to_upper(), String(tgt.unit.get("name", "")).to_upper()])
 	var color := Color(0.35, 1.0, 0.55)
 	if Fx.speed > 0.0:
 		var from := att.model.eye.global_position if att.model.eye else att.body_center()
 		await Fx.data_link(battle.fx_root, from, tgt.body_center(), color, 1.0)
 	if not is_instance_valid(tgt) or not is_instance_valid(att):
 		return
+	if popups and not check.is_empty():
+		popups.show_check(_above(tgt), check, result)
 	if hit:
 		Fx.glitch(tgt.model, 1.6)
-		Fx.float_text(battle.fx_root, tgt.body_center() + Vector3.UP * 0.5, effect.to_upper(), color, 60)
+		Fx.float_text(battle.fx_root, tgt.body_center() + Vector3.UP * 0.1, effect.to_upper(), color, 50)
 		if String(e["target"]) in local_units and on_local_hacked.is_valid():
 			on_local_hacked.call(String(att.unit.get("name", e["attacker"])))
 	else:
 		Fx.shield_flash(battle.fx_root, tgt.body_center(), tgt.model.height * 0.55, Color(0.35, 1.0, 0.55))
-		Fx.float_text(battle.fx_root, tgt.body_center() + Vector3.UP * 0.5, "FIREWALL", Color(0.8, 0.8, 0.85), 56)
+		Fx.float_text(battle.fx_root, tgt.body_center() + Vector3.UP * 0.1, "FIREWALL", Color(0.8, 0.8, 0.85), 48)
 	await Fx.wait(self, 0.8)
 
 

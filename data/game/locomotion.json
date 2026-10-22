@@ -1,0 +1,106 @@
+{
+  "_about": "How each frame's model moves (visual only; movement rules come from the rules engine). gait: biped | digitigrade | quadruped | hexapod | tracked | hover | winged. Body types read from the official frame art. Frames not listed use 'default'. A gait never grants flight or terrain immunity.",
+  "default": {
+    "gait": "biped"
+  },
+  "frames": {
+    "mf_standard_pattern_i_everest": {
+      "gait": "biped",
+      "note": "heavy, slightly hunched stride"
+    },
+    "mf_blackbeard": {
+      "gait": "biped",
+      "note": "long knock-kneed legs, claw feet"
+    },
+    "mf_drake": {
+      "gait": "biped",
+      "note": "short heavy steps"
+    },
+    "mf_lancaster": {
+      "gait": "quadruped",
+      "note": "four-legged utility walker (book art p137)"
+    },
+    "mf_nelson": {
+      "gait": "biped"
+    },
+    "mf_raleigh": {
+      "gait": "biped"
+    },
+    "mf_tortuga": {
+      "gait": "biped",
+      "note": "heavy"
+    },
+    "mf_vlad": {
+      "gait": "biped"
+    },
+    "mf_black_witch": {
+      "gait": "digitigrade"
+    },
+    "mf_deaths_head": {
+      "gait": "digitigrade"
+    },
+    "mf_dusk_wing": {
+      "gait": "winged",
+      "note": "small winged frame; walks when moving on the ground, wings when flying"
+    },
+    "mf_metalmark": {
+      "gait": "digitigrade"
+    },
+    "mf_monarch": {
+      "gait": "digitigrade"
+    },
+    "mf_mourning_cloak": {
+      "gait": "digitigrade",
+      "note": "hunched stalker"
+    },
+    "mf_swallowtail": {
+      "gait": "digitigrade"
+    },
+    "mf_balor": {
+      "gait": "biped",
+      "note": "heavy"
+    },
+    "mf_goblin": {
+      "gait": "biped",
+      "note": "crouched, splayed legs"
+    },
+    "mf_gorgon": {
+      "gait": "biped"
+    },
+    "mf_hydra": {
+      "gait": "digitigrade"
+    },
+    "mf_manticore": {
+      "gait": "biped"
+    },
+    "mf_minotaur": {
+      "gait": "biped"
+    },
+    "mf_pegasus": {
+      "gait": "biped"
+    },
+    "mf_barbarossa": {
+      "gait": "biped",
+      "note": "massive; slow heavy steps"
+    },
+    "mf_genghis": {
+      "gait": "biped"
+    },
+    "mf_iskander": {
+      "gait": "biped"
+    },
+    "mf_napoleon": {
+      "gait": "biped"
+    },
+    "mf_saladin": {
+      "gait": "biped",
+      "note": "heavy"
+    },
+    "mf_sherman": {
+      "gait": "biped"
+    },
+    "mf_tokugawa": {
+      "gait": "biped"
+    }
+  }
+}

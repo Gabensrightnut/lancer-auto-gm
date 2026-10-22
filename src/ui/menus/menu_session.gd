@@ -8,9 +8,11 @@ const SCREENS := {
 	"lobby": "res://scenes/menus/lobby.tscn",
 	"builder": "res://scenes/menus/builder.tscn",
 	"settings": "res://scenes/menus/settings.tscn",
+	"battle": "res://scenes/flow/battle.tscn",
+	"debrief": "res://scenes/flow/debrief.tscn",
 }
-## The battle (owned by the 3D/HUD work).
-const BATTLE_SCENE := "res://scenes/main.tscn"
+## The battle screen (src/flow/battle_screen.gd: the 3D view and HUD on a BattleSession).
+const BATTLE_SCENE := "res://scenes/flow/battle.tscn"
 
 static var store := SaveStore.new()
 static var library := PackLibrary.new()
