@@ -386,6 +386,16 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 			check["defense"] = p["defense_name"]
 			check["target_label"] = p["defense_name"]
 			result = ("crit" if check["crit"] else "hit") if check["success"] else "miss"
+		if result == "miss" and not invisible_miss and TalentRules.valiant_aid(state, attacker, target) != null:
+			# Exemplar Valiant Aid: the ally rerolls and must keep the second result.
+			events.append({"type": "attack_rerolled", "attacker": attacker.id, "target": target.id, "first": check,
+				"source": "Valiant Aid", "rule_ref": "talents: Exemplar"})
+			check = state.dice.check(p["bonus"], p["accuracy"], p["difficulty"], p["target_number"], p["sources"])
+			check["bonus_sources"] = p["bonus_sources"]
+			check["bonuses"] = p["bonus_sources"]
+			check["defense"] = p["defense_name"]
+			check["target_label"] = p["defense_name"]
+			result = ("crit" if check["crit"] else "hit") if check["success"] else "miss"
 		if Effects.has(target, "attack_paralysis") and int(check["d20"]) <= 2:
 			# Gorgon Metastatic Paralysis: a 1-2 misses and Stuns the attacker.
 			result = "miss"
@@ -404,6 +414,7 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 	if not invisible_miss:
 		GearSystems.attack_rolled(attacker, kind, result != "miss")
 		TalentRules.after_roll(state, attacker, w, target, kind, result, p["lock_on"])
+	events.append_array(TalentRules.exemplar_mark(state, attacker, target, opts))
 	if result == "hit" and GearSystems.markerlight_crit(state, attacker, target):
 		result = "crit"  # Markerlight: a weak spot
 		events[events.size() - 1]["result"] = "crit"

@@ -10,11 +10,31 @@ const IMPROVISED := {"key": "improvised", "name": "Improvised Attack", "type": "
 
 
 static func _check_attack(state: GameState, u: Unit, a: Variant, ref: String) -> RuleResult:
+	if a is Dictionary and (a as Dictionary).get("lunge", false):
+		# Hunter Lunge: check the attack from where the lunge ends.
+		var lr := TalentRules.check_lunge(state, u, Weapons.find(u, String(a.get("weapon", ""))), state.unit(String(a.get("target", ""))))
+		if not lr.ok:
+			return lr
+		var path := TalentRules.lunge_path(state, u, state.unit(String(a["target"])))
+		var at: Array = [u.cell, u.level]
+		var last: Array = path.back()
+		u.cell = Vector2i(last[0], last[1])
+		u.level = int(last[2])
+		var inner: Dictionary = (a as Dictionary).duplicate()
+		inner.erase("lunge")
+		var r := _check_attack(state, u, inner, ref)
+		u.cell = at[0]
+		u.level = at[1]
+		return r
 	if not a is Dictionary:
 		return RuleResult.deny("Each attack needs a weapon and a target.", ref)
 	var w := WeaponRules.variant(Weapons.find(u, String(a.get("weapon", ""))), a)
 	if w.is_empty():
 		return RuleResult.deny("No such weapon on this mech.", ref)
+	if a.has("ammo"):
+		var ar := TalentRules.check_ammo(u, w, String(a["ammo"]))
+		if not ar.ok:
+			return ar
 	if w.get("no_attack", false):
 		return RuleResult.deny("%s can't make normal attacks; it's fired through its own rule." % w.get("name", ""), "weapons: " + String(w.get("name", "")))
 	if Weapons.area(w) != "" and not a.has("aims"):
@@ -79,7 +99,12 @@ static func _check_aux(state: GameState, u: Unit, aux: Array, fired: Array[Dicti
 
 static func _run(state: GameState, u: Unit, a: Dictionary, aux: bool) -> Array[Dictionary]:
 	var w := WeaponRules.variant(Weapons.find(u, String(a["weapon"])), a)
-	var events := _fire(state, u, w, a, aux)
+	var pre := TalentRules.spend_ammo(u, String(a.get("ammo", "")))
+	var lunge: Array[Dictionary] = TalentRules.lunge(state, u, state.unit(String(a.get("target", "")))) if a.get("lunge", false) else ([] as Array[Dictionary])
+	var events := lunge + _fire(state, u, w, a, aux)
+	if not pre.is_empty():
+		events.push_front(pre)
+		events.append_array(TalentRules.shock_ammo(state, u, String(a.get("ammo", "")), state.unit(String(a.get("target", a.get("shock_target", ""))))))
 	if WeaponRules.rules(w).get("backblast", false) and a.has("target") and state.unit(String(a["target"])) != null:
 		events.append_array(AttackActions.backblast(state, u, state.unit(String(a["target"]))))
 	return events
@@ -240,6 +265,36 @@ static func _fire(state: GameState, u: Unit, w: Dictionary, a: Dictionary, aux: 
 				events.append_array(Attacks.attack(state, u, w, o, o2))
 		return events
 	return Attacks.attack(state, u, w, target, opts)
+
+
+class Backswing:
+	extends TurnAction
+	## Executioner 1, Backswing Cut: after a hit with a Heavy or Superheavy melee weapon, a free
+	## attack with it on a different character within Threat and line of sight, half damage.
+	## params: {"target"}
+
+	func type() -> String:
+		return "backswing"
+
+	func cost() -> String:
+		return TurnRules.FREE
+
+	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		var bs: Dictionary = u.turn.get("backswing", {})
+		if bs.is_empty():
+			return RuleResult.deny("Only right after a hit with a Heavy or Superheavy melee weapon.", "talents: Executioner")
+		var t := state.unit(String(params.get("target", "")))
+		if t == null or t.id == String(bs["not"]) or t.kind == Unit.KIND_DEPLOYABLE:
+			return RuleResult.deny("Choose a different character.", "talents: Executioner")
+		var p := Attacks.preview(state, u, Weapons.find(u, String(bs["weapon"])), t, {"fired_by_rule": true})
+		return RuleResult.allow() if p["ok"] else RuleResult.deny(p["reason"], p["rule_ref"])
+
+	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+		var bs: Dictionary = u.turn["backswing"]
+		u.turn.erase("backswing")
+		TalentRules._use_round(state, u, "backswing")
+		return Attacks.attack(state, u, Weapons.find(u, String(bs["weapon"])), state.unit(String(params["target"])),
+			{"fired_by_rule": true, "skip_spend": true, "half_damage": true, "backswing": true})
 
 
 class Skirmish:

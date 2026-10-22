@@ -158,6 +158,8 @@ static func finish_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 	if used >= maxi(1, int(u.counters.get("activations", 1))) or u.destroyed:
 		state.acted.append(u.id)
 	state.active_unit = ""
+	if Effects.has(u, "prowl"):
+		events.append_array(Combat.refresh_hidden(state))  # Prowl ends with the turn
 	events.append({"type": "turn_ended", "unit": u.id})
 	var next := _next_side(state, u.side)
 	if next == "":

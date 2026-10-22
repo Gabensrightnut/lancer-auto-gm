@@ -892,5 +892,13 @@
       "op": "jackhammer",
       "label": "Jackhammer Round"
     }
-  ]
+  ],
+  "t_exemplar:Valiant Aid": [],
+  "t_heavy_gunner:Covering Fire": [
+    {
+      "op": "covering_fire",
+      "label": "Covering Fire"
+    }
+  ],
+  "t_heavy_gunner:Covering Fire Attack": []
 }
