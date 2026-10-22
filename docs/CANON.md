@@ -30,6 +30,9 @@ book in a way that changes the setting; parked.
 | Pilots walk around, talk to NPCs, get favors as Reserves | Consistent | Reserves and downtime (p.40, p.53-55) |
 | Mech movement visuals by body type (quads, hover-looks) | Canon | Look has no gameplay effect (p.32); movement rules only from text |
 | Planets with medieval, Old West, retrofuturistic, cyberpunk, East Asian-inspired looks | Consistent | Diaspora cultures vary widely (p.10, p.21); look only, no new factions |
+| Castles and walled towns on medieval-tech worlds | Consistent | Karrakin Trade Baronies are aristocratic (p.92); look only |
+| Core-world landmarks (white towers, space elevator) and frontier ones (water towers, mine headframes, monorails, pagodas) | Consistent | Core and frontier worlds differ greatly (p.21); unnamed scenery, no lore |
+| Alien worlds: giant drifting sky creatures, colossal unnamed ruins, crystal fields, toxic seas | Consistent | Diaspora worlds vary widely (p.10, p.21); unnamed horizon scenery only; ruins never named or explained |
 | Tracked wallet with prices | Not canon | Book doesn't track currency (p.18). Parked. |
 | Scarce printers / paying for printer access | Not canon | Printers ubiquitous, access never lost (p.31, p.82). Parked. |
 | Paid passage vs free company rides | Not canon (not stated) | Parked. |
