@@ -9,6 +9,17 @@ const IMPROVISED := {"key": "improvised", "name": "Improvised Attack", "type": "
 	"damage": [{"type": "Kinetic", "val": "1d6"}], "range": [{"type": "Threat", "val": 1}], "tags": []}
 
 
+## Lancer Tactics option "lt_aux_mount": firing only the Auxiliary weapon of a mount that also
+## has a Main weapon counts as firing the mount, without bonus damage.
+static func lt_aux_only(state: GameState, u: Unit, w: Dictionary) -> bool:
+	if String(w.get("size", "")) != "Auxiliary" or not HouseRuleSwitches.on(state, "lt_aux_mount"):
+		return false
+	for x: Dictionary in u.loadout.get("weapons", []):
+		if x != w and int(x.get("mount", -1)) == int(w.get("mount", -2)) and String(x.get("size", "")) == "Main":
+			return true
+	return false
+
+
 ## Ghast Nexus deployed as a drone: Range and line of sight from the drone (weapons: Ghast
 ## Nexus). A destroyed drone can't be used until repaired. Returns the attack params to use, or
 ## {"denied": reason}.
@@ -264,7 +275,7 @@ static func _fire(state: GameState, u: Unit, w: Dictionary, a: Dictionary, aux: 
 		var tb := AttackActions.throughbolt(state, u, a)
 		pre_events = tb["events"]
 		opts["origin_cell"] = tb["end"]
-	opts["no_bonus_damage"] = aux
+	opts["no_bonus_damage"] = aux or AttackActions.lt_aux_only(state, u, w)
 	opts["action"] = String(a.get("_action", "attack"))
 	var p := Attacks.preview(state, u, w, target, opts)
 	if not p["ok"]:

@@ -61,7 +61,10 @@ static func _plan_raw(state: GameState, u: Unit, params: Dictionary, mode: Strin
 		return Movement.plan_teleport(state, u, to, int(params.get("level", -1)), mode)
 	if params.get("swing", false) and mode == Movement.MODE_MOVE:
 		return _swing_plan(state, u, to, params)
-	return Movement.plan(state, u, to, int(params.get("level", -1)), mode, bool(params.get("fly", false)))
+	var level := int(params.get("level", -1))
+	if params.get("fly", false) and HouseRuleSwitches.on(state, "lt_flight_fixed") and state.map.has_cell(to):
+		level = state.map.ground_height(to) + 3  # Lancer Tactics option: flying is 3 spaces above the surface
+	return Movement.plan(state, u, to, level, mode, bool(params.get("fly", false)))
 
 
 ## Grapple Swing (Reinforced Cabling): 1/turn, a standard move flown in a straight line with a
