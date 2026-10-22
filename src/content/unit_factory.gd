@@ -493,6 +493,8 @@ static func _frame_effects(u: Unit, frame: Dictionary) -> void:
 		"manual_note": core_note, "target": (data.get("core_target", {}) as Dictionary).duplicate(true)}
 	if data.get("core_sections", false):
 		u.loadout["core"]["sections"] = true
+	if data.has("core_zone"):
+		u.loadout["core"]["zone"] = (data["core_zone"] as Dictionary).duplicate(true)
 	# One Core Power per mission, recovered by a Full Repair (Core p.32, 82).
 	u.counters["core_power"] = 1
 

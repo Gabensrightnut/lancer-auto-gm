@@ -136,12 +136,17 @@ static func on_core(state: GameState, u: Unit, params: Dictionary) -> Array[Dict
 				u.counters["charge_die"] = 1
 			"coreburn":
 				events.append_array(set_charges(u, zf4_charges(u) + 3))
+			"expose_power_cells":
+				u.counters["expose_armed"] = true  # the next time it exceeds its Heat Cap
+			"hall_of_mirrors":
+				u.counters.erase("no_holograms")
 			"apocalypse":
 				u.counters["apocalypse"] = 4
 				u.counters["apocalypse_at"] = [u.cell.x, u.cell.y, u.level]
 				events.append_array(_rail_profile(u))
 	if core.has("sections"):
 		events.append_array(_fortress_sections(state, u, params))
+	events.append_array(Zones.create_core_zone(state, u, params))
 	return events
 
 
@@ -218,14 +223,14 @@ static func action_allowed(state: GameState, u: Unit, type: String) -> RuleResul
 # --- Cover ----------------------------------------------------------------------------
 
 ## Cover that comes from frame systems rather than terrain.
-static func extra_cover(state: GameState, target: Unit, cover: Dictionary) -> Dictionary:
+static func extra_cover(state: GameState, target: Unit, cover: Dictionary, attacker: Unit = null) -> Dictionary:
 	if cover.get("cover", "none") == "hard":
 		return cover
 	var give := ""
 	if Effects.has(target, "always_hard_cover"):
 		give = "hard"
 	elif cover.get("cover", "none") == "none":
-		if Effects.has(target, "soft_cover_aura"):
+		if Effects.has(target, "soft_cover_aura") or Zones.soft_cover(state, target, attacker):
 			give = "soft"
 		else:
 			for o: Unit in state.units.values():

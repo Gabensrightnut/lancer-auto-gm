@@ -170,7 +170,7 @@ func _restore(state: GameState, snap: Dictionary) -> void:
 		var dst: Unit = state.units[id]
 		for key: String in src.to_dict():
 			dst.set(key, src.get(key))
-	for key in ["round_number", "phase", "active_unit", "acted", "turn_side", "first_side", "intel", "rulings", "seats"]:
+	for key in ["round_number", "phase", "active_unit", "acted", "turn_side", "first_side", "intel", "rulings", "seats", "zones"]:
 		state.set(key, fresh.get(key))
 	state.dice.set_state(String(snap["dice_state"]).to_int())
 	if snap.has("dice_checkpoint"):

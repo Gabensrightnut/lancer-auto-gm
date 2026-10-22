@@ -334,7 +334,11 @@
         }
       ]
     },
-    "core": "manual"
+    "core": [],
+    "core_zone": {
+      "kind": "mag_field",
+      "size": 3
+    }
   },
   "mf_deaths_head": {
     "traits": {
@@ -395,7 +399,11 @@
         }
       ]
     },
-    "core": "manual"
+    "core": [
+      {
+        "kind": "hall_of_mirrors"
+      }
+    ]
   },
   "mf_metalmark": {
     "traits": {
@@ -757,7 +765,11 @@
         }
       ]
     },
-    "core": "manual"
+    "core": [
+      {
+        "kind": "expose_power_cells"
+      }
+    ]
   },
   "mf_iskander": {
     "traits": {

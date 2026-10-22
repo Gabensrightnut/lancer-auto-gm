@@ -112,7 +112,9 @@ static func begin_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 	events.append_array(Combat.expire_at_turn_start(state, u))
 	events.append_array(Abilities.expire(state, u, "start"))
 	events.append_array(Abilities.recharge_roll(state, u))
+	u.counters.erase("no_holograms")  # Dusk Wing: new holograms again from the start of its turn
 	events.append_array(Effects.turn_started(state, u))
+	events.append_array(Zones.turn_started(state, u))
 	return events
 
 
@@ -125,6 +127,7 @@ static func finish_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 	events.append_array(Combat.fall_all(state, u))
 	events.append_array(Combat.expire_statuses(state, u))
 	events.append_array(Abilities.expire(state, u, "end"))
+	events.append_array(Zones.turn_ended(state, u))
 	Abilities.arm_mines(state, u)
 	events.append_array(Combat.tick_meltdown(state, u))
 	var wreck := state.unit(String(u.counters.get("mounted_in", "")))

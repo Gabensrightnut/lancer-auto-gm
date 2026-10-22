@@ -138,6 +138,8 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				events.append({"type": "effect_triggered", "unit": u.id, "effect": "Mark for Death", "target": target.id, "rule_ref": "frames: Death's Head core system"})
 			"unfocus":
 				events.append_array(AbilityActions._unfocus(u))
+			"hologram_teleport":
+				events.append_array(Zones.hologram_teleport(state, u, params))
 			"fire_rail":
 				events.append_array(FrameSystems.fire_rail(state, u, params))
 			"core_off":
@@ -264,6 +266,10 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 					(" but further than range %d" % int(op["min"])) if op.has("min") else ""], ref)
 			if op.get("los", false) and not Sight.unit_line_of_sight(state, u, t):
 				return RuleResult.deny("No line of sight to the target.", Sight.REF_LOS)
+		if op.get("op", "") == "hologram_teleport":
+			var hr := Zones.check_hologram_teleport(state, u, params)
+			if not hr.ok:
+				return hr
 		if op.get("op", "") == "fire_rail":
 			var rr := FrameSystems.check_rail(state, u, params)
 			if not rr.ok:

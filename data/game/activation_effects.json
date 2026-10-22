@@ -66,5 +66,10 @@
     {
       "op": "fire_rail"
     }
+  ],
+  "mf_dusk_wing:Hologram Teleport": [
+    {
+      "op": "hologram_teleport"
+    }
   ]
 }

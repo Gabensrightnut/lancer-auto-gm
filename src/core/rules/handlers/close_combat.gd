@@ -121,6 +121,7 @@ class Grapple:
 			u.level = int(end[2])
 			events.append({"type": "moved", "unit": u.id, "path": path, "mode": "dragged", "cost": 0, "rule_ref": "frames: Blackbeard, Grapple Cable"})
 			events.append_array(Abilities.check_mines(state, u, path))
+			events.append_array(Zones.check_path(state, u, path))
 			events.append_array(Combat.after_movement(state))
 		u.counters["grapple"] = {"with": t.id, "attacker": true}
 		t.counters["grapple"] = {"with": u.id, "attacker": false}

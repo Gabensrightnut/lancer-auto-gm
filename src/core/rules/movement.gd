@@ -315,14 +315,18 @@ static func plan_teleport(state: GameState, u: Unit, dest: Vector2i, level: int 
 ## Steps that bring `u` next to `toward` (or as close as it can get), each to a free standing
 ## space nearer than the last: [[x, y, level], ...] from where it is now.
 static func pull_path(state: GameState, u: Unit, toward: Unit) -> Array:
+	return pull_path_to(state, u, Sight.body_of(state, toward), 1)
+
+
+## Same, toward any body, stopping within `reach` (0: onto it, e.g. the center of a field).
+static func pull_path_to(state: GameState, u: Unit, goal: Sight.Body, reach: int) -> Array:
 	var path: Array = [[u.cell.x, u.cell.y, u.level]]
 	var others := _others(state, u)
-	var goal := Sight.body_of(state, toward)
 	var cur := u.cell
 	var lv := u.level
 	for _i in range(100):
 		var here := Sight.distance(state, Sight.make_body(state, cur, lv, u.size), goal)
-		if here <= 1:
+		if here <= reach:
 			break
 		var best: Variant = null
 		var best_d := here
@@ -331,7 +335,7 @@ static func pull_path(state: GameState, u: Unit, toward: Unit) -> Array:
 			if levels.is_empty():
 				continue
 			var nb := Sight.make_body(state, n, levels[0], u.size)
-			if _blocked_by_unit(nb, others, true) or _overlaps(nb, goal):
+			if _blocked_by_unit(nb, others, true) or (reach > 0 and _overlaps(nb, goal)):
 				continue
 			var d := Sight.distance(state, nb, goal)
 			if d < best_d:
@@ -432,7 +436,7 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool) -> Dictionar
 				if here_cells.has(c):
 					continue
 				var col := state.map.column(c)
-				difficult = difficult or col.has_tag(BattleMap.TAG_DIFFICULT) or wreck_cells.has(c)
+				difficult = difficult or col.has_tag(BattleMap.TAG_DIFFICULT) or wreck_cells.has(c) or Zones.difficult_at(state, c)
 				dangerous = dangerous or col.has_tag(BattleMap.TAG_DANGEROUS)
 			difficult = difficult and not ignore_difficult
 			var flags: Array = (node.get("rulings", []) as Array).duplicate()

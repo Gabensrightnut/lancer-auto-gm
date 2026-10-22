@@ -380,6 +380,12 @@ static func apply_heat(state: GameState, u: Unit, amount: int, source: String, r
 	# Over HEAT CAP: 1 stress, an overheating check, clear all heat, then take the heat beyond
 	# what it took to exceed the cap, which can overheat again (Core p.81).
 	# How much carries over is the table's "heat_overflow" ruling.
+	if u.heat > u.heat_cap and u.counters.get("expose_armed", false):
+		# Genghis Expose Power Cells: instead of overheating, clear all heat and vent a cloud.
+		u.counters.erase("expose_armed")
+		u.heat = 0
+		events.append({"type": "heat_changed", "unit": u.id, "amount": 0, "total": 0, "source": "Expose Power Cells"})
+		events.append_array(Zones.make_cloud(state, u))
 	while u.heat > u.heat_cap and not u.destroyed:
 		var excess := u.heat - u.heat_cap - 1
 		if Rulings.ask(state, "heat_overflow") == "beyond_cap":

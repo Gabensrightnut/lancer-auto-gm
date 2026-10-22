@@ -275,6 +275,9 @@ class CorePower:
 		var tr := FrameSystems.check_target(state, u, action.get("params", {}))
 		if not tr.ok:
 			return tr
+		var zr := Zones.check_core_zone(state, u, action.get("params", {}))
+		if not zr.ok:
+			return zr
 		if u.loadout["core"].get("sections", false):
 			var sr := FrameSystems.check_sections(state, u, action.get("params", {}))
 			if not sr.ok:

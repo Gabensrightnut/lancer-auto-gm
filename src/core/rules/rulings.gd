@@ -69,6 +69,10 @@ const CATALOG := {
 		"question": "Manticore core: the charge die's burst 2 inferno isn't an attack. Is the Manticore itself caught in it?",
 		"options": {"includes": "Yes: a Burst that isn't an attack includes the user's space (Core p.64).", "excludes": "No: only the characters around it."},
 		"suggested": "includes", "rule_ref": "Core p.64 Burst; frames: Manticore core system"},
+	"hologram_blast_targets": {
+		"question": "Dusk Wing Hologram Teleport: every hologram explodes (burst 1). Who is caught in the explosions?",
+		"options": {"hostiles": "Hostile characters, like a hologram set off by a hostile.", "everyone_else": "Every character but the Dusk Wing, allies included (a Burst that isn't an attack affects everyone in it)."},
+		"suggested": "hostiles", "rule_ref": "Core p.64 Burst; frames: Dusk Wing core system"},
 	"prone_ignore_difficult": {
 		"question": "Does 'ignore difficult terrain' (Bulwark Mods, Kai Bioplating) also cancel Prone's 'counts as moving in difficult terrain'?",
 		"options": {"cancels": "Yes.", "still_double": "No: Prone still costs double."},

@@ -124,7 +124,7 @@ cover, line of sight, attack/area/tech previews with hit chance).
 | `pilot_left_mech` / `pilot_mounted` | `unit` (pilot), `mech`, `cell` |
 | `self_destruct_started` | `unit`, `turns` |
 | `reactor_explosion` | `unit`, `reason`, `roll`, `targets` |
-| `core_power` | `unit`, `core`, `power`, `text`, `automated`. Params by frame: `targets` (Monarch, Blackbeard), `target` (Saladin, Lancaster, Minotaur), `sections` (Drake: two lines of two spaces) |
+| `core_power` | `unit`, `core`, `power`, `text`, `automated`. Params by frame: `targets` (Monarch, Blackbeard), `target` (Saladin, Lancaster, Minotaur), `sections` (Drake: two lines of two spaces), `aim` (Black Witch field center) |
 | `effect_triggered` | `unit`, `effect` (trait name), `target` |
 | `status_blocked` / `no_effect` / `knockback_blocked` | `unit`/`target`, `reason` (immunity, Heavy Frame, Archaic...) |
 | `tech_action` / `action_skipped` | `unit`, `target`, `action` (`lock_on`, `bolster`, `invade` on an ally) / `reason` |
@@ -136,6 +136,9 @@ cover, line of sight, attack/area/tech previews with hit chance).
 | `recharge_roll` | `unit`, `roll`, `ready` (sources ready again) |
 | `effect_ended` | `unit`, `effect` (a timed effect ran out) |
 | `revived` | `unit`, `by` |
+| `zone_created` / `zone_changed` / `zone_removed` | `zone` {`id`, `kind` (`mag_field`, `smoke_cloud`, `hologram`), `owner`, `label`, `cells` [[x, y]], `center`, `phase`} / `id`, `reason`. Zones are also in the view as `zones` |
+| `zone_triggered` | `zone`, `unit` (a character set off a zone's effect) |
+| `attack_blocked` | `attacker`, `target`, `zone` (a Mag Field stopped the shot) |
 | `ruling_needed` | `id`, `question`, `options` {id: text}, `rule_ref`, `trigger_action`: the engine is paused; the host answers `{"type": "set_ruling", "params": {"id", "choice"}}` |
 | `ruling_made` | `id`, `choice`, `text` |
 
