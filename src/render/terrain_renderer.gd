@@ -247,7 +247,7 @@ func surface(cell: Vector2i) -> int:
 		return KIND_CRYSTAL
 	if col.has_tag("rock") or (col.has_tag(BattleMap.TAG_IMPASSABLE) and col.ground > 0):
 		return KIND_ROCK
-	if col.has_tag("road") and not col.has_tag(BattleMap.TAG_DANGEROUS) and col.gap_top == 0:
+	if (col.has_tag("road") or col.has_tag("lot")) and not col.has_tag(BattleMap.TAG_DANGEROUS) and col.gap_top == 0:
 		return KIND_ROAD
 	if col.has_tag("farm"):
 		return KIND_FARM
@@ -338,7 +338,8 @@ func _build_blocks() -> void:
 		var variation := WorldRand.f(str(cell))
 		if kind == KIND_ROAD:
 			# Roads carry their direction for the lane markings (shader): along x, along z, crossing.
-			variation = 0.85 if col.has_tag("crossing") else (0.5 if col.has_tag("road_z") else 0.15)
+			# Lots (yards, sidewalks, squares between a settlement's buildings): 0.97, no markings.
+			variation = 0.97 if col.has_tag("lot") and not col.has_tag("road") else (0.85 if col.has_tag("crossing") else (0.5 if col.has_tag("road_z") else 0.15))
 		elif kind == KIND_FARM:
 			variation = (0.75 if col.has_tag("dry") else 0.25) + 0.2 * WorldRand.f(str(cell), 3)
 		var base_col := Color(kind / 16.0, variation, 0.0, 1.0)

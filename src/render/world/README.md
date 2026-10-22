@@ -333,3 +333,23 @@ rooms and the owner's), `marshal` (front office, three barred cells, the marshal
 a safe), `ship_deck` (bridge, captain's quarters, crew bunks, commons with stalls, engineering
 with the reactor and the NHP casing, cargo bay), `sleeper_vault` (rows of cryo pods, control
 gallery). Preview: `in-<kind>[~culture]@eye|top|up|<room id>`.
+
+## Exploring areas (mech scale, real time)
+
+`MissionGenerator.area(seed, {hub, region, landscape, culture, weather, size, shape})` makes the
+ground for a WorldSession / NetRoom area: the hub's town at mech scale in the middle (or the
+landscape's own settlement), countryside around it, roads along the middle row and column out
+to all four edges, and a level band `TerrainGen.AREA_EDGE` wide along every edge. Areas of one
+region (same `region`) look the same and meet on the same roads, so walking off one edge comes
+in on the next area's opposite edge. Fights start right there on the area's map. Returns {map,
+kit, region, name, center, entries {west, east, north, south}}. Preview: `area<seed>+town+<culture>`
+or `area<seed>+<landscape>[+<culture>]`.
+
+## Autumn forest and salt flats
+
+`autumn_forest` (base grassy_hills): rolling hills and denser woods in red, orange and gold,
+falling leaves (`particles: "leaves"`), soft gold light; medieval, East Asian, Old West or Union
+settlements. `salt_flats` (base desert_mesas; `TerrainGen._flats`): dead level white crust,
+cracked soft patches (difficult), low pressure ridges in straight runs (one level), rare rock
+islands, old mine spoil heaps; little cover, so the open ground is the danger. Old West, retro
+or industrial mining towns.
