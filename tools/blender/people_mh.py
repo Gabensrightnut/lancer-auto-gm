@@ -521,7 +521,9 @@ def main():
     for ob, bone in rigid:
         bone_parent(ob, rig, bone)
     animations(rig)
-    # Textures at 1024 px at most (faces still hold up at 1.25 m; keeps each glb small).
+    # Textures at 1024 px at most (faces still hold up at 1.25 m), written as lossy WebP
+    # (EXT_texture_webp, alpha kept for hair/brows), and no morph normals (the expression keys
+    # shade fine with the base normals): keeps each glb under ~10 MB.
     for img in bpy.data.images:
         if img.size[0] > 1024:
             k = 1024.0 / img.size[0]
@@ -529,7 +531,8 @@ def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     out = os.path.join(OUT_DIR, "human_%s.glb" % GENDER)
     bpy.ops.export_scene.gltf(filepath=out, export_format="GLB", export_animations=True, export_animation_mode="NLA_TRACKS",
-                              export_morph=True, export_skins=True, export_apply=False, export_yup=True, export_image_format="AUTO")
+                              export_morph=True, export_skins=True, export_apply=False, export_yup=True, export_image_format="WEBP",
+                              export_image_quality=85, export_morph_normal=False)
     tris = sum(len(o.data.polygons) for o in bpy.data.objects if o.type == "MESH")
     print("EXPORTED", out, "faces:", tris, "keys:", [k.name for k in body.data.shape_keys.key_blocks][:30])
 
