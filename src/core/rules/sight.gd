@@ -140,7 +140,7 @@ static func cover(state: GameState, attacker: Body, target: Body, guardians: Arr
 	if covered_mids > 0 and covered_mids * 2 >= mids.size():
 		out["cover"] = "hard"
 		out["difficulty"] = HARD_COVER_DIFFICULTY
-		out["reason"] = "Hard cover: terrain next to the target hides at least half of it."
+		out["reason"] = "Hard cover: terrain (or a Guardian ally) next to the target hides at least half of it."
 		for c: Vector2i in cover_cells:
 			(out["cover_cells"] as Array).append([c.x, c.y])
 	elif all_soft or _in_soft_cover(state, target):

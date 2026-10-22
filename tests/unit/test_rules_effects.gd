@@ -105,13 +105,12 @@ func test_drake_heavy_frame_blast_plating_guardian_and_slow() -> void:
 	# Slow: Difficulty on Agility saves.
 	var save := Combat.skill_check(s, drake, "agility", "test", 10, 0, 0, [], true)
 	expect(_labels(save["sources"]).has("Slow"))
-	# Guardian: an ally next to the Drake gets hard cover from it.
-	var ally := F.mech(s, "ally", "enemies", Vector2i(5, 0))
-	small.cell = Vector2i(9, 0)
+	# Guardian: an ally next to the (Size 2) Drake gets hard cover from it.
+	var ally := F.mech(s, "ally", "enemies", Vector2i(3, 0))
+	small.cell = Vector2i(0, 0)
 	var c := RulesQueries.cover(s, "small", "ally")
 	expect_eq(c["cover"], "none", "the Drake is on the far side")
-	ally.cell = Vector2i(3, 0)
-	small.cell = Vector2i(6, 0)
+	small.cell = Vector2i(9, 0)
 	expect_eq(RulesQueries.cover(s, "small", "ally")["cover"], "hard", "now the Drake stands between")
 
 
