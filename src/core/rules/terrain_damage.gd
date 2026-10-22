@@ -170,7 +170,9 @@ static func settle(state: GameState, ids: Array[String], source: String = "") ->
 		if u.destroyed or u.hp <= 0:
 			events.append_array(destroy_sections(state, c, 1, source))
 		elif u.hp < u.max_hp:
+			var before := hp_left(state, c)
 			state.terrain_damage[key(c)] = u.max_hp - u.hp
+			events.append_array(collapse_roll(state, c, before - u.hp, source))
 	return events
 
 
@@ -198,7 +200,22 @@ static func damage_cell(state: GameState, c: Vector2i, amount: int, dtype: Strin
 			state.terrain_damage[key(c)] = dmg  # the section below took the same damage
 	else:
 		state.terrain_damage[key(c)] = full - left + dmg
+		events.append_array(collapse_roll(state, c, dmg, source))
 	events[0]["hp_left"] = hp_left(state, c) if destructible(state, c) else 0
+	return events
+
+
+## House rule "hr_collapse_save" (your idea, not a book rule): a section still standing after a
+## hit of 5+ damage rolls 1d6 + its Armor; on 3 or less it collapses anyway.
+static func collapse_roll(state: GameState, c: Vector2i, dmg: int, source: String) -> Array[Dictionary]:
+	if dmg < 5 or not HouseRuleSwitches.on(state, "hr_collapse_save") or not destructible(state, c):
+		return [] as Array[Dictionary]
+	var roll := state.dice.die(6)
+	var total := roll + armor_of(state.map.column(c))
+	var events: Array[Dictionary] = [{"type": "collapse_roll", "cell": [c.x, c.y], "roll": roll, "total": total, "collapsed": total <= 3,
+		"rule_ref": "House rule: Building collapse roll"}]
+	if total <= 3:
+		events.append_array(destroy_sections(state, c, 1, source))
 	return events
 
 

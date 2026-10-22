@@ -99,6 +99,7 @@ class Stabilize:
 		if u.kind == Unit.KIND_NPC or params.get("main", "") == "cool":
 			events.append_array(Combat.clear_heat(u, "Stabilize"))
 			events.append_array(Combat.remove_status(u, "Exposed", "Stabilize"))
+			u.counters.erase("overheated")
 		else:
 			var payer := state.unit(String(params.get("repair_from", ""))) if params.has("repair_from") else u
 			payer.repairs -= 1

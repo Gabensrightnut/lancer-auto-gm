@@ -12,7 +12,7 @@ var t: Unit
 func _setup(lt: Array) -> void:
 	s = F.state()
 	for id: String in lt:
-		s.rulings[id] = {"choice": "lancer_tactics"}
+		s.house_rules[id] = true
 	e = RulesEngine.new()
 	a = F.mech(s, "a", "players", Vector2i(0, 0))
 	a.loadout["weapons"].append(F.weapon("1:0", "Pistol", "Auxiliary", "CQB", "1d3", 5))

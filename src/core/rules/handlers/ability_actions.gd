@@ -65,6 +65,9 @@ class Activate:
 		var events: Array[Dictionary] = [{"type": "activated", "unit": u.id, "ability": a["key"], "name": a["name"],
 			"source": a.get("source_name", ""), "activation": a.get("activation", ""), "automated": a.get("automated", false),
 			"detail": a.get("detail", ""), "rule_ref": Abilities.REF}]
+		if u.turn.has("recharge_heat"):
+			events.append_array(Combat.apply_heat(state, u, int(u.turn["recharge_heat"]), "Recharge (house rule)"))
+			u.turn.erase("recharge_heat")
 		var self_heat := Abilities.heat_self(state, u, a)
 		if self_heat > 0:
 			events.append_array(Combat.apply_heat(state, u, Environments.gear_heat(state, self_heat), "Heat (Self): " + String(a.get("source_name", ""))))

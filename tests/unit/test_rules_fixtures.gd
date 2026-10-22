@@ -32,7 +32,7 @@ static func state(shape: GridLayout.Shape = GridLayout.Shape.SQUARE, w: int = 12
 	Rulings.apply_suggested(s)
 	# Rules tests run on the book's rules; the Lancer Tactics variants have their own tests.
 	for id: String in ["lt_split_barrage", "lt_brace_prompt", "lt_repeat_quick_tech"]:
-		s.rulings[id] = {"choice": "book"}
+		s.house_rules[id] = false
 	return s
 
 
