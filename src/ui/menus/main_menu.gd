@@ -1,6 +1,6 @@
 extends Control
-## Main menu: Continue / New campaign / Join online / Settings / Quit. The right side shows the
-## form for whichever is picked.
+## Main menu: Continue / New campaign / Tutorial / Join online / Settings / Quit. The right side
+## shows the form for whichever is picked.
 
 var side: VBoxContainer
 var join_status: Label
@@ -52,6 +52,9 @@ func _ready() -> void:
 	var new_button := MenuTheme.big_button("New campaign", "encounter")
 	new_button.pressed.connect(_show_new)
 	left.add_child(new_button)
+	var tutorial_button := MenuTheme.big_button("Tutorial", "pilot", MenuTheme.GOOD)
+	tutorial_button.pressed.connect(_show_tutorial)
+	left.add_child(tutorial_button)
 	var join_button := MenuTheme.big_button("Join online", "orbital", MenuTheme.maker_color("IPS-N"))
 	join_button.pressed.connect(_show_join)
 	left.add_child(join_button)
@@ -72,7 +75,9 @@ func _ready() -> void:
 	side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	side.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_child(side)
-	if saves.is_empty():
+	if "stage:tutorial" in OS.get_cmdline_user_args():
+		_show_tutorial()  # screenshots
+	elif saves.is_empty():
 		_show_new()
 	else:
 		_show_continue()
@@ -143,6 +148,38 @@ func _show_new() -> void:
 	body.add_child(go)
 
 
+## A new campaign opened the guided way (GameFlow.start_tutorial): a training base, a
+## briefing, a drill that teaches one rule at a time, then debrief, level up and downtime.
+func _show_tutorial() -> void:
+	var body := _panel("Tutorial", "pilot", MenuTheme.GOOD)
+	body.add_child(MenuTheme.label("New to LANCER? Start here. Your pilot reports to a Union training base: a briefing, then a live-fire drill against training drones that teaches one thing at a time (moving, attacking, cover, heat, tech), then the debrief, leveling up and your first downtime. An AI squadmate flies with you. It's a real campaign: keep playing after the drill.", 17, MenuTheme.TEXT, true))
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var names := NameGen.new(rng)
+	var name_edit := LineEdit.new()
+	name_edit.text = names.pilot_name()
+	body.add_child(_field("Your pilot's name", name_edit))
+	var callsign := LineEdit.new()
+	callsign.text = names.callsign()
+	body.add_child(_field("Callsign", callsign))
+	var hints := CheckButton.new()
+	hints.text = "Teaching hints: explain each rule the first time it comes up"
+	hints.button_pressed = true
+	body.add_child(hints)
+	body.add_child(MenuTheme.label("You can turn hints off any time from the in-game menu.", 15, MenuTheme.MUTED, true))
+	var go := Button.new()
+	go.text = "START THE TUTORIAL  ›"
+	go.custom_minimum_size = Vector2(0, 54)
+	go.add_theme_font_override("font", MenuTheme.bold_font())
+	go.pressed.connect(func() -> void:
+		MenuSession.campaign = null
+		MenuSession.lobby = null
+		var c := GameFlow.start_tutorial(MenuSession.store, MenuSession.content(), name_edit.text.strip_edges(), callsign.text.strip_edges(), hints.button_pressed)
+		MenuSession.campaign = c
+		MenuSession.go(self, "hub"))
+	body.add_child(go)
+
+
 func _show_join() -> void:
 	var accent := MenuTheme.maker_color("IPS-N")
 	var body := _panel("Join a friend's game", "orbital", accent)
@@ -208,7 +245,7 @@ func _load_campaign(id: String) -> void:
 				net.open_online(s.host, GameFlow.last_room)
 			MenuSession.go(self, "battle")
 			return
-	MenuSession.go(self, "lobby")
+	MenuSession.go(self, "hub" if GameFlow.is_story(MenuSession.campaign) else "lobby")
 
 
 static func _field(label_text: String, control: Control) -> VBoxContainer:

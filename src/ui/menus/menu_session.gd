@@ -10,6 +10,7 @@ const SCREENS := {
 	"settings": "res://scenes/menus/settings.tscn",
 	"battle": "res://scenes/flow/battle.tscn",
 	"debrief": "res://scenes/flow/debrief.tscn",
+	"hub": "res://scenes/flow/hub.tscn",
 }
 ## The battle screen (src/flow/battle_screen.gd: the 3D view and HUD on a BattleSession).
 const BATTLE_SCENE := "res://scenes/flow/battle.tscn"

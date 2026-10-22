@@ -72,6 +72,8 @@ func step() -> bool:
 			return false  # A human GM starts the fight.
 		var first := mission.first_side if mission != null else Mission.PLAYERS
 		return (host.submit(NetHost.GM_SEAT, {"type": "start_combat", "params": {"first_side": first}})["result"] as RuleResult).ok
+	if _maybe_narrate():
+		return true
 	if _maybe_reinforce():
 		return true
 	if state.active_unit != "":
@@ -206,6 +208,21 @@ func _orders_for(u: Unit) -> Dictionary:
 	return o
 
 
+## The GM's narration (GmTwist): how the squad arrived, once combat starts, and the
+## mission's hidden twist when its moment comes. Only an AI GM narrates on its own.
+func _maybe_narrate() -> bool:
+	if mission == null or not host.is_ai_seat(NetHost.GM_SEAT):
+		return false
+	var a := GmTwist.next_action(mission, host.state)
+	if a.is_empty():
+		return false
+	var out := host.submit(NetHost.GM_SEAT, a)
+	GmTwist.done(mission, a)
+	if (out["result"] as RuleResult).ok:
+		_log("", "%s: %s" % [a["params"]["title"], a["params"]["text"]])
+	return true
+
+
 ## Reinforcements (dial: reinforcements): once per round from round 3, in missions that
 ## allow them, a seeded roll may bring one NPC in at the enemy deployment edge.
 func _maybe_reinforce() -> bool:
@@ -241,6 +258,7 @@ func _maybe_reinforce() -> bool:
 func _on_action_resolved(_seat: String, _action: Dictionary, _result: RuleResult, events: Array) -> void:
 	if mission != null:
 		mission.observe(host.state, events)
+		GmTwist.observe(mission, host.state, events)
 
 
 func _refused(u: Unit, action: Dictionary, result: RuleResult) -> void:

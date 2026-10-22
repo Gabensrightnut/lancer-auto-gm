@@ -36,6 +36,9 @@ var assignment: Dictionary = {}
 var ready: Dictionary = {}
 ## Messages for the player: [{"kind": "error"/"warn"/"info", "text"}]
 var messages: Array = []
+## Builds the battlefield instead of MissionGenerator (story campaigns: CampaignLoop builds it
+## from the job the squad took). func(options: Dictionary) -> {state, mission}.
+var mission_builder: Callable
 ## What the host last sent (joining players).
 var remote: Dictionary = {}
 ## The host started the mission (joining players move to the battle).
@@ -54,6 +57,20 @@ static func for_host(the_campaign: Campaign, content: ContentDB, mission_seed: i
 		var seat: String = squad[i]["seat"]
 		m.assignment[seat] = squad[i]["pilot"]["id"]
 		m.modes[seat] = "you" if i == 0 else "ai"
+	m._rebuild()
+	return m
+
+
+## A host lobby whose seats and battlefield come from elsewhere (a story campaign's job):
+## `seat_modes` seat -> mode, `pilots` seat -> pilot id, `builder` as mission_builder.
+static func for_mission(the_campaign: Campaign, content: ContentDB, seat_modes: Dictionary, pilots: Dictionary, builder: Callable) -> LobbyModel:
+	var m := LobbyModel.new()
+	m.campaign = the_campaign
+	m.db = content
+	m.options["preset"] = str(the_campaign.gm_settings.get("preset", "Standard"))
+	m.modes = seat_modes.duplicate()
+	m.assignment = pilots.duplicate()
+	m.mission_builder = builder
 	m._rebuild()
 	return m
 
@@ -272,7 +289,7 @@ func _rebuild() -> void:
 			if m["id"] == p.get("active_mech", "") or mech.is_empty():
 				mech = m
 		squad.append({"seat": seat, "pilot": p, "mech": mech})
-	var gen := MissionGenerator.generate(int(options["seed"]), {
+	var gen: Dictionary = mission_builder.call(options) if mission_builder.is_valid() else MissionGenerator.generate(int(options["seed"]), {
 		"squad": squad, "shape": options["shape"], "sitrep": options["sitrep"], "db": db,
 		"settings": GmSettings.from_preset(options["preset"]), "players": squad.size()})
 	var state: GameState = gen["state"]

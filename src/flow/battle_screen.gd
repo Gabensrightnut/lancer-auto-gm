@@ -3,7 +3,9 @@ extends Node
 ## TurnOrderBar, ActionBar, PlayerTurn, RollPopups, CombatLog) attached to a BattleSession.
 ## Shows the on-screen seat's view, animates events at a readable pace (the AI waits), runs
 ## your turn when it's yours, "I'll go" from the turn-order bar, hot-seat "Pass to" screens,
-## reaction questions, and goes to the debrief when the mission ends.
+## reaction questions, the GM's narration (a mission twist, NarrationPopup), tutorial lessons
+## and first-time rule tips (Tutorial, TutorialPanel; teaching hints on/off per campaign), and
+## goes to the debrief when the mission ends (story campaigns: back to the hub).
 
 const BIOME := "grassy_hills"
 
@@ -22,6 +24,12 @@ var status: Label
 var handoff_layer: Control
 var reaction_panel: PanelContainer
 var menu_layer: Control
+var tutorial: TutorialPanel
+var narration: NarrationPopup
+## The campaign's story (host), for the tutorial's lessons and which tips were shown. A friend
+## in someone else's game gets a fresh one (tips only; the host keeps the campaign).
+var story: StoryState
+var campaign: Campaign
 
 var _loaded := false
 var _queue: Array = []
@@ -33,6 +41,7 @@ var _hud_sig := ""
 
 func _ready() -> void:
 	content = MenuSession.content()
+	MenuSession.settings().apply_graphics(get_viewport())  # before the board is built
 	session = GameFlow.session if GameFlow.session != null else _example_session()
 	view = BattleView.new()
 	view.content = content
@@ -56,6 +65,13 @@ func _ready() -> void:
 	session.log_line.connect(func(t: String) -> void: combat_log.add_line("[color=#9aa4b2]%s[/color]" % t))
 	session.refused.connect(func(why: String, ref: String) -> void: show_banner("Not allowed: %s" % why) if ref == "" else show_banner("Not allowed: %s (%s)" % [why, ref]))
 	order_bar.i_will_go.connect(_on_i_will_go)
+	if session.is_host and MenuSession.campaign != null:
+		campaign = MenuSession.campaign
+		story = GameFlow.open_story(campaign, content)
+	else:
+		story = StoryState.new(0)
+	tutorial.bind(campaign)
+	session.events_seen.connect(_on_events_seen)
 	var speed := MenuSession.settings().animation_speed
 	session.ai_interval = {"cinematic": 0.9, "normal": 0.45, "fast": 0.1}.get(speed, 0.45)
 	if not session.view.is_empty():
@@ -64,6 +80,8 @@ func _ready() -> void:
 	# Screenshot staging (tools/screenshot.gd ... battle.tscn out.png frames stage:turn).
 	if "stage:turn" in OS.get_cmdline_user_args():
 		_stage_turn.call_deferred()
+	if "stage:twist" in OS.get_cmdline_user_args():
+		_stage_twist.call_deferred()
 
 
 func _stage_turn() -> void:
@@ -77,9 +95,20 @@ func _stage_turn() -> void:
 			return
 
 
+## Screenshot staging: a twist pop-up and a tutorial lesson over the board.
+func _stage_twist() -> void:
+	for i in range(10):
+		await get_tree().process_frame
+	_narrate([{"type": "twist_revealed", "title": "Twist", "speaker": "Commander Ilse Vey", "rule_ref": GmTwist.REF,
+		"twist": {"id": "third_party", "reveal": "New transponders on the scope. Not the enemy you came for. Someone else wants this too.", "question": "Who sent them, and what do they want here?"}}])
+	var lesson: Dictionary = Tutorial.lessons()[3]
+	tutorial.show_events([{"type": "tutorial_prompt", "kind": "lesson", "id": lesson["id"], "title": lesson.get("title", ""), "text": lesson.get("text", ""),
+		"objective": lesson.get("objective", ""), "rule_ref": lesson.get("rule_ref", ""), "step": 4, "of": Tutorial.lessons().size()}])
+
+
 func _process(delta: float) -> void:
 	# The in-battle menu really pauses the AI when everyone in the game is at this screen.
-	session.busy = _draining or player.playing or turn.busy or (menu_layer.visible and _can_pause())
+	session.busy = _draining or player.playing or turn.busy or narration.visible or (menu_layer.visible and _can_pause())
 	session.poll(delta)
 	if _ended or not _loaded:
 		return
@@ -116,6 +145,22 @@ func _on_view(_seat: String, v: Dictionary, events: Array) -> void:
 		_drain()
 
 
+## Every batch the seat on screen sees (its own actions too): tutorial lessons and tips.
+func _on_events_seen(_seat: String, events: Array) -> void:
+	tutorial.show_events(Tutorial.observe_battle(story, campaign, events, _local_units()))
+
+
+## The GM's narration in a batch: the pop-up, and a line in the combat log.
+func _narrate(events: Array) -> void:
+	for e: Dictionary in events:
+		match str(e.get("type", "")):
+			"twist_revealed":
+				combat_log.add_line("[color=#ffd166][b]Twist:[/b][/color] %s" % e["twist"].get("reveal", ""))
+			"gm_narration":
+				combat_log.add_line("[color=#ffd166]%s:[/color] %s" % [e.get("title", "GM"), e.get("text", "")])
+	narration.show_events(events)
+
+
 func _load(v: Dictionary) -> void:
 	_loaded = true
 	view.set_map(BattleMap.from_dict(v.get("map", {})), BIOME)
@@ -147,6 +192,7 @@ func _drain() -> void:
 		var events: Array = item[1]
 		if not events.is_empty():
 			await player.play(events)
+			_narrate(events)
 		_sync(item[0])
 	_draining = false
 
@@ -378,8 +424,13 @@ func _on_mission_over(outcome: String, reason: String) -> void:
 	show_banner(GameFlow.title_for(outcome) if session.is_host else ("Mission complete" if won else GameFlow.title_for(outcome)))
 	combat_log.add_line("[b]%s[/b] %s" % [GameFlow.title_for(outcome), reason])
 	await get_tree().create_timer(2.5).timeout
+	while narration.visible:
+		await get_tree().process_frame
 	if session.is_host and MenuSession.campaign != null:
-		GameFlow.finish_mission(session, MenuSession.campaign, MenuSession.store)
+		var d := GameFlow.finish_mission(session, MenuSession.campaign, MenuSession.store, content)
+		if d.get("story", false):
+			MenuSession.go(self, "hub")
+			return
 	else:
 		GameFlow.debrief = {"outcome": outcome, "reason": reason, "title": GameFlow.title_for(outcome), "pilots": [], "client": true}
 	MenuSession.go(self, "debrief")
@@ -421,6 +472,11 @@ func _build_ui() -> void:
 	reaction_panel.custom_minimum_size = Vector2(620, 0)
 	reaction_panel.visible = false
 	ui.add_child(reaction_panel)
+	narration = NarrationPopup.new()
+	narration.theme = MenuTheme.theme()
+	ui.add_child(narration)
+	tutorial = TutorialPanel.new()
+	ui.add_child(tutorial)
 	var menu := Button.new()
 	menu.theme = MenuTheme.theme()
 	menu.text = "≡  Menu"
@@ -484,6 +540,12 @@ func _open_menu() -> void:
 					session.host.set_seat_ai(seat, not ai_now)
 					menu_layer.visible = false)
 				b.add_child(b2)
+	if campaign != null:
+		var hints := CheckButton.new()
+		hints.text = "Teaching hints (explain each rule the first time)"
+		hints.button_pressed = Tutorial.hints_on(campaign)
+		hints.toggled.connect(func(on: bool) -> void: campaign.options["teaching_hints"] = on)
+		b.add_child(hints)
 	for item in [["Back to the battle", func() -> void: menu_layer.visible = false],
 			["Settings", func() -> void: _leave("settings")],
 			["Save and quit to main menu", func() -> void: _leave("main")]]:
@@ -509,6 +571,8 @@ func _can_pause() -> bool:
 func _leave(screen: String) -> void:
 	if session.is_host and session.autosave != null and not session.over:
 		session.autosave.save_now()
+	if campaign != null and not session.over:
+		GameFlow.save_story(campaign, MenuSession.store)  # tutorial progress, tips seen, hints
 	var net := MenuSession.net(self)
 	if net != null:
 		net.leave()

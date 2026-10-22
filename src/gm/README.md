@@ -12,7 +12,8 @@ section 9). Everything it does goes through `NetHost.submit()` -> `RulesEngine.s
 | `ai_director.gd` | Runs AI seats on the host: starts combat, picks who acts, plays AI turns, reinforcements, ends the mission. |
 | `gm_settings.gd` | Dials (aggression, caution, focus fire, reinforcements, difficulty, randomness) and presets. |
 | `name_gen.gd` | Seeded callsigns, pilot/mech names and mission flavor from the COMP/CON generator lists. |
-| `gm_actions.gd` | Host-only engine actions `gm_spawn` and `gm_end_mission` (events `units_arrived`, `mission_ended`). |
+| `gm_actions.gd` | Host-only engine actions `gm_spawn`, `gm_end_mission` and `gm_narrate` (events `units_arrived`, `mission_ended`, `twist_revealed`, `gm_narration`). |
+| `gm_twist.gd` | The story hook's hidden twist (`mission.flavor.twist`, Core p.43): the AI GM picks its moment (round 3 or halfway through a timed mission, or sooner at the first mech/NPC destroyed or zone scored) and reveals it through `gm_narrate`, seen only by the squad's side (`seen_by`, ViewFilter). Also narrates `arrived_late` / `arrived_spent` at the start of combat. |
 
 ## Using it (UI)
 

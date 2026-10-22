@@ -7,6 +7,7 @@ extends TestCase
 const SCREENS := [
 	"res://scenes/menus/main_menu.tscn", "res://scenes/menus/lobby.tscn", "res://scenes/menus/builder.tscn",
 	"res://scenes/menus/settings.tscn", "res://scenes/flow/battle.tscn", "res://scenes/flow/debrief.tscn",
+	"res://scenes/flow/hub.tscn",
 ]
 
 
