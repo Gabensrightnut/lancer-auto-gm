@@ -28,6 +28,9 @@ var scores := {PLAYERS: 0, ENEMIES: 0}
 var reinforcement_pool: Array = []
 var allow_reinforcements := false
 var briefing := ""
+## Rules environments in play (lancer-data environments.json ids, e.g. env_particulatestorms).
+## Also in GameState.environments, where the rules engine reads them.
+var environments: Array = []
 ## Names for the briefing and UI: {operation, planet, faction, team, cargo} (NameGen).
 var flavor: Dictionary = {}
 ## "" while the mission runs; then "players", "enemies" or "none".
@@ -176,7 +179,7 @@ func to_dict() -> Dictionary:
 	return {"seed": str(mission_seed), "sitrep": sitrep_id, "sitrep_name": sitrep_name, "rounds": rounds,
 		"max_rounds": max_rounds, "zones": zones.duplicate(true), "deployment": deployment.duplicate(true),
 		"first_side": first_side, "scores": scores.duplicate(), "reinforcement_pool": reinforcement_pool.duplicate(true),
-		"allow_reinforcements": allow_reinforcements, "briefing": briefing, "flavor": flavor.duplicate(), "outcome": outcome,
+		"allow_reinforcements": allow_reinforcements, "briefing": briefing, "environments": environments.duplicate(), "flavor": flavor.duplicate(), "outcome": outcome,
 		"outcome_reason": outcome_reason, "ended": ended}
 
 
@@ -195,6 +198,7 @@ static func from_dict(d: Dictionary) -> Mission:
 	m.reinforcement_pool = (d.get("reinforcement_pool", []) as Array).duplicate(true)
 	m.allow_reinforcements = bool(d.get("allow_reinforcements", false))
 	m.briefing = str(d.get("briefing", ""))
+	m.environments = (d.get("environments", []) as Array).duplicate()
 	m.flavor = (d.get("flavor", {}) as Dictionary).duplicate()
 	m.outcome = str(d.get("outcome", ""))
 	m.outcome_reason = str(d.get("outcome_reason", ""))

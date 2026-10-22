@@ -11,6 +11,9 @@ extends RefCounted
 ## "twist") and is seen only by the squad's side (events with `seen_by`, ViewFilter). The
 ## consequence is applied by the story at the debrief (StoryEngine mission_finished).
 ##
+## Rules environments in play (mission.flavor.environments, picked by MissionGenerator from the
+## world's weather) are announced first when combat starts, with the book text, to everyone.
+##
 ## How the squad got there (mission.flavor arrived_late / arrived_spent, set by the briefing's
 ## journey choice) is told when combat starts. PROVISIONAL (docs/RULES_TODO.md "Arriving late
 ## or spent"): the book gives no battle effect for either, so the GM only narrates them, and a
@@ -65,6 +68,14 @@ static func next_action(mission: Mission, state: GameState) -> Dictionary:
 	var f := mission.flavor
 	var hook: Dictionary = f.get("hook", {})
 	var speaker := str(hook.get("patron", ""))
+	if not bool(f.get("environment_told", false)):
+		var envs: Array = f.get("environments", [])
+		if not envs.is_empty():
+			var e: Dictionary = envs[0] if envs.size() == 1 else {"name": " and ".join(PackedStringArray(envs.map(func(x: Dictionary) -> String: return str(x["name"])))),
+				"text": " ".join(PackedStringArray(envs.map(func(x: Dictionary) -> String: return "%s: %s" % [x["name"], x["text"]])))}
+			return {"type": "gm_narrate", "params": {"kind": "environment", "title": "Environment: %s" % e["name"], "text": str(e["text"]),
+				"rule_ref": "Environment rules (LANCER environments)"}}
+		f["environment_told"] = true
 	if not bool(f.get("arrival_told", false)):
 		var lines: Array = []
 		if bool(f.get("arrived_late", false)):
@@ -88,6 +99,8 @@ static func done(mission: Mission, action: Dictionary) -> void:
 	match str(action.get("params", {}).get("kind", "")):
 		"arrival":
 			mission.flavor["arrival_told"] = true
+		"environment":
+			mission.flavor["environment_told"] = true
 		"twist":
 			mission.flavor["twist_revealed"] = true
 			mission.flavor["twist_due"] = false
