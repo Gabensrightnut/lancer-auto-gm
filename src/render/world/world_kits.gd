@@ -586,11 +586,13 @@ static func hub_ground(culture: String) -> Dictionary:
 
 ## Sky, sun and fog to match the culture (fog thinned for a small town seen up close), at the
 ## story clock's time of day (TownLife.period: dawn, day, evening, night).
-static func apply_hub_environment(culture: String, env: Environment, sun: DirectionalLight3D, period: String = "day") -> void:
+static func apply_hub_environment(culture: String, env: Environment, sun: DirectionalLight3D, period: String = "day", place_seed: int = -1) -> void:
 	var c := culture_id(culture)
 	var kit := str(HUB_LANDSCAPE.get(c, "desert_mesas"))
 	if c != "":
 		kit += "/" + c
+	if place_seed >= 0:
+		kit += "#%d" % place_seed  # the town's own look: its sun, sky and palette
 	var shadow := sun.directional_shadow_max_distance
 	var style := WorldStyle.resolve(kit)
 	time_of_day(style, period)

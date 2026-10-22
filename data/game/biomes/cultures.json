@@ -3,21 +3,8 @@
 	"ruins": {
 		"name": "war-torn ruins",
 		"architecture": {
-			"materials": [
-				"concrete",
-				"concrete",
-				"brick",
-				"plaster"
-			],
-			"walls": [
-				"#8a8072",
-				"#76726c",
-				"#8a5e4a",
-				"#9a9080",
-				"#6a6660",
-				"#8c7660",
-				"#7a5040"
-			],
+			"materials": ["concrete", "concrete", "brick", "plaster"],
+			"walls": ["#8a8072", "#76726c", "#8a5e4a", "#9a9080", "#6a6660", "#8c7660", "#7a5040"],
 			"trim": "#5e5a54",
 			"glass": "#1a2024",
 			"window_light": "#ffb86a",
@@ -31,23 +18,11 @@
 			"storefront": 1,
 			"signs": 0.25,
 			"awnings": 0.1,
-			"sign_colors": [
-				"#d8c8a0",
-				"#a03a2a",
-				"#3a5a80",
-				"#c8a040"
-			],
-			"awning_colors": [
-				"#6a2a22",
-				"#2a3a4a"
-			],
+			"sign_colors": ["#d8c8a0", "#a03a2a", "#3a5a80", "#c8a040"],
+			"awning_colors": ["#6a2a22", "#2a3a4a"],
 			"street": {
 				"road": "asphalt",
-				"vehicles": [
-					"wreck",
-					"wreck",
-					"car"
-				],
+				"vehicles": ["wreck", "wreck", "car"],
 				"traffic_lights": true,
 				"kiosks": 0.0,
 				"vents": 0.12,
@@ -55,14 +30,8 @@
 				"lanterns_on_wires": false
 			},
 			"skyline": {
-				"near": [
-					0.8,
-					2.5
-				],
-				"far": [
-					2.0,
-					14.0
-				],
+				"near": [0.8, 2.5],
+				"far": [2.0, 14.0],
 				"density": 0.45
 			}
 		},
@@ -113,20 +82,8 @@
 			"backdrop_fade": 0.8
 		},
 		"architecture": {
-			"materials": [
-				"metal",
-				"glass",
-				"concrete",
-				"metal"
-			],
-			"walls": [
-				"#3a3e48",
-				"#2e3038",
-				"#4a4450",
-				"#363a44",
-				"#50505a",
-				"#2a3440"
-			],
+			"materials": ["metal", "glass", "concrete", "metal"],
+			"walls": ["#3a3e48", "#2e3038", "#4a4450", "#363a44", "#50505a", "#2a3440"],
 			"trim": "#1e2028",
 			"glass": "#10141c",
 			"window_light": "#7896d0",
@@ -146,32 +103,12 @@
 			"wet": 1.0,
 			"neon_a": "#ff2aa8",
 			"neon_b": "#20e8ff",
-			"sign_colors": [
-				"#ff2aa8",
-				"#20e8ff",
-				"#ffcc22",
-				"#9a4aff",
-				"#30ff90"
-			],
-			"neon_colors": [
-				"#ff2aa8",
-				"#20e8ff",
-				"#ffcc22",
-				"#9a4aff"
-			],
-			"awning_colors": [
-				"#1a1a22",
-				"#2a0a20"
-			],
+			"sign_colors": ["#ff2aa8", "#20e8ff", "#ffcc22", "#9a4aff", "#30ff90"],
+			"neon_colors": ["#ff2aa8", "#20e8ff", "#ffcc22", "#9a4aff"],
+			"awning_colors": ["#1a1a22", "#2a0a20"],
 			"skyline": {
-				"near": [
-					2.0,
-					6.0
-				],
-				"far": [
-					18.0,
-					90.0
-				],
+				"near": [2.0, 6.0],
+				"far": [18.0, 90.0],
 				"density": 0.85,
 				"look": {
 					"lit_windows": 0.12,
@@ -183,12 +120,7 @@
 			"rim_glow": 1.2,
 			"street": {
 				"road": "asphalt",
-				"vehicles": [
-					"car",
-					"car",
-					"van",
-					"bike"
-				],
+				"vehicles": ["car", "car", "van", "bike"],
 				"traffic_lights": true,
 				"kiosks": 0.25,
 				"vents": 0.12,
@@ -234,25 +166,16 @@
 			"ssr": true,
 			"sky_ambient": 0.5
 		},
-		"particles": [
-			"rain"
-		],
+		"particles": ["rain"],
 		"flora": {
 			"rough": "rubble"
 		},
 		"horizon": {
 			"far": "skyline",
 			"traffic": true,
-			"landmarks": [
-				"monorail"
-			]
+			"landmarks": ["monorail"]
 		},
-		"grid_color": [
-			0.75,
-			0.88,
-			1.0,
-			0.2
-		]
+		"grid_color": [0.75, 0.88, 1.0, 0.2]
 	},
 	"burning": {
 		"name": "burning city",
@@ -269,19 +192,8 @@
 			"backdrop_fade": 0.7
 		},
 		"architecture": {
-			"materials": [
-				"concrete",
-				"brick",
-				"concrete",
-				"plaster"
-			],
-			"walls": [
-				"#6a6258",
-				"#5a5650",
-				"#6e4a3a",
-				"#7a7064",
-				"#4e4a46"
-			],
+			"materials": ["concrete", "brick", "concrete", "plaster"],
+			"walls": ["#6a6258", "#5a5650", "#6e4a3a", "#7a7064", "#4e4a46"],
 			"trim": "#3a3632",
 			"glass": "#141414",
 			"window_light": "#ff9a4a",
@@ -297,19 +209,10 @@
 			"storefront": 1,
 			"signs": 0.15,
 			"awnings": 0.05,
-			"sign_colors": [
-				"#8a7a60",
-				"#6a2a22"
-			],
+			"sign_colors": ["#8a7a60", "#6a2a22"],
 			"skyline": {
-				"near": [
-					0.8,
-					3.0
-				],
-				"far": [
-					3.0,
-					18.0
-				],
+				"near": [0.8, 3.0],
+				"far": [3.0, 18.0],
 				"density": 0.5,
 				"fires": 9,
 				"look": {
@@ -321,10 +224,7 @@
 			"rim_glow": 0.2,
 			"street": {
 				"road": "asphalt",
-				"vehicles": [
-					"wreck",
-					"wreck"
-				],
+				"vehicles": ["wreck", "wreck"],
 				"traffic_lights": false,
 				"kiosks": 0.0,
 				"vents": 0.12,
@@ -365,10 +265,7 @@
 			"contrast": 1.08,
 			"exposure": 1.1
 		},
-		"particles": [
-			"ash",
-			"embers"
-		],
+		"particles": ["ash", "embers"],
 		"flora": {
 			"rough": "rubble"
 		},
@@ -379,19 +276,8 @@
 	"medieval": {
 		"name": "medieval-tech barony",
 		"architecture": {
-			"materials": [
-				"stone",
-				"timber",
-				"stone",
-				"plaster"
-			],
-			"walls": [
-				"#9a9082",
-				"#a89c88",
-				"#8a8070",
-				"#c8bca0",
-				"#b0a48c"
-			],
+			"materials": ["stone", "timber", "stone", "plaster"],
+			"walls": ["#9a9082", "#a89c88", "#8a8070", "#c8bca0", "#b0a48c"],
 			"trim": "#4a3a2a",
 			"glass": "#1a1c18",
 			"window_light": "#ffb060",
@@ -410,16 +296,8 @@
 			"storefront": 0,
 			"signs": 0.15,
 			"awnings": 0.15,
-			"sign_colors": [
-				"#a02a2a",
-				"#2a4a8a",
-				"#c8a040"
-			],
-			"awning_colors": [
-				"#8a2a2a",
-				"#2a4a6a",
-				"#c8a040"
-			],
+			"sign_colors": ["#a02a2a", "#2a4a8a", "#c8a040"],
+			"awning_colors": ["#8a2a2a", "#2a4a6a", "#c8a040"],
 			"banner": "#9a1e1e",
 			"landmark_stone": "#8e8678",
 			"street": {
@@ -429,10 +307,7 @@
 				"barrels": 0.25,
 				"crates": 0.2,
 				"road": "cobble",
-				"vehicles": [
-					"cart",
-					"wagon"
-				],
+				"vehicles": ["cart", "wagon"],
 				"traffic_lights": false,
 				"kiosks": 0.0,
 				"vents": 0.0,
@@ -440,22 +315,13 @@
 				"lanterns_on_wires": false
 			},
 			"skyline": {
-				"near": [
-					0.6,
-					1.6
-				],
-				"far": [
-					1.0,
-					3.0
-				],
+				"near": [0.6, 1.6],
+				"far": [1.0, 3.0],
 				"density": 0.3
 			}
 		},
 		"horizon": {
-			"landmarks": [
-				"castle",
-				"windmill"
-			]
+			"landmarks": ["castle", "windmill"]
 		},
 		"in_city": {
 			"sky": {
@@ -492,20 +358,8 @@
 	"old_west": {
 		"name": "frontier boomtown",
 		"architecture": {
-			"materials": [
-				"wood",
-				"wood",
-				"plaster",
-				"brick"
-			],
-			"walls": [
-				"#8a6a4a",
-				"#a07850",
-				"#c8b090",
-				"#7a5a40",
-				"#b09070",
-				"#d0c0a0"
-			],
+			"materials": ["wood", "wood", "plaster", "brick"],
+			"walls": ["#8a6a4a", "#a07850", "#c8b090", "#7a5a40", "#b09070", "#d0c0a0"],
 			"trim": "#3a2a1e",
 			"glass": "#1e1a16",
 			"window_light": "#ffc080",
@@ -521,16 +375,8 @@
 			"storefront": 1,
 			"signs": 0.6,
 			"awnings": 0.5,
-			"sign_colors": [
-				"#e8d8b0",
-				"#c8a060",
-				"#8a3a2a"
-			],
-			"awning_colors": [
-				"#7a5a3a",
-				"#5a4a3a",
-				"#8a3a2a"
-			],
+			"sign_colors": ["#e8d8b0", "#c8a060", "#8a3a2a"],
+			"awning_colors": ["#7a5a3a", "#5a4a3a", "#8a3a2a"],
 			"street": {
 				"lamps": 0.15,
 				"lamp_style": "lantern",
@@ -539,11 +385,7 @@
 				"crates": 0.35,
 				"barrel_color": "#6a4a2a",
 				"road": "dirt",
-				"vehicles": [
-					"wagon",
-					"cart",
-					"wagon"
-				],
+				"vehicles": ["wagon", "cart", "wagon"],
 				"traffic_lights": false,
 				"kiosks": 0.0,
 				"vents": 0.0,
@@ -551,23 +393,13 @@
 				"lanterns_on_wires": false
 			},
 			"skyline": {
-				"near": [
-					0.6,
-					1.4
-				],
-				"far": [
-					1.0,
-					2.5
-				],
+				"near": [0.6, 1.4],
+				"far": [1.0, 2.5],
 				"density": 0.25
 			}
 		},
 		"horizon": {
-			"landmarks": [
-				"water_tower",
-				"windmill",
-				"headframe"
-			]
+			"landmarks": ["water_tower", "windmill", "headframe"]
 		},
 		"in_city": {
 			"sky": {
@@ -606,19 +438,8 @@
 	"retro": {
 		"name": "atomic-age colony",
 		"architecture": {
-			"materials": [
-				"plaster",
-				"metal",
-				"glass",
-				"plaster"
-			],
-			"walls": [
-				"#e8e0d0",
-				"#7ac8c0",
-				"#f0b8a0",
-				"#e8d080",
-				"#d8e0e8"
-			],
+			"materials": ["plaster", "metal", "glass", "plaster"],
+			"walls": ["#e8e0d0", "#7ac8c0", "#f0b8a0", "#e8d080", "#d8e0e8"],
 			"trim": "#c8ccd0",
 			"glass": "#2a4a58",
 			"window_light": "#fff0c0",
@@ -637,21 +458,9 @@
 			"neon": 0.25,
 			"neon_a": "#ff6a5a",
 			"neon_b": "#40e0d0",
-			"sign_colors": [
-				"#ff6a5a",
-				"#40e0d0",
-				"#ffd040"
-			],
-			"neon_colors": [
-				"#ff6a5a",
-				"#40e0d0",
-				"#ffd040"
-			],
-			"awning_colors": [
-				"#40c0b0",
-				"#ff8a6a",
-				"#f0d060"
-			],
+			"sign_colors": ["#ff6a5a", "#40e0d0", "#ffd040"],
+			"neon_colors": ["#ff6a5a", "#40e0d0", "#ffd040"],
+			"awning_colors": ["#40c0b0", "#ff8a6a", "#f0d060"],
 			"accent": "#40e0d0",
 			"landmark_color": "#f0ece0",
 			"street": {
@@ -659,11 +468,7 @@
 				"lamp_style": "post",
 				"lamp_color": "#fff0d0",
 				"road": "asphalt",
-				"vehicles": [
-					"fin_car",
-					"fin_car",
-					"van"
-				],
+				"vehicles": ["fin_car", "fin_car", "van"],
 				"traffic_lights": true,
 				"kiosks": 0.25,
 				"vents": 0.0,
@@ -671,23 +476,13 @@
 				"lanterns_on_wires": false
 			},
 			"skyline": {
-				"near": [
-					0.8,
-					2.5
-				],
-				"far": [
-					2.0,
-					7.0
-				],
+				"near": [0.8, 2.5],
+				"far": [2.0, 7.0],
 				"density": 0.4
 			}
 		},
 		"horizon": {
-			"landmarks": [
-				"domes",
-				"saucer_tower",
-				"monorail"
-			]
+			"landmarks": ["domes", "saucer_tower", "monorail"]
 		},
 		"sky": {
 			"top": "#4a88d0",
@@ -721,19 +516,8 @@
 	"east_asian": {
 		"name": "lantern-lit terraces",
 		"architecture": {
-			"materials": [
-				"plaster",
-				"wood",
-				"plaster",
-				"metal"
-			],
-			"walls": [
-				"#e8dcc8",
-				"#d8ccb4",
-				"#a83a2a",
-				"#3a3430",
-				"#c8b898"
-			],
+			"materials": ["plaster", "wood", "plaster", "metal"],
+			"walls": ["#e8dcc8", "#d8ccb4", "#a83a2a", "#3a3430", "#c8b898"],
 			"trim": "#2a2420",
 			"glass": "#2a2018",
 			"window_light": "#ffc890",
@@ -753,19 +537,9 @@
 			"neon": 0.15,
 			"neon_a": "#ff4a3a",
 			"neon_b": "#ffc040",
-			"sign_colors": [
-				"#c8281e",
-				"#e8c060",
-				"#1e1a18"
-			],
-			"neon_colors": [
-				"#ff4a3a",
-				"#ffc040"
-			],
-			"awning_colors": [
-				"#8a1e18",
-				"#1e2a3a"
-			],
+			"sign_colors": ["#c8281e", "#e8c060", "#1e1a18"],
+			"neon_colors": ["#ff4a3a", "#ffc040"],
+			"awning_colors": ["#8a1e18", "#1e2a3a"],
 			"landmark_color": "#9a2a1e",
 			"street": {
 				"lamps": 0.45,
@@ -773,11 +547,7 @@
 				"lamp_color": "#ff7a40",
 				"crates": 0.1,
 				"road": "cobble",
-				"vehicles": [
-					"scooter",
-					"car",
-					"cart"
-				],
+				"vehicles": ["scooter", "car", "cart"],
 				"traffic_lights": false,
 				"kiosks": 0.25,
 				"vents": 0.0,
@@ -785,36 +555,17 @@
 				"lanterns_on_wires": true
 			},
 			"skyline": {
-				"near": [
-					0.8,
-					2.0
-				],
-				"far": [
-					1.5,
-					8.0
-				],
+				"near": [0.8, 2.0],
+				"far": [1.5, 8.0],
 				"density": 0.4
 			}
 		},
 		"flora": {
-			"woods": [
-				"cherry",
-				"bamboo",
-				"cherry"
-			],
-			"leaf_colors": [
-				"#f0a8c0",
-				"#e890b0",
-				"#f8c8d8",
-				"#5a8a3a"
-			]
+			"woods": ["cherry", "bamboo", "cherry"],
+			"leaf_colors": ["#f0a8c0", "#e890b0", "#f8c8d8", "#5a8a3a"]
 		},
 		"horizon": {
-			"landmarks": [
-				"pagoda",
-				"torii",
-				"pagoda"
-			]
+			"landmarks": ["pagoda", "torii", "pagoda"]
 		},
 		"in_city": {
 			"sky": {
@@ -847,18 +598,8 @@
 	"union": {
 		"name": "Union core world",
 		"architecture": {
-			"materials": [
-				"glass",
-				"plaster",
-				"metal",
-				"glass"
-			],
-			"walls": [
-				"#f2f4f6",
-				"#e4e8ec",
-				"#d0d8e0",
-				"#f8f8f8"
-			],
+			"materials": ["glass", "plaster", "metal", "glass"],
+			"walls": ["#f2f4f6", "#e4e8ec", "#d0d8e0", "#f8f8f8"],
 			"trim": "#b8c4cc",
 			"glass": "#28485a",
 			"window_light": "#e0f0ff",
@@ -878,13 +619,8 @@
 			"neon_a": "#7ad8ff",
 			"neon_b": "#ffffff",
 			"holo": 0.15,
-			"sign_colors": [
-				"#3a7ad8",
-				"#f0f4f8"
-			],
-			"neon_colors": [
-				"#7ad8ff"
-			],
+			"sign_colors": ["#3a7ad8", "#f0f4f8"],
+			"neon_colors": ["#7ad8ff"],
 			"accent": "#7ad8ff",
 			"landmark_color": "#f4f6f8",
 			"street": {
@@ -892,11 +628,7 @@
 				"lamp_style": "post",
 				"lamp_color": "#d8f0ff",
 				"road": "panels",
-				"vehicles": [
-					"pod",
-					"pod",
-					"car"
-				],
+				"vehicles": ["pod", "pod", "car"],
 				"traffic_lights": true,
 				"kiosks": 0.0,
 				"vents": 0.12,
@@ -904,23 +636,14 @@
 				"lanterns_on_wires": false
 			},
 			"skyline": {
-				"near": [
-					1.0,
-					4.0
-				],
-				"far": [
-					10.0,
-					60.0
-				],
+				"near": [1.0, 4.0],
+				"far": [10.0, 60.0],
 				"density": 0.6
 			}
 		},
 		"horizon": {
-			"landmarks": [
-				"white_towers",
-				"space_elevator",
-				"monorail"
-			]
+			"landmarks": ["white_towers", "space_elevator", "monorail"],
+			"traffic": true
 		},
 		"sky": {
 			"top": "#3a78d8",
@@ -928,11 +651,7 @@
 			"haze_color": "#ffe8d0",
 			"clouds": 0.3,
 			"moon_a": 0.6,
-			"moon_a_dir": [
-				0.4,
-				0.5,
-				-0.75
-			],
+			"moon_a_dir": [0.4, 0.5, -0.75],
 			"moon_a_size": 0.035
 		},
 		"in_city": {
@@ -973,20 +692,8 @@
 	"industrial": {
 		"name": "industrial district",
 		"architecture": {
-			"materials": [
-				"brick",
-				"metal",
-				"concrete",
-				"brick"
-			],
-			"walls": [
-				"#8a4a36",
-				"#7a3e2e",
-				"#6a6460",
-				"#8a8070",
-				"#5a5e62",
-				"#9a5a3e"
-			],
+			"materials": ["brick", "metal", "concrete", "brick"],
+			"walls": ["#8a4a36", "#7a3e2e", "#6a6460", "#8a8070", "#5a5e62", "#9a5a3e"],
 			"trim": "#3a3634",
 			"glass": "#2a2c28",
 			"window_light": "#ffc070",
@@ -1002,11 +709,7 @@
 			"storefront": 0,
 			"signs": 0.2,
 			"awnings": 0.0,
-			"sign_colors": [
-				"#e8c040",
-				"#d8d0c0",
-				"#a03a2a"
-			],
+			"sign_colors": ["#e8c040", "#d8d0c0", "#a03a2a"],
 			"accent": "#e8a040",
 			"landmark_color": "#8a5a44",
 			"street": {
@@ -1017,12 +720,7 @@
 				"crates": 0.4,
 				"barrel_color": "#3a5a7a",
 				"road": "asphalt",
-				"vehicles": [
-					"truck",
-					"truck",
-					"van",
-					"car"
-				],
+				"vehicles": ["truck", "truck", "van", "car"],
 				"traffic_lights": true,
 				"kiosks": 0.0,
 				"vents": 0.2,
@@ -1030,23 +728,13 @@
 				"lanterns_on_wires": false
 			},
 			"skyline": {
-				"near": [
-					0.8,
-					2.5
-				],
-				"far": [
-					1.5,
-					6.0
-				],
+				"near": [0.8, 2.5],
+				"far": [1.5, 6.0],
 				"density": 0.4
 			}
 		},
 		"horizon": {
-			"landmarks": [
-				"smokestacks",
-				"water_tower",
-				"smokestacks"
-			]
+			"landmarks": ["smokestacks", "water_tower", "smokestacks"]
 		},
 		"particles": "dust",
 		"in_city": {
@@ -1084,20 +772,8 @@
 	"port": {
 		"name": "harbor town",
 		"architecture": {
-			"materials": [
-				"metal",
-				"concrete",
-				"plaster",
-				"brick"
-			],
-			"walls": [
-				"#d8d4cc",
-				"#4a6a8a",
-				"#8a4a3a",
-				"#c8b898",
-				"#5a7a6a",
-				"#e0dcd0"
-			],
+			"materials": ["metal", "concrete", "plaster", "brick"],
+			"walls": ["#d8d4cc", "#4a6a8a", "#8a4a3a", "#c8b898", "#5a7a6a", "#e0dcd0"],
 			"trim": "#2a3440",
 			"glass": "#22323e",
 			"window_light": "#ffe0b0",
@@ -1113,16 +789,8 @@
 			"storefront": 1,
 			"signs": 0.35,
 			"awnings": 0.3,
-			"sign_colors": [
-				"#e8e4dc",
-				"#c83a2a",
-				"#2a5a8a"
-			],
-			"awning_colors": [
-				"#2a5a8a",
-				"#c83a2a",
-				"#e8e4dc"
-			],
+			"sign_colors": ["#e8e4dc", "#c83a2a", "#2a5a8a"],
+			"awning_colors": ["#2a5a8a", "#c83a2a", "#e8e4dc"],
 			"accent": "#e8a020",
 			"landmark_color": "#e8a020",
 			"street": {
@@ -1133,12 +801,7 @@
 				"crates": 0.5,
 				"barrel_color": "#8a3a2a",
 				"road": "asphalt",
-				"vehicles": [
-					"truck",
-					"van",
-					"car",
-					"truck"
-				],
+				"vehicles": ["truck", "van", "car", "truck"],
 				"traffic_lights": false,
 				"kiosks": 0.15,
 				"vents": 0.0,
@@ -1146,23 +809,13 @@
 				"lanterns_on_wires": false
 			},
 			"skyline": {
-				"near": [
-					0.8,
-					2.5
-				],
-				"far": [
-					1.5,
-					6.0
-				],
+				"near": [0.8, 2.5],
+				"far": [1.5, 6.0],
 				"density": 0.38
 			}
 		},
 		"horizon": {
-			"landmarks": [
-				"cranes",
-				"cranes",
-				"water_tower"
-			]
+			"landmarks": ["cranes", "cranes", "water_tower"]
 		},
 		"in_city": {
 			"sky": {
