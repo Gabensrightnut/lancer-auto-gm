@@ -334,19 +334,22 @@ static func _col_row(cell: Vector2i, shape: GridLayout.Shape) -> Vector2i:
 
 
 static func _raise_pair(map: BattleMap, c: int, r: int, w: int, h: int, shape: GridLayout.Shape, blocked: Dictionary, levels: int, tags: Array) -> void:
-	for p: Vector2i in [Vector2i(c, r), Vector2i(w - 1 - c, h - 1 - r)]:
-		var cell := SitrepLayout.cell_of(p.x, p.y, shape)
+	var pair: Array[Vector2i] = [SitrepLayout.cell_of(c, r, shape), SitrepLayout.cell_of(w - 1 - c, h - 1 - r, shape)]
+	for cell in pair:
+		if map.has_cell(cell) and _built(map, cell):
+			return  # never raise a house, wall or street; the pair stays mirrored
+	for cell in pair:
 		if not map.has_cell(cell) or blocked.has(cell):
 			continue
 		var col := map.column(cell)
 		if col.has_tag(BattleMap.TAG_IMPASSABLE) or col.gap_top > 0 or col.ground >= 3:
 			continue
 		col.ground += levels
-		col.tags = PackedStringArray(tags)
+		col.tags = PackedStringArray(_cover_look(map, cell, tags))
 
 
 static func _copy_cover(map: BattleMap, src: Vector2i, dst: Vector2i, blocked: Dictionary) -> void:
-	if not map.has_cell(dst) or blocked.has(dst):
+	if not map.has_cell(dst) or blocked.has(dst) or _built(map, dst):
 		return
 	var a := map.column(src)
 	var b := map.column(dst)
@@ -360,8 +363,33 @@ static func _copy_cover(map: BattleMap, src: Vector2i, dst: Vector2i, blocked: D
 		if map.has_cell(n):
 			low = mini(low, map.ground_height(n))
 	b.ground = mini(b.ground + maxi(1, a.ground - low), 6)
-	var tags := PackedStringArray()
+	var tags: Array = []
 	for t in a.tags:
 		if not t in [BattleMap.TAG_DESTRUCTIBLE, BattleMap.TAG_IMPASSABLE]:
 			tags.append(t)
-	b.tags = tags
+	b.tags = PackedStringArray(_cover_look(map, dst, tags))
+
+
+## Structures repairs never raise or overwrite (streets, yards and fields may get barricades).
+const BUILT := ["building", "house", "keep", "wall"]
+
+
+static func _built(map: BattleMap, cell: Vector2i) -> bool:
+	var col := map.column(cell)
+	for t: String in BUILT:
+		if col.has_tag(t):
+			return true
+	return false
+
+
+## Added cover next to a building is a low wall (crates, a barricade), never a rock jammed
+## against the house. Look only: the rules see the same raised block either way.
+static func _cover_look(map: BattleMap, cell: Vector2i, tags: Array) -> Array:
+	if not tags.has("rock"):
+		return tags
+	for n in map.grid.cells_within(cell, 2):
+		if map.has_cell(n) and (map.column(n).has_tag("building") or map.column(n).has_tag("house") or map.column(n).has_tag("lot") or map.column(n).has_tag("road")):
+			var out := tags.filter(func(t: String) -> bool: return t != "rock")
+			out.append("wall")
+			return out
+	return tags

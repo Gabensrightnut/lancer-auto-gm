@@ -64,6 +64,8 @@ static func threat_for(u: Unit, w: Dictionary) -> int:
 ## RANGE for this unit: the listed Range plus effects (Tokugawa Limit Break and Radiance).
 static func range_for(u: Unit, w: Dictionary) -> int:
 	var r := range_value(w, "Range")
+	if String(w.get("id", "")) == "mw_mimic_gun":
+		r = GearSystems.mimic_range(u, w)  # its base Range this turn
 	if r > 0 and not is_melee(w):
 		r += reach_bonus(u, w, "range")
 	return r

@@ -8,6 +8,7 @@ extends TestCase
 static func setup(seed_value: int = 7) -> Dictionary:
 	var c := Campaign.create("Story test")
 	c.id = "c_test_%d" % seed_value
+	c.options["travel_events"] = false  # no random pirate boardings in tests (test_story_boarding forces one)
 	var a := c.new_pilot("Ama Okafor", "Bluebird")
 	var b := c.new_pilot("Rin Sato", "Kettle")
 	a["skills"] = {"sk_charm": 1, "sk_patch": 1, "sk_word_on_the_street": 2, "sk_investigate": 1}
@@ -200,14 +201,14 @@ func test_vote_mode_and_ai_votes() -> void:
 	while Dialogue.offered(s).is_empty() and Dialogue.is_open(s) and guard < 5:
 		e.submit(s, c, {"type": "dialogue_next", "seat": "p1"})
 		guard += 1
-	expect(s.dialogue["votes"].has("p2"), "the AI squadmate voted as soon as the choice opened")
+	expect(not s.dialogue["votes"].has("p2"), "AI squadmates don't vote: they follow their human")
 	var vote := e.submit(s, c, {"type": "dialogue_choose", "seat": "p1", "params": {"choice": "leave"}})
 	expect(vote["ok"])
 	var types: Array = vote["events"].map(func(x: Dictionary) -> String: return x["type"])
-	expect(types.has("dialogue_choice"), "all seats voted, so it resolved")
+	expect(types.has("dialogue_choice"), "the only human voted, so it resolved")
 
 
-func test_ai_speaker_picks_in_character() -> void:
+func test_ai_speaker_follows_their_human() -> void:
 	var t := setup()
 	var s: StoryState = t["story"]
 	var c: Campaign = t["campaign"]
@@ -221,10 +222,9 @@ func test_ai_speaker_picks_in_character() -> void:
 		all_events.append_array(e.submit(s, c, {"type": "dialogue_next", "seat": "p1"})["events"])
 		guard += 1
 	var ai := all_events.filter(func(x: Dictionary) -> bool: return x["type"] == "ai_chose")
-	expect(not ai.is_empty(), "AI squadmate chose for themselves")
-	if not ai.is_empty():
-		expect(str(ai[0]["why"]).contains("Kettle"), "explains the choice in character: %s" % ai[0]["why"])
-		expect(ai[0]["choice"] != "leave", "a bold squadmate doesn't walk away first")
+	expect(ai.is_empty(), "an AI squadmate speaking doesn't choose for the squad")
+	expect_eq(str(Dialogue.decider(s, c)["speaker_seat"]), "p1", "its human picks the reply")
+	expect(e.submit(s, c, {"type": "dialogue_choose", "seat": "p1", "params": {"choice": Dialogue.offered(s)[0]["id"]}})["ok"])
 
 
 func test_brawl_harm_and_down_and_out() -> void:

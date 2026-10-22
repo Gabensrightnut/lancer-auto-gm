@@ -32,3 +32,23 @@ func test_feet_planted_after_whole_cells() -> void:
 		var base: Vector3 = leg["base"]
 		expect(absf((leg["hip"] as Node3D).rotation_degrees.x - base.x) < 0.01, "hip back at rest on a cell")
 	m.free()
+
+
+func test_free_walker_moves_smoothly_and_turns() -> void:
+	var view := BattleView.new()
+	view.set_map(BattleMap.flat(GridLayout.Shape.HEX, 12, 12), "grassy_hills")
+	var mv := view.add_unit({"id": "e", "content_id": "mf_standard_pattern_i_everest", "side": "players", "size": 1, "cell": [2, 2], "level": 0})
+	var w := FreeWalker.attach(mv)
+	w._ready()
+	var start := mv.position
+	w.walk_to(start + Vector3(4, 0, 0))
+	var phase0 := mv.model.walk_phase
+	for i in range(60):
+		w._physics_process(1.0 / 30.0)
+	expect(mv.position.x > start.x + 2.0, "it walked toward the point")
+	expect(mv.model.walk_phase > phase0, "the gait advanced with the distance")
+	expect(absf(wrapf(mv.model.rotation.y - atan2(-1.0, 0.0), -PI, PI)) < 0.2, "it turned to face its way")
+	for i in range(120):
+		w._physics_process(1.0 / 30.0)
+	expect(not w.is_moving(), "and stops at the point")
+	view.free()

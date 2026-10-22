@@ -1025,5 +1025,106 @@
       ]
     }
   ],
-  "t_leader:Issue Order": []
+  "t_leader:Issue Order": [],
+  "ms_h0r_os_system_upgrade_iii:Dimensional Emblems": [
+    {
+      "op": "emblems",
+      "label": "Dimensional Emblems"
+    }
+  ],
+  "ms_h0r_os_system_upgrade_iii:Celestial Shackles": [
+    {
+      "op": "shackle",
+      "label": "Celestial Shackles"
+    }
+  ],
+  "deploy:ms_h0r_os_system_upgrade_iii:Dimensional Emblems": {
+    "skip": true
+  },
+  "ms_h0r_os_system_upgrade_i:Puppet System": [
+    {
+      "op": "puppet",
+      "label": "Puppet System"
+    }
+  ],
+  "ms_metahook:Metahook": [
+    {
+      "op": "metahook",
+      "label": "Metahook"
+    }
+  ],
+  "ms_law_of_blades:Predator/Prey Concepts": [
+    {
+      "op": "predator_prey",
+      "tech_attack": true,
+      "label": "Predator/Prey Concepts"
+    }
+  ],
+  "ms_law_of_blades:Slave Systems": [
+    {
+      "op": "slave_systems",
+      "tech_attack": true,
+      "label": "Slave Systems"
+    }
+  ],
+  "ms_sisyphus_class_nhp:Bend Probability": [
+    {
+      "op": "bend_probability",
+      "label": "Bend Probability"
+    }
+  ],
+  "ms_sisyphus_class_nhp:Probabilistic Cannibalism": [],
+  "ms_mesmer_charges:Mesmer Beacon": [
+    {
+      "op": "mesmer",
+      "label": "Mesmer Beacon"
+    }
+  ],
+  "ms_mimic_mesh:Activate Mimic Mesh": [
+    {
+      "op": "mimic_mesh",
+      "label": "Mimic Mesh"
+    }
+  ],
+  "ms_mimic_mesh:Battlefield Awareness": [],
+  "ms_puppetmaster:Guide the Flock": [
+    {
+      "op": "guide_flock",
+      "label": "Guide the Flock"
+    }
+  ],
+  "mw_annihilation_nexus:Annihilation Nexus Secondary Attack": [
+    {
+      "op": "annihilation_second",
+      "label": "Annihilation Nexus Secondary Attack"
+    }
+  ],
+  "deploy:ms_perimeter_command_plate:Perimeter Command Plate": {
+    "skip": true
+  },
+  "actions:ms_perimeter_command_plate": [
+    {
+      "name": "Print Perimeter Command Plate",
+      "activation": "Quick",
+      "detail": "A flat 2x2 plate within Range 5 (params.aim), set to repulse or attract (params.setting).",
+      "ops": [
+        {
+          "op": "pcp",
+          "label": "Perimeter Command Plate"
+        }
+      ]
+    }
+  ],
+  "actions:mw_mimic_gun": [
+    {
+      "name": "Provoke the Mimic Gun",
+      "activation": "Full",
+      "detail": "Roll a new set of 3d20 for its Range.",
+      "ops": [
+        {
+          "op": "provoke_mimic"
+        }
+      ]
+    }
+  ]
 }

@@ -321,15 +321,38 @@ void fragment() {
 			relief = n3 * 0.5 - seam;
 			rough = 0.95;
 		} else if (kind == 14) {
-			// Road. vcol.g: 0.15 runs along x, 0.5 along z, 0.85 a crossing. UV: offset from the cell center.
+			// Road. vcol.g (renderer): along x 0.05 + code/255, along z 0.45 + code/255 (code =
+			// n*6 + i, +42 for a crosswalk), 0.85 a crossing, 0.9 / 0.915 rail along x / z,
+			// 0.97 a lot, 0.99 a square. UV: offset from the cell center.
 			vec2 loc = UV;
-			bool along_z = vcol.g > 0.3 && vcol.g < 0.7;
-			bool crossing = vcol.g > 0.7;
+			bool lot = vcol.g > 0.93;  // a yard, sidewalk or square: paving without markings
+			bool plaza = vcol.g > 0.985;
+			bool rail = vcol.g > 0.895 && vcol.g < 0.93;
+			bool crossing = vcol.g > 0.8 && !lot && !rail;
+			bool along_z = (vcol.g > 0.42 && vcol.g < 0.8) || (rail && vcol.g > 0.91);
+			float lbase = vcol.g < 0.42 ? 0.05 : 0.45;
+			int code = int(round((vcol.g - lbase) * 255.0));
+			bool zebra = !crossing && !lot && !rail && code >= 42;
+			if (zebra) {
+				code -= 42;
+			}
+			int lane_n = (crossing || lot || rail) ? 0 : code / 6;
+			int lane_i = (crossing || lot || rail) ? 0 : code - lane_n * 6;
 			float across = along_z ? loc.x : loc.y;   // distance from the lane's middle
 			float along = along_z ? wpos.z : wpos.x;
-			if (road_style == 0) {
+			if (rail) {
+				// Railway: gravel ballast, timber sleepers across, two steel rails.
+				col = mix(vec3(0.32, 0.3, 0.28), vec3(0.42, 0.4, 0.37), n3) * (0.85 + 0.2 * n2);
+				float sleeper = step(0.55, fract(along * 2.4)) * step(abs(across), 0.36);
+				col = mix(col, vec3(0.26, 0.19, 0.13), sleeper);
+				float rails = smoothstep(0.03, 0.012, abs(abs(across) - 0.2));
+				col = mix(col, vec3(0.62, 0.62, 0.64), rails);
+				metal = rails * 0.8;
+				rough = mix(0.95, 0.35, rails);
+				relief = n3 * 0.6 + rails * 0.5 + sleeper * 0.3;
+			} else if (road_style == 0) {
 				col = mix(soil * 1.1, soil * 0.8, n2) * (0.85 + 0.25 * n3);
-				float rut = smoothstep(0.06, 0.0, abs(abs(across) - 0.22)) * (crossing ? 0.0 : 1.0);
+				float rut = smoothstep(0.06, 0.0, abs(abs(across) - 0.22)) * (crossing || lot ? 0.0 : 1.0);
 				col *= 1.0 - 0.3 * rut;
 				relief = n3 * 0.5 - rut;
 				rough = 0.95;
@@ -343,7 +366,7 @@ void fragment() {
 				vec2 g = abs(fract(p * vec2(1.0, 2.0)) - 0.5);
 				float seam = smoothstep(0.47, 0.49, max(g.x, g.y));
 				col = vec3(0.52, 0.54, 0.57) * (0.95 + 0.08 * n3) * (1.0 - 0.3 * seam);
-				float guide = smoothstep(0.03, 0.0, abs(across)) * (crossing ? 0.0 : 1.0);
+				float guide = smoothstep(0.03, 0.0, abs(across)) * (crossing || lot ? 0.0 : 1.0);
 				emit = strip_light * guide * 1.2;
 				rough = 0.35;
 				relief = -seam;
@@ -353,18 +376,69 @@ void fragment() {
 				float wet_r = smoothstep(0.6, 0.66, fbm3(p * 0.6 + 21.0)) * wetness;
 				rough = mix(0.8, 0.05, wet_r);
 				col *= 1.0 - 0.35 * wet_r;
-				if (!crossing) {
+				if (plaza) {
+					// A square: warm stone pavers in a basket weave, a border every few meters.
+					vec2 q = wpos.xz * 2.2;
+					vec2 cellq = floor(q);
+					bool turn = mod(cellq.x + cellq.y, 2.0) > 0.5;
+					vec2 f = fract(turn ? q.yx * vec2(2.0, 1.0) : q * vec2(2.0, 1.0));
+					float seam = smoothstep(0.42, 0.48, max(abs(f.x - 0.5), abs(f.y - 0.5)));
+					col = mix(vec3(0.42, 0.38, 0.33), vec3(0.52, 0.47, 0.4), hash(cellq)) * (1.0 - 0.3 * seam) * (1.0 - 0.3 * wet_r);
+				} else if (lot) {
+					// Sidewalk and lot: pale concrete slabs with seams.
+					vec2 g = abs(fract(wpos.xz * 1.6) - 0.5);
+					float seam = smoothstep(0.46, 0.49, max(g.x, g.y));
+					col = mix(vec3(0.3, 0.3, 0.3), vec3(0.4, 0.39, 0.37), n3) * (1.0 - 0.35 * seam) * (1.0 - 0.3 * wet_r);
+				} else if (lane_n > 0) {
+					// Lanes by the road's width: an alley has none; a street a centre line on the
+					// edge it shares with the next lane; wider roads lane lines; four or more a
+					// median (double yellow); solid edge lines and a curb at the outer lanes.
+					float dash = step(0.5, fract(along * 0.9));
+					vec3 white = vec3(0.86, 0.85, 0.8);
+					vec3 yellow = vec3(0.9, 0.72, 0.2);
+					float half_n = float(lane_n) * 0.5;
+					if (lane_n >= 2) {
+						if (lane_i < lane_n - 1) {
+							bool mid = float(lane_i + 1) == floor(half_n) || (lane_n == 3 && lane_i == 0);
+							float ln = smoothstep(0.035, 0.012, abs(across - 0.47));
+							if (lane_n >= 4 && float(lane_i + 1) == floor(half_n)) {
+								ln = smoothstep(0.02, 0.008, abs(across - 0.47)) + smoothstep(0.02, 0.008, abs(across - 0.42));
+								col = mix(col, yellow, clamp(ln, 0.0, 1.0) * 0.9);
+							} else {
+								col = mix(col, lane_n == 2 ? yellow : white, ln * dash * 0.9);
+							}
+						}
+						if (lane_i > 0) {
+							float ln = smoothstep(0.035, 0.012, abs(across + 0.47));
+							if (lane_n >= 4 && lane_i == int(floor(half_n))) {
+								ln = smoothstep(0.02, 0.008, abs(across + 0.47)) + smoothstep(0.02, 0.008, abs(across + 0.42));
+								col = mix(col, yellow, clamp(ln, 0.0, 1.0) * 0.9);
+							} else {
+								col = mix(col, lane_n == 2 ? yellow : white, ln * dash * 0.9);
+							}
+						}
+					}
+					if (lane_n >= 2) {
+						float edge_lo = lane_i == 0 ? smoothstep(0.03, 0.012, abs(across + 0.4)) : 0.0;
+						float edge_hi = lane_i == lane_n - 1 ? smoothstep(0.03, 0.012, abs(across - 0.4)) : 0.0;
+						col = mix(col, white, (edge_lo + edge_hi) * 0.7);
+					}
+					// Curb: a pale strip right at the outer edge of the outer lanes.
+					float curb = (lane_i == 0 ? smoothstep(0.455, 0.49, -across) : 0.0) + (lane_i == lane_n - 1 ? smoothstep(0.455, 0.49, across) : 0.0);
+					col = mix(col, vec3(0.55, 0.54, 0.52), clamp(curb, 0.0, 1.0));
+				} else if (!crossing) {
 					// Dashed lane line along the middle of the lane, solid edge lines.
 					float dash = step(0.5, fract(along * 0.9));
 					float lane = smoothstep(0.035, 0.015, abs(across)) * dash;
 					float edge = smoothstep(0.03, 0.012, abs(abs(across) - 0.44));
 					col = mix(col, vec3(0.85, 0.82, 0.7), lane * 0.9);
 					col = mix(col, vec3(0.75, 0.75, 0.72), edge * 0.6);
-				} else {
-					// Crosswalk: zebra stripes near the edges of the crossing.
-					float zx = step(0.5, fract(wpos.x * 3.5)) * step(0.3, abs(loc.y)) * step(abs(loc.y), 0.48);
-					float zz = step(0.5, fract(wpos.z * 3.5)) * step(0.3, abs(loc.x)) * step(abs(loc.x), 0.48);
-					col = mix(col, vec3(0.86, 0.86, 0.84), clamp(zx + zz, 0.0, 1.0) * 0.85);
+				}
+				if (zebra) {
+					// Crosswalk on the last stretch before the intersection: bars across the road.
+					float along_l = along_z ? loc.y : loc.x;
+					float bar = step(0.5, fract(across * 5.0 + 0.25)) * step(abs(along_l), 0.3);
+					col = mix(col, vec3(0.86, 0.86, 0.84), bar * 0.85);
 				}
 				relief = n3 * 0.2;
 			}

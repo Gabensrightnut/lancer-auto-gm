@@ -9,7 +9,42 @@ const IMPROVISED := {"key": "improvised", "name": "Improvised Attack", "type": "
 	"damage": [{"type": "Kinetic", "val": "1d6"}], "range": [{"type": "Threat", "val": 1}], "tags": []}
 
 
+## Lancer Tactics option "lt_aux_mount": firing only the Auxiliary weapon of a mount that also
+## has a Main weapon counts as firing the mount, without bonus damage.
+static func lt_aux_only(state: GameState, u: Unit, w: Dictionary) -> bool:
+	if String(w.get("size", "")) != "Auxiliary" or not HouseRuleSwitches.on(state, "lt_aux_mount"):
+		return false
+	for x: Dictionary in u.loadout.get("weapons", []):
+		if x != w and int(x.get("mount", -1)) == int(w.get("mount", -2)) and String(x.get("size", "")) == "Main":
+			return true
+	return false
+
+
+## Ghast Nexus deployed as a drone: Range and line of sight from the drone (weapons: Ghast
+## Nexus). A destroyed drone can't be used until repaired. Returns the attack params to use, or
+## {"denied": reason}.
+static func from_drone(state: GameState, u: Unit, a: Dictionary) -> Dictionary:
+	var w := Weapons.find(u, String(a.get("weapon", "")))
+	if String(w.get("id", "")) != "mw_ghast_nexus":
+		return a
+	for d: Unit in state.units.values():
+		if String(d.counters.get("owner", "")) != u.id or not String(d.counters.get("ability", "")).begins_with("w:" + String(w["key"])):
+			continue
+		if d.destroyed:
+			return {"denied": "The Ghast drone was destroyed: repair it before using the weapon again."}
+		var out := a.duplicate()
+		out["origin_cell"] = d.cell
+		return out
+	return a
+
+
 static func _check_attack(state: GameState, u: Unit, a: Variant, ref: String) -> RuleResult:
+	if a is Dictionary:
+		var fd := AttackActions.from_drone(state, u, a)
+		if fd.has("denied"):
+			return RuleResult.deny(String(fd["denied"]), "weapons: Ghast Nexus")
+		if fd.has("origin_cell") and not (a as Dictionary).has("origin_cell"):
+			return _check_attack(state, u, fd, ref)
 	if a is Dictionary and (a as Dictionary).get("lunge", false):
 		# Hunter Lunge: check the attack from where the lunge ends.
 		var lr := TalentRules.check_lunge(state, u, Weapons.find(u, String(a.get("weapon", ""))), state.unit(String(a.get("target", ""))))
@@ -99,7 +134,10 @@ static func _check_aux(state: GameState, u: Unit, aux: Array, fired: Array[Dicti
 	return RuleResult.allow()
 
 
-static func _run(state: GameState, u: Unit, a: Dictionary, aux: bool) -> Array[Dictionary]:
+static func _run(state: GameState, u: Unit, a0: Dictionary, aux: bool) -> Array[Dictionary]:
+	var a := AttackActions.from_drone(state, u, a0)
+	if String(Weapons.find(u, String(a.get("weapon", ""))).get("id", "")) == "mw_annihilation_nexus" and state.active_unit == u.id:
+		u.counters["annihilation_round"] = state.round_number  # its secondary attack next turn
 	var w := WeaponRules.variant(Weapons.find(u, String(a["weapon"])), a)
 	var pre := TalentRules.spend_ammo(u, String(a.get("ammo", "")))
 	var lunge: Array[Dictionary] = TalentRules.lunge(state, u, state.unit(String(a.get("target", "")))) if a.get("lunge", false) else ([] as Array[Dictionary])
@@ -237,7 +275,7 @@ static func _fire(state: GameState, u: Unit, w: Dictionary, a: Dictionary, aux: 
 		var tb := AttackActions.throughbolt(state, u, a)
 		pre_events = tb["events"]
 		opts["origin_cell"] = tb["end"]
-	opts["no_bonus_damage"] = aux
+	opts["no_bonus_damage"] = aux or AttackActions.lt_aux_only(state, u, w)
 	opts["action"] = String(a.get("_action", "attack"))
 	var p := Attacks.preview(state, u, w, target, opts)
 	if not p["ok"]:

@@ -27,6 +27,7 @@ STRAP = L.mat("strap", (0.06, 0.045, 0.03), 0.05, 0.85)
 SHELL = L.mat("shell", (0.4, 0.04, 0.02), 0.3, 0.5)
 BRASS = L.mat("brass", (0.55, 0.38, 0.12), 0.9, 0.3)
 WHITE = L.mat("stencil", (0.75, 0.75, 0.7), 0.0, 0.7)
+GREY = L.mat("limb", (0.09, 0.09, 0.095), 0.4, 0.55)
 GLOW = L.mat("glow", (0.05, 0.3, 0.05), 0.0, 0.4, emit=(0.35, 1.0, 0.35))
 
 
@@ -112,8 +113,36 @@ def armored(name, a, b, w, d, parent, taper=0.9):
     return o, rot
 
 
+def xblock(name, a, b, w, d, parent, taper=1.0, plate=False):
+    """Heavy dark-grey limb block with X-braced panels framed on its faces (the reference's
+    signature look), optional teal armor plate on the outer face."""
+    o, rot = between(name, a, b, w, d, GREY, parent, bevel_w=0.018, taper=taper)
+    a, b = Vector(a), Vector(b)
+    length = (b - a).length
+    for face in range(4):
+        n = rot @ (Vector((1, 0, 0)) if face < 2 else Vector((0, 0, 1)))
+        sgn = 1 if face % 2 == 0 else -1
+        half = (w if face < 2 else d) / 2 + 0.004
+        side = rot @ (Vector((0, 0, 1)) if face < 2 else Vector((1, 0, 0)))
+        span = (d if face < 2 else w) * 0.36
+        c0, c1 = a + (b - a) * 0.12, a + (b - a) * 0.88
+        off = n * sgn * half
+        for q in (-1, 1):
+            between(name + "_r%d%d" % (face, q), c0 + off + side * span * q, c1 + off + side * span * q, 0.012, 0.012, FRAME, parent, bevel_w=0.003)
+        between(name + "_xa%d" % face, c0 + off - side * span, c1 + off + side * span, 0.01, 0.01, FRAME, parent, bevel_w=0.002)
+        between(name + "_xb%d" % face, c0 + off + side * span, c1 + off - side * span, 0.01, 0.01, FRAME, parent, bevel_w=0.002)
+    if plate:
+        c = (a + b) / 2 + rot @ Vector((w / 2 + 0.01, 0, 0))
+        pl = L.box(name + "_plate", (0.02, length * 0.55, d * 0.7), (0, 0, 0), TEAL2, None, bevel_w=0.008)
+        L.set_world(pl, Matrix.Translation(L.V(c)) @ (L.C @ rot @ L.C.inverted()).to_4x4())
+        bpy.context.view_layer.update()
+        pl.parent = parent
+        pl.matrix_parent_inverse = parent.matrix_world.inverted()
+    return o, rot
+
+
 # --- rig ---------------------------------------------------------------------------------
-HIP_Y = 0.36
+HIP_Y = 0.47
 pelvis = L.joint("Pelvis", (0, HIP_Y, 0))
 T0 = HIP_Y + 0.04
 torso = L.joint("Torso", (0, T0, 0), pelvis)
@@ -123,34 +152,34 @@ L.box("pelvis_plate", (0.12, 0.06, 0.04), (0, HIP_Y - 0.01, -0.075), TEAL, pelvi
 
 # --- legs: wide, slightly bent -----------------------------------------------------------
 for s, side in ((1, "r"), (-1, "l")):
-    H = Vector((s * 0.13, HIP_Y - 0.01, 0.0))
-    K = Vector((s * 0.15, 0.21, -0.04))
-    A = Vector((s * 0.14, 0.075, 0.0))
+    H = Vector((s * 0.15, HIP_Y - 0.01, 0.0))
+    K = Vector((s * 0.22, 0.27, -0.09))
+    A = Vector((s * 0.21, 0.085, 0.0))
     hip = L.joint("Hip_" + side, tuple(H), pelvis)
     knee = L.joint("Knee_" + side, tuple(K), hip)
     ankle = L.joint("Ankle_" + side, tuple(A), knee)
-    pod("hip_pod_" + side, H + Vector((s * 0.015, 0, 0)), 0.05, (s, 0, -0.4), hip)
-    truss("thigh_" + side, H + Vector((0, -0.04, 0)), K + Vector((0, 0.04, 0)), 0.065, hip)
-    pod("knee_pod_" + side, K, 0.048, (0, 0, -1), knee)
-    armored("shin_" + side, K + Vector((0, -0.04, 0)), A + Vector((0, 0.02, 0)), 0.095, 0.1, knee)
+    pod("hip_pod_" + side, H + Vector((s * 0.03, 0, 0)), 0.065, (s, 0, -0.4), hip)
+    xblock("thigh_" + side, H + Vector((0, -0.03, 0)), K + Vector((0, 0.05, 0)), 0.17, 0.18, hip)
+    pod("knee_pod_" + side, K + Vector((0, 0, -0.03)), 0.085, (0, 0, -1), knee)
+    xblock("shin_" + side, K + Vector((0, -0.05, 0)), A + Vector((0, 0.03, 0)), 0.17, 0.18, knee, taper=1.1, plate=True)
     L.cyl("ankle_" + side, 0.028, 0.08, tuple(A), FRAME, ankle, axis="x")
     # Flat segmented foot.
-    L.box("heel_" + side, (0.1, 0.04, 0.07), tuple(Vector((A.x, 0.022, A.z + 0.035))), TEAL2, ankle, bevel_w=0.01)
+    L.box("heel_" + side, (0.15, 0.05, 0.09), tuple(Vector((A.x, 0.022, A.z + 0.035))), TEAL2, ankle, bevel_w=0.01)
     for k in range(3):
-        L.box("toe%d_%s" % (k, side), (0.105, 0.035, 0.045), tuple(Vector((A.x, 0.02, A.z - 0.015 - k * 0.042))), TEAL2, ankle, rot_deg=(k * 3.0, 0, 0), bevel_w=0.009)
-        L.box("toe_seam%d_%s" % (k, side), (0.107, 0.012, 0.006), tuple(Vector((A.x, 0.03, A.z + 0.007 - k * 0.042))), DARK, ankle, bevel_w=0)
+        L.box("toe%d_%s" % (k, side), (0.15, 0.045, 0.055), tuple(Vector((A.x, 0.02, A.z - 0.015 - k * 0.042))), TEAL2, ankle, rot_deg=(k * 3.0, 0, 0), bevel_w=0.009)
+        L.box("toe_seam%d_%s" % (k, side), (0.152, 0.012, 0.006), tuple(Vector((A.x, 0.03, A.z + 0.007 - k * 0.042))), DARK, ankle, bevel_w=0)
     L.box("foot_top_" + side, (0.07, 0.03, 0.08), tuple(Vector((A.x, 0.05, A.z - 0.01))), FRAME, ankle, bevel_w=0.008)
 
 # --- torso: the big rounded egg chest ------------------------------------------------------
 L.cyl("waist", 0.07, 0.06, (0, T0 + 0.02, 0), FRAME, torso)
 chest = L.loft("chest", [
-    dict(y=T0 + 0.03, w=0.2, d=0.18, n=2.1),
-    dict(y=T0 + 0.1, w=0.36, d=0.31, n=2.15),
-    dict(y=T0 + 0.22, w=0.46, d=0.39, n=2.2, z=-0.01),
-    dict(y=T0 + 0.34, w=0.48, d=0.41, n=2.2, z=-0.015),
-    dict(y=T0 + 0.44, w=0.43, d=0.37, n=2.15, z=-0.01),
-    dict(y=T0 + 0.5, w=0.32, d=0.28, n=2.1),
-    dict(y=T0 + 0.53, w=0.16, d=0.14, n=2.0),
+    dict(y=T0 + 0.03, w=0.168, d=0.151, n=2.1),
+    dict(y=T0 + 0.1, w=0.302, d=0.260, n=2.15),
+    dict(y=T0 + 0.22, w=0.386, d=0.328, n=2.2, z=-0.01),
+    dict(y=T0 + 0.34, w=0.403, d=0.344, n=2.2, z=-0.015),
+    dict(y=T0 + 0.44, w=0.361, d=0.311, n=2.15, z=-0.01),
+    dict(y=T0 + 0.5, w=0.269, d=0.235, n=2.1),
+    dict(y=T0 + 0.53, w=0.134, d=0.118, n=2.0),
 ], TEAL, torso, ring=40)
 # Panel seams.
 L.groove(chest, (-0.25, T0 + 0.16, -0.2), (0.25, T0 + 0.16, -0.2), width=0.008, depth=0.02)
@@ -213,37 +242,37 @@ for s in (1, -1):
 # --- arms: red pods, truss uppers, boxy forearms, big hands -------------------------------
 ARMS = {
     # Right: shotgun resting on the shoulder. Left: hanging low with the knife.
-    "r": ((0.265, T0 + 0.39, 0.0), (0.34, T0 + 0.22, -0.1), (0.3, T0 + 0.37, -0.22), (-0.08, 0.6, 0.8)),
-    "l": ((-0.265, T0 + 0.39, 0.0), (-0.34, T0 + 0.21, -0.03), (-0.33, T0 + 0.01, -0.1), (0.0, -0.25, -1.0)),
+    "r": ((0.28, T0 + 0.36, 0.0), (0.44, T0 + 0.2, -0.08), (0.34, T0 + 0.42, -0.2), (-0.08, 0.6, 0.8)),
+    "l": ((-0.28, T0 + 0.36, 0.0), (-0.44, T0 + 0.1, -0.02), (-0.43, T0 - 0.24, -0.12), (0.0, -0.25, -1.0)),
 }
 for side, (Sh, El, Ha, wdir) in ARMS.items():
     s = 1 if side == "r" else -1
     Sh, El, Ha = Vector(Sh), Vector(El), Vector(Ha)
     pad = L.joint("Pad_" + side, tuple(Sh), torso)
-    pod("shoulder_pod_" + side, Sh + Vector((s * 0.005, 0.0, 0.0)), 0.07, (s, 0.3, -0.3), pad)
+    pod("shoulder_pod_" + side, Sh + Vector((s * 0.01, 0.01, 0.0)), 0.11, (s, 0.3, -0.3), pad)
     L.slot("Slot_shoulder_" + side, tuple(Sh + Vector((s * 0.01, 0.08, 0.02))), (0, 0, -1), pad)
     L.slot("Slot_back_" + side, (s * 0.1, T0 + 0.5, 0.24), (0, 0, -1), torso)
     sh = L.joint("Shoulder_" + side, tuple(Sh), torso)
     el = L.joint("Elbow_" + side, tuple(El), sh)
     ha = L.joint("Hand_" + side, tuple(Ha), el)
-    truss("upper_" + side, Sh + (El - Sh).normalized() * 0.06, El - (El - Sh).normalized() * 0.03, 0.055, sh)
-    pod("elbow_pod_" + side, El, 0.035, (s, 0, 0), el, holes=2)
-    fa, frot = armored("fore_" + side, El + (Ha - El).normalized() * 0.03, Ha - (Ha - El).normalized() * 0.03, 0.09, 0.1, el, taper=1.08)
+    xblock("upper_" + side, Sh + (El - Sh).normalized() * 0.09, El - (El - Sh).normalized() * 0.03, 0.11, 0.12, sh)
+    pod("elbow_pod_" + side, El, 0.05, (s, 0, 0), el, holes=2)
+    fa, frot = xblock("fore_" + side, El + (Ha - El).normalized() * 0.04, Ha - (Ha - El).normalized() * 0.04, 0.14, 0.15, el, taper=1.12, plate=True)
     L.box("fore_plate_" + side, (0.028, (Ha - El).length * 0.6, 0.08), (0, 0, 0), RED, el, bevel_w=0.008)
-    L.set_world(bpy.context.scene.objects["fore_plate_" + side], Matrix.Translation(L.V((El + Ha) / 2 + frot @ Vector((s * 0.05, 0, 0)))) @ (L.C @ frot @ L.C.inverted()).to_4x4())
+    L.set_world(bpy.context.scene.objects["fore_plate_" + side], Matrix.Translation(L.V((El + Ha) / 2 + frot @ Vector((s * 0.085, 0, 0)))) @ (L.C @ frot @ L.C.inverted()).to_4x4())
     # Big four-fingered hand curled around the grip, red knuckle plates.
     d = (Ha - El).normalized()
     hrot = place(None, Ha, Ha + d)
     P = lambda v: tuple(Ha + hrot @ Vector(v))  # noqa: E731
-    hand = L.box("palm_" + side, (0.075, 0.08, 0.085), (0, 0, 0), FRAME, ha, bevel_w=0.014)
-    L.set_world(bpy.context.scene.objects["palm_" + side], Matrix.Translation(L.V(P((0, 0.035, 0)))) @ (L.C @ hrot @ L.C.inverted()).to_4x4())
+    hand = L.box("palm_" + side, (0.11, 0.11, 0.12), (0, 0, 0), FRAME, ha, bevel_w=0.014)
+    L.set_world(bpy.context.scene.objects["palm_" + side], Matrix.Translation(L.V(P((0, 0.05, 0)))) @ (L.C @ hrot @ L.C.inverted()).to_4x4())
     for k in range(4):
         for j, (ln, col) in enumerate(((0.032, FRAME), (0.028, FRAME))):
-            fp = P(((k - 1.5) * 0.017, 0.08 + j * 0.03, -0.02 - j * 0.018))
-            f = L.box("finger%d%d_%s" % (k, j, side), (0.018, ln, 0.022), (0, 0, 0), col, ha, bevel_w=0.005)
+            fp = P(((k - 1.5) * 0.025, 0.11 + j * 0.042, -0.028 - j * 0.025))
+            f = L.box("finger%d%d_%s" % (k, j, side), (0.026, ln * 1.4, 0.03), (0, 0, 0), col, ha, bevel_w=0.005)
             L.set_world(f, Matrix.Translation(L.V(fp)) @ (L.C @ hrot @ L._rot_g((-40 - j * 40, 0, 0)) @ L.C.inverted()).to_4x4())
-        kp = P(((k - 1.5) * 0.017, 0.072, -0.012))
-        kn = L.box("knuckle%d_%s" % (k, side), (0.019, 0.022, 0.024), (0, 0, 0), RED, ha, bevel_w=0.004)
+        kp = P(((k - 1.5) * 0.025, 0.1, -0.017))
+        kn = L.box("knuckle%d_%s" % (k, side), (0.027, 0.03, 0.033), (0, 0, 0), RED, ha, bevel_w=0.004)
         L.set_world(kn, Matrix.Translation(L.V(kp)) @ (L.C @ hrot @ L.C.inverted()).to_4x4())
     L.slot("Slot_hand_" + side, tuple(Ha + d * 0.05), wdir, ha)
     L.slot("Slot_forearm_" + side, tuple((El + Ha) / 2 + Vector((s * 0.06, 0, 0))), (0, 0, -1), el)

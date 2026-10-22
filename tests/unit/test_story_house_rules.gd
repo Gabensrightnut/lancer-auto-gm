@@ -32,7 +32,7 @@ func test_all_off_by_default_and_nothing_shows() -> void:
 	var s: StoryState = t["story"]
 	var c: Campaign = t["campaign"]
 	var defs := StoryHouseRules.definitions()
-	expect_eq(defs.size(), 5)
+	expect(defs.size() >= 5, "the house rules")
 	for r: Dictionary in defs:
 		expect(not StoryHouseRules.on(c, str(r["id"])), "%s is off" % r["id"])
 		expect_eq(str(r["label"]), "Your idea, not a book rule")
@@ -46,7 +46,7 @@ func test_all_off_by_default_and_nothing_shows() -> void:
 	expect(not _rule(t, "hr_wallet", true)["ok"] == false, "the host can switch one on")
 	expect(not _sub(t, "house_rule", {"id": "hr_wallet", "on": true}, "p1")["ok"], "players can't")
 	var house: Array = Codex.search("", "House rules", 99)
-	expect_eq(house.size(), 5, "the codex lists them")
+	expect_eq(house.size(), defs.size(), "the codex lists them")
 	expect(house.all(func(e: Dictionary) -> bool: return str(e["source"]) == "Your idea, not a book rule"))
 
 
@@ -162,3 +162,28 @@ func test_every_world_has_its_own_money() -> void:
 	var poor := Economy.rate(s)
 	Sector.current(s)["culture"] = "cyberpunk"
 	expect(Economy.rate(s) < poor, "manna buys less on a rich world (%d vs %d a manna)" % [Economy.rate(s), poor])
+
+
+func test_supplies_ride_in_the_mech_and_hosts_feed_you() -> void:
+	var t := Setup.setup(225)
+	var s: StoryState = t["story"]
+	var c: Campaign = t["campaign"]
+	_rule(t, "hr_survival")
+	var kettle := str(c.pilots[t["b"]]["callsign"])
+	s.flags[Economy.SURVIVAL]["rations"] = 10
+	var ev := Economy.eat(s, c, 3, [kettle])
+	expect(ev.any(func(x: Dictionary) -> bool: return x["type"] == "cut_off"), "cut off from the mech: only the grab bag")
+	expect(Economy.hungry(s, c, t["b"]) and not Economy.hungry(s, c, t["a"]), "the one who stayed with the mech ate")
+	expect_eq(Economy.rations(s), 7, "three nights for the pilot at the mech")
+	c.options["patron"] = "company"
+	ev = Economy.downtime_night(s, c)
+	expect(str(ev[0]["text"]).contains("stay") and Economy.rations(s) == 7, "a patron's quarters: meals with the stay")
+	c.options["patron"] = "pay"
+	_rule(t, "hr_wallet")
+	c.pilots[t["a"]]["origin"] = {"homeworld": "city"}
+	var r := _sub(t, "buy", {"item": "street_food", "pilot": t["a"]})
+	expect(r["ok"], str(r["reason"]))
+	expect(not Economy.hungry(s, c, t["b"]), "eating out feeds everyone")
+	s.flags["_mood"] = {t["a"]: true}
+	var o := Economy.check_opts(s, c, t["a"], {})
+	expect(int(o.get("accuracy", 0)) == 1 and not (s.flags["_mood"] as Dictionary).has(t["a"]), "a favourite dish: +1 Accuracy, once")

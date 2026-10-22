@@ -288,13 +288,17 @@ static func _trace(state: GameState, p0: Vector3, p1: Vector3, skip: Dictionary,
 	var n := maxi(1, ceili(p0.distance_to(p1) / STEP))
 	var soft := false
 	var grid := state.map.grid
+	var last := Vector3i(-99999, -99999, -99999)
 	for i in range(1, n):
 		var p := p0.lerp(p1, float(i) / n)
 		var cell := grid.from_world(p)
-		if skip.has(cell):
-			continue
 		var lvl := floori(p.y / GridLayout.LEVEL_HEIGHT + 0.0001)
 		var key := Vector3i(cell.x, cell.y, lvl)
+		if key == last:
+			continue  # same space as the previous sample: same answer
+		last = key
+		if skip.has(cell):
+			continue
 		if objects.has(key):
 			return {"blocked": true, "first_block": cell, "block_top": objects[key], "soft": soft}
 		var col := state.map.column(cell)

@@ -154,7 +154,9 @@ static func trigger_name(sid: String) -> String:
 ## +1 when the pilot's background fits the situation, -1 when the GM invokes it against
 ## them, 0 otherwise.
 static func background_invoke(pilot: Dictionary, tags: Array, against: Array) -> int:
-	var bg_tags := background_tags(str(pilot.get("background", "")))
+	# The origin (homeworld, upbringing, employer, specialty) widens what the background
+	# covers; still one +1 at most (Core p.20).
+	var bg_tags: Array = background_tags(str(pilot.get("background", ""))) + Origin.tags(pilot)
 	for t: String in against:
 		if bg_tags.has(t):
 			return -1

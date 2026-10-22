@@ -145,12 +145,48 @@ static func materialize(state: GameState, action: Dictionary) -> Array[String]:
 		if x is Dictionary:
 			ids.append((x as Dictionary).get("target", ""))
 	for id: Variant in ids:
+		if str(id).begins_with(ZONE_PREFIX) and not state.units.has(str(id)):
+			var zu := zone_unit(state, str(id))
+			if zu != null:
+				state.add_unit(zu)
+				made.append(str(id))
+			continue
 		var c: Variant = cell_of(str(id))
 		if c == null or state.units.has(str(id)) or not destructible(state, c):
 			continue
 		state.add_unit(section_unit(state, c))
 		made.append(str(id))
 	return made
+
+
+## Objects that live as zones (the Portable Bunker: 40 HP, Evasion 5, Size 4) stand in as an
+## object unit while attacked, with target "zone:<zone id>".
+const ZONE_PREFIX := "zone:"
+
+
+static func zone_unit(state: GameState, id: String) -> Unit:
+	var zid := id.substr(ZONE_PREFIX.length())
+	for z: Dictionary in Zones.of_kind(state, "bunker") + Zones.of_kind(state, "pcp"):
+		if String(z["id"]) != zid:
+			continue
+		var u := Unit.new()
+		u.id = id
+		u.name = String(z.get("label", "Bunker"))
+		u.kind = Unit.KIND_DEPLOYABLE
+		u.side = "terrain"
+		u.cell = Vector2i(int(z["center"][0]), int(z["center"][1]))
+		u.level = state.map.ground_height(u.cell)
+		var pcp: bool = z["kind"] == "pcp"
+		u.size = 2.0 if pcp else 4.0
+		u.max_hp = 20 if pcp else 40
+		u.hp = int(z.get("hp", u.max_hp))
+		u.evasion = 5
+		u.max_structure = 1
+		u.structure = 1
+		u.counters["zone"] = zid
+		u.loadout = {"weapons": [], "systems": [], "effects": []}
+		return u
+	return null
 
 
 static func remove(state: GameState, ids: Array[String]) -> void:
@@ -166,6 +202,17 @@ static func settle(state: GameState, ids: Array[String], source: String = "") ->
 		if u == null:
 			continue
 		state.units.erase(id)
+		if id.begins_with(ZONE_PREFIX):
+			var zid := id.substr(ZONE_PREFIX.length())
+			for z: Dictionary in Zones.of_kind(state, "bunker") + Zones.of_kind(state, "pcp"):
+				if String(z["id"]) == zid:
+					z["hp"] = u.hp
+					if u.destroyed or u.hp <= 0:
+						events.append_array(Zones.remove(state, zid, "destroyed"))
+						for o: Unit in state.units.values():
+							if o.has_status("Immobilized") and String(o.statuses["Immobilized"].get("source", "")) == "pcp:" + zid:
+								events.append_array(Combat.remove_status(o, "Immobilized", "the plate was destroyed"))
+			continue
 		var c: Vector2i = cell_of(id)
 		if u.destroyed or u.hp <= 0:
 			events.append_array(destroy_sections(state, c, 1, source))

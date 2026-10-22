@@ -1,0 +1,27 @@
+{
+  "_note": "Our own data. What the squad does to a place stays done (DESIGN.md: world consequences): facts per hub in story.flags['_world'] ({hub id: {fact: value}}), set by jobs, fights and story effects ({'world': {'set': {...}}}). Rules here turn facts into knock-on effects a mission or two later: shortages, damage, people's moods, and a job to make it right. Consistent with the book's 'stakes change, the world reacts' (Core p.42-43).",
+  "from_jobs": {
+    "destroy_infrastructure": {"won": {"set": {"broken": "{place}"}}},
+    "create_diversion": {"won": {"set": {"damage": "{place}"}}}
+  },
+  "town_fight": {"set": {"damage": "the streets"}},
+  "shortage_words": {"water": ["dam", "pump", "water", "reservoir", "well", "aqueduct"], "power": ["power", "reactor", "generator", "plant", "relay", "grid"]},
+  "rules": [
+    {"id": "water", "if": {"fact": "broken", "kind": "water"}, "delay": 1, "set": {"water": "short"}, "clear": ["broken"],
+     "text": ["The taps in {hub} have run dry. People are queueing at the old cisterns, and they know whose doing it was: {what}.", "{hub} is rationing water since {what} went down. Nobody says it to your face. Not yet."],
+     "banter": ["We did that. The dam. These people didn't sign up for it.", "Every empty bucket in this town is on us."],
+     "job": "make_it_right_water"},
+    {"id": "power", "if": {"fact": "broken", "kind": "power"}, "delay": 1, "set": {"power": "out"}, "clear": ["broken"],
+     "text": ["{hub} goes dark at night now, since {what}. The clinic runs on a generator that coughs.", "Rolling blackouts in {hub}. Everyone remembers {what}."],
+     "banter": ["The lights are out because of us.", "We could fix this. We should fix this."],
+     "job": "make_it_right_power"},
+    {"id": "supply", "if": {"fact": "broken", "kind": "supply"}, "delay": 1, "set": {"supply": "short"}, "clear": ["broken"],
+     "text": ["Shelves are emptying in {hub} since {what}. Prices are up, tempers too."],
+     "banter": ["That depot fed half this town. We should have thought about that."],
+     "job": "make_it_right_supply"},
+    {"id": "damage", "if": {"fact": "damage"}, "delay": 0, "set": {"repairs": "needed"}, "clear": ["damage"],
+     "text": ["{hub} is patching up {what} after the fighting. Some of the holes are yours."],
+     "banter": ["Lot of broken windows out there.", "They'll be sweeping glass for a week."],
+     "job": "rebuild_town"}
+  ]
+}

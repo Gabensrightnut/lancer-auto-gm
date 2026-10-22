@@ -62,6 +62,26 @@ func screenshot_stage(tag: String) -> void:
 		_place_mechs(map)
 		await _aim_camera(map, cam)
 		return
+	if map_name.begins_with("area"):
+		# area<seed>[+landscape[+culture]] or area<seed>+town+<culture>: an exploring area.
+		var ap := map_name.trim_prefix("area").split("+")
+		var aopts := {"shape": "square" if shape == GridLayout.Shape.SQUARE else "hex"}
+		if ap.size() > 2 and ap[1] == "town":
+			var hrng := RandomNumberGenerator.new()
+			hrng.seed = int(ap[0])
+			aopts["hub"] = {"kind": "town", "culture": ap[2], "seed": int(ap[0]), "spots": HubLayout.spots("town", hrng)}
+		else:
+			if ap.size() > 1:
+				aopts["landscape"] = ap[1]
+			if ap.size() > 2:
+				aopts["culture"] = ap[2]
+		var ar := MissionGenerator.area(int(ap[0]), aopts)
+		map = ar["map"]
+		view.set_map(map, ar["kit"])
+		print("area: ", ar["name"], " ", ar["kit"])
+		_place_mechs(map)
+		await _aim_camera(map, cam)
+		return
 	if map_name.begins_with("gen"):
 		# gen<seed>[+landscape[+culture]][+size][^sitrep] (control, holdout, gauntlet, escort,
 		# extraction, recon, standardcombat)

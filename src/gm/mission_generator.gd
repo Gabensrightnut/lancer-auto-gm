@@ -237,6 +237,45 @@ static func _doc_battlefield(doc: MapDoc, sitrep_id: String, rng: RandomNumberGe
 
 # --- Terrain (TerrainGen) -------------------------------------------------------------
 
+## A map to explore in real time at mech scale (WorldSession / NetRoom areas: exploring, and
+## fights that start right there on the same ground). opts: "hub" (story.hub: its town at mech
+## scale in the middle), "region" (a flavor.region: landscape, culture, weather and look),
+## "landscape", "culture", "weather", "size" (default 60), "shape" ("hex"/"square").
+## Every area has roads along its middle row and column out to all four edges and a level band
+## along the edges, so the areas of a region join up: walk off the east edge and come in on the
+## next area's west edge on the same road. Returns {map, kit, region, name, center, entries:
+## {west, east, north, south: cell}}.
+static func area(area_seed: int, opts: Dictionary = {}) -> Dictionary:
+	var shape := GridLayout.Shape.SQUARE if str(opts.get("shape", "hex")) == "square" else GridLayout.Shape.HEX
+	var size := clampi(int(opts.get("size", 60)), 30, 80)
+	var region: Dictionary = opts["region"] if opts.get("region") is Dictionary else {}
+	var hub: Dictionary = opts["hub"] if opts.get("hub") is Dictionary and not (opts["hub"] as Dictionary).get("spots", []).is_empty() else {}
+	var landscape := str(opts.get("landscape", region.get("landscape", "")))
+	var culture := str(opts.get("culture", region.get("culture", "")))
+	if not hub.is_empty():
+		culture = WorldKits.culture_id(str(hub.get("map_culture", hub.get("culture", culture))))
+		if landscape == "":
+			landscape = str(hub.get("landscape", ""))
+		if landscape == "":
+			landscape = str(WorldKits.HUB_LANDSCAPE.get(culture, "grassy_hills"))
+		hub = hub.duplicate()
+		hub.erase("at")  # the town stands in the middle of its area
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([area_seed, "area"])
+	var world := TerrainGen.pick(rng, landscape, culture)
+	var map := TerrainGen.generate(rng, size, size, shape, {}, world[0], world[1], hub, true)
+	var weather := str(opts.get("weather", region.get("weather", "?")))
+	weather = _pick_weather(rng, world[0], world[1], weather if weather != "" else "clear")
+	var place := int(region.get("seed", hub.get("seed", hash([area_seed, "place"]) & 0x7fffffff)))
+	var kit := TerrainGen.kit(world[0], world[1]) + ("+" + weather if weather != "" else "") + "#%d" % place
+	var cell := func(c: int, r: int) -> Array:
+		return [c - (r >> 1), r] if shape == GridLayout.Shape.HEX else [c, r]
+	return {"map": map, "kit": kit, "name": TerrainGen.describe(world[0], world[1]),
+		"region": {"seed": place, "landscape": world[0], "culture": world[1], "weather": weather},
+		"center": cell.call(size / 2, size / 2),
+		"entries": {"west": cell.call(0, size / 2), "east": cell.call(size - 1, size / 2), "north": cell.call(size / 2, 0), "south": cell.call(size / 2, size - 1)}}
+
+
 ## The weather for the kit ("" = clear), from opts.weather or a pick that suits the landscape.
 static func _pick_weather(rng: RandomNumberGenerator, landscape: String, culture: String, wanted: String) -> String:
 	var w := wanted if wanted != "?" else TerrainGen.pick_weather(rng, landscape, culture)

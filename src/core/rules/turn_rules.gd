@@ -98,6 +98,7 @@ static func start_combat(state: GameState, first_side: String, params: Dictionar
 	Environments.sync(state)
 	for u: Unit in state.units.values():
 		u.counters.erase("origin_used")  # a new scene: origin perks are fresh
+		GearSystems.mimic_roll(state, u)  # Mimic Gun: 3d20 at the start of combat
 	var events: Array[Dictionary] = [{"type": "combat_started", "first_side": first_side, "mode": state.turn_mode, "exploring": left_out}]
 	events.append_array(Combat.refresh_engagement(state))
 	events.append_array(_start_round(state, ""))
@@ -164,6 +165,9 @@ static func begin_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 	events.append_array(CoreBonuses.turn_started(state, u))
 	events.append_array(Environments.turn_started(state, u))
 	events.append_array(GearSystems.fade_roll(state, u))
+	if int(u.counters.get("turns_taken", 0)) > 0:
+		GearSystems.mimic_cycle(u)  # after its first turn
+	u.counters["turns_taken"] = int(u.counters.get("turns_taken", 0)) + 1
 	return events
 
 

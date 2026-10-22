@@ -50,7 +50,25 @@
    "culture": "retrofuturistic",
    "kind": "station",
    "landscape": "station",
-   "hub": "The Dock"
+   "hub": "The Dock",
+   "spot_names": {
+    "market": "the sleeper vault"
+   },
+   "room_names": {
+    "market": {
+     "floor": "the vault",
+     "store": "the vault's control room"
+    }
+   },
+   "interiors": {
+    "market": {
+     "kind": "sleeper_vault",
+     "rooms": {
+      "vault": "floor",
+      "control": "store"
+     }
+    }
+   }
   }
  },
  "npcs": {
@@ -981,8 +999,11 @@
      "ph_artillery"
     ],
     "sitrep": "sitrep_standardcombat",
-    "landscape": "starship",
-    "commander": "warden"
+    "commander": "warden",
+    "boarding": {
+     "kind": "rescue",
+     "map": "enemy_ship"
+    }
    },
    "aftermath": {
     "npc": "wakeful",
@@ -1785,8 +1806,21 @@
     "patron": "prentiss",
     "foes_var": "{final_foes}",
     "sitrep": "sitrep_control",
-    "landscape": "starship",
-    "commander": "{final_commander}"
+    "commander": "{final_commander}",
+    "boarding": {
+     "kind": "seize",
+     "map": "docked"
+    },
+    "environments_if": [
+     {
+      "if": {
+       "flag": "la_nhp_destroyed"
+      },
+      "ids": [
+       "env_zero_g"
+      ]
+     }
+    ]
    },
    "branch": "b16",
    "outcomes": [

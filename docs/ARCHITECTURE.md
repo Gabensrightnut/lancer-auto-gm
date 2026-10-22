@@ -158,6 +158,7 @@ cover, line of sight, attack/area/tech previews with hit chance).
 | `terrain_destroyed` | `cells` [[x, y, new ground]], `from` (old ground), `source`, `rule_ref` (Core p.68). The rules' BattleMap is already lowered; rubble gets no new tags |
 | `terrain_damaged` | `cell`, `amount`, `damage_type`, `ap`, `armor`, `hp_left`, `source` (damage that hits objects automatically) |
 | Attacking terrain | Any attack or ability target may be `"terrain:x,y"` (a destructible column's top section). Events about it name that id as `target`/`unit`. `RulesQueries.terrain_info(state, cell)` gives `hp`, `max_hp`, `evasion`, `armor`, `sections`, `target`; `attack_preview` accepts the id |
+| Player sides | `state.player_sides` (default `["players"]`): the sides people play; they act first (Core p.60). For player-vs-player put both sides there (e.g. `["red", "blue"]`). Any two different sides are hostile to each other |
 | Exploring and fighting | `start_combat` params `units: [ids]` or `center: [x, y]` + `radius` (only those take part; the rest get `counters.exploring`), `mode: "combat" \| "explore"` (turn-based exploring). `combat_started` lists `exploring` ids and `mode` |
 | `joined_combat` | `unit`, `cell` [x, y, level], `from`, `round` (action `{"type": "join_combat", "actor", "params": {"to", "level"}}`: an exploring unit arrives anywhere free; takes turns from the next round; provokes nothing) |
 | `combat_ended` | `mode` (action `{"type": "end_combat"}` by the host between turns; `RulesQueries.combat_over(state)` is true when only one side is left fighting) |

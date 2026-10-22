@@ -71,7 +71,8 @@ static func max_uses(u: Unit, source_key: String) -> int:
 ## "1/round" -> {"count": 1, "per": "round"}; "" -> {}.
 static func frequency_of(a: Dictionary) -> Dictionary:
 	var f := String(a.get("frequency", ""))
-	var m := RegEx.create_from_string("(\\d+)\\s*/\\s*(turn|round|scene|mission)").search(f.to_lower())
+	# "2/round", or "2.0/round" when the count came from a JSON number.
+	var m := RegEx.create_from_string("(\\d+)(?:\\.\\d+)?\\s*/\\s*(turn|round|scene|mission)").search(f.to_lower())
 	if m == null:
 		return {}
 	return {"count": int(m.get_string(1)), "per": m.get_string(2)}
@@ -294,7 +295,7 @@ static func check_spot(state: GameState, owner: Unit, d: Dictionary, cell: Vecto
 	if type == "Mine":
 		reach = maxi(reach, FrameSystems.mine_reach(state, owner))  # Iskander Assault Launcher
 	var dist := Sight.distance(state, me, body)
-	if type == "Drone" and reach == 0:
+	if (type == "Drone" or type == "Decoy") and reach == 0:  # drones and decoys: within Sensors
 		if dist > owner.sensors or not Sight.line_of_sight(state, me, body):
 			return RuleResult.deny("Drones deploy within Sensors and line of sight.", "tags: Drone")
 	elif reach > 0:
