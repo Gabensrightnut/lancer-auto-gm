@@ -41,8 +41,24 @@ static func hit_statuses(w: Dictionary, crit: bool) -> Array:
 	return out
 
 
+## Bonus damage a weapon itself deals on a crit (Variable Sword: +1d6), from lancer-data.
+static func crit_bonus(w: Dictionary) -> String:
+	var raw: Variant = w.get("data_on_crit", {})
+	if raw is Dictionary and (raw as Dictionary).get("bonus_damage") is Dictionary:
+		return str(raw["bonus_damage"].get("val", ""))
+	return ""
+
+
 static func on_hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, crit: bool) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
+	var pull: Dictionary = rules(w).get("on_hit_pull", {})
+	if not pull.is_empty() and Combat.is_present(target):
+		# Magnetic Cannon: Hull save or pulled toward the attacker.
+		var save := Combat.skill_check(state, target, String(pull.get("save", "hull")), "Save vs %s" % w.get("name", ""), attacker.save_target, 0, 0, [], true)
+		events.append({"type": "skill_check", "unit": target.id, "check": save, "rule_ref": "weapons: " + String(w.get("name", ""))})
+		if not save["success"]:
+			var n := int(state.dice.roll(String(pull.get("spaces", "1")))["total"])
+			events.append_array(Attacks.pull_to(state, target, Sight.body_of(state, attacker), 1, n))
 	for st: Dictionary in hit_statuses(w, crit):
 		if not Combat.is_present(target):
 			break

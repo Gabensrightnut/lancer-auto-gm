@@ -133,6 +133,9 @@ static func brace(state: GameState, u: Unit, attacker: String) -> Array[Dictiona
 	_mark_used(u, "brace", state)
 	u.counters["brace_next_turn"] = true
 	var events: Array[Dictionary] = [{"type": "reaction", "unit": u.id, "reaction": "brace", "trigger": attacker, "rule_ref": REF_BRACE}]
+	if Effects.has(u, "reactive_weave"):
+		# Reactive Weave: Invisible until the end of its next turn (its free move is the table's).
+		events.append_array(Combat.add_status(state, u, "Invisible", "Reactive Weave", u.id))
 	if Effects.has(u, "armor_lock"):
 		# Armor-Lock Plating: grapples end; until the end of its following turn +1 Difficulty
 		# against it, no failed Hull/Agility saves, Immunity to Knockback, Grapple and Prone.

@@ -46,7 +46,7 @@ class Activate:
 				var ops_ok := AbilityActions.check_ops(state, u, a, params)
 				if not ops_ok.ok:
 					return ops_ok
-				if a.get("activation", "") == "Invade":
+				if a.get("activation", "") == "Invade" or (a.get("ops", []) as Array).any(func(o: Dictionary) -> bool: return o.get("tech_attack", false)):
 					return Attacks.tech_target_check(state, u, state.unit(String(params.get("target", ""))), "invade")
 		return RuleResult.allow()
 
@@ -86,11 +86,13 @@ class Activate:
 			_:
 				var target := state.unit(String(params.get("target", "")))
 				var hit := true
-				if a.get("activation", "") == "Invade":
+				var tech: bool = (a.get("ops", []) as Array).any(func(o: Dictionary) -> bool: return o.get("tech_attack", false))
+				if a.get("activation", "") == "Invade" or tech:
+					# Invade options and systems that make a tech attack (Markerlight, Tracking Bug).
 					var r := Attacks.tech_attack(state, u, target, String(a["name"]), params)
 					events.append_array(r["events"])
 					hit = r["hit"]
-					if hit:
+					if hit and a.get("activation", "") == "Invade":
 						events.append_array(Combat.apply_heat(state, target, 2, u.id))
 				if hit:
 					events.append_array(AbilityActions.apply_ops(state, u, a, target, params))
@@ -157,6 +159,22 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				for m: Unit in state.units.values().duplicate():
 					if m.counters.get("owner", "") == u.id and m.name == String(op.get("deployable", "")) and not m.destroyed and m.counters.get("armed", false):
 						events.append_array(Abilities.detonate(state, m, u))
+			"ferrous_lash":
+				events.append_array(GearSystems.ferrous_lash(state, u, target, params))
+			"shrike_code", "mirage", "stalk_prey", "terrify", "tracking_bug", "markerlight":
+				events.append_array(GearSystems.tech_effect(state, u, target, op, params))
+			"stuncrown":
+				events.append_array(GearSystems.stuncrown(state, u))
+			"javelin":
+				events.append_array(GearSystems.javelin(state, u, params))
+			"cloaking_field":
+				events.append_array(GearSystems.cloaking_field(state, u))
+			"remove_zone":
+				for z: Dictionary in Zones.of_kind(state, String(op.get("kind", ""))):
+					if z.get("owner", "") == u.id:
+						events.append_array(Zones.remove(state, String(z["id"]), "deactivated"))
+			"turn_flag":
+				u.turn[String(op.get("flag", ""))] = true
 			"spin_up", "spin_down":
 				events.append_array(WeaponRules.spin(state, u, String(op.get("weapon", "")), op["op"] == "spin_up"))
 			"blast_save":
@@ -337,6 +355,10 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 				any = any or (m.counters.get("owner", "") == u.id and m.name == String(op.get("deployable", "")) and not m.destroyed and m.counters.get("armed", false))
 			if not any:
 				return RuleResult.deny("No armed %s to detonate." % op.get("deployable", ""), "tags: Mine")
+		if op.get("op", "") == "javelin":
+			var jr := GearSystems.check_javelin(state, u, params)
+			if not jr.ok:
+				return jr
 		if op.get("op", "") in ["blast_save", "smoke"]:
 			var gr := GearSystems.check_aimed(state, u, op, params)
 			if not gr.ok:

@@ -149,5 +149,25 @@
       "value": 2,
       "objects": 10
     }
+  ],
+  "ms_kinetic_compensator": [
+    {
+      "kind": "kinetic_compensator"
+    }
+  ],
+  "ms_black_ice_module": [
+    {
+      "kind": "black_ice"
+    }
+  ],
+  "ms_reactive_weave": [
+    {
+      "kind": "reactive_weave"
+    }
+  ],
+  "ms_singularity_motivator": [
+    {
+      "kind": "singularity_motivator"
+    }
   ]
 }

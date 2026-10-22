@@ -17,12 +17,35 @@ static func _check_attack(state: GameState, u: Unit, a: Variant, ref: String) ->
 		return RuleResult.deny("No such weapon on this mech.", ref)
 	if w.get("no_attack", false):
 		return RuleResult.deny("%s can't make normal attacks; it's fired through its own rule." % w.get("name", ""), "weapons: " + String(w.get("name", "")))
-	if Weapons.area(w) != "":
+	if Weapons.area(w) != "" and not a.has("aims"):
 		var r := Attacks.weapon_ready(u, w, a.get("improvised", false))
 		if not r.ok:
 			return r
 		var plan := Areas.plan(state, u, w, TurnAction.cell_param(a, "aim"), int(a.get("aim_level", -1)), TurnAction.cell_param(a, "from"))
 		return RuleResult.allow() if plan["ok"] else RuleResult.deny(plan["reason"], plan["rule_ref"])
+	if a.has("targets") and int(WeaponRules.rules(w).get("targets", 1)) > 1:
+		var ids: Variant = a["targets"]
+		if not ids is Array or (ids as Array).is_empty() or (ids as Array).size() > int(WeaponRules.rules(w)["targets"]):
+			return RuleResult.deny("Up to %d targets." % int(WeaponRules.rules(w)["targets"]), ref)
+		for id: Variant in ids:
+			var pp := Attacks.preview(state, u, w, state.unit(String(id)), a)
+			if not pp["ok"]:
+				return RuleResult.deny(pp["reason"], pp["rule_ref"])
+		return RuleResult.allow()
+	if Weapons.area(w) != "" and a.has("aims"):
+		var aims: Variant = a["aims"]
+		if not aims is Array or (aims as Array).size() > int(WeaponRules.rules(w).get("blasts", 1)):
+			return RuleResult.deny("Up to %d areas." % int(WeaponRules.rules(w).get("blasts", 1)), ref)
+		var seen := {}
+		for aim: Variant in aims:
+			var plan := Areas.plan(state, u, w, Vector2i(int(aim[0]), int(aim[1])), -1)
+			if not plan["ok"]:
+				return RuleResult.deny(plan["reason"], plan["rule_ref"])
+			for c: Array in plan["cells"]:
+				if seen.has(c):
+					return RuleResult.deny("The areas can't overlap.", ref)
+				seen[c] = true
+		return RuleResult.allow()
 	var p := Attacks.preview(state, u, w, state.unit(String(a.get("target", ""))), a)
 	if p.get("grey_area", "") != "":
 		return Rulings.needed(String(p["grey_area"]))
@@ -56,8 +79,37 @@ static func _check_aux(state: GameState, u: Unit, aux: Array, fired: Array[Dicti
 
 static func _run(state: GameState, u: Unit, a: Dictionary, aux: bool) -> Array[Dictionary]:
 	var w := Weapons.find(u, String(a["weapon"]))
+	if Weapons.area(w) != "" and a.has("aims") and int(WeaponRules.rules(w).get("blasts", 1)) > 1:
+		# Pinaka: up to two blast areas from one attack, damage rolled once.
+		var events: Array[Dictionary] = []
+		var shared := {}
+		var first := true
+		for aim: Array in a["aims"]:
+			var one := a.duplicate()
+			one["aim"] = aim
+			one["_shared"] = shared
+			if not first:
+				one["skip_spend"] = true
+			events.append_array(Areas.attack(state, u, w, one))
+			first = false
+		return events
 	if Weapons.area(w) != "":
 		return Areas.attack(state, u, w, a)
+	if a.has("targets") and int(WeaponRules.rules(w).get("targets", 1)) > 1:
+		# Sharanga: two targets at a time; the damage is rolled once and bonus damage halved.
+		var events: Array[Dictionary] = []
+		var shared := {}
+		var ids: Array = a["targets"]
+		for id: Variant in ids:
+			var o := state.unit(String(id))
+			var opts := a.duplicate()
+			opts["shared_damage"] = shared
+			opts["area_targets"] = ids.size()
+			opts["skip_spend"] = id != ids[0]
+			opts["no_bonus_damage"] = aux
+			if o != null and Attacks.preview(state, u, w, o, opts)["ok"]:
+				events.append_array(Attacks.attack(state, u, w, o, opts))
+		return events
 	var target := state.unit(String(a["target"]))
 	var opts := a.duplicate()
 	opts["no_bonus_damage"] = aux

@@ -121,6 +121,9 @@ static func on_status(state: GameState, u: Unit, status: String) -> Array[Dictio
 			if link.get("ends_on_stun", false) and (x == u or String(link.get("target", "")) == u.id):
 				events.append_array(end_link(state, x, "Stunned"))
 	if status == "Stunned":
+		for z: Dictionary in Zones.of_kind(state, "cloak"):
+			if z.get("owner", "") == u.id:
+				events.append_array(Zones.remove(state, String(z["id"]), "Stunned"))
 		if u.counters.has("symbiosis"):
 			events.append_array(detach(state, u, "Stunned"))
 		elif u.counters.has("hosting"):

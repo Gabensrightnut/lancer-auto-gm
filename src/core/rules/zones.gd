@@ -36,8 +36,15 @@ static func add(state: GameState, z: Dictionary) -> Array[Dictionary]:
 
 
 static func remove(state: GameState, id: String, why: String) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for z: Dictionary in state.zones:
+		if z["id"] == id and z.get("kind", "") == "cloak":
+			var o := state.unit(String(z.get("owner", "")))
+			if o != null and o.has_status("Slowed") and o.statuses["Slowed"].get("source", "") == "LB/OC Cloaking Field":
+				events.append_array(Combat.remove_status(o, "Slowed", "cloaking field ended"))
 	state.zones = state.zones.filter(func(z: Dictionary) -> bool: return z["id"] != id)
-	return [{"type": "zone_removed", "id": id, "reason": why}] as Array[Dictionary]
+	events.append({"type": "zone_removed", "id": id, "reason": why})
+	return events
 
 
 static func _has_cell(z: Dictionary, c: Vector2i) -> bool:
@@ -164,6 +171,13 @@ static func check_path(state: GameState, mover: Unit, path: Array) -> Array[Dict
 						entered = entered or _has_cell(z, f)
 				if entered:
 					events.append_array(_enter(state, z, mover))
+			"javelin":
+				for i in range(1, path.size()):
+					if int(path[i][0]) == int(z["center"][0]) and int(path[i][1]) == int(z["center"][1]):
+						events.append_array(remove(state, String(z["id"]), "triggered"))
+						events.append({"type": "zone_triggered", "zone": z["id"], "unit": mover.id, "rule_ref": z.get("rule_ref", "")})
+						events.append_array(Combat.deal_damage(state, mover, [{"type": "Kinetic", "amount": 3}], {"source": String(z.get("owner", ""))}))
+						break
 			"hologram":
 				if mover.side == _owner_side(state, z):
 					continue

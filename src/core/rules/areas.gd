@@ -186,12 +186,17 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, params: Dict
 	events.append({"type": "area_attack", "attacker": attacker.id, "weapon": w.get("key", ""), "weapon_name": w.get("name", ""),
 		"pattern": p["pattern"], "size": p["size"], "cells": p["cells"], "origin": p["origin"], "targets": p["targets"], "rule_ref": REF})
 	FrameSystems.before_area(attacker, w)
-	events.append_array(Attacks._spend_weapon(state, attacker, w))
-	var shared := {}
+	if not params.get("skip_spend", false):
+		events.append_array(Attacks._spend_weapon(state, attacker, w))
+	var shared: Dictionary = params.get("_shared", {})
 	var origin: Array = p["origin"]
 	for id: String in p["targets"]:
 		var target := state.unit(id)
 		if target == null or target.destroyed:
+			continue
+		if WeaponRules.rules(w).get("spare_allies_cover", false) and target.side == attacker.side:
+			# Veil Rifle: allies in the area get soft cover until the end of their next turn instead.
+			events.append_array(Effects.activate(state, target, [{"kind": "soft_cover_aura", "self_only": true}], String(w.get("name", "")), "end_next_turn"))
 			continue
 		var opts := params.duplicate()
 		opts["area_origin"] = p["origin_body"]

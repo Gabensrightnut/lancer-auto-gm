@@ -97,6 +97,9 @@ static func sources(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 						or int(info.get("distance", 0)) <= 5:
 					continue
 		out.append(e)
+	var crit_extra := WeaponRules.crit_bonus(w)
+	if crit_extra != "" and info.get("crit", false):
+		out.append({"value": crit_extra, "label": String(w.get("name", ""))})
 	return out
 
 

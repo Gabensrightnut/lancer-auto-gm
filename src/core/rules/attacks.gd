@@ -44,6 +44,8 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 		return fail.call("No valid target.", REF_SKIRMISH)
 	if target == attacker:
 		return fail.call("You can't attack yourself.", REF_SKIRMISH)
+	if Effects.has(attacker, "no_attacks"):
+		return fail.call("You can't make attacks of any kind right now (Retractable Profile).", "systems: Retractable Profile")
 	var area_origin: Variant = opts.get("area_origin")
 	if Weapons.area(w) != "" and area_origin == null:
 		return fail.call("%s is an area weapon (%s): aim it at a space instead of a target." % [w.get("name", ""), Weapons.area(w)], Areas.REF)
@@ -121,8 +123,16 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 		sources.append(_src("Target Braced", "difficulty", "actions: Brace"))
 		diff += 1
 	for e: Dictionary in Effects.of(target, "defense_difficulty"):
+		if e.has("vs") and not (e["vs"] as Array).has(kind):
+			continue
 		sources.append(_src(String(e.get("label", "")), "difficulty", Effects.REF, int(e.get("value", 1))))
 		diff += int(e.get("value", 1))
+	for src: Dictionary in GearSystems.attack_sources(attacker, kind):
+		sources.append(src)
+		if src["kind"] == "accuracy":
+			acc += int(src["value"])
+		else:
+			diff += int(src["value"])
 	var shield := GearSystems.shield_difficulty(attacker, target)
 	if shield > 0:
 		sources.append(_src("Projected Shield", "difficulty", "systems: Type-3 Projected Shield", shield))
@@ -138,6 +148,10 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 	if kind == KIND_RANGED and attacker.has_status("Engaged") and not WeaponRules.rules(w).get("ignore_engaged", false):
 		sources.append(_src("Engaged", "difficulty", "statuses: Engaged"))
 		diff += 1
+	if cover.get("cover", "none") == "soft" and target.counters.has("marked_by"):
+		cover = cover.duplicate()
+		cover["cover"] = "none"  # Markerlight: no soft cover while Locked On
+		cover["difficulty"] = 0
 	if ranged_like and not seeking and int(cover["difficulty"]) > 0:
 		sources.append(_src("Hard cover" if cover["cover"] == "hard" else "Soft cover", "difficulty", Sight.REF_COVER, cover["difficulty"]))
 		diff += int(cover["difficulty"])
@@ -224,7 +238,13 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		if not opts.get("skip_spend", false):
 			events.append_array(_spend_weapon(state, attacker, w))
 		return events
-	if target.has_status("Invisible") or afterimage or opts.get("target_invisible", false) or Zones.hidden_by_smoke(state, target, attacker):
+	if attacker.counters.has("shrike_code"):
+		events.append_array(Combat.apply_heat(state, attacker, 2, "Shrike Code"))  # 2 heat whenever it attacks
+	var invisible: bool = target.has_status("Invisible") or afterimage or opts.get("target_invisible", false) or Zones.hidden_by_smoke(state, target, attacker) \
+		or GearSystems.seen_as_invisible(state, attacker, target) or GearSystems.cloaked(state, target)
+	if invisible and GearSystems.sees_through(state, attacker, target):
+		invisible = false  # Tracking Bug, Lotus Projector
+	if invisible:
 		# 50% chance to miss outright before the roll (statuses: Invisible).
 		var coin := state.dice.die(2)
 		invisible_miss = coin == 1
@@ -285,6 +305,12 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		"result": result, "cover": p["cover"].get("cover", "none") if p["cover"] is Dictionary else "none",
 		"cover_cells": p["cover"].get("cover_cells", []), "invisible_miss": invisible_miss,
 		"lock_on_consumed": p["lock_on"], "rule_ref": p["rule_ref"]})
+	if not invisible_miss:
+		GearSystems.attack_rolled(attacker, kind, result != "miss")
+	if result == "hit" and GearSystems.markerlight_crit(state, attacker, target):
+		result = "crit"  # Markerlight: a weak spot
+		events[events.size() - 1]["result"] = "crit"
+		events[events.size() - 1]["markerlight"] = true
 	if result != "miss":
 		var par := TraitReactions.parry(state, attacker, w, target)
 		events.append_array(par["events"])
@@ -308,6 +334,15 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		events.append_array(_hit(state, attacker, w, target, result == "crit", hit_opts))
 		if result == "crit" and kind == KIND_RANGED:
 			events.append_array(avenger_silos(state, attacker, target))
+		if result == "crit" and WeaponRules.rules(w).has("on_crit_teleport") and opts.has("fold_to"):
+			# Fold Knife: teleport up to 2 spaces after the attack resolves.
+			var plan := Movement.plan_teleport(state, attacker, TurnAction.cell_param(opts, "fold_to"), -1, Movement.MODE_MOVE, int(WeaponRules.rules(w)["on_crit_teleport"]))
+			if plan["ok"]:
+				var last: Array = (plan["path"] as Array).back()
+				attacker.cell = Vector2i(last[0], last[1])
+				attacker.level = int(last[2])
+				events.append({"type": "moved", "unit": attacker.id, "path": plan["path"], "mode": "teleport", "cost": 0, "rule_ref": "weapons: Fold Knife"})
+				events.append_array(Combat.after_movement(state))
 		events.append_array(GearSystems.turret_attacks(state, attacker, target))
 	elif Weapons.tag_value(w, "tg_reliable") > 0:
 		var dtype := String((w.get("damage", [{}]) as Array)[0].get("type", "Kinetic")) if not (w.get("damage", []) as Array).is_empty() else "Kinetic"
@@ -368,7 +403,7 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 	for i in range(damage.size()):
 		var d: Dictionary = damage[i]
 		var dtype := Weapons.swapped_type(attacker, String(d.get("type", "Kinetic")))
-		var r := average_roll(String(d.get("val", "0"))) if average else _shared_roll(state, shared, i, String(d.get("val", "0")), crit, Weapons.has_tag(w, "tg_overkill"))
+		var r := average_roll(str(d.get("val", "0"))) if average else _shared_roll(state, shared, i, str(d.get("val", "0")), crit, Weapons.has_tag(w, "tg_overkill"))
 		overkill_heat += int(r["overkill_heat"])
 		events.append({"type": "damage_rolled", "attacker": attacker.id, "target": target.id, "damage_type": dtype, "roll": r, "crit": crit, "rule_ref": REF_CRIT if crit else Combat.REF_HARM})
 		parts.append({"type": dtype, "amount": int(r["total"])})
@@ -641,10 +676,10 @@ static func pull(state: GameState, target: Unit, by: Unit) -> Array[Dictionary]:
 
 
 ## Involuntary movement toward `goal` until within `reach` (0: onto it) or no closer.
-static func pull_to(state: GameState, target: Unit, goal: Sight.Body, reach: int) -> Array[Dictionary]:
+static func pull_to(state: GameState, target: Unit, goal: Sight.Body, reach: int, max_steps: int = 100) -> Array[Dictionary]:
 	if Effects.has(target, "immovable"):
 		return [{"type": "knockback_blocked", "unit": target.id, "reason": "Immune to involuntary movement.", "rule_ref": Effects.REF}] as Array[Dictionary]
-	var path := Movement.pull_path_to(state, target, goal, reach)
+	var path := Movement.pull_path_to(state, target, goal, reach, max_steps)
 	if path.size() < 2:
 		return [] as Array[Dictionary]
 	var last: Array = path.back()
@@ -670,6 +705,9 @@ static func tech_preview(state: GameState, attacker: Unit, target: Unit, opts: D
 		out["reason"] = r.reason
 		out["rule_ref"] = r.rule_ref
 		return out
+	if Effects.has(attacker, "no_attacks"):
+		out["reason"] = "You can't make attacks of any kind right now (Retractable Profile)."
+		return out
 	var sources: Array = []
 	if target.has_status("Lock On") and target.side != attacker.side and opts.get("use_lock_on", true):
 		sources.append(_src("Lock On", "accuracy", "statuses: Lock On"))
@@ -684,6 +722,16 @@ static func tech_preview(state: GameState, attacker: Unit, target: Unit, opts: D
 	if target.has_status("Braced"):
 		sources.append(_src("Target Braced", "difficulty", "actions: Brace"))
 		out["difficulty"] = int(out["difficulty"]) + 1
+	var ice := GearSystems.black_ice(state, target)
+	if not ice.is_empty():
+		sources.append(_src("Black ICE", "difficulty", "systems: Black ICE Module", int(ice["value"])))
+		out["difficulty"] = int(out["difficulty"]) + int(ice["value"])
+		out["black_ice"] = ice["unit"].id
+	for e: Dictionary in Effects.of(target, "defense_difficulty"):
+		if e.has("vs") and not (e["vs"] as Array).has("tech"):
+			continue
+		sources.append(_src(String(e.get("label", "")), "difficulty", Effects.REF, int(e.get("value", 1))))
+		out["difficulty"] = int(out["difficulty"]) + int(e.get("value", 1))
 	for src: Dictionary in Effects.accuracy_sources(attacker, ["attack", "tech_attack"]):
 		sources.append(src)
 		var key := "accuracy" if src["kind"] == "accuracy" else "difficulty"
@@ -702,6 +750,8 @@ static func tech_target_check(state: GameState, user: Unit, target: Unit, action
 		return RuleResult.deny("No valid target.", "actions: Quick Tech")
 	if Effects.has(target, "aegis"):
 		return RuleResult.deny("Inside the Trueblack Aegis it's immune to all tech actions.", "frames: Napoleon core system")
+	if GearSystems.iceout(state, target) or GearSystems.iceout(state, user):
+		return RuleResult.deny("Inside an ICEOUT field: immune to tech actions, and none can be taken.", "systems: ICEOUT Drone")
 	if target.has_status("Hidden") and target.side != user.side:
 		return RuleResult.deny("Hidden characters can't be targeted.", "statuses: Hidden")
 	if target.has_status("Shut Down"):
@@ -725,7 +775,8 @@ static func tech_attack(state: GameState, attacker: Unit, target: Unit, label: S
 	var hit := false
 	var check := {}
 	var invisible_miss := false
-	if target.has_status("Invisible") or Zones.hidden_by_smoke(state, target, attacker):
+	var unseen: bool = (target.has_status("Invisible") or Zones.hidden_by_smoke(state, target, attacker) or GearSystems.seen_as_invisible(state, attacker, target) 		or GearSystems.cloaked(state, target)) and not GearSystems.sees_through(state, attacker, target)
+	if unseen:
 		var coin := state.dice.die(2)
 		invisible_miss = coin == 1
 		events.append({"type": "invisible_roll", "attacker": attacker.id, "target": target.id, "roll": coin, "missed": invisible_miss, "rule_ref": "statuses: Invisible"})
@@ -733,6 +784,10 @@ static func tech_attack(state: GameState, attacker: Unit, target: Unit, label: S
 	events.append_array(pre["events"])
 	if pre["cancel"]:
 		return {"events": events, "hit": false}
+	if attacker.counters.has("shrike_code"):
+		events.append_array(Combat.apply_heat(state, attacker, 2, "Shrike Code"))
+	if p.has("black_ice"):
+		GearSystems.black_ice_used(state.unit(String(p["black_ice"])))
 	for src: Dictionary in pre["sources"]:
 		(p["sources"] as Array).append(src)
 		p["difficulty"] = int(p["difficulty"]) + int(src["value"])

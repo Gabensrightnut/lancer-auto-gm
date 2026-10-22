@@ -300,5 +300,120 @@
   },
   "deploy:ms_webjaw_snare:Webjaw Snare": {
     "snare": true
-  }
+  },
+  "ms_singularity_motivator:Exposed Singularity": [],
+  "ms_ferrous_lash:Ferrous Lash": [
+    {
+      "op": "ferrous_lash",
+      "label": "Ferrous Lash",
+      "target": {
+        "who": "other",
+        "range": 8,
+        "los": true
+      }
+    }
+  ],
+  "ms_tracking_bug:Tracking Bug": [
+    {
+      "op": "tracking_bug",
+      "tech_attack": true
+    }
+  ],
+  "ms_core_siphon:Core Siphon": [
+    {
+      "op": "turn_flag",
+      "flag": "siphon"
+    }
+  ],
+  "ms_neurospike:Shrike Code": [
+    {
+      "op": "shrike_code"
+    }
+  ],
+  "ms_neurospike:Mirage": [
+    {
+      "op": "mirage"
+    }
+  ],
+  "ms_hunter_logic_suite:Stalk Prey": [
+    {
+      "op": "stalk_prey"
+    }
+  ],
+  "ms_hunter_logic_suite:Terrify": [
+    {
+      "op": "terrify"
+    }
+  ],
+  "ms_active_camouflage:Active Camouflage": [
+    {
+      "op": "status",
+      "who": "self",
+      "status": "Invisible",
+      "duration": "end_next_turn"
+    }
+  ],
+  "ms_javelin_rockets:Javelin Rockets": [
+    {
+      "op": "javelin"
+    }
+  ],
+  "ms_markerlight:Markerlight": [
+    {
+      "op": "markerlight",
+      "tech_attack": true
+    }
+  ],
+  "ms_retractable_profile:Retractable Profile": [
+    {
+      "op": "self_effects",
+      "duration": "scene",
+      "effects": [
+        {
+          "kind": "defense_difficulty",
+          "value": 1,
+          "vs": [
+            "ranged",
+            "tech"
+          ]
+        },
+        {
+          "kind": "status",
+          "status": "Slowed",
+          "when": "always"
+        },
+        {
+          "kind": "no_attacks"
+        }
+      ]
+    }
+  ],
+  "ms_retractable_profile:Deactivate Retractable Profile": [
+    {
+      "op": "remove_effects",
+      "label": "Retractable Profile"
+    }
+  ],
+  "ms_lb_oc_cloaking_field:LB/OC Cloaking Field": [
+    {
+      "op": "cloaking_field"
+    }
+  ],
+  "ms_lb_oc_cloaking_field:Deactivate LB/OC Cloaking Field": [
+    {
+      "op": "remove_zone",
+      "kind": "cloak"
+    }
+  ],
+  "deploy:ms_iceout_drone:ICEOUT Drone": {
+    "aura": "iceout"
+  },
+  "deploy:ms_lotus_projector:Lotus Projector": {
+    "aura": "lotus"
+  },
+  "ms_stuncrown:StunCrown": [
+    {
+      "op": "stuncrown"
+    }
+  ]
 }

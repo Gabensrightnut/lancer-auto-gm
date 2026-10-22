@@ -380,3 +380,273 @@ static func grapple_size(u: Unit, other: Unit) -> float:
 	if not Effects.has(u, "muscle_netting"):
 		return u.size
 	return other.size if other.size > u.size else u.size + 1.0
+
+
+# --- SSC systems ----------------------------------------------------------------------
+
+## Ferrous Lash: an ally is pulled 5 spaces (no save); a hostile saves (Agility) or is pulled 5
+## toward params.toward. Ignores engagement, no reactions; a hostile that collides is Prone.
+static func ferrous_lash(state: GameState, u: Unit, t: Unit, params: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var toward: Variant = TurnAction.cell_param(params, "toward")
+	if toward == null:
+		return events
+	if t.side != u.side:
+		var save := Combat.skill_check(state, t, "agility", "Save vs Ferrous Lash", u.save_target, 0, 0, [], true)
+		events.append({"type": "skill_check", "unit": t.id, "check": save, "rule_ref": "systems: Ferrous Lash"})
+		if save["success"]:
+			return events
+	var origin: Vector2i = t.cell - ((toward as Vector2i) - t.cell)
+	var path := Movement.push_path(state, t, origin, 5)
+	if Effects.has(t, "immovable"):
+		return events
+	if path.size() >= 2:
+		var last: Array = path.back()
+		t.cell = Vector2i(last[0], last[1])
+		t.level = int(last[2])
+		events.append({"type": "moved", "unit": t.id, "path": path, "mode": "involuntary", "cost": 0, "rule_ref": "systems: Ferrous Lash"})
+		events.append_array(Abilities.check_mines(state, t, path))
+		events.append_array(Zones.check_path(state, t, path))
+	if t.side != u.side and path.size() < 6:
+		events.append_array(Combat.add_status(state, t, "Prone", u.id))  # it hit something
+	events.append_array(Combat.after_movement(state))
+	return events
+
+
+## Black ICE Module: tech attacks against it or adjacent allies get +1 Difficulty, +1 more
+## for each later one, up to +3, then back to +1.
+static func black_ice(state: GameState, target: Unit) -> Dictionary:
+	for o: Unit in state.units.values():
+		if Effects.has(o, "black_ice") and o.side == target.side and Combat.is_present(o) and Sight.unit_distance(state, o, target) <= (0 if o == target else 1):
+			return {"unit": o, "value": int(o.counters.get("black_ice", 0)) + 1}
+	return {}
+
+
+static func black_ice_used(o: Unit) -> void:
+	var n := int(o.counters.get("black_ice", 0)) + 1
+	o.counters["black_ice"] = 0 if n >= 3 else n
+
+
+## Attack roll modifiers from the attacker's own systems (Core Siphon, Kinetic Compensator)
+## and from marks on the target (Markerlight, Shrike Code). Returns sources.
+static func attack_sources(attacker: Unit, kind: String) -> Array:
+	var out: Array = []
+	if attacker.turn.get("siphon", false):
+		if int(attacker.turn.get("attack_rolls", 0)) == 0:
+			out.append({"label": "Core Siphon", "kind": "accuracy", "type": "accuracy", "value": 1, "rule_ref": "systems: Core Siphon"})
+		else:
+			out.append({"label": "Core Siphon", "kind": "difficulty", "type": "difficulty", "value": 1, "rule_ref": "systems: Core Siphon"})
+	if kind == Attacks.KIND_RANGED and attacker.counters.get("compensator", false):
+		out.append({"label": "Kinetic Compensator", "kind": "accuracy", "type": "accuracy", "value": 1, "rule_ref": "systems: Kinetic Compensator"})
+	return out
+
+
+## After an attack roll: bookkeeping for those modifiers.
+static func attack_rolled(attacker: Unit, kind: String, hit: bool) -> void:
+	attacker.turn["attack_rolls"] = int(attacker.turn.get("attack_rolls", 0)) + 1
+	if kind == Attacks.KIND_RANGED:
+		attacker.counters.erase("compensator")
+		if not hit and Effects.has(attacker, "kinetic_compensator"):
+			attacker.counters["compensator"] = true  # the next ranged attack gains +1 Accuracy
+
+
+## Is `target` Invisible to `attacker` because of a tech effect (Mirage, Stalk Prey), or does
+## a tracker see through it (Tracking Bug, Lotus Projector)?
+static func seen_as_invisible(state: GameState, attacker: Unit, target: Unit) -> bool:
+	for m: Dictionary in attacker.counters.get("mirage", []):
+		if String(m.get("who", "")) == target.id:
+			return true
+	return false
+
+
+static func sees_through(state: GameState, attacker: Unit, target: Unit) -> bool:
+	if (target.counters.get("tracked_by", []) as Array).has(attacker.id):
+		return true
+	for o: Unit in state.units.values():
+		if o.counters.get("aura", "") == "lotus" and not o.destroyed and o.side != target.side and Sight.unit_distance(state, o, target) <= 2:
+			return true
+	return false
+
+
+## Iceout drone: characters in its burst 1 are immune to tech actions and can't take them.
+static func iceout(state: GameState, u: Unit) -> bool:
+	for o: Unit in state.units.values():
+		if o.counters.get("aura", "") == "iceout" and not o.destroyed and Sight.unit_distance(state, o, u) <= 1:
+			return true
+	return false
+
+
+## Invade options and other tech hits from SSC systems.
+static func tech_effect(state: GameState, u: Unit, t: Unit, op: Dictionary, params: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	match String(op.get("op", "")):
+		"shrike_code":
+			t.counters["shrike_code"] = {"by": u.id}
+			events.append_array(Combat.add_status(state, t, "Shrike Code", u.id, t.id))
+		"mirage":
+			var who := state.unit(String(params.get("ally", u.id)))
+			var list: Array = t.counters.get("mirage", [])
+			list.append({"who": who.id if who != null else u.id, "by": u.id})
+			t.counters["mirage"] = list
+			events.append_array(Combat.add_status(state, t, "Mirage", u.id, t.id))
+		"stalk_prey":
+			for o: Unit in state.units.values():
+				o.counters["mirage"] = (o.counters.get("mirage", []) as Array).filter(func(m: Dictionary) -> bool: return not (m.get("by", "") == u.id and m.get("stalk", false)))
+			var list: Array = t.counters.get("mirage", [])
+			list.append({"who": u.id, "by": u.id, "stalk": true})
+			t.counters["mirage"] = list
+		"terrify":
+			events.append_array(Combat.add_status(state, t, "Impaired", u.id, t.id))
+			t.counters["terrified_of"] = u.id
+		"tracking_bug":
+			var by: Array = t.counters.get("tracked_by", [])
+			if not by.has(u.id):
+				by.append(u.id)
+			t.counters["tracked_by"] = by
+			ViewFilter.reveal_in_state(state, u.side, t.id)
+		"markerlight":
+			events.append_array(Combat.apply_heat(state, t, 2, u.id))
+			events.append_array(Combat.add_status(state, t, "Lock On", u.id))
+			t.counters["marked_by"] = u.id
+			u.counters["markerlight_ready"] = t.id
+	return events
+
+
+## Mirage/Shrike end with their status (until the end of the target's next turn).
+static func status_ended(u: Unit, status: String) -> void:
+	match status:
+		"Mirage":
+			u.counters["mirage"] = (u.counters.get("mirage", []) as Array).filter(func(m: Dictionary) -> bool: return m.get("stalk", false))
+		"Shrike Code":
+			u.counters.erase("shrike_code")
+		"Lock On":
+			u.counters.erase("marked_by")
+
+
+## Stalk Prey ends when the hunter takes damage from that target; Active Camouflage and the
+## cloaking field end when their user takes damage.
+static func took_damage(state: GameState, u: Unit, source: String) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var src := state.unit(source)
+	if src != null:
+		src.counters["mirage"] = (src.counters.get("mirage", []) as Array).filter(func(m: Dictionary) -> bool: return not (m.get("stalk", false) and m.get("who", "") == u.id))
+	if u.has_status("Invisible") and String(u.statuses["Invisible"].get("source", "")) in ["Active Camouflage", "LB/OC Cloaking Field"]:
+		events.append_array(Combat.remove_status(u, "Invisible", "took damage"))
+	for z: Dictionary in Zones.of_kind(state, "cloak"):
+		if z.get("owner", "") == u.id:
+			events.append_array(Zones.remove(state, String(z["id"]), "took damage"))
+	return events
+
+
+## Markerlight: when an ally hits the marked target, the marker may react to make it a crit.
+static func markerlight_crit(state: GameState, attacker: Unit, target: Unit) -> bool:
+	var marker := state.unit(String(target.counters.get("marked_by", "")))
+	if marker == null or marker == attacker or marker.side != attacker.side or String(marker.counters.get("markerlight_ready", "")) != target.id:
+		return false
+	if not Reactions.can_react(marker, "markerlight", state).ok:
+		return false
+	var auto := {"take": true}
+	var d := Reactions.offer(state, marker, "markerlight", {"attacker": attacker.id, "target": target.id, "suggested": auto}, auto)
+	if not d.get("take", false):
+		return false
+	Reactions._mark_used(marker, "markerlight", state)
+	marker.counters.erase("markerlight_ready")
+	return true
+
+
+## Stuncrown: hostiles in burst 3 with line of sight to you and not in cover from you save
+## (Agility) or are Jammed, and save (Systems) or are Impaired, until the end of their next turn.
+static func stuncrown(state: GameState, u: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var ids: Array = state.units.keys()
+	ids.sort()
+	for id: String in ids:
+		var t := state.unit(id)
+		if t.side == u.side or not Combat.is_present(t) or t.kind == Unit.KIND_DEPLOYABLE or Sight.unit_distance(state, u, t) > 3:
+			continue
+		var cov := Sight.cover(state, Sight.body_of(state, u), Sight.body_of(state, t))
+		if not cov["los"] or cov["cover"] != "none":
+			continue
+		for pair: Array in [["agility", "Jammed"], ["systems", "Impaired"]]:
+			var save := Combat.skill_check(state, t, String(pair[0]), "Save vs Stuncrown", u.save_target, 0, 0, [], true)
+			events.append({"type": "skill_check", "unit": t.id, "check": save, "rule_ref": "systems: Stuncrown"})
+			if not save["success"]:
+				events.append_array(Combat.add_status(state, t, String(pair[1]), u.id, t.id))
+	return events
+
+
+## Javelin Rockets: three spaces; the first character to move into or over each (up to 10
+## spaces up) before the start of your next turn takes 3 kinetic.
+static func check_javelin(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+	var cells: Variant = params.get("spaces", [])
+	if not cells is Array or (cells as Array).size() != 3:
+		return RuleResult.deny("Choose 3 spaces (params.spaces).", "systems: Javelin Rockets")
+	var pts: Array[Vector2i] = []
+	for c: Variant in cells:
+		var v := Vector2i(int(c[0]), int(c[1]))
+		var r := check_aimed(state, u, {"range": 15}, {"aim": [v.x, v.y]})
+		if not r.ok:
+			return r
+		for p in pts:
+			if state.map.grid.distance(p, v) <= 1:
+				return RuleResult.deny("The spaces can't be adjacent to each other.", "systems: Javelin Rockets")
+		pts.append(v)
+	return RuleResult.allow()
+
+
+static func javelin(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for c: Array in params["spaces"]:
+		events.append_array(Zones.add(state, {"kind": "javelin", "owner": u.id, "label": "Javelin Rocket", "center": [int(c[0]), int(c[1])],
+			"cells": [[int(c[0]), int(c[1])]], "expires": {"unit": u.id, "when": "start", "count": 1}, "rule_ref": "systems: Javelin Rockets"}))
+	return events
+
+
+## LB/OC Cloaking Field: you and allies completely inside a burst 2 around you are Invisible;
+## you're Slowed. Ends at the end of your next turn, or if you're Stunned or take damage.
+static func cloaking_field(state: GameState, u: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = Zones.add(state, {"kind": "cloak", "owner": u.id, "label": "Cloaking Field", "center": [u.cell.x, u.cell.y],
+		"cells": [], "radius": 2, "expires": {"unit": u.id, "when": "end", "count": 2 if state.active_unit == u.id else 1}, "rule_ref": "systems: LB/OC Cloaking Field"})
+	events.append_array(Combat.add_status(state, u, "Slowed", "LB/OC Cloaking Field"))
+	return events
+
+
+static func cloaked(state: GameState, target: Unit) -> bool:
+	for z: Dictionary in Zones.of_kind(state, "cloak"):
+		var owner := state.unit(String(z.get("owner", "")))
+		if owner == null or owner.side != target.side:
+			continue
+		if target == owner:
+			return true
+		var inside := true
+		for c in state.map.grid.footprint(target.cell, target.size):
+			var near := false
+			for oc in state.map.grid.footprint(owner.cell, owner.size):
+				near = near or state.map.grid.distance(c, oc) <= int(z.get("radius", 2))
+			inside = inside and near
+		if inside:
+			return true
+	return false
+
+
+## Singularity Motivator: when it takes damage, it may teleport to a free space within 1d6.
+static func singularity(state: GameState, u: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if not Effects.has(u, "singularity_motivator") or not Combat.is_present(u) or not Reactions.can_react(u, "exposed_singularity", state).ok:
+		return events
+	var auto := {"take": false}
+	var d := Reactions.offer(state, u, "exposed_singularity", {"suggested": auto, "note": "Answer with to: [x, y]; the range is rolled (1d6)."}, auto)
+	var to: Variant = TurnAction.cell_param(d, "to")
+	if not d.get("take", false) or to == null:
+		return events
+	Reactions._mark_used(u, "exposed_singularity", state)
+	var reach := state.dice.die(6)
+	var plan := Movement.plan_teleport(state, u, to, -1, Movement.MODE_MOVE, reach)
+	events.append({"type": "reaction", "unit": u.id, "reaction": "exposed_singularity", "roll": reach, "ok": plan["ok"], "rule_ref": "systems: Singularity Motivator"})
+	if plan["ok"]:
+		var last: Array = (plan["path"] as Array).back()
+		u.cell = Vector2i(last[0], last[1])
+		u.level = int(last[2])
+		events.append({"type": "moved", "unit": u.id, "path": plan["path"], "mode": "teleport", "cost": 0})
+		events.append_array(Combat.after_movement(state))
+	return events

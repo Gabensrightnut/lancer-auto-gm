@@ -39,5 +39,23 @@
       "status": "Slowed",
       "skirmish_only_standard": true
     }
+  },
+  "mw_magnetic_cannon": {
+    "on_hit_pull": {
+      "spaces": "1d3+1",
+      "save": "hull"
+    }
+  },
+  "mw_veil_rifle": {
+    "spare_allies_cover": true
+  },
+  "mw_sharanga_missiles": {
+    "targets": 2
+  },
+  "mw_fold_knife": {
+    "on_crit_teleport": 2
+  },
+  "mw_pinaka_missiles": {
+    "blasts": 2
   }
 }

@@ -63,6 +63,7 @@ static func remove_status(u: Unit, status: String, source: String = "") -> Array
 	if not u.statuses.has(status):
 		return [] as Array[Dictionary]
 	u.statuses.erase(status)
+	GearSystems.status_ended(u, status)
 	return [{"type": "status_removed", "unit": u.id, "status": status, "source": source}] as Array[Dictionary]
 
 
@@ -200,6 +201,12 @@ static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dict
 		ev["overshield"] = target.overshield
 		if target.destroyed:
 			break
+	var took := false
+	for ev: Dictionary in events:
+		took = took or (ev.get("type", "") == "damage_dealt" and int(ev.get("amount", 0)) > 0 and ev.get("target", "") == target.id)
+	if took and not target.destroyed:
+		events.append_array(GearSystems.took_damage(state, target, source))
+		events.append_array(GearSystems.singularity(state, target))
 	return events
 
 
@@ -710,6 +717,11 @@ static func refresh_engagement(state: GameState) -> Array[Dictionary]:
 ## Could `u` HIDE right now? Not Engaged, and every enemy either has no line of sight or
 ## the unit is entirely inside soft cover; INVISIBLE can always hide (actions: Hide).
 static func can_hide(state: GameState, u: Unit) -> RuleResult:
+	if not (u.counters.get("tracked_by", []) as Array).is_empty():
+		return RuleResult.deny("A tracking bug is on you: you can't Hide.", "systems: Tracking Bug")
+	for o: Unit in state.units.values():
+		if o.counters.get("aura", "") == "lotus" and not o.destroyed and o.side != u.side and Sight.unit_distance(state, o, u) <= 2:
+			return RuleResult.deny("Inside a Lotus Projector field you can't Hide.", "systems: Lotus Projector")
 	if u.has_status("Engaged"):
 		return RuleResult.deny("You can't Hide while Engaged.", "actions: Hide")
 	if u.has_status("Invisible"):

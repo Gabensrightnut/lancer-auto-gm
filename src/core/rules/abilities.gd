@@ -326,6 +326,8 @@ static func deploy(state: GameState, owner: Unit, a: Dictionary, cell: Vector2i)
 		u.counters["snare"] = true  # Webjaw Snare: hidden, armed at the end of the turn
 		u.counters["armed"] = false
 		u.statuses["Hidden"] = {"source": owner.id}
+	if d.has("aura"):
+		u.counters["aura"] = String(d["aura"])  # ICEOUT Drone, Lotus Projector
 	if d.has("interact"):
 		u.counters["interact"] = (d["interact"] as Array).duplicate(true)
 	if not u.counters["turret"]:
