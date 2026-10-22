@@ -92,7 +92,7 @@ static func uneven_choice(state: GameState) -> String:
 static func _others(state: GameState, u: Unit) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for o: Unit in state.units.values():
-		if o == u or o.destroyed:
+		if o == u or not Combat.is_present(o):
 			continue
 		var blocks := o.side != u.side or o.kind == Unit.KIND_DEPLOYABLE
 		out.append({"body": Sight.body_of(state, o), "unit": o, "blocks": blocks})
@@ -127,7 +127,7 @@ static func _stopper(state: GameState, u: Unit, body: Sight.Body, others: Array[
 	if u.turn.get("disengaged", false):
 		return null
 	for e in _engagers(state, u, body, others):
-		if not engaged_at_start.has(e) and e.size >= u.size:
+		if not engaged_at_start.has(e) and (e.size >= u.size or Effects.has(e, "maze")):
 			return e
 	return null
 
@@ -436,7 +436,7 @@ static func threatened_by(state: GameState, u: Unit) -> Array[String]:
 	if u.has_status("Hidden"):
 		return out
 	for o: Unit in state.units.values():
-		if o.side == u.side or o.destroyed or o.kind == Unit.KIND_DEPLOYABLE:
+		if o.side == u.side or not Combat.is_present(o) or o.kind == Unit.KIND_DEPLOYABLE:
 			continue
 		var reach := 0
 		for w: Dictionary in o.loadout.get("weapons", []):

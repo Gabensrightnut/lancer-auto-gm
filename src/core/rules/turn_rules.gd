@@ -26,7 +26,9 @@ const REACTION := "reaction"
 
 ## Units that take turns: not destroyed, not deployables.
 static func takes_turns(u: Unit) -> bool:
-	return not u.destroyed and u.kind != Unit.KIND_DEPLOYABLE
+	if u.kind == Unit.KIND_PILOT and not u.destroyed and u.counters.has("mounted_in"):
+		return false  # acts through its mech
+	return Combat.is_present(u) and u.kind != Unit.KIND_DEPLOYABLE and not u.counters.get("empty", false)
 
 
 static func sides(state: GameState) -> Array[String]:
@@ -67,6 +69,7 @@ static func _start_round(state: GameState) -> Array[Dictionary]:
 	for u: Unit in state.units.values():
 		# "Each character only needs to make one such check per round" (glossary: Dangerous Terrain).
 		u.counters.erase("dangerous_checked")
+		u.counters.erase("round_grants_used")
 	return [{"type": "round_started", "round": state.round_number, "side": state.turn_side}] as Array[Dictionary]
 
 
@@ -92,13 +95,21 @@ static func begin_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 		u.turn["braced"] = true
 	# Reactions refresh at the start of the unit's turn (tags: X/Round counts from turn start).
 	u.counters.erase("reactions")
-	return [{"type": "turn_started", "unit": u.id, "round": state.round_number}] as Array[Dictionary]
+	var events: Array[Dictionary] = []
+	if u.counters.has("prepared"):
+		# A prepared action lasts until the start of your next turn (actions: Prepare).
+		u.counters.erase("prepared")
+		events.append({"type": "prepared_lost", "unit": u.id, "rule_ref": "actions: Prepare"})
+	events.append({"type": "turn_started", "unit": u.id, "round": state.round_number})
+	events.append_array(Effects.turn_started(state, u))
+	return events
 
 
 ## End-of-turn bookkeeping for `u`, then hand the activation to the next side.
 static func finish_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if not u.destroyed:
+		events.append_array(Effects.turn_ending(state, u))
 		events.append_array(Combat.end_of_turn_checks(state, u))
 	events.append_array(Combat.fall_all(state))
 	events.append_array(Combat.expire_statuses(state, u))
@@ -122,7 +133,11 @@ static func can_spend(u: Unit, cost: String, action: String) -> RuleResult:
 			return RuleResult.allow()
 		return RuleResult.deny("A Shut Down mech is Stunned until it Boots Up.", "statuses: Shut Down")
 	if u.has_status("Stunned"):
+		if action == "eject" or action == "dismount":
+			return RuleResult.allow()  # pilots can still Eject or Dismount from Stunned mechs
 		return RuleResult.deny("Stunned mechs can't take any actions, free actions or reactions.", REF_STUNNED)
+	if u.turn.get("prepared_lock", false):
+		return RuleResult.deny("After Preparing an action you can't move or act until it triggers or your next turn starts.", "actions: Prepare")
 	var t := u.turn
 	var braced: bool = t.get("braced", false)
 	match cost:

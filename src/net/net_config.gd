@@ -15,7 +15,7 @@ const DEFAULTS := {
 	# strict networks may fail to connect until one is added here.
 	"ice_servers": [{"urls": ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"]}],
 	# Signaling ids are "<prefix>-<ROOMCODE>" for hosts, so codes don't clash with other apps.
-	"id_prefix": "lancerautogm",
+	"id_prefix": "lancerttrpg",
 	"join_timeout_sec": 25.0,
 }
 

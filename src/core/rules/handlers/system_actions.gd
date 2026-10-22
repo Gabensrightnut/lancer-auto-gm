@@ -114,6 +114,9 @@ class Hide:
 	func type() -> String:
 		return "hide"
 
+	func kinds() -> Array:
+		return [Unit.KIND_MECH, Unit.KIND_NPC, Unit.KIND_PILOT]
+
 	func check(state: GameState, u: Unit, _params: Dictionary) -> RuleResult:
 		return Combat.can_hide(state, u)
 
@@ -130,6 +133,9 @@ class Search:
 
 	func type() -> String:
 		return "search"
+
+	func kinds() -> Array:
+		return [Unit.KIND_MECH, Unit.KIND_NPC, Unit.KIND_PILOT]
 
 	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
 		var target := state.unit(String(params.get("target", "")))
@@ -220,3 +226,85 @@ class SetBracePolicy:
 		var u := state.unit(action["actor"])
 		u.counters["brace_policy"] = action["params"]["policy"]
 		return [{"type": "reaction_policy", "unit": u.id, "reaction": "brace", "policy": action["params"]["policy"]}] as Array[Dictionary]
+
+
+class CorePower:
+	extends TurnAction
+	## Activate the frame's core system (loadout["core"]): its effects last for the rest of
+	## the scene. Uses the mech's Core Power. Activation is the core's own: a Protocol is a
+	## free action at the start of your turn only (tags: Protocol); Quick/Full/Free as named.
+	## A core marked not automated still spends the Core Power; the table applies its text.
+
+	func type() -> String:
+		return "core_power"
+
+	func kinds() -> Array:
+		return [Unit.KIND_MECH]
+
+	func _activation(u: Unit) -> String:
+		return String(u.loadout.get("core", {}).get("activation", "Quick"))
+
+	func cost() -> String:
+		return TurnRules.QUICK
+
+	func validate(state: GameState, action: Dictionary) -> RuleResult:
+		var u := state.unit(action["actor"])
+		var r := TurnRules.check_own_turn(state, u)
+		if not r.ok:
+			return r
+		if u.loadout.get("core", {}).is_empty():
+			return RuleResult.deny("This mech has no core system.", "frames: core_system")
+		if int(u.counters.get("core_power", 0)) <= 0:
+			return RuleResult.deny("Core Power already used this mission.", "PROVISIONAL Core: Core Power (docs/RULES_TODO.md)")
+		var act := _activation(u)
+		if act == "Reaction" or act == "None":
+			return RuleResult.deny("This core system is a %s; it isn't automated yet, so the table applies it." % ("reaction" if act == "Reaction" else "passive effect"), "frames: core_system")
+		if act == "Protocol" and (u.turn.get("acted", false) or u.turn.get("moved", false)):
+			return RuleResult.deny("A Protocol can only be activated at the start of your turn.", "tags: Protocol")
+		return TurnRules.can_spend(u, _cost_of(act), type())
+
+	func _cost_of(act: String) -> String:
+		match act:
+			"Full":
+				return TurnRules.FULL
+			"Protocol", "Free":
+				return TurnRules.FREE
+		return TurnRules.QUICK
+
+	func resolve(state: GameState, action: Dictionary) -> Array[Dictionary]:
+		var u := state.unit(action["actor"])
+		var core: Dictionary = u.loadout["core"]
+		u.counters["core_power"] = int(u.counters.get("core_power", 1)) - 1
+		var events: Array[Dictionary] = [{"type": "core_power", "unit": u.id, "core": core.get("name", ""),
+			"power": core.get("power", ""), "text": core.get("text", ""), "automated": core.get("automated", false),
+			"rule_ref": "frames: core_system"}]
+		events.append_array(Effects.activate(state, u, core.get("effects", []), String(core.get("name", ""))))
+		var c := _cost_of(_activation(u))
+		TurnRules.spend(u, c, type())
+		if c == TurnRules.FREE:
+			u.turn["acted"] = false  # a Protocol doesn't count as acting (tags: Ordnance excepts Protocols)
+		return events
+
+
+class SetReactionPolicy:
+	extends ActionHandler
+	## Not a game action: how the engine handles one of this unit's reactions.
+	## params: {"reaction": "overwatch" | "brace" | "prepared", "policy": "ask" | "auto" |
+	## "never" | "on_structure" (Brace only)}. Allowed any time. See Reactions.
+
+	func type() -> String:
+		return "set_reaction_policy"
+
+	func validate(_state: GameState, action: Dictionary) -> RuleResult:
+		var p: Dictionary = action.get("params", {})
+		if not Reactions.POLICIES.has(p.get("policy", "")) or String(p.get("reaction", "")) == "":
+			return RuleResult.deny("Give a reaction and a policy (ask, auto, never, on_structure).", "")
+		return RuleResult.allow()
+
+	func resolve(state: GameState, action: Dictionary) -> Array[Dictionary]:
+		var u := state.unit(action["actor"])
+		var p: Dictionary = action["params"]
+		var set: Dictionary = u.counters.get("reaction_policy", {})
+		set[p["reaction"]] = p["policy"]
+		u.counters["reaction_policy"] = set
+		return [{"type": "reaction_policy", "unit": u.id, "reaction": p["reaction"], "policy": p["policy"]}] as Array[Dictionary]

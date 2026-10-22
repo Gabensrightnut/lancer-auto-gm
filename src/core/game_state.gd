@@ -23,6 +23,11 @@ var first_side: String = ""
 ## side -> {unit_id: true}: enemies whose full stats that side has learned (Scan...).
 ## ViewFilter reads it.
 var intel: Dictionary = {}
+## A reaction the engine is waiting for (src/core/rules/reactions.gd): {id, unit, reaction,
+## context, action, decisions, snapshot}. While set, only that unit's "react" is accepted.
+var pending: Dictionary = {}
+## Runtime only (not saved): bookkeeping while the engine resolves one action.
+var reaction_run: Dictionary = {}
 ## Player seats: seat id -> {"name": String, "side": String}.
 var seats: Dictionary = {}
 ## Rulings made on grey areas this campaign: ruling id -> {choice, rule_ref, note}.
@@ -65,7 +70,7 @@ func to_dict() -> Dictionary:
 		"seed": str(game_seed), "map": map.to_dict(), "units": unit_dicts,
 		"round": round_number, "phase": phase, "active_unit": active_unit,
 		"acted": Array(acted), "turn_side": turn_side, "first_side": first_side,
-		"intel": intel.duplicate(true), "seats": seats.duplicate(true),
+		"intel": intel.duplicate(true), "pending": pending.duplicate(true), "seats": seats.duplicate(true),
 		"rulings": rulings.duplicate(true), "dice_state": str(dice.get_state()),
 	}
 
@@ -83,6 +88,7 @@ static func from_dict(d: Dictionary) -> GameState:
 	s.turn_side = d.get("turn_side", "")
 	s.first_side = d.get("first_side", "")
 	s.intel = (d.get("intel", {}) as Dictionary).duplicate(true)
+	s.pending = (d.get("pending", {}) as Dictionary).duplicate(true)
 	s.seats = (d.get("seats", {}) as Dictionary).duplicate(true)
 	s.rulings = (d.get("rulings", {}) as Dictionary).duplicate(true)
 	if d.has("dice_state"):

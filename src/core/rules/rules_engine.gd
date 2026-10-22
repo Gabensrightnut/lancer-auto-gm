@@ -8,6 +8,8 @@ extends RefCounted
 ## check that the sending seat controls `actor` (Unit.controller) before submitting.
 
 var _handlers: Dictionary = {}  # type -> ActionHandler
+## type -> handler, shared, for rules that run another action (Prepare, Full Tech).
+static var registry: Dictionary = {}
 
 
 func _init() -> void:
@@ -19,7 +21,13 @@ func _init() -> void:
 		TechActions.Scan.new(), TechActions.LockOn.new(), TechActions.Invade.new(),
 		SystemActions.Overcharge.new(), SystemActions.Stabilize.new(), SystemActions.Hide.new(),
 		SystemActions.Search.new(), SystemActions.ShutDown.new(), SystemActions.BootUp.new(),
-		SystemActions.SetBracePolicy.new(),
+		SystemActions.SetBracePolicy.new(), SystemActions.SetReactionPolicy.new(),
+		CloseCombat.Ram.new(), CloseCombat.Grapple.new(), CloseCombat.EndGrapple.new(),
+		CloseCombat.BreakFree.new(), CloseCombat.Jump.new(),
+		TechActions.Bolster.new(), TechActions.FullTech.new(),
+		PilotActions.Eject.new(), PilotActions.Dismount.new(), PilotActions.Mount.new(),
+		PilotActions.Fight.new(), PilotActions.SelfDestruct.new(), PilotActions.Prepare.new(),
+		PilotActions.DropPrepared.new(), SystemActions.CorePower.new(),
 	]:
 		register(h)
 
@@ -27,6 +35,7 @@ func _init() -> void:
 func register(handler: ActionHandler) -> void:
 	assert(not _handlers.has(handler.type()), "duplicate action type " + handler.type())
 	_handlers[handler.type()] = handler
+	registry[handler.type()] = handler
 
 
 func has_action(type: String) -> bool:
@@ -52,9 +61,85 @@ func validate(state: GameState, action: Dictionary) -> RuleResult:
 
 ## Validates, then resolves. Returns {"result": RuleResult, "events": Array[Dictionary]}.
 ## A grey area is not applied until a ruling exists in state.rulings.
+##
+## Reactions: if resolving offers a reaction to a unit whose policy is "ask", nothing is
+## applied: the state is rewound, `state.pending` records the question, and the only event
+## is `reaction_offered`. That unit's controller answers with
+## {"type": "react", "actor": unit, "params": {"take": bool, ...}}; the action then replays
+## from the start with the same dice and the answer (see Reactions).
 func submit(state: GameState, action: Dictionary) -> Dictionary:
+	if not state.pending.is_empty():
+		return _answer(state, action)
 	var result := validate(state, action)
 	if not result.ok or (result.grey_area != "" and not state.rulings.has(result.grey_area)):
 		return {"result": result, "events": [] as Array[Dictionary]}
+	return _run(state, action, {}, result)
+
+
+func _answer(state: GameState, action: Dictionary) -> Dictionary:
+	var p := state.pending
+	var who := state.unit(p["unit"])
+	var name := who.name if who != null and who.name != "" else String(p["unit"])
+	if action.get("type", "") != "react" or action.get("actor", "") != p["unit"]:
+		var no := RuleResult.deny("Waiting for %s to decide whether to %s." % [name, String(p["reaction"]).capitalize()], "actions: Reactions")
+		return {"result": no, "events": [] as Array[Dictionary]}
+	var params: Variant = action.get("params", {})
+	if not params is Dictionary or not (params as Dictionary).has("take"):
+		var bad := RuleResult.deny("Answer with params.take = true or false.", "")
+		return {"result": bad, "events": [] as Array[Dictionary]}
+	var decisions: Dictionary = (p.get("decisions", {}) as Dictionary).duplicate(true)
+	decisions[p["id"]] = params
+	var original: Dictionary = p["action"]
+	state.pending = {}
+	return _run(state, original, decisions, RuleResult.allow())
+
+
+func _run(state: GameState, action: Dictionary, decisions: Dictionary, result: RuleResult) -> Dictionary:
+	var snap := _snapshot(state)
+	state.reaction_run = {"decisions": decisions, "count": 0, "pending": {}}
 	var handler: ActionHandler = _handlers[action["type"]]
-	return {"result": result, "events": handler.resolve(state, action)}
+	var events := handler.resolve(state, action)
+	var asked: Dictionary = state.reaction_run.get("pending", {})
+	state.reaction_run = {}
+	if asked.is_empty():
+		return {"result": result, "events": events}
+	_restore(state, snap)
+	var pending := asked.duplicate(true)
+	pending["action"] = action
+	pending["decisions"] = decisions
+	pending["snapshot"] = snap
+	state.pending = pending
+	var offered: Array[Dictionary] = [{"type": "reaction_offered", "id": asked["id"], "unit": asked["unit"],
+		"reaction": asked["reaction"], "context": asked["context"], "trigger_action": action.get("type", ""),
+		"rule_ref": "actions: " + String(asked["reaction"]).capitalize()}]
+	return {"result": result, "events": offered}
+
+
+func _snapshot(state: GameState) -> Dictionary:
+	var snap := state.to_dict()
+	if state.dice.has_method("checkpoint"):
+		snap["dice_checkpoint"] = state.dice.call("checkpoint")
+	return snap
+
+
+## Puts `state` back to `snap` in place (same GameState and Unit objects, so references
+## held elsewhere stay valid).
+func _restore(state: GameState, snap: Dictionary) -> void:
+	var fresh := GameState.from_dict(snap)
+	state.map = fresh.map
+	for id: String in state.units.keys():
+		if not fresh.units.has(id):
+			state.units.erase(id)
+	for id: String in fresh.units:
+		var src: Unit = fresh.units[id]
+		if not state.units.has(id):
+			state.units[id] = src
+			continue
+		var dst: Unit = state.units[id]
+		for key: String in src.to_dict():
+			dst.set(key, src.get(key))
+	for key in ["round_number", "phase", "active_unit", "acted", "turn_side", "first_side", "intel", "rulings", "seats"]:
+		state.set(key, fresh.get(key))
+	state.dice.set_state(String(snap["dice_state"]).to_int())
+	if snap.has("dice_checkpoint"):
+		state.dice.call("rewind", snap["dice_checkpoint"])

@@ -9,9 +9,10 @@ extends RefCounted
 ## host -> client
 ##   welcome  {seat, token, room, version}   you have a seat; keep the token to reconnect
 ##   refused  {code, reason}                 not let in (see REFUSE_*); connection closes
-##   update   {view, events}                 your filtered view + events you may see
+##   update   {view, events, waiting}        your filtered view, the events you may see, and
+##                                           who the game is waiting on (NetHost.waiting_on)
 ##   result   {id, result}                   answer to your `action` (RuleResult.to_dict())
-##   seats    {seats}                        who is sitting where (lobby / reconnect info)
+##   seats    {seats, waiting}               who is sitting where (lobby / reconnect info)
 
 ## Bump when the message format changes in a way old builds can't read.
 const PROTOCOL := 1

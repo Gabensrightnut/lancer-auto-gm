@@ -47,6 +47,12 @@ func submit(action: Dictionary) -> Dictionary:
 	return host.submit(current_seat, action)
 
 
+## "I'll go": the people at this screen choose who acts next (any of their seats' units, or an
+## AI squadmate). The screen then passes to that unit's seat if it's another person's.
+func pick_next(unit_id: String) -> Dictionary:
+	return host.submit(current_seat if current_seat != "" else seats[0], {"type": "start_turn", "actor": unit_id})
+
+
 ## Asks for the screen to go to `seat` (e.g. the players chose who acts next).
 func pass_to(seat: String) -> void:
 	if not seat in seats or (seat == current_seat and not awaiting_handoff):
@@ -66,10 +72,11 @@ func confirm_handoff() -> void:
 	_show(current_seat)
 
 
-## Hands the screen over if the unit now acting belongs to another seat at this screen.
+## Hands the screen over if the unit now acting belongs to another seat at this screen
+## (not for seats the AI is playing: their turns happen on whoever's screen is up).
 func check_turn() -> void:
 	var u := host.state.unit(host.state.active_unit)
-	if u != null and u.controller in seats and u.controller != current_seat:
+	if u != null and u.controller in seats and u.controller != current_seat and not host.is_ai_seat(u.controller):
 		pass_to(u.controller)
 
 

@@ -21,7 +21,7 @@ const KIND_TECH := "tech"
 
 
 static func _src(label: String, kind: String, ref: String, value: int = 1) -> Dictionary:
-	return {"label": label, "kind": kind, "value": value, "rule_ref": ref}
+	return {"label": label, "kind": kind, "type": kind, "value": value, "rule_ref": ref}
 
 
 ## Everything about an attack before it's rolled. Never changes the state.
@@ -44,19 +44,17 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 		return fail.call("No valid target.", REF_SKIRMISH)
 	if target == attacker:
 		return fail.call("You can't attack yourself.", REF_SKIRMISH)
-	if target.has_status("Hidden") and target.side != attacker.side:
+	var area_origin: Variant = opts.get("area_origin")
+	if Weapons.area(w) != "" and area_origin == null:
+		return fail.call("%s is an area weapon (%s): aim it at a space instead of a target." % [w.get("name", ""), Weapons.area(w)], Areas.REF)
+	if target.has_status("Hidden") and target.side != attacker.side and area_origin == null:
 		return fail.call("Hidden characters can't be targeted by attacks.", "statuses: Hidden")
-	if attacker.has_status("Jammed") and not opts.get("improvised", false):
-		return fail.call("Jammed: you can only make Improvised Attacks, Grapple or Ram.", "statuses: Jammed")
-	var ws := Weapons.state_of(attacker, w)
-	if ws["destroyed"]:
-		return fail.call("%s has been destroyed." % w.get("name", "That weapon"), Combat.REF_STRUCTURE)
-	if Weapons.has_tag(w, "tg_loading") and not ws["loaded"]:
-		return fail.call("%s needs reloading (Stabilize reloads it)." % w.get("name", "That weapon"), "tags: Loading")
-	if Weapons.has_tag(w, "tg_limited") and int(ws["uses"]) <= 0:
-		return fail.call("%s is out of charges until a Full Repair." % w.get("name", "That weapon"), "tags: Limited")
-	if Weapons.area(w) != "":
-		return fail.call("%s attacks (%s) aren't in the rules engine yet." % [Weapons.area(w), w.get("name", "")], "glossary: " + Weapons.area(w))
+	if not Combat.is_present(target):
+		return fail.call("No valid target.", REF_SKIRMISH)
+	if not opts.get("skip_spend", false):
+		var ready := weapon_ready(attacker, w, opts.get("improvised", false))
+		if not ready.ok:
+			return fail.call(ready.reason, ready.rule_ref)
 	var a_body := Sight.body_of(state, attacker)
 	var t_body := Sight.body_of(state, target)
 	var dist := Sight.distance(state, a_body, t_body)
@@ -72,10 +70,11 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 			out["thrown"] = true
 	out["kind"] = kind
 	out["reach"] = reach
-	if dist > reach:
+	if area_origin == null and dist > reach:
 		return fail.call("Out of %s: %d spaces away, %s reaches %d." % ["Threat" if kind == KIND_MELEE and not out.has("thrown") else "Range", dist, w.get("name", "the weapon"), reach], "glossary: Range" if kind == KIND_RANGED else "glossary: Threat")
 	var ignores_los := Weapons.has_tag(w, "tg_arcing") or Weapons.has_tag(w, "tg_seeking")
-	var cover := Sight.cover(state, a_body, t_body)
+	# Area attacks take cover and line of sight from the area's origin (glossary: Blast, Burst).
+	var cover := Sight.cover(state, area_origin if area_origin != null else a_body, t_body, Effects.guardians(state, target))
 	out["los"] = cover["los"]
 	if not cover["los"] and not ignores_los:
 		return fail.call("No line of sight to the target.", Sight.REF_LOS)
@@ -111,6 +110,13 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 	if target.has_status("Braced"):
 		sources.append(_src("Target Braced", "difficulty", "actions: Brace"))
 		diff += 1
+	var roll_kinds := ["attack", "melee_attack" if kind == KIND_MELEE else "ranged_attack"]
+	for src: Dictionary in Effects.accuracy_sources(attacker, roll_kinds, "", opts.get("reaction", false)):
+		sources.append(src)
+		if src["kind"] == "accuracy":
+			acc += int(src["value"])
+		else:
+			diff += int(src["value"])
 	var ranged_like := kind == KIND_RANGED or out.has("thrown")
 	if kind == KIND_RANGED and attacker.has_status("Engaged"):
 		sources.append(_src("Engaged", "difficulty", "statuses: Engaged"))
@@ -118,6 +124,10 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 	if ranged_like and not Weapons.has_tag(w, "tg_seeking") and int(cover["difficulty"]) > 0:
 		sources.append(_src("Hard cover" if cover["cover"] == "hard" else "Soft cover", "difficulty", Sight.REF_COVER, cover["difficulty"]))
 		diff += int(cover["difficulty"])
+		var plus := Effects.value(target, "soft_cover_plus")
+		if cover["cover"] == "soft" and plus > 0:
+			sources.append(_src(String(Effects.of(target, "soft_cover_plus")[0].get("label", "Soft cover")), "difficulty", Effects.REF, plus))
+			diff += plus
 		out["cover"] = cover
 	elif ranged_like:
 		out["cover"] = cover
@@ -131,10 +141,29 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 	else:
 		out["bonus"] = attacker.grit
 		out["bonus_sources"] = [{"label": "Grit", "value": attacker.grit}]
+	for b: Dictionary in Effects.attack_bonus(attacker, roll_kinds):
+		(out["bonus_sources"] as Array).append(b)
+		out["bonus"] = int(out["bonus"]) + int(b["value"])
+	if area_origin != null:
+		out["kind"] = KIND_RANGED if not Weapons.is_melee(w) else KIND_MELEE
 	_defense(out, target, Weapons.has_tag(w, "tg_smart"))
 	out["ok"] = true
 	out["rule_ref"] = REF_FIGHT
 	return out
+
+
+## Can this weapon be fired at all right now (Jammed, destroyed, Loading, Limited)?
+static func weapon_ready(attacker: Unit, w: Dictionary, improvised: bool = false) -> RuleResult:
+	if attacker.has_status("Jammed") and not improvised and not (Effects.has(attacker, "jammed_ranged") and not Weapons.is_melee(w)):
+		return RuleResult.deny("Jammed: you can only make Improvised Attacks, Grapple or Ram.", "statuses: Jammed")
+	var ws := Weapons.state_of(attacker, w)
+	if ws["destroyed"]:
+		return RuleResult.deny("%s has been destroyed." % w.get("name", "That weapon"), Combat.REF_STRUCTURE)
+	if Weapons.has_tag(w, "tg_loading") and not ws["loaded"]:
+		return RuleResult.deny("%s needs reloading (Stabilize reloads it)." % w.get("name", "That weapon"), "tags: Loading")
+	if Weapons.has_tag(w, "tg_limited") and int(ws["uses"]) <= 0:
+		return RuleResult.deny("%s is out of charges until a Full Repair." % w.get("name", "That weapon"), "tags: Limited")
+	return RuleResult.allow()
 
 
 static func _defense(out: Dictionary, target: Unit, smart: bool) -> void:
@@ -164,12 +193,21 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		var coin := state.dice.die(2)
 		invisible_miss = coin == 1
 		events.append({"type": "invisible_roll", "attacker": attacker.id, "target": target.id, "roll": coin, "missed": invisible_miss, "rule_ref": "statuses: Invisible"})
+	attacker.turn["attacked"] = true
+	var thorns := Effects.value(target, "thorns")
+	if thorns > 0 and Sight.unit_distance(state, attacker, target) <= Effects.value(target, "thorns", "range"):
+		events.append({"type": "effect_triggered", "unit": target.id, "effect": Effects.of(target, "thorns")[0].get("label", ""), "target": attacker.id})
+		events.append_array(Combat.deal_damage(state, attacker, [{"type": "Kinetic", "amount": thorns}], {"ap": true, "source": target.id}))
+		if not Combat.is_present(attacker):
+			return events
 	var check := {}
 	var result := "miss"
 	if not invisible_miss:
 		check = state.dice.check(p["bonus"], p["accuracy"], p["difficulty"], p["target_number"], p["sources"])
 		check["bonus_sources"] = p["bonus_sources"]
+		check["bonuses"] = p["bonus_sources"]
 		check["defense"] = p["defense_name"]
+		check["target_label"] = p["defense_name"]
 		if check["success"]:
 			result = "crit" if check["crit"] else "hit"
 	events.append({"type": "attack_rolled", "attacker": attacker.id, "target": target.id,
@@ -177,14 +215,15 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		"result": result, "cover": p["cover"].get("cover", "none") if p["cover"] is Dictionary else "none",
 		"cover_cells": p["cover"].get("cover_cells", []), "invisible_miss": invisible_miss,
 		"lock_on_consumed": p["lock_on"], "rule_ref": p["rule_ref"]})
-	events.append_array(_spend_weapon(state, attacker, w))
+	if not opts.get("skip_spend", false):
+		events.append_array(_spend_weapon(state, attacker, w))
 	if result != "miss":
 		events.append_array(_hit(state, attacker, w, target, result == "crit", opts))
 	elif Weapons.tag_value(w, "tg_reliable") > 0:
 		var dtype := String((w.get("damage", [{}]) as Array)[0].get("type", "Kinetic")) if not (w.get("damage", []) as Array).is_empty() else "Kinetic"
 		var parts := [{"type": dtype, "amount": Weapons.tag_value(w, "tg_reliable")}]
 		events.append({"type": "reliable_damage", "attacker": attacker.id, "target": target.id, "amount": Weapons.tag_value(w, "tg_reliable"), "rule_ref": "tags: Reliable"})
-		events.append_array(_apply(state, attacker, target, parts, Weapons.has_tag(w, "tg_ap")))
+		events.append_array(_apply(state, attacker, target, parts, Weapons.has_tag(w, "tg_ap"), opts.has("area_origin")))
 	if p["lock_on"]:
 		events.append_array(Combat.remove_status(target, "Lock On", "consumed by " + attacker.id))
 	if attacker.has_status("Hidden"):
@@ -211,8 +250,14 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 	var parts: Array = []
 	var overkill_heat := 0
 	var total := 0
-	for d: Dictionary in w.get("damage", []):
-		var r := roll_damage(state, String(d.get("val", "0")), crit, Weapons.has_tag(w, "tg_overkill"))
+	var shared: Dictionary = opts.get("shared_damage", {})
+	var damage: Array = w.get("damage", [])
+	if Weapons.has_tag(w, "tg_archaic") and target.kind != Unit.KIND_PILOT:
+		damage = []  # Archaic weapons can't harm mechs (tags: Archaic).
+		events.append({"type": "no_effect", "target": target.id, "reason": "Archaic weapons can't harm mechs.", "rule_ref": "tags: Archaic"})
+	for i in range(damage.size()):
+		var d: Dictionary = damage[i]
+		var r := _shared_roll(state, shared, i, String(d.get("val", "0")), crit, Weapons.has_tag(w, "tg_overkill"))
 		overkill_heat += int(r["overkill_heat"])
 		events.append({"type": "damage_rolled", "attacker": attacker.id, "target": target.id, "damage_type": d.get("type", "Kinetic"), "roll": r, "crit": crit, "rule_ref": REF_CRIT if crit else Combat.REF_HARM})
 		parts.append({"type": d.get("type", "Kinetic"), "amount": int(r["total"])})
@@ -227,31 +272,37 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 	var heat := Weapons.tag_value(w, "tg_heat_target")
 	if heat > 0:
 		parts.append({"type": "Heat", "amount": heat})
-	if overkill_heat > 0:
+	if overkill_heat > 0 and not shared.get("overkill_paid", false):
+		shared["overkill_paid"] = true
 		events.append_array(Combat.apply_heat(state, attacker, overkill_heat, "Overkill"))
-	events.append_array(_apply(state, attacker, target, parts, Weapons.has_tag(w, "tg_ap")))
+	events.append_array(_apply(state, attacker, target, parts, Weapons.has_tag(w, "tg_ap"), opts.has("area_origin")))
 	var kb := Weapons.tag_value(w, "tg_knockback")
 	var want: Variant = opts.get("knockback", false)
 	if kb > 0 and not target.destroyed and want != null and (want is int or bool(want)):
 		var spaces: int = mini(kb, int(want)) if want is int else kb
-		events.append_array(knock_back(state, target, attacker.cell, spaces))
+		events.append_array(knock_back(state, target, opts.get("knockback_from", attacker.cell), spaces, attacker))
 	return events
 
 
 ## Applies a hit's damage parts, letting the target Brace if its reaction policy says so.
-static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array, ap: bool) -> Array[Dictionary]:
+static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array, ap: bool, area: bool = false) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
-	var brace := _wants_brace(target, parts, ap)
+	var brace := false
+	if Reactions.can_react(target, "brace").ok and not parts.is_empty():
+		var d := Reactions.offer(state, target, "brace", {"attacker": attacker.id, "damage": parts, "ap": ap},
+			{"take": _wants_brace(target, parts, ap)})
+		brace = d.get("take", false)
 	if brace:
 		events.append_array(Reactions.brace(state, target, attacker.id))
-	events.append_array(Combat.deal_damage(state, target, parts, {"source": attacker.id, "ap": ap, "resist_all": brace}))
+	events.append_array(Combat.deal_damage(state, target, parts, {"source": attacker.id, "ap": ap, "resist_all": brace,
+		"area": area, "distance": Sight.unit_distance(state, attacker, target)}))
 	return events
 
 
 ## Brace policy "on_structure": brace when this hit would take the last of the target's HP.
 ## (A choice the player makes ahead of time; see Reactions.)
 static func _wants_brace(target: Unit, parts: Array, ap: bool) -> bool:
-	if target.counters.get("brace_policy", "never") != "on_structure" or not Reactions.can_react(target, "brace").ok:
+	if Reactions.policy(target, "brace") != "on_structure":
 		return false
 	var dmg := 0
 	for p: Dictionary in parts:
@@ -265,6 +316,35 @@ static func _wants_brace(target: Unit, parts: Array, ap: bool) -> bool:
 	if not ap and not target.has_status("Shredded"):
 		dmg -= target.armor
 	return dmg >= target.hp + target.overshield
+
+
+## Damage for area attacks is rolled once and shared by every target (glossary: Blast etc.);
+## a critical hit on one target rolls the extra dice once too. `shared` caches the rolls.
+static func _shared_roll(state: GameState, shared: Dictionary, index: int, expr: String, crit: bool, overkill: bool) -> Dictionary:
+	if not shared.has("base"):
+		shared["base"] = {}
+		shared["crit"] = {}
+	var base: Dictionary = shared["base"]
+	if not base.has(index):
+		base[index] = roll_damage(state, expr, false, overkill)
+	if not crit:
+		return base[index]
+	var crits: Dictionary = shared["crit"]
+	if not crits.has(index):
+		var b: Dictionary = base[index]
+		var extra := roll_damage(state, expr, false, overkill)
+		var count: int = (b["kept"] as Array).size()
+		var all: Array = (b["dice"] as Array) + (extra["dice"] as Array)
+		var kept := all.duplicate()
+		kept.sort()
+		kept.reverse()
+		kept = kept.slice(0, count)
+		var total: int = int(b["bonus"])
+		for v: int in kept:
+			total += v
+		crits[index] = {"expr": expr, "dice": all, "kept": kept, "bonus": b["bonus"], "total": maxi(0, total),
+			"crit": true, "overkill_heat": int(b["overkill_heat"]) + int(extra["overkill_heat"])}
+	return crits[index]
 
 
 ## Rolls a damage expression. Critical hits roll every die twice and keep the highest results
@@ -299,7 +379,9 @@ static func roll_damage(state: GameState, expr: String, crit: bool, overkill: bo
 
 
 ## Knockback / pushes: involuntary straight-line movement (glossary: Involuntary Movement).
-static func knock_back(state: GameState, target: Unit, origin: Vector2i, spaces: int) -> Array[Dictionary]:
+static func knock_back(state: GameState, target: Unit, origin: Vector2i, spaces: int, by: Unit = null) -> Array[Dictionary]:
+	if by != null and by.size < target.size and Effects.has(target, "heavy_frame"):
+		return [{"type": "knockback_blocked", "unit": target.id, "reason": "Heavy Frame: smaller characters can't knock it back.", "rule_ref": Effects.REF}] as Array[Dictionary]
 	var path := Movement.push_path(state, target, origin, spaces)
 	if path.size() < 2:
 		return [{"type": "knockback_blocked", "unit": target.id, "rule_ref": "tags: Knockback"}] as Array[Dictionary]
@@ -338,6 +420,10 @@ static func tech_preview(state: GameState, attacker: Unit, target: Unit, opts: D
 	if target.has_status("Braced"):
 		sources.append(_src("Target Braced", "difficulty", "actions: Brace"))
 		out["difficulty"] = int(out["difficulty"]) + 1
+	for src: Dictionary in Effects.accuracy_sources(attacker, ["attack", "tech_attack"]):
+		sources.append(src)
+		var key := "accuracy" if src["kind"] == "accuracy" else "difficulty"
+		out[key] = int(out[key]) + int(src["value"])
 	out["sources"] = sources
 	out["ok"] = true
 	return out

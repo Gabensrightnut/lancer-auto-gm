@@ -1,0 +1,168 @@
+{
+  "_note": "Our machine-readable encoding of core-book frame traits and core systems (effect kinds: src/core/rules/effects.gd). Rule text stays in lancer-data frames.json. A trait listed as \"manual\" isn't automated yet: the UI shows its text and the table applies it. Core systems also pick up lancer-data's own active_bonuses (Accuracy on attacks/checks/saves).",
+  "mf_standard_pattern_i_everest": {
+    "traits": {
+      "Initiative": [{"kind": "free_action", "id": "initiative", "action": "any_quick", "per": "scene"}],
+      "Replaceable Parts": "manual"
+    },
+    "core": [{"kind": "free_action", "id": "hyperspec_boost", "action": "boost", "per": "turn"}]
+  },
+  "mf_blackbeard": {
+    "traits": {
+      "Grapple Cable": "manual",
+      "Lock/Kill Subsystem": [{"kind": "grapple_free"}],
+      "Exposed Reactor": [
+        {"kind": "accuracy", "on": "check", "skill": "engineering", "value": -1},
+        {"kind": "accuracy", "on": "save", "skill": "engineering", "value": -1}
+      ]
+    },
+    "core": "manual"
+  },
+  "mf_drake": {
+    "traits": {
+      "Heavy Frame": [{"kind": "heavy_frame"}],
+      "Blast Plating": [{"kind": "resist", "damage": ["All"], "area_only": true}],
+      "Slow": [
+        {"kind": "accuracy", "on": "check", "skill": "agility", "value": -1},
+        {"kind": "accuracy", "on": "save", "skill": "agility", "value": -1}
+      ],
+      "Guardian": [{"kind": "guardian"}]
+    },
+    "core": "manual"
+  },
+  "mf_lancaster": {
+    "traits": {
+      "Insulated": [{"kind": "immune", "damage": "Burn"}],
+      "Combat Repair": "manual",
+      "Redundant Systems": "manual"
+    },
+    "core": "manual"
+  },
+  "mf_nelson": {"traits": {"Momentum": "manual", "Skirmisher": "manual"}, "core": "manual"},
+  "mf_raleigh": {
+    "traits": {
+      "Full Metal Jacket": [{"kind": "reload_if_idle"}],
+      "Shielded Magazines": [{"kind": "jammed_ranged"}]
+    },
+    "core": "manual"
+  },
+  "mf_tortuga": {
+    "traits": {
+      "Sentinel": [{"kind": "accuracy", "on": "attack", "reaction_only": true, "value": 1}],
+      "Guardian": [{"kind": "guardian"}]
+    },
+    "core": "manual"
+  },
+  "mf_vlad": {
+    "traits": {
+      "Dismemberment": [{"kind": "immobilize_shreds"}],
+      "Shrike Armor": [{"kind": "thorns", "value": 1, "range": 3}]
+    },
+    "core": [
+      {"kind": "resist", "damage": ["All"], "within": 3},
+      {"kind": "thorns", "value": 3, "range": 3}
+    ]
+  },
+  "mf_black_witch": {
+    "traits": {"Repulsor Field": [{"kind": "resist", "damage": ["Kinetic"]}], "Mag Parry": "manual"},
+    "core": "manual"
+  },
+  "mf_deaths_head": {
+    "traits": {"Neurolink": "manual", "Perfected Targeting": [{"kind": "attack_bonus", "on": "ranged_attack", "value": 1}]},
+    "core": "manual"
+  },
+  "mf_dusk_wing": {
+    "traits": {
+      "Maneuverability Jets": [{"kind": "hover"}],
+      "Harlequin Cloak": [{"kind": "status", "status": "Invisible", "when": "own_turn"}],
+      "Fragile": [
+        {"kind": "accuracy", "on": "check", "skill": "hull", "value": -1},
+        {"kind": "accuracy", "on": "save", "skill": "hull", "value": -1}
+      ]
+    },
+    "core": "manual"
+  },
+  "mf_metalmark": {
+    "traits": {"Flash Cloak": "manual", "Carapace Adaptation": [{"kind": "soft_cover_plus", "value": 1}]},
+    "core": [{"kind": "status", "status": "Invisible", "when": "always"}]
+  },
+  "mf_monarch": {"traits": {"Avenger Silos": "manual", "Seeking Payload": "manual"}, "core": "manual"},
+  "mf_mourning_cloak": {
+    "traits": {
+      "Hunter": "manual",
+      "Biotic Components": [
+        {"kind": "accuracy", "on": "check", "skill": "agility", "value": 1},
+        {"kind": "accuracy", "on": "save", "skill": "agility", "value": 1}
+      ]
+    },
+    "core": "manual"
+  },
+  "mf_swallowtail": {"traits": {"Integrated Cloak": "manual", "Prophetic Scanners": "manual"}, "core": "manual"},
+  "mf_balor": {
+    "traits": {"Scouring Swarm": "manual", "Regeneration": [{"kind": "regenerate", "fraction": 0.25}], "Self-Perpetuating": "manual"},
+    "core": "manual"
+  },
+  "mf_goblin": {
+    "traits": {
+      "Liturgicode": [{"kind": "accuracy", "on": "tech_attack", "value": 1}],
+      "Reactive Code": "manual",
+      "Fragile": [
+        {"kind": "accuracy", "on": "check", "skill": "hull", "value": -1},
+        {"kind": "accuracy", "on": "save", "skill": "hull", "value": -1}
+      ]
+    },
+    "core": "manual"
+  },
+  "mf_gorgon": {
+    "traits": {"Metastatic Paralysis": "manual", "Gaze": "manual", "Guardian": [{"kind": "guardian"}]},
+    "core": "manual"
+  },
+  "mf_hydra": {"traits": {"System Link": "manual", "Shepherd Field": "manual"}, "core": "manual"},
+  "mf_manticore": {
+    "traits": {
+      "Slag Carapace": [{"kind": "resist", "damage": ["Energy", "Burn"]}],
+      "Unstable System": "manual",
+      "Castigate the Enemies of the Godhead": "manual"
+    },
+    "core": "manual"
+  },
+  "mf_minotaur": {
+    "traits": {"Invert Cockpit": "manual", "Internal Metafold": "manual", "Localized Maze": [{"kind": "maze"}]},
+    "core": "manual"
+  },
+  "mf_pegasus": {"traits": {"¿%:?EXTR!UDE GUN": "manual", "By the Way, I Know Everything": "manual"}, "core": "manual"},
+  "mf_barbarossa": {
+    "traits": {
+      "Heavy Frame": [{"kind": "heavy_frame"}],
+      "Pressure Plating": [{"kind": "resist", "damage": ["Explosive"]}],
+      "Colossus": [{"kind": "guardian"}],
+      "Slow": [
+        {"kind": "accuracy", "on": "check", "skill": "agility", "value": -1},
+        {"kind": "accuracy", "on": "save", "skill": "agility", "value": -1}
+      ]
+    },
+    "core": "manual"
+  },
+  "mf_genghis": {
+    "traits": {"Insulated": [{"kind": "immune", "damage": "Burn"}], "Emergency Vent": [{"kind": "vent_on_structure"}]},
+    "core": "manual"
+  },
+  "mf_iskander": {"traits": {"Assault Launcher": "manual", "Mine Deployers": "manual", "Skeleton Key": "manual"}, "core": "manual"},
+  "mf_napoleon": {"traits": {"Heavy Shielding": "manual", "Flash Aegis": "manual"}, "core": "manual"},
+  "mf_saladin": {
+    "traits": {"Reinforced Frame": [{"kind": "immune", "status": "Shredded"}], "Guardian": [{"kind": "guardian"}], "Warp Shield": "manual"},
+    "core": "manual"
+  },
+  "mf_sherman": {
+    "traits": {
+      "Superior Reactor": [
+        {"kind": "accuracy", "on": "check", "skill": "engineering", "value": 1},
+        {"kind": "accuracy", "on": "save", "skill": "engineering", "value": 1}
+      ],
+      "Mathur Stop": "manual",
+      "Vent Heat": "manual"
+    },
+    "core": "manual"
+  },
+  "mf_tokugawa": {"traits": {"Limit Break": "manual", "Plasma Sheath": "manual"}, "core": "manual"}
+}

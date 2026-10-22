@@ -150,7 +150,7 @@ func _get_text(url: String) -> Dictionary:
 
 static func _headers() -> PackedStringArray:
 	# GitHub's API requires a User-Agent.
-	return PackedStringArray(["User-Agent: LancerAutoGM-Launcher", "Accept: application/vnd.github+json"])
+	return PackedStringArray(["User-Agent: LancerTTRPG-Launcher", "Accept: application/vnd.github+json"])
 
 
 static func _describe(result: int, code: int) -> String:
@@ -177,7 +177,7 @@ func _build_ui() -> void:
 	box.add_theme_constant_override("separation", 12)
 	add_child(box)
 	var title := Label.new()
-	title.text = "LANCER AUTO-GM"
+	title.text = "LANCER TTRPG"
 	title.add_theme_font_size_override("font_size", 30)
 	title.add_theme_color_override("font_color", Color(0.95, 0.75, 0.3))
 	box.add_child(title)

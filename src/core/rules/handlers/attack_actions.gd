@@ -2,7 +2,8 @@ class_name AttackActions
 extends RefCounted
 ## Skirmish, Barrage and Improvised Attack.
 ## Each attack is {"weapon": "<key from loadout.weapons>", "target": "<unit id>",
-## "knockback": bool/int, "use_lock_on": bool}.
+## "knockback": bool/int, "use_lock_on": bool}. Area weapons (Blast, Burst, Cone, Line) take
+## {"weapon", "aim": [x, y], "aim_level": n} instead of a target (Burst needs no aim).
 
 const IMPROVISED := {"key": "improvised", "name": "Improvised Attack", "type": "Melee", "size": "",
 	"damage": [{"type": "Kinetic", "val": "1d6"}], "range": [{"type": "Threat", "val": 1}], "tags": []}
@@ -14,6 +15,12 @@ static func _check_attack(state: GameState, u: Unit, a: Variant, ref: String) ->
 	var w := Weapons.find(u, String(a.get("weapon", "")))
 	if w.is_empty():
 		return RuleResult.deny("No such weapon on this mech.", ref)
+	if Weapons.area(w) != "":
+		var r := Attacks.weapon_ready(u, w, a.get("improvised", false))
+		if not r.ok:
+			return r
+		var plan := Areas.plan(state, u, w, TurnAction.cell_param(a, "aim"), int(a.get("aim_level", -1)))
+		return RuleResult.allow() if plan["ok"] else RuleResult.deny(plan["reason"], plan["rule_ref"])
 	var p := Attacks.preview(state, u, w, state.unit(String(a.get("target", ""))), a)
 	if not p["ok"]:
 		return RuleResult.deny(p["reason"], p["rule_ref"])
@@ -45,6 +52,8 @@ static func _check_aux(state: GameState, u: Unit, aux: Array, fired: Array[Dicti
 
 static func _run(state: GameState, u: Unit, a: Dictionary, aux: bool) -> Array[Dictionary]:
 	var w := Weapons.find(u, String(a["weapon"]))
+	if Weapons.area(w) != "":
+		return Areas.attack(state, u, w, a)
 	var target := state.unit(String(a["target"]))
 	var opts := a.duplicate()
 	opts["no_bonus_damage"] = aux

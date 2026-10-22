@@ -1,4 +1,4 @@
-# Lancer Auto-GM
+# Lancer TTRPG
 
 Fan-made 3D LANCER tactics game in Godot 4.7 (typed GDScript). Read [DESIGN.md](DESIGN.md) for
 what the game must do and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how code is split.
@@ -49,5 +49,5 @@ choices to them in plain language, not engine jargon.
 
 ## Git
 
-Repo: https://github.com/Gabensrightnut/lancer-auto-gm (public, GPL-3.0-or-later).
+Repo: https://github.com/Gabensrightnut/lancer-ttrpg (public, GPL-3.0-or-later).
 End commit messages with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.

@@ -1,44 +1,115 @@
 {
-  "_note": "Hand-written placeholder NPCs for testing the rules engine. Made-up stats, not official NPC data; replace once NPC data is available.",
+  "_note": "PLACEHOLDER enemies written for this project to test and play the rules engine. Made-up stats, not official Lancer NPC data; real NPCs will come from content packs. Tiered entries list [tier 1, tier 2, tier 3] values. Feature effects use the kinds in src/core/rules/effects.gd; \"manual\" features are shown to players but not automated.",
   "training_drone": {
-    "id": "training_drone",
-    "name": "Training Drone",
-    "size": 1,
-    "hp": 10,
-    "armor": 0,
-    "evasion": 8,
-    "edef": 8,
-    "heat_cap": 6,
-    "speed": 4,
-    "sensors": 10,
-    "save_target": 10,
-    "hull": 0, "agility": 0, "systems": 0, "engineering": 0,
-    "structure": 1,
-    "stress": 1,
+    "id": "training_drone", "name": "Training Drone", "placeholder": true,
+    "size": 1, "hp": 10, "armor": 0, "evasion": 8, "edef": 8, "heat_cap": 6, "speed": 4,
+    "sensors": 10, "save_target": 10, "hull": 0, "agility": 0, "systems": 0, "engineering": 0,
+    "structure": 1, "stress": 1,
     "weapons": [
       {"name": "Practice Rifle", "type": "Rifle", "size": "Main", "attack_bonus": 1,
        "damage": [{"type": "Kinetic", "val": "1d6"}], "range": [{"type": "Range", "val": 8}], "tags": []}
     ]
   },
   "training_brawler": {
-    "id": "training_brawler",
-    "name": "Training Brawler",
-    "size": 2,
-    "hp": 14,
-    "armor": 1,
-    "evasion": 6,
-    "edef": 6,
-    "heat_cap": 6,
-    "speed": 3,
-    "sensors": 8,
-    "save_target": 10,
-    "hull": 2, "agility": 0, "systems": 0, "engineering": 1,
-    "structure": 1,
-    "stress": 1,
+    "id": "training_brawler", "name": "Training Brawler", "placeholder": true,
+    "size": 2, "hp": 14, "armor": 1, "evasion": 6, "edef": 6, "heat_cap": 6, "speed": 3,
+    "sensors": 8, "save_target": 10, "hull": 2, "agility": 0, "systems": 0, "engineering": 1,
+    "structure": 1, "stress": 1,
     "weapons": [
       {"name": "Practice Hammer", "type": "Melee", "size": "Heavy", "attack_bonus": 1,
        "damage": [{"type": "Kinetic", "val": "1d6+2"}], "range": [{"type": "Threat", "val": 1}],
        "tags": [{"id": "tg_knockback", "val": 1}]}
+    ]
+  },
+  "ph_grunt": {
+    "id": "ph_grunt", "name": "Placeholder Grunt", "role": "Grunt", "placeholder": true, "size": 1,
+    "structure": 1, "stress": 1,
+    "tiers": {"hp": [6, 8, 10], "armor": [0, 0, 1], "evasion": [8, 9, 10], "edef": [8, 8, 9],
+      "heat_cap": [4, 5, 6], "speed": [4, 4, 5], "sensors": [8, 8, 10], "save_target": [10, 11, 12],
+      "hull": [0, 1, 1], "agility": [0, 1, 1], "systems": [0, 0, 1], "engineering": [0, 0, 1],
+      "attack_bonus": [1, 2, 3], "tech_attack": [0, 0, 1]},
+    "weapons": [
+      {"name": "Service Rifle", "type": "Rifle", "size": "Main",
+       "damage": [{"type": "Kinetic", "val": ["1d6", "1d6+1", "1d6+2"]}], "range": [{"type": "Range", "val": 8}], "tags": []}
+    ],
+    "features": [{"name": "Squad Drill", "text": "Placeholder trait: +1 Accuracy on attacks made as reactions.",
+      "effects": [{"kind": "accuracy", "on": "attack", "reaction_only": true, "value": 1}]}]
+  },
+  "ph_assault": {
+    "id": "ph_assault", "name": "Placeholder Assault", "role": "Striker", "placeholder": true, "size": 1,
+    "structure": 1, "stress": 1,
+    "tiers": {"hp": [12, 15, 18], "armor": [1, 1, 2], "evasion": [8, 9, 10], "edef": [8, 8, 9],
+      "heat_cap": [6, 7, 8], "speed": [4, 5, 5], "sensors": [10, 10, 10], "save_target": [11, 12, 13],
+      "hull": [1, 2, 2], "agility": [1, 1, 2], "systems": [0, 0, 1], "engineering": [1, 1, 2],
+      "attack_bonus": [1, 2, 3], "tech_attack": [0, 0, 1]},
+    "weapons": [
+      {"name": "Assault Carbine", "type": "Rifle", "size": "Main",
+       "damage": [{"type": "Kinetic", "val": ["1d6+1", "1d6+2", "2d6+1"]}], "range": [{"type": "Range", "val": 8}],
+       "tags": [{"id": "tg_reliable", "val": 1}]}
+    ],
+    "features": [{"name": "Close Drill", "text": "Placeholder trait: +1 Accuracy on melee attacks.",
+      "effects": [{"kind": "accuracy", "on": "melee_attack", "value": 1}]}]
+  },
+  "ph_artillery": {
+    "id": "ph_artillery", "name": "Placeholder Artillery", "role": "Artillery", "placeholder": true, "size": 2,
+    "structure": 1, "stress": 1,
+    "tiers": {"hp": [10, 12, 14], "armor": [0, 1, 1], "evasion": [6, 7, 8], "edef": [8, 8, 9],
+      "heat_cap": [8, 9, 10], "speed": [3, 3, 4], "sensors": [15, 15, 15], "save_target": [11, 12, 13],
+      "hull": [1, 1, 2], "agility": [0, 0, 1], "systems": [1, 1, 2], "engineering": [1, 2, 2],
+      "attack_bonus": [1, 2, 3], "tech_attack": [0, 1, 1]},
+    "weapons": [
+      {"name": "Mortar", "type": "Launcher", "size": "Heavy",
+       "damage": [{"type": "Explosive", "val": ["1d6+1", "1d6+2", "2d6+1"]}],
+       "range": [{"type": "Blast", "val": 1}, {"type": "Range", "val": 15}], "tags": [{"id": "tg_arcing"}]}
+    ],
+    "features": [{"name": "Dug In", "text": "Placeholder trait: Resistance to Explosive damage.",
+      "effects": [{"kind": "resist", "damage": ["Explosive"]}]}]
+  },
+  "ph_brawler": {
+    "id": "ph_brawler", "name": "Placeholder Brawler", "role": "Striker", "placeholder": true, "size": 2,
+    "structure": 1, "stress": 1,
+    "tiers": {"hp": [14, 17, 20], "armor": [1, 2, 2], "evasion": [7, 8, 8], "edef": [7, 7, 8],
+      "heat_cap": [6, 7, 8], "speed": [4, 5, 5], "sensors": [8, 8, 8], "save_target": [11, 12, 13],
+      "hull": [2, 2, 3], "agility": [0, 1, 1], "systems": [0, 0, 0], "engineering": [1, 1, 2],
+      "attack_bonus": [1, 2, 3], "tech_attack": [0, 0, 0]},
+    "weapons": [
+      {"name": "Breaker Fists", "type": "Melee", "size": "Heavy",
+       "damage": [{"type": "Kinetic", "val": ["1d6+2", "1d6+4", "2d6+3"]}], "range": [{"type": "Threat", "val": 1}],
+       "tags": [{"id": "tg_knockback", "val": 1}]}
+    ],
+    "features": [{"name": "Heavy Frame", "text": "Placeholder trait: can't be pushed, pulled, knocked Prone or back by smaller characters.",
+      "effects": [{"kind": "heavy_frame"}]}]
+  },
+  "ph_controller": {
+    "id": "ph_controller", "name": "Placeholder Controller", "role": "Controller", "placeholder": true, "size": 1,
+    "structure": 1, "stress": 1,
+    "tiers": {"hp": [10, 12, 14], "armor": [0, 0, 1], "evasion": [8, 9, 10], "edef": [11, 12, 13],
+      "heat_cap": [6, 7, 8], "speed": [4, 4, 5], "sensors": [15, 15, 15], "save_target": [11, 12, 13],
+      "hull": [0, 0, 1], "agility": [1, 1, 1], "systems": [2, 2, 3], "engineering": [0, 1, 1],
+      "attack_bonus": [1, 2, 3], "tech_attack": [1, 2, 3]},
+    "weapons": [
+      {"name": "Disruptor", "type": "CQB", "size": "Main",
+       "damage": [{"type": "Energy", "val": ["1d3", "1d3+1", "1d3+2"]}], "range": [{"type": "Range", "val": 10}],
+       "tags": [{"id": "tg_smart"}, {"id": "tg_heat_target", "val": 2}]}
+    ],
+    "features": [{"name": "Signal Mastery", "text": "Placeholder trait: +1 Accuracy on tech attacks.",
+      "effects": [{"kind": "accuracy", "on": "tech_attack", "value": 1}]}]
+  },
+  "ph_support": {
+    "id": "ph_support", "name": "Placeholder Support", "role": "Support", "placeholder": true, "size": 1,
+    "structure": 1, "stress": 1,
+    "tiers": {"hp": [10, 12, 14], "armor": [1, 1, 1], "evasion": [8, 8, 9], "edef": [9, 10, 10],
+      "heat_cap": [6, 7, 8], "speed": [4, 4, 5], "sensors": [10, 12, 12], "save_target": [11, 12, 13],
+      "hull": [1, 1, 1], "agility": [0, 1, 1], "systems": [1, 2, 2], "engineering": [1, 1, 2],
+      "attack_bonus": [1, 2, 3], "tech_attack": [1, 1, 2]},
+    "weapons": [
+      {"name": "Sidearm", "type": "CQB", "size": "Auxiliary",
+       "damage": [{"type": "Kinetic", "val": ["1d3+1", "1d3+2", "1d6+2"]}], "range": [{"type": "Range", "val": 5}], "tags": []}
+    ],
+    "features": [
+      {"name": "Shield Projector", "text": "Placeholder trait: adjacent allied characters can use it as hard cover.",
+       "effects": [{"kind": "guardian"}]},
+      {"name": "Field Patch", "text": "Placeholder action: restore HP to an adjacent ally (not automated yet).", "effects": "manual"}
     ]
   }
 }

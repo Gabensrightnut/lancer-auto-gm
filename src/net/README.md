@@ -32,6 +32,18 @@ Sending actions:
 - After changing the state outside `submit()` (battle setup, loading a save), call
   `host.send_updates()` so every seat gets a fresh view.
 
+Turns ("I'll go"): the players choose among themselves who goes next. Picking is a
+`start_turn` for the unit: `client.pick_next(unit_id)`, `hot.pick_next(unit_id)` or
+`host.submit(seat, {"type": "start_turn", "actor": unit_id})`. A human seat may pick its own
+unit or an AI squadmate on its side; people sharing one screen may pick any of their seats.
+The AI only ever acts for seats set to AI; human seats are waited on with no time limit.
+
+Waiting state for the UI ("Waiting for Blackjack", "Squad pick: who goes next?"):
+`host.waiting_on(seat)` / `host.waiting_changed(info)` on the host, `client.waiting` /
+`client.waiting_changed(info)` on clients:
+`{state: "setup"|"turn"|"pick"|"ended", seats: [who must act], ai: bool, unit, side,
+units: [who can still go], you: bool, text}`. A Hidden enemy's turn shows no unit id.
+
 Hot-seat flow: `handoff_requested` → hide the board, show "Pass to <name>" with a Ready
 button → `hot.confirm_handoff()` → `view_updated` draws that seat's view and replays the events
 it missed. The screen passes automatically when the active unit belongs to another local seat;
@@ -49,7 +61,7 @@ launcher), `no_free_seat`, `seat_taken`.
   PeerJS client's or it drops the sender, so `WebRtcTransport` builds them that way.
 - NAT: Google STUN only. No TURN relay yet, so players on very strict networks may not
   connect. Add one without a new build via `user://net_config.json` (see `NetConfig`).
-- Room code: 6 characters, host id on the server is `lancerautogm-<CODE>`.
+- Room code: 6 characters, host id on the server is `lancerttrpg-<CODE>`.
 - Reconnect: a client keeps its seat token and retries (1, 2, 4, 8, 15, 30 s); the host holds
   the seat. A host that loses the matchmaking server keeps its connected players and retries.
 - Big messages are split into 12k-character chunks on the data channel.

@@ -1,4 +1,4 @@
-# Lancer Auto-GM: Design Notes
+# Lancer TTRPG: Design Notes
 
 Status: foundation built (grid, state, dice, rules engine skeleton, data loader, tests).
 Parallel work on rules engine, 3D visuals, and online/launcher in progress.
@@ -50,15 +50,14 @@ game waits for people.
   (section 1), you plan freely (movement arrow, targets, previews), and nothing happens until
   you confirm each action. End turn is a button you press.
 - **Watching other turns:** enemy and ally turns play at a readable pace. The camera
-  follows each action, there's a short pause before attacks resolve, and the roll is shown.
+  follows each action, there's a short pause before attacks resolve, and the result number pops up.
   Speed setting (cinematic / normal / fast) and a "skip to my turn" option; never faster
   than you can follow unless you choose it.
 - **Scenes, not just fights (like BG3's exploration vs. combat):**
   - **Exploration and story scenes:** walk your pilot or mech around a location in real time,
     talk to people (dialogue scenes, section 10), inspect things, find intel and supplies.
-  - **Skill checks shown big:** a d20 roll pops up center screen with your skill trigger
-    bonus and Accuracy/Difficulty (blue/red) against the target, BG3-style, with outcomes
-    that branch the scene.
+  - **Skill checks:** rolled instantly in the background; the result pops up as a number
+    (blue/red tinted, breakdown on hover), with outcomes that branch the scene. No dice screen.
   - **Combat starts from the scene:** ambushes, failed sneaking, or a dialogue choice drop
     everyone into turn-based combat on the same map. Surprise follows the book.
   - **Downtime between missions** as its own scene (section 10).
@@ -148,25 +147,20 @@ Every effect gets an animation, a combat-log line, and floating text (damage, MI
 
 ### Roll visuals
 
-Every roll is shown step by step on screen, then logged:
+No dice on screen: no rolling d20, no D&D-style dice animation. Rolls happen instantly in
+the background the moment you confirm an action, and the result **pops up as a number**.
 
-1. **Base roll:** the d20 rolls and lands on its number.
-2. **Accuracy and Difficulty:** Lancer's version of advantage/disadvantage. Each source is
-   listed with what caused it (e.g. "Lock On", "Soft cover", "Impaired").
-   - **Accuracy:** blue **+** with a blue d6 per point.
-   - **Difficulty:** red **−** with a red d6 per point.
-   - They cancel one for one (the rules), shown by matching blue and red pairs fading out
-     together. Whatever is left is rolled, and only the highest d6 counts: added if blue,
-     subtracted if red.
-3. **Flat bonuses:** Grit, Tech Attack, etc. added as their own labeled numbers.
-4. **Result:** total vs. the target number (Evasion, E-Defense, save target...), then HIT /
-   MISS / CRIT with the matching attack animation.
-- **Display format:** the base roll first, then each modifier right after it, colored:
-  `6` **`+4`** (blue, Accuracy d6) `+2 Grit` `= 12 vs Evasion 8: HIT`, or with Difficulty
-  `6` **`−3`** (red) `+2 Grit` `= 5: MISS`. (Accuracy and Difficulty cancel first, so only one color of d6 is ever left.)
-  Blue = anything that helps the roll, red = anything that hurts it.
-- Damage rolls work the same way (dice, bonuses, Armor reducing it, resistances halving it).
-- Speed setting: full animation, quick, or instant (log only) for when you know the game.
+- **Pop-up number:** after the roll, the total floats up over the target (or over you, for
+  checks and saves) with the result: e.g. **20** HIT, **9** MISS, **23** CRIT. Damage pops
+  up the same way as a number with its official damage-type icon, e.g. **7 [energy icon]**.
+- **Colors carry the meaning:** the pop-up is tinted blue when Accuracy helped the roll and
+  red when Difficulty hurt it, so you can tell at a glance without reading the math.
+- **Breakdown on demand, never in the way:** hover the pop-up, or open the combat log, to see
+  how it was made: `6` **`+4`** (blue, Accuracy, from Lock On) `+2 Grit` `= 12 vs Evasion 8`.
+  Accuracy and Difficulty cancel first, so only one color is ever left. Damage breakdown shows
+  dice, bonuses, Armor reducing it, and resistance halving it.
+- **Skill checks and saves** use the same pop-up number, not a big dice screen.
+- Speed setting only changes how long pop-ups linger; rolls are always instant.
 
 ### Turn overlays (only on the active player's screen)
 
@@ -276,12 +270,45 @@ vistas of Halo, the lived-in worlds of Star Wars, the grim scale of Warhammer 40
 - **Alien worlds that are beautiful but scary:** strange colored skies, giant moons and
   ringed planets overhead, bioluminescent plants, crystal fields, colossal ancient
   structures, toxic seas, storms on the horizon, things moving in the distance.
+- **Every kind of world, because Lancer's galaxy is huge and no two planets are alike:**
+  the Core Worlds (Cradle and other Union core worlds) look polished and similar; out in the
+  diaspora, every planet is its own place. Settings to build, each with its own architecture,
+  props, people, lighting and sky:
+  - **Medieval-tech worlds:** castles, walled towns, banners and stone bridges next to
+    mech hangars (low-tech colonies, feudal Karrakin-style baronies).
+  - **Old West frontier:** dusty boomtowns, mesas, rail lines, mining camps, saloons with
+    satellite dishes.
+  - **Retrofuturistic:** chrome, tail fins, atomic-age domes and monorails.
+  - **Cyberpunk sci-fi:** neon megacities, rain, holo-ads, stacked slums, corporate towers.
+  - **East Asian-inspired sci-fi:** pagoda-towers and shrine gates mixed with high tech,
+    terraced cities, lantern-lit streets, bamboo and cherry forests.
+  - **Clean high sci-fi:** gleaming Union architecture, orbital elevators, white and glass.
+  - plus the natural and alien landscapes above (hills, deserts, ice, jungle, ocean,
+    volcanic, crystal, toxic, gas-giant moons, ancient ruins, space stations).
+- **Biome + culture mix:** the map generator combines a landscape (e.g. desert mesas) with a
+  culture/era (e.g. Old West), so the same rules terrain can look completely different.
 - **Backgrounds beyond the board:** every map sits inside a full horizon (skybox, distant
   mountains/cities/megastructures, weather, lighting) so the battle feels like part of a
   huge world, not a tile on a void.
 - **Lighting sets the mood:** golden-hour hills, neon night cities, eerie alien twilight,
   stormy war zones; fog, god rays, glow.
 - Everything is ours: procedural/shader art, our own models, or CC0 assets with credit.
+
+### How each mech moves (locomotion)
+- **Animation matches the frame's real design:** two-legged frames walk, four-legged and
+  multi-legged frames step with every leg in a proper gait, tracked or wheeled frames roll,
+  hover designs float on thrusters, winged/jet designs fly. Each frame's body type comes from
+  its official art and is listed in `data/game/locomotion.json`. Stride and speed scale with
+  Size so the model lands exactly on the spaces the rules moved it through.
+- **Rules decide where you can go; visuals only show it.** Looking like it floats changes
+  nothing in the rules. A mech only gets flight, hover, ignoring difficult terrain, jumping
+  further, teleporting, etc. when the book says so: a frame trait, core system, system,
+  talent, status or action that grants it. If the book doesn't grant it, a hovering-looking
+  mech still pays for difficult terrain, climbs, and is blocked like any other.
+- **Every movement rule audited against the book:** every trait, system, talent, core power
+  and status that touches movement (Flight, Hover, Teleport, Jump, climbing, difficult and
+  dangerous terrain, Immobilized, Slowed, Engaged, knockback, Skirmisher-style effects) is
+  checked line by line against the rulebook text, with a test for each.
 
 ### Elevation and flying (3D grid)
 
@@ -427,7 +454,7 @@ teaches as you go.
 - **Explain everything:** hovering any action, status, tag or weapon shows what it does and
   where it's from in the book. Blocked actions say why ("can't Boost: you've already used your
   move") instead of just failing.
-- **Show the math:** every roll shows its breakdown (d20 + Grit + accuracy/difficulty vs.
+- **Show the math:** every roll's pop-up number has its breakdown on hover (d20 + Grit + accuracy/difficulty vs.
   Evasion) so you learn how the numbers work.
 - **Teaching hints toggle:** on for new players, off once you know the game.
 
@@ -545,6 +572,10 @@ differently without an AI. Each game has a **seed**: share it to replay the same
   GM (section 9) can assemble scenes from it and new story content can be added without code.
 
 ### Progression
+- **Everyone starts at the bottom, like D&D level 1:** by the book, new pilots start at
+  **License Level 0** with only GMS starter gear (the Everest frame and GMS weapons/systems).
+  Every other manufacturer's frames and gear are unlocked rank by rank as you level up
+  after missions. (A campaign option lets you start higher, as the book allows GMs to do.)
 - License level up after missions, unlocking manufacturer gear by license rank, talent ranks,
   core bonuses, pilot rank; the builder enforces it.
 
@@ -670,5 +701,5 @@ each with a narrow, self-contained brief, and a new piece only starts once one f
       rulebook text stays local and is never committed.
 - [x] Online connection method: **peer-to-peer (WebRTC)**. Note: some strict networks may
       need a TURN relay as a fallback.
-- [x] GitHub repo: https://github.com/Gabensrightnut/lancer-auto-gm (public)
+- [x] GitHub repo: https://github.com/Gabensrightnut/lancer-ttrpg (public)
 - [x] Project license: **GPL-3.0-or-later** (matches Massif's data license)

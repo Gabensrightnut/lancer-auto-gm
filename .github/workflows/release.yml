@@ -1,7 +1,7 @@
 # Builds the Windows game and launcher and publishes a GitHub Release when a version tag is
 # pushed:   git tag v0.1.0 && git push origin v0.1.0
 # The launcher looks for exactly these release files:
-#   LancerAutoGM-windows-<version>.zip   the game (exe + WebRTC add-on dll)
+#   LancerTTRPG-windows-<version>.zip   the game (exe + WebRTC add-on dll)
 #   LancerLauncher.exe                   the launcher (friends download this once)
 #   SHA256SUMS.txt                       checksums the launcher verifies downloads against
 name: Release
@@ -72,18 +72,18 @@ jobs:
       - name: Export
         run: |
           mkdir -p build/game build/launcher
-          ~/godot/godot --headless --path . --export-release "Windows Desktop" "$PWD/build/game/LancerAutoGM.exe"
+          ~/godot/godot --headless --path . --export-release "Windows Desktop" "$PWD/build/game/LancerTTRPG.exe"
           ~/godot/godot --headless --path launcher --export-release "Windows Desktop" "$PWD/build/launcher/LancerLauncher.exe"
-          test -f build/game/LancerAutoGM.exe
+          test -f build/game/LancerTTRPG.exe
           test -f build/launcher/LancerLauncher.exe
           ls -la build/game build/launcher
 
       - name: Package with checksums
         run: |
           cd build
-          (cd game && zip -q -r "../LancerAutoGM-windows-${VERSION}.zip" .)
+          (cd game && zip -q -r "../LancerTTRPG-windows-${VERSION}.zip" .)
           cp launcher/LancerLauncher.exe .
-          sha256sum "LancerAutoGM-windows-${VERSION}.zip" LancerLauncher.exe > SHA256SUMS.txt
+          sha256sum "LancerTTRPG-windows-${VERSION}.zip" LancerLauncher.exe > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
       - name: Publish release
@@ -91,5 +91,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
-            "build/LancerAutoGM-windows-${VERSION}.zip" build/LancerLauncher.exe build/SHA256SUMS.txt \
-            --title "Lancer Auto-GM ${VERSION}" --generate-notes
+            "build/LancerTTRPG-windows-${VERSION}.zip" build/LancerLauncher.exe build/SHA256SUMS.txt \
+            --title "Lancer TTRPG ${VERSION}" --generate-notes
