@@ -11,6 +11,11 @@ func type() -> String:
 	return ""
 
 
+## False for actions with no acting unit (e.g. "start_combat", sent by the host).
+func needs_actor() -> bool:
+	return true
+
+
 ## Is this action legal right now? Must not change `state`.
 func validate(_state: GameState, _action: Dictionary) -> RuleResult:
 	return RuleResult.deny("not implemented", "")
