@@ -70,7 +70,7 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 			landscape = "station" if str(hub.get("kind", "")) == "station" else str(WorldKits.HUB_LANDSCAPE.get(culture, "grassy_hills"))
 	var bf: Dictionary
 	if doc == null:
-		bf = battlefield(rng, world_rng, m.sitrep_id, w, h, shape, landscape, culture, int(settings.approach), hub)
+		bf = battlefield(rng, world_rng, m.sitrep_id, w, h, shape, landscape, culture, maxi(0, int(settings.approach) + int(settings.fight("approach", 0))), hub)
 	else:
 		bf = _doc_battlefield(doc, m.sitrep_id, rng)
 	state.map = bf["map"]
@@ -325,7 +325,7 @@ static func _add_campaign_squad(state: GameState, m: Mission, rng: RandomNumberG
 static func _add_enemies(state: GameState, m: Mission, rng: RandomNumberGenerator, cfg: Dictionary, players: int, settings: GmSettings, templates: Dictionary) -> void:
 	var pool := _enemy_pool(cfg, templates)
 	m.reinforcement_pool = pool.duplicate(true)
-	var budget := players * float(cfg.get("per_player", 1.5)) * settings.difficulty
+	var budget := players * float(cfg.get("per_player", 1.5)) * settings.difficulty * float(settings.fight("encounter", 1.0))
 	var free := _free_cells(m.deployment[Mission.ENEMIES], rng)
 	var n := 0
 	var guard := 0

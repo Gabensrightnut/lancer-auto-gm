@@ -6,7 +6,9 @@ extends Control
 const UpdateLogic := preload("res://update_logic.gd")
 const AUTO_START_SEC := 3.0
 
-var logic := UpdateLogic.new("user://")
+## LANCER_LAUNCHER_ROOT installs somewhere else (testing against a fake release without
+## touching the real install in the launcher's user folder).
+var logic := UpdateLogic.new(OS.get_environment("LANCER_LAUNCHER_ROOT") if OS.get_environment("LANCER_LAUNCHER_ROOT") != "" else "user://")
 var release: Dictionary = {}
 var http: HTTPRequest
 var countdown := -1.0

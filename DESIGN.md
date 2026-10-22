@@ -572,6 +572,12 @@ differently without an AI. Each game has a **seed**: share it to replay the same
   yourself, or let the AI pick (by role: e.g. "keep this pilot a support build").
 
 ### Dialogue scenes
+- **Three ways to talk:** third person (Lancer Tactics-style pop-up with portrait cards and a
+  speech bubble), first person (face to face: the camera holds on the speaker's 3D face, which
+  shows expressions, blinks and mouth movement, with subtitles and choices below), and
+  **radio/comms** (a pop-up in a radio frame with static, callsign and channel, for orders and
+  chatter over comms). Players pick first or third person any time; radio is used whenever the
+  speaker isn't present. Jammed pilots can't use comms (book: Jammed), so their radio cuts to static.
 - **Pop-up conversations in and out of battle,** like Lancer Tactics: character portrait
   cards on each side and a speech bubble from whoever's talking, over the live 3D scene.
   Click or press a key to advance; a log keeps every line.
@@ -684,24 +690,58 @@ pixel art).
 4. **Campaign:** the full narrative loop, progression, saves, procedural missions.
 5. **Polish:** effects coverage, animations, audio, accessibility, customization, human GM.
 
-## Parked: your own story additions (not built until you say)
+## 11. The main campaign and branching timelines (AI GM)
 
-Ideas that are fun but not canon LANCER. Kept here so they're not lost; the game stays canon
-until you decide to turn any of these on as your own campaign rules.
+How the story works depends on who runs it:
+- **AI GM:** the story is **authored**, not made up on the fly. There's one main campaign (our
+  own original story, canon-consistent) with **at least 16 alternate branches**. Choices split
+  the timeline: pick A, then B, then A, then C and you get a different chain of events. People
+  who were friendly last playthrough may hate you this time and refuse you the item you need.
+  Procedural generation only fills in small details (names, maps, enemy mixes, line variants),
+  never the plot.
+- **Human GM:** the GM can make anything up as they go (GM tools, map editor, GM scenes).
 
-- Tracked wallet: manna and local currency with prices for food, drinks, lodging, travel,
-  information, pilot supplies and repair kits; mission pay; selling salvage.
-- Printer scarcity: frontier worlds without printers, paying for printer access, a destroyed
-  mech staying destroyed until you reach a printer.
-- Paid travel: company/patron members ride free, independents buy passage.
-- "Can't afford it? Fight for it": an unaffordable deal turns into a generated combat job;
-  lose and the deal is off, but you can come back and pay with scrap, a spare mech, manna or
-  local money.
-- Buying food and water as a survival need.
-- A saving roll to see whether a hit building collapses (the book uses HP, Armor and AP
-  instead, Core p.68).
-- Being Stunned after falling, and a general "brace for the fall" reaction (the book gives
-  falls damage only, 3 AP per 3 spaces, max 9; only specific systems like flight avoid a fall).
+**No menu of solutions.** The game never offers "Fight / Steal / Find another" as a choice.
+Outcomes come from what players actually do in the world:
+- **Conversations escalate naturally:** insult someone, push your luck, threaten, and they may
+  draw on you, which starts the fight. Apologize and walk away, and the scene ends.
+- **Players come up with plans themselves:** e.g. go into the saloon, wait until night, follow
+  the NPC to where they sleep, then jump them or sneak in and steal the item. That works
+  because the world supports it, not because it was a listed option:
+  - a day/night clock in hubs (waiting, time passing between scenes);
+  - NPC schedules (where they are and what they do at each time of day, where they sleep);
+  - items that physically belong to someone and are kept somewhere (on them, in a room, a safe);
+  - following, sneaking, picking locks, pickpocketing and breaking in, resolved by skill checks
+    (book skill triggers, e.g. Hide, Get Somewhere Quickly, Spot, Take Someone Out), with
+    witnesses, alarms, and consequences (standing, bounties, a fight starting);
+  - enterable interiors for the places that matter (saloon, rooms, offices, warehouses).
+- **The campaign remembers:** every branch, theft, insult or kindness changes who helps or
+  hinders you later in the main campaign.
+
+## House rules (toggles, all off by default)
+
+A **House Rules** page in settings lists optional rules as on/off switches that can be flipped
+at any time, even mid-campaign. The game stays canon until someone turns one on.
+
+- **Who decides:** a human GM's settings win. If the GM is the AI, the host's settings are used.
+  Other players see which house rules are on (and the change is announced when one is flipped).
+- **Clearly labeled:** every house rule shows where it comes from ("Your idea", "Community",
+  "Lancer Tactics") and that it isn't a book rule. The codex marks them the same way.
+- **Your ideas** (from this design, previously parked):
+  - Tracked wallet: manna and local currency with prices for food, drinks, lodging, travel,
+    information, pilot supplies and repair kits; mission pay; selling salvage.
+  - Printer scarcity: frontier worlds without printers, paying for printer access, a destroyed
+    mech staying destroyed until you reach a printer.
+  - Paid travel: company/patron members ride free, independents buy passage.
+  - "Can't afford it? Fight for it": an unaffordable deal becomes a generated combat job; lose
+    and the deal is off, but you can come back and pay with scrap, a spare mech, manna or money.
+  - Food and water as a survival need.
+  - Building collapse saving roll after big hits (instead of only HP/Armor/AP, Core p.68).
+  - Stunned after a fall, and a "brace for the fall" reaction.
+- **Lancer Tactics options** (see the table below): split barrage and the big-hit Brace prompt
+  are ON by your pick; repeating quick tech stays OFF.
+- **Community house rules:** popular ones researched from the Lancer community (forums, Reddit,
+  Discord write-ups, GM blogs), each with its source.
 
 ## Rule differences: Lancer Tactics vs. the book
 

@@ -185,8 +185,8 @@ static func _perform(story: StoryState, campaign: Campaign, pid: String, action_
 		events.append_array(StoryEffects.apply({"reserve": "custom", "name": "{subject}", "source": "Get Creative"}, story, campaign, ctx))
 		return events
 
-	var check := NarrativeCheck.roll(story.dice, pilot, {"skills": cfg.get("triggers", []), "use_trigger": str(params.get("use_trigger", "")),
-		"tags": params.get("tags", []), "label": "%s: %s" % [name, ctx["vars"]["subject"]]})
+	var check := NarrativeCheck.roll(story.dice, pilot, Economy.check_opts(story, campaign, pid, {"skills": cfg.get("triggers", []), "use_trigger": str(params.get("use_trigger", "")),
+		"tags": params.get("tags", []), "label": "%s: %s" % [name, ctx["vars"]["subject"]]}))
 	check["rule_ref"] = REF
 	var band := band_of(int(check["total"]))
 	var treated := _apply_memory(story, cfg, action_id, params, ctx, band)

@@ -36,7 +36,7 @@ func _run() -> void:
 	note("QA run '%s' started" % mode)
 	await wait(1.5)
 	match mode:
-		"solo", "hotseat":
+		"solo", "hotseat", "smoke":
 			await _campaign_loop()
 		"story":
 			await _story_loop()
@@ -205,7 +205,9 @@ func _campaign_loop() -> void:
 		name_edit.text = "QA %s %d" % [mode, Time.get_unix_time_from_system()]
 		name_edit.text_changed.emit(name_edit.text)
 	await shot("new_campaign_form")
+	await wait(0.6)  # let the form settle (icons are rasterized on first use)
 	await click_text("Missions only")  # the lobby-to-battle loop (story campaigns open the hub)
+	await wait(0.3)
 	if not await click_text("Create campaign"):
 		return
 	await wait_scene("LobbyScreen")
@@ -247,6 +249,11 @@ func _campaign_loop() -> void:
 		issue("lobby", "START MISSION didn't work after Ready", "lobby_ready")
 		return
 	if not await wait_scene("BattleScreen", 20.0):
+		return
+	if mode == "smoke":
+		# Exported-build check (docs/RELEASE.md): one battle turn is enough.
+		await _play_battle(1)
+		await shot("smoke_after_turn")
 		return
 	await _play_battle(-1)
 	if not await wait_scene("DebriefScreen", 30.0):
