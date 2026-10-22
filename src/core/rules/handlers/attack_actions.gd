@@ -297,6 +297,33 @@ class Backswing:
 			{"fired_by_rule": true, "skip_spend": true, "half_damage": true, "backswing": true})
 
 
+class HunterThrow:
+	extends TurnAction
+	## Hunter 3: after a melee hit, a free thrown attack with an Auxiliary melee weapon on any
+	## character in Range; no bonus damage. params: {"weapon", "target"}
+
+	func type() -> String:
+		return "hunter_throw"
+
+	func cost() -> String:
+		return TurnRules.FREE
+
+	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		if not u.turn.get("hunter_throw", false):
+			return RuleResult.deny("Only right after a melee hit (Hunter).", "talents: Hunter")
+		var w := Weapons.find(u, String(params.get("weapon", "")))
+		if String(w.get("size", "")) != "Auxiliary" or String(w.get("type", "")) != "Melee":
+			return RuleResult.deny("Throw an Auxiliary melee weapon.", "talents: Hunter")
+		var p := Attacks.preview(state, u, w, state.unit(String(params.get("target", ""))), {"fired_by_rule": true})
+		return RuleResult.allow() if p["ok"] else RuleResult.deny(p["reason"], p["rule_ref"])
+
+	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+		u.turn.erase("hunter_throw")
+		TalentRules._use_round(state, u, "hunter_throw")
+		return Attacks.attack(state, u, Weapons.find(u, String(params["weapon"])), state.unit(String(params["target"])),
+			{"fired_by_rule": true, "no_bonus_damage": true, "hunter_throw": true})
+
+
 class Skirmish:
 	extends TurnAction
 	## Quick action: attack with one weapon (not Superheavy), plus optionally a different

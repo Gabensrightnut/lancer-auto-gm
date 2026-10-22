@@ -380,6 +380,11 @@
       {
         "kind": "lunge"
       }
+    ],
+    "3": [
+      {
+        "kind": "hunter_throw"
+      }
     ]
   },
   "t_infiltrator": {
@@ -430,6 +435,11 @@
     "1": [
       {
         "kind": "particularize"
+      }
+    ],
+    "2": [
+      {
+        "kind": "spotter_lock"
       }
     ]
   },
@@ -692,6 +702,11 @@
     "1": [
       {
         "kind": "exemplar"
+      }
+    ],
+    "2": [
+      {
+        "kind": "exemplar_overwatch"
       }
     ]
   },

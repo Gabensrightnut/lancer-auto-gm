@@ -67,6 +67,12 @@ extends RefCounted
 ##                           attack it for half damage (Tactician 3)
 ##   melee_reroll            1/round, a missed melee attack is rerolled against another
 ##                           character in Threat (params.reroll_target, else the nearest) (Executioner 3)
+##   hunter_throw            1/round, a melee hit on its turn allows a free thrown Auxiliary melee
+##                           attack, no bonus damage (action "hunter_throw") (Hunter 3)
+##   exemplar_overwatch      1/round, its mark attacks someone within 3 of it (not it): Overwatch
+##                           against the mark (Exemplar 2)
+##   spotter_lock            end of its turn, if it didn't move and took Lock On: a free Lock On
+##                           (Spotter 2)
 ##   prowl                   on its own turn: Hidden isn't lost to line of sight or leaving cover,
 ##                           Hide in plain sight, pass through enemies (Infiltrator 1)
 
@@ -392,6 +398,11 @@ static func on_hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 	if lock_on and w.get("type", "") == "Launcher" and Effects.has(attacker, "seismic_deluge") and _round_ok(state, attacker, "seismic_deluge"):
 		_use_round(state, attacker, "seismic_deluge")
 		events.append_array(Combat.add_status(state, target, "Prone", attacker.id))
+	if kind == Attacks.KIND_MELEE and Effects.has(attacker, "hunter_throw") and _round_ok(state, attacker, "hunter_throw") and state.active_unit == attacker.id \
+			and not opts.get("hunter_throw", false):
+		attacker.turn["hunter_throw"] = true
+		events.append({"type": "follow_up_available", "unit": attacker.id, "action": "hunter_throw",
+			"text": "Hunter: throw an Auxiliary melee weapon at any character in Range as a free action.", "rule_ref": REF})
 	if kind == Attacks.KIND_MELEE and w.get("size", "") in ["Heavy", "Superheavy"] and Effects.has(attacker, "backswing") \
 			and _round_ok(state, attacker, "backswing") and state.active_unit == attacker.id and not opts.get("backswing", false):
 		# Executioner Backswing Cut: a free follow-up attack is available (action "backswing").
@@ -635,6 +646,7 @@ static func after_attack(state: GameState, attacker: Unit, w: Dictionary, target
 			_use_round(state, attacker, "melee_reroll")
 			events.append({"type": "attack_rerolled", "attacker": attacker.id, "target": other.id, "source": "Executioner", "rule_ref": REF})
 			events.append_array(Attacks.attack(state, attacker, w, other, {"fired_by_rule": true, "skip_spend": true, "reroll": true}))
+	events.append_array(_exemplar_overwatch(state, attacker, target))
 	if result == "miss" or not Combat.is_present(target):
 		return events
 	if kind == Attacks.KIND_RANGED and Effects.has(target, "return_fire") and _round_ok(state, target, "return_fire") and Combat.is_present(attacker) \
@@ -665,6 +677,50 @@ static func after_attack(state: GameState, attacker: Unit, w: Dictionary, target
 					Reactions._mark_used(o, "flank", state)
 					events.append_array(Attacks.attack(state, o, fw, target, {"reaction": true, "half_damage": true}))
 				break
+	return events
+
+
+## Exemplar 2: the mark attacked a character within Range 3 of its Exemplar (not the
+## Exemplar): Overwatch against it. PROVISIONAL: after that attack resolves.
+static func _exemplar_overwatch(state: GameState, attacker: Unit, target: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var ex := state.unit(String(attacker.counters.get("exemplar_mark", "")))
+	if ex == null or ex == target or not Effects.has(ex, "exemplar_overwatch") or not Combat.is_present(ex) or not Combat.is_present(attacker):
+		return events
+	if Sight.unit_distance(state, ex, target) > 3 or not _round_ok(state, ex, "exemplar_overwatch") or not Reactions.can_react(ex, "overwatch", state).ok:
+		return events
+	for w: Dictionary in ex.loadout.get("weapons", []):
+		if Attacks.preview(state, ex, w, attacker, {"reaction": true})["ok"]:
+			var d := Reactions.offer(state, ex, "overwatch", {"target": attacker.id, "weapon": w.get("key", ""), "trigger": "exemplar", "suggested": {"take": true, "weapon": w.get("key", "")}}, {"take": true})
+			if d.get("take", false):
+				_use_round(state, ex, "exemplar_overwatch")
+				Reactions._mark_used(ex, "overwatch", state)
+				events.append_array(Attacks.attack(state, ex, w, attacker, {"reaction": true}))
+			break
+	return events
+
+
+## Spotter 2: end of turn, didn't move and took Lock On: a free Lock On. PROVISIONAL: on the
+## character it Locked On this turn if that was consumed, else the nearest hostile in Sensors
+## and line of sight without Lock On.
+static func turn_ending(state: GameState, u: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if not Effects.has(u, "spotter_lock") or u.turn.get("moved", false) or not (u.turn.get("quick_tech", []) as Array).has("lock_on"):
+		return events
+	var pick: Unit = state.unit(String(u.turn.get("locked_on", "")))
+	if pick == null or pick.has_status("Lock On") or not Combat.is_present(pick):
+		pick = null
+		var best := 1000
+		for o: Unit in state.units.values():
+			if o.side == u.side or not Combat.is_present(o) or o.kind == Unit.KIND_DEPLOYABLE or o.has_status("Lock On") or o.has_status("Hidden"):
+				continue
+			var dist := Sight.unit_distance(state, u, o)
+			if dist <= u.sensors and dist < best and Sight.unit_line_of_sight(state, u, o):
+				best = dist
+				pick = o
+	if pick != null:
+		events.append({"type": "effect_triggered", "unit": u.id, "effect": "Spotter: free Lock On", "target": pick.id, "rule_ref": REF})
+		events.append_array(Combat.add_status(state, pick, "Lock On", u.id))
 	return events
 
 

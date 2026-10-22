@@ -30,7 +30,7 @@ func _init() -> void:
 		PilotActions.DropPrepared.new(), SystemActions.CorePower.new(), MoveActions.BonusMove.new(),
 		Rulings.SetRuling.new(), CloseCombat.GrappleContest.new(), AbilityActions.Activate.new(),
 		RestActions.Rest.new(), GearActions.AIControl.new(), GearActions.ClimbOn.new(), GearActions.Board.new(), GearActions.Disembark.new(), GearActions.CutCable.new(), GearActions.PullStake.new(), GearActions.UseObject.new(), GearActions.ShakeOff.new(),
-		EnvironmentActions.BreakIce.new(), EnvironmentActions.DigOut.new(), AttackActions.Backswing.new(), GearActions.FixHack.new(),
+		EnvironmentActions.BreakIce.new(), EnvironmentActions.DigOut.new(), AttackActions.Backswing.new(), AttackActions.HunterThrow.new(), GearActions.FixHack.new(),
 	]:
 		register(h)
 

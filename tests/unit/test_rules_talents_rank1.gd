@@ -225,3 +225,35 @@ func test_executioner_reroll() -> void:
 	var out := F.act(e, s, "skirmish", "a", {"weapon": "1:0", "target": "t"})
 	expect_eq(F.events_of(out, "attack_rerolled")[0]["target"], "o", "rerolled against the other character")
 	expect(other.hp < 10)
+
+
+func test_hunter_throw() -> void:
+	_setup({"t_hunter": 3}, [{"weapons": ["mw_assault_rifle"]}, {"weapons": ["mw_tactical_knife"]}], Vector2i(1, 0))
+	var far := F.mech(s, "far", "enemies", Vector2i(4, 2))
+	F.load_dice(s, [15, 2])
+	var out := F.act(e, s, "skirmish", "a", {"weapon": "1:0", "target": "t"})
+	expect_eq(F.events_of(out, "follow_up_available").size(), 1)
+	F.load_dice(s, [15, 2])
+	out = F.act(e, s, "hunter_throw", "a", {"weapon": "1:0", "target": "far"})
+	expect(F.ok(out), F.reason(out))
+	expect(far.hp < 10, "thrown with Thrown 5 (Hunter 2)")
+
+
+func test_exemplar_overwatch() -> void:
+	_setup({"t_exemplar": 2}, [{"weapons": ["mw_assault_rifle"]}], Vector2i(3, 0))
+	var ally := F.mech(s, "ally", "players", Vector2i(2, 2))
+	F.load_dice(s, [15, 2])
+	F.act(e, s, "skirmish", "a", {"weapon": "0:0", "target": "t"})
+	F.act(e, s, "end_turn", "a")
+	F.act(e, s, "start_turn", "t")
+	F.load_dice(s, [15, 2, 15, 2])
+	var out := F.act(e, s, "skirmish", "t", {"weapon": "0:0", "target": "ally"})
+	expect_eq(F.events_of(out, "attack_rolled").size(), 2, "the mark attacked someone near the Exemplar: Overwatch")
+
+
+func test_spotter_free_lock_on() -> void:
+	_setup({"t_spotter": 2}, [{"weapons": ["mw_assault_rifle"]}], Vector2i(3, 0))
+	F.act(e, s, "lock_on", "a", {"target": "t"})
+	t.statuses.erase("Lock On")
+	F.act(e, s, "end_turn", "a")
+	expect(t.has_status("Lock On"), "a free Lock On at the end of a still turn")

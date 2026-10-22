@@ -344,6 +344,7 @@ static func turn_ending(state: GameState, u: Unit) -> Array[Dictionary]:
 		events.append({"type": "effect_triggered", "unit": u.id, "effect": of(u, "mjolnir_chambers")[0].get("label", ""),
 			"target": u.id, "chambers": u.counters["chambers"], "rule_ref": "frames: Raleigh core system"})
 	events.append_array(GearSystems.impaled_turn_end(state, u))
+	events.append_array(TalentRules.turn_ending(state, u))
 	events.append_array(GearSystems.horus_turn_ending(state, u))
 	events.append_array(AISystems.turn_ending(state, u))
 	events.append_array(GearSystems.ha_turn_ending(state, u))
