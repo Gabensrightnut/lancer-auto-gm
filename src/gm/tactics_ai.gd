@@ -145,7 +145,7 @@ func _context(know: AiKnowledge, u: Unit, orders: Dictionary) -> Dictionary:
 		"tech_bonus": float(stance.get("tech_bonus", 0.0)), "ally_bonus": float(stance.get("ally_bonus", 0.0)),
 		"enemies": enemies, "allies": know.allies_of(u), "reach": reach, "hurt": hurt,
 		"pref_range": _preferred_range(u, profile), "keep_away": int(profile.get("keep_away", 0)),
-		"zones": zones, "zone_weight": float(orders.get("zone_weight", 0.0)), "rng": rng,
+		"zones": zones, "zone_weight": float(orders.get("zone_weight", 0.0)), "rng": rng, "no_hide": bool(orders.get("no_hide", false)),
 	}
 
 
@@ -326,7 +326,7 @@ func _best_package(know: AiKnowledge, u: Unit, ctx: Dictionary) -> Dictionary:
 				options.append(_with(base, _act(u, "scan", {"target": t.id}), 0.5 * tech_w, ", then scans %s" % _name(t)))
 				break
 		# Shoot, then Hide if nobody can see us here.
-		if Combat.can_hide(s, u).ok:
+		if not ctx["no_hide"] and Combat.can_hide(s, u).ok:
 			options.append(_with(base, _act(u, "hide"), 0.9 * ctx["caution"], ", then hides"))
 	# Barrage: two different weapons (each at its best target), or one Superheavy.
 	var by_weapon := {}
@@ -343,7 +343,7 @@ func _best_package(know: AiKnowledge, u: Unit, ctx: Dictionary) -> Dictionary:
 			options.append(_barrage(u, two))
 	# No attack: Hide, Lock On for allies, Scan.
 	if shots.is_empty():
-		if Combat.can_hide(s, u).ok:
+		if not ctx["no_hide"] and Combat.can_hide(s, u).ok:
 			options.append({"value": 1.0 * ctx["caution"], "steps": [_act(u, "hide")], "attacks": false, "quick_left": 0, "text": "hides", "kind": "hide"})
 		for t: Unit in ctx["enemies"]:
 			if Attacks.tech_target_check(s, u, t).ok:
@@ -402,7 +402,9 @@ func _target_factor(know: AiKnowledge, t: Unit, ctx: Dictionary, expected: float
 		if expected >= t.hp + t.overshield and t.structure <= 1:
 			f += 0.8 * ctx["aggression"]
 	else:
-		f += focus * 0.25
+		# Stats unknown: go by the harm this side saw it take (focus fire without a Scan).
+		var seen := know.estimated_hurt(t.id)
+		f += focus * (0.25 + seen * 1.5) - (1.0 - focus) * seen * 0.4
 	if t.has_status("Lock On"):
 		f += 0.3 * focus
 	if t.id == ctx["focus_target"]:

@@ -38,7 +38,7 @@ var packs: Array = []
 ## Areas left on the field by frame systems (Mag Field, smoke clouds, holograms): see Zones.
 var zones: Array = []
 ## The sitrep's objectives (src/gm SitrepActions and Mission): {"sitrep", "zones": {name:
-## [[x, y]]}, "extraction": [[x, y]], "objective": unit id, "true_zone": recon secret,
+## [[x, y]]}, "deployment": {side: [[x, y]]}, "extraction": [[x, y]], "objective": unit id, "true_zone": recon secret,
 ## "surveyed": {side: {zone: bool}}}. ViewFilter hides "true_zone" and other sides' surveys.
 var objectives: Dictionary = {}
 ## Rules environments for the whole battle (lancer-data environments.json ids, e.g.

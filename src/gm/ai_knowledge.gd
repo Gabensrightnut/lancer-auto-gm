@@ -11,6 +11,21 @@ var side := ""
 var state: GameState
 ## Enemy unit ids whose stats this side doesn't know (their numbers are defaults).
 var unknown: Dictionary = {}
+## What this side has seen happen to enemies it can't read (public at the table: damage
+## amounts, structure lost): unit id -> {"damage": n, "structure_lost": n}. The director keeps
+## it from the events the side was shown.
+var seen_harm: Dictionary = {}
+
+
+## How hurt an enemy looks (0..1) when its stats are unknown: the damage and structure loss
+## this side saw it take, against what a mech of its Size usually has (an estimate).
+func estimated_hurt(unit_id: String) -> float:
+	var h: Dictionary = seen_harm.get(unit_id, {})
+	if h.is_empty():
+		return 0.0
+	var structure_part := float(h.get("structure_lost", 0)) / 4.0
+	var hp_part := fmod(float(h.get("damage", 0)), 12.0) / 12.0
+	return clampf(maxf(structure_part, structure_part + hp_part * 0.25), 0.0, 1.0)
 
 
 static func for_side(real: GameState, filter: ViewFilter, side_id: String) -> AiKnowledge:

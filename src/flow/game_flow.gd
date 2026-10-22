@@ -245,8 +245,10 @@ const ARC_CHOICES := {1: "Short: 1 story", 2: "2 stories", 3: "Standard: 3 stori
 ## take their seats online). `arcs` = campaign length. Session zero comes first (Core p.40-41,
 ## the hub shows SessionZeroScreen): the job board fills only after it, so the table's choices
 ## (focus, content left out) shape the first jobs. Saved before it returns.
-static func start_story_campaign(store: SaveStore, db: ContentDB, campaign_name: String, pilots: int, start_ll: int, preset: String, arcs: int = DEFAULT_ARCS) -> Campaign:
+static func start_story_campaign(store: SaveStore, db: ContentDB, campaign_name: String, pilots: int, start_ll: int, preset: String, arcs: int = DEFAULT_ARCS, campaign_id: String = "") -> Campaign:
 	var c := Campaign.create(campaign_name, {"start_ll": start_ll, "gm_preset": preset})
+	if campaign_id != "":
+		c.id = campaign_id  # a fixed id gives the same story every time (tests, balance runs)
 	c.options["story"] = true
 	c.options["campaign_arcs"] = arcs
 	c.options["teaching_hints"] = true

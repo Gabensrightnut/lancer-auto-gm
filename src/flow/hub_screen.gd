@@ -163,7 +163,7 @@ func _input(ev: InputEvent) -> void:
 	if menu_layer.visible:
 		menu_layer.visible = false
 		get_viewport().set_input_as_handled()
-	elif not (hub.dialogue.visible or hub.downtime_screen.visible or hub.gear_panel.visible or hub.hud.board_open() or hub.epilogue.visible or hub.level_panel.visible):
+	elif not (hub.dialogue.visible or hub.downtime_screen.visible or hub.gear_panel.visible or hub.hud.board_open() or hub.epilogue.visible or hub.level_panel.visible or hub.map.visible):
 		_open_menu()
 		get_viewport().set_input_as_handled()
 
@@ -344,6 +344,9 @@ func _open_menu() -> void:
 	p.custom_minimum_size = Vector2(520, 0)
 	var b := MenuTheme.body(p)
 	var items: Array = [["Back to the hub", func() -> void: menu_layer.visible = false],
+		["Sector map (M): worlds, jobs, travel", func() -> void:
+			menu_layer.visible = false
+			hub.open_map()],
 		["Pilot builder (talents, licenses, gear)", func() -> void: _leave("builder")]]
 	if story_client != null:
 		b.add_child(MenuTheme.label("The host keeps the campaign. Your pilot's build is checked and saved by the host.", 16, MenuTheme.MUTED, true))

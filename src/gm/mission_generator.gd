@@ -347,7 +347,7 @@ static func _place(state: GameState, u: Unit, free: Array) -> bool:
 ## E-Defense 10, no Armor; Escort's in the Allied Deployment Zone, Extraction's placed by the
 ## GM in the Objective Zone) and Extraction Zone; Recon's True Control Zone, picked secretly.
 static func _setup_objectives(m: Mission, state: GameState, rng: RandomNumberGenerator, cfg: Dictionary) -> void:
-	var o := {"sitrep": m.sitrep_id, "zones": m.zones.duplicate(true)}
+	var o := {"sitrep": m.sitrep_id, "zones": m.zones.duplicate(true), "deployment": m.deployment.duplicate(true)}
 	match m.sitrep_id:
 		"sitrep_escort", "sitrep_extraction":
 			o["extraction"] = (m.zones.get("extraction", m.deployment.get(Mission.PLAYERS, [])) as Array).duplicate(true)

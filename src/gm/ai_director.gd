@@ -29,6 +29,10 @@ var refusals: Array = []
 var log_lines: PackedStringArray = PackedStringArray()
 
 var _reinforced_round := 0
+## side -> unit id -> {"damage", "structure_lost"}: harm each side saw enemies take (AiKnowledge).
+var seen_harm: Dictionary = {}
+## unit id -> round its Hide was refused (someone it can't see has eyes on it).
+var _no_hide: Dictionary = {}
 
 
 func _init(net_host: NetHost, gm: GmSettings = null, the_mission: Mission = null) -> void:
@@ -126,6 +130,7 @@ func step() -> bool:
 ## Plans and plays the active AI unit's whole turn, then ends it.
 func play_turn(u: Unit) -> void:
 	var know := AiKnowledge.for_side(host.state, host.view_filter, u.side)
+	know.seen_harm = seen_harm.get(u.side, {})
 	var plan: Dictionary
 	match NhpAi.kind(u):
 		"sekhmet":
@@ -245,6 +250,8 @@ func _orders_for(u: Unit) -> Dictionary:
 	var o: Dictionary = orders.get(u.id, {}).duplicate()
 	if mission != null and not o.has("zones"):
 		o.merge(mission.objective_for(u.side))
+	if _no_hide.has(u.id) and host.state.round_number - int(_no_hide[u.id]) <= 2:
+		o["no_hide"] = true  # an enemy it can't see has eyes on it: stop trying for a while
 	return o
 
 
@@ -296,12 +303,38 @@ func _maybe_reinforce() -> bool:
 
 
 func _on_action_resolved(_seat: String, _action: Dictionary, _result: RuleResult, events: Array) -> void:
+	_note_harm(events)
 	if mission != null:
 		mission.observe(host.state, events)
 		GmTwist.observe(mission, host.state, events)
 
 
+## Damage amounts and structure losses are public (every side sees them: ViewFilter keeps them);
+## each side remembers them for enemies it can't read.
+func _note_harm(events: Array) -> void:
+	for e: Dictionary in events:
+		var type := str(e.get("type", ""))
+		if not type in ["damage_dealt", "structure_lost"]:
+			continue
+		var t := host.state.unit(str(e.get("target", e.get("unit", ""))))
+		if t == null:
+			continue
+		for side: String in [Mission.PLAYERS, Mission.ENEMIES]:
+			if side == t.side:
+				continue
+			if not seen_harm.has(side):
+				seen_harm[side] = {}
+			var h: Dictionary = seen_harm[side].get(t.id, {"damage": 0, "structure_lost": 0})
+			if type == "damage_dealt":
+				h["damage"] = int(h["damage"]) + int(e.get("amount", 0))
+			else:
+				h["structure_lost"] = int(h["structure_lost"]) + 1
+			seen_harm[side][t.id] = h
+
+
 func _refused(u: Unit, action: Dictionary, result: RuleResult) -> void:
+	if str(action.get("type", "")) == "hide":
+		_no_hide[u.id] = host.state.round_number
 	refusals.append({"unit": u.id, "action": action, "reason": result.reason})
 	_log(u.id, "%s couldn't %s: %s" % [TacticsAi._name(u), str(action.get("type", "")).replace("_", " "), result.reason])
 

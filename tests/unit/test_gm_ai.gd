@@ -177,3 +177,25 @@ func test_presets_load() -> void:
 	var t := GmSettings.from_preset("Teaching")
 	expect(t.explain and t.difficulty < 1.0 and t.reinforcements == 0.0)
 	expect_eq(GmSettings.from_dict(r.to_dict()).to_dict(), r.to_dict())
+
+
+func test_focus_fire_on_harm_it_saw_without_a_scan() -> void:
+	var s := _state()
+	var e := RulesFixtures.mech(s, "e1", "enemies", Vector2i(5, 3))
+	RulesFixtures.mech(s, "p1", "players", Vector2i(3, 8))
+	RulesFixtures.mech(s, "p2", "players", Vector2i(7, 8))
+	_start(s, e)
+	var gm := GmSettings.from_preset("Standard")
+	gm.randomness = 0.0
+	gm.focus_fire = 1.0
+	var ai := TacticsAi.new(gm)
+	var know := AiKnowledge.for_side(s, ViewFilter.new(), "enemies")
+	expect(not know.knows_stats("p1") and not know.knows_stats("p2"))
+	know.seen_harm = {"p2": {"damage": 9, "structure_lost": 2}}
+	expect(know.estimated_hurt("p2") > know.estimated_hurt("p1"))
+	var plan := ai.plan_turn(know, "e1")
+	var targets: Array = []
+	for a: Dictionary in plan["steps"]:
+		if a["params"].has("target"):
+			targets.append(a["params"]["target"])
+	expect(targets.has("p2") or targets.is_empty(), "it presses the enemy it saw take the most harm: %s" % str(plan["steps"]))

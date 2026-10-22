@@ -228,11 +228,12 @@ func _barks(events: Array) -> void:
 
 # --- Sitrep objectives -----------------------------------------------------------------------
 
-## The sitrep's zones on the board, as this seat knows them (ViewFilter.objectives_for): Recon's
+## The sitrep's zones and deployment on the board, as this seat knows them (ViewFilter.objectives_for): Recon's
 ## four zones (the True one named once found), Escort/Extraction's Extraction Zone.
 func _show_objectives(v: Dictionary) -> void:
 	var o: Dictionary = v.get("objectives", {})
-	var sig := JSON.stringify([o.get("zones", {}).keys(), o.get("true_zone", ""), o.get("surveyed", {})])
+	var setup := str(v.get("phase", "")) == GameState.PHASE_SETUP
+	var sig := JSON.stringify([o.get("zones", {}).keys(), o.get("true_zone", ""), o.get("surveyed", {}), setup])
 	if sig == _objectives_sig or view.terrain == null:
 		return
 	_objectives_sig = sig
@@ -244,7 +245,8 @@ func _show_objectives(v: Dictionary) -> void:
 			var known: Dictionary = (o.get("surveyed", {}) as Dictionary).get(_my_side(), {})
 			label = ("TRUE ZONE" if name == str(o.get("true_zone", "")) else ("not it" if known.has(name) else name.replace("_", " ")))
 		zones[label] = src[name]
-	view.terrain.show_objectives(zones, {}, false)
+	# Deployment zones are tinted while the battle is being set up.
+	view.terrain.show_objectives(zones, o.get("deployment", {}), setup)
 
 
 ## Extract / Survey this zone, when the rules allow them for the unit whose turn it is here.

@@ -10,13 +10,13 @@
     "environments": "Chance that weather or a world that suggests a rules environment (sandstorm, blizzard, low gravity...) brings that environment's rules into the mission."
   },
   "presets": {
-    "Standard": {"aggression": 0.6, "caution": 0.5, "focus_fire": 0.5, "reinforcements": 0.15, "difficulty": 1.0, "randomness": 0.25, "environments": 0.5,
-      "description": "A fair fight: enemies use cover and focus on good targets."},
-    "Ruthless": {"aggression": 0.9, "caution": 0.35, "focus_fire": 1.0, "reinforcements": 0.3, "difficulty": 1.25, "randomness": 0.1, "environments": 0.75,
+    "Standard": {"aggression": 0.7, "caution": 0.55, "focus_fire": 0.8, "reinforcements": 0.25, "difficulty": 1.4, "randomness": 0.15, "environments": 0.5,
+      "description": "A real fight: about one and a half enemies per pilot that use cover, gang up on whoever is hurt, and call in reinforcements. Expect to lose mechs."},
+    "Ruthless": {"aggression": 0.9, "caution": 0.45, "focus_fire": 1.0, "reinforcements": 0.4, "difficulty": 1.75, "randomness": 0.05, "environments": 0.75,
       "description": "Enemies gang up on the weakest pilot and press every advantage."},
-    "Cautious": {"aggression": 0.3, "caution": 0.9, "focus_fire": 0.5, "reinforcements": 0.15, "difficulty": 1.0, "randomness": 0.2, "environments": 0.5,
+    "Cautious": {"aggression": 0.3, "caution": 0.9, "focus_fire": 0.6, "reinforcements": 0.15, "difficulty": 1.25, "randomness": 0.2, "environments": 0.5,
       "description": "Enemies hug cover, keep their distance and pull back when hurt."},
-    "Chaotic": {"aggression": 0.65, "caution": 0.3, "focus_fire": 0.1, "reinforcements": 0.35, "difficulty": 1.0, "randomness": 1.0, "environments": 0.75,
+    "Chaotic": {"aggression": 0.65, "caution": 0.3, "focus_fire": 0.1, "reinforcements": 0.4, "difficulty": 1.25, "randomness": 1.0, "environments": 0.75,
       "description": "Unpredictable: wild moves, scattered attacks, surprise reinforcements."},
     "Teaching": {"aggression": 0.4, "caution": 0.4, "focus_fire": 0.0, "reinforcements": 0.0, "difficulty": 0.75, "randomness": 0.3, "environments": 0.0,
       "description": "Gentle: smaller fights, spread-out attacks, and every enemy move explained.", "explain": true}

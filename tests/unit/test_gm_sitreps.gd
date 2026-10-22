@@ -138,6 +138,7 @@ func test_recon_true_zone_is_secret_until_surveyed() -> void:
 	var view := host.view_filter.view_for(state, "p1")
 	expect(not view["objectives"].has("true_zone"), "the squad doesn't know which one")
 	expect_eq(view["objectives"]["zones"].size(), 4, "they see all four zones")
+	expect(view["objectives"]["deployment"].has(Mission.PLAYERS) and view["objectives"]["deployment"].has(Mission.ENEMIES), "deployment zones are in every view")
 	expect_eq(host.view_filter.view_for(state, NetHost.GM_SEAT)["objectives"]["true_zone"], t, "the GM knows")
 	var wrong := ""
 	for z: String in state.objectives["zones"]:
