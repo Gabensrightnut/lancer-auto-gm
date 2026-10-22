@@ -223,13 +223,14 @@ static func moved(state: GameState, u: Unit, path: Array) -> Array[Dictionary]:
 	return events
 
 
-## Molten world: in molten rock or lava (a column tagged "lava", standing in it).
+## Molten world: in molten rock or lava (a column tagged "lava" or "molten", standing in it).
+const LAVA_TAGS := ["lava", "molten"]
 static func in_lava(state: GameState, u: Unit) -> bool:
 	if u.flying:
 		return false
 	for c in state.map.grid.footprint(u.cell, u.size):
 		var col := state.map.column(c)
-		if col != null and col.has_tag("lava") and u.level <= col.ground:
+		if col != null and LAVA_TAGS.any(func(t: String) -> bool: return col.has_tag(t)) and u.level <= col.ground:
 			return true
 	return false
 

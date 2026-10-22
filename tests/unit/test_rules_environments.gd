@@ -190,3 +190,21 @@ func test_pilots_in_particulate_storm() -> void:
 	F.act(e, s, "start_turn", "p")
 	_end(p)
 	expect_eq(p.hp, 5, "1 kinetic (AP) each turn outside a mech")
+
+
+func test_generated_molten_map_has_lava_the_rules_read() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var map := TerrainGen.generate(rng, 30, 26, GridLayout.Shape.SQUARE, {}, "molten_world", "")
+	var lava: Array[Vector2i] = []
+	for c in map.cells():
+		if map.column(c).has_tag("lava"):
+			lava.append(c)
+	expect(not lava.is_empty(), "the world generator tags lava")
+	_setup(["env_moltenworld"])
+	s.map = map
+	a.cell = lava[0]
+	a.level = map.ground_height(lava[0])
+	expect(Environments.in_lava(s, a), "the molten-world rule reads the generator's lava tag")
+	s.map.column(lava[0]).tags = PackedStringArray(["molten"])
+	expect(Environments.in_lava(s, a), "a 'molten' tag counts too")
