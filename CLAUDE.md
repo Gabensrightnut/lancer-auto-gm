@@ -40,6 +40,9 @@ Run the tests before every commit. For visual work, take a screenshot and look a
   type, range/area, action type, status and manufacturer. COMP/CON name lists:
   `data/compcon/generators/`. Never edit either; COMP/CON's fonts are NOT free, don't use them.
 - `data/lancer-data/` is Massif's data: never edit it. Our own data goes in `data/game/`.
+- **Canon only.** Lore and setting systems must be canon or consistent with the core book (cite
+  "Core p.N"); log each in docs/CANON.md. Anything not canon goes to DESIGN.md "Parked: your own
+  story additions", never into the game unless the user turns it on.
 - Don't read or use anything from other projects on this machine (e.g. MechFortress).
 
 ## The user

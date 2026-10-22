@@ -23,6 +23,11 @@ Code layout and contracts: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   - Graphics are not the bottleneck: Godot 4's renderer does real-time lighting, shadows,
     PBR materials, glow and GPU particles, plenty for mechs on a battlefield.
 - **Art style:** full 3D with real lighting, shadows and materials (PBR). No pixel art.
+- **Canon first, checked from several angles:** every rule, lore detail and system is checked
+  against the core book (page cited), and where the book is thin, against other official
+  Massif material and Lancer Tactics, and for how it plays at the table. Anything that isn't
+  canon is parked as "your own story additions" until you choose to add it. The canon log is
+  `docs/CANON.md`.
 - **Reference game: Lancer Tactics.** It's the closest thing to a real Lancer video game, so the
   overall look, UI and how systems are shown are based on it, and it's the tiebreaker whenever
   a visual or system is unclear. Studied from its public trailers, screenshots, store page and
@@ -575,45 +580,30 @@ differently without an AI. Each game has a **seed**: share it to replay the same
 - Pilots get out of their mechs and walk around towns, bases and stations in real time:
   talk to locals, faction contacts and company reps, take jobs, and use downtime actions.
   In combat, pilots can dismount, fight on foot and remount under the book's pilot rules.
-- **Money in the setting, licenses for mech gear:** the galaxy has money. **Manna** is the
-  universal currency accepted on every market outside the Core (Core p.10), and non-core
-  planets also use **local currencies** (Core p.126). What the rules don't use money for is
-  mech gear: frames, weapons, systems and upgrades come only from License Level and licenses
-  (Core p.18), so you can't buy a new mech with cash; you unlock it by leveling.
-- **Wallet for everyday things:** pilots carry manna and the local currency of the planet
-  they're on (exchanged at hubs). Spend it on food, drinks, lodging, travel, information,
-  bribes, pilot supplies and services; earn it from mission pay, jobs and selling salvage.
-  Company reps, quartermasters and merchants offer deals by standing (e.g. cheaper repairs
-  for company members). The core book doesn't track currency, so the exact amounts are our
-  own system, clearly labeled, and never a way around licenses.
-- **Getting mechs around, by the book:** mechs are **3D-printed** from licensed patterns
-  (Core p.31, p.82). With access to a printing facility, a Full Repair during downtime can
-  rebuild your mech or print a brand-new one, so the squad usually travels light and
-  prints at the destination. Printing facilities are part of the world: Union and company
-  bases, big cities, your patron's ship. Remote frontier worlds may have none, so a destroyed
-  mech there stays destroyed until you reach one, or you pay or trade a favor for access.
-- **Travel:** the squad moves between planets on a patron's or company's ship, or buys
-  passage with manna (blink gates between systems). Working for a company or patron
-  means free transport and printer access; going independent means paying your own way.
-- **Favors and jobs:** NPCs offer deals: "clear out the bandits at the old mine and I'll
-  get you into the station's printer bay" or "...and my brother's garage will fix your rig
-  for free". Doing the job earns the favor (a Reserve, a discount, access, information,
-  manna or standing), tracked in the campaign and offered by the procedural GM as side jobs.
-- **Can't afford it? Fight for it:** when you can't pay for something (a repair, printer
-  access, passage, gear, information), the seller can offer a job instead: a procedurally
-  generated combat mission, different every time (its own map, enemies, objective and
-  twist), not a scripted encounter. Win and the deal is yours. Lose and that deal is off;
-  the offer is gone, but you can come back later and pay another way: salvage and scrap
-  parts, a spare mech, manna, or the local currency. Each seller accepts different things.
-- **Favors and access** still come from **Reserves** and downtime actions as in the book
-  (Get Resources, Get Connected, Get Creative, Power at a Cost...).
-- **Supplies by the book:** food, water, repair materials and the like work exactly as
-  LANCER handles them (Reserves, pilot gear, Repairs and Repair Cap, rest, downtime actions),
-  shown as things you can actually do (e.g. a quartermaster scene to get a Supplies reserve).
-  No invented hunger or survival meters.
+- **Money, canon version:** the setting has money. **Manna** is the universal currency on
+  every market outside the Core (Core p.10), and non-core worlds also use **local currencies**
+  (p.126). But the rules deliberately don't track currency (p.18): access to mechs and gear
+  comes from licenses, and your pilot is assumed to get what they're licensed for "by
+  influence, patronage, wealth, or rank" (p.31). So in the game, manna and local money appear
+  in the story (prices in dialogue, bribes, deals) but there's no tracked wallet.
+- **Mechs are printed, never shipped (canon):** printing facilities are "ubiquitous on most
+  occupied worlds" (p.82). With a **Full Repair** (10 hours in a secure location) you rebuild a
+  mech or print any mech you're licensed for. You're licensed to field one mech at a time;
+  printing a new one shuts down the old one. You never lose access to licensed gear (p.31).
+  Mercenaries work the same way: licenses come with them, not shipping.
+- **Custom mechs (canon):** you can change your mech's look and layout within reason; how it
+  looks has no effect on gameplay (p.32). That's what the customizer does.
+- **Favors and jobs, canon version:** missions start by establishing the **Reserves** the
+  squad brings (p.40); Reserves (resources, favors, access, allies) are what NPCs give for
+  jobs done. Downtime actions cover getting things through people: Get a Damn Drink, Get
+  Connected, Get Creative, Get Focused, Get Organized, Power at a Cost, Scrounge and Barter
+  (p.53-55). A company rep or local contact offering "clear out the bandits and I'll owe you"
+  pays out as a Reserve, run through these rules.
 - **Story inspiration from real campaigns:** official modules, actual plays and campaign
   write-ups are researched for structure, mission types, arcs and pacing (written up in
   `docs/research/`), then turned into original story tables. Nothing copied.
+- **Everything else** we came up with that the book doesn't support is parked in
+  "Parked: your own story additions" below, not built until you say so.
 
 ### Progression
 - **Everyone starts at the bottom, like D&D level 1:** by the book, new pilots start at
@@ -680,6 +670,21 @@ pixel art).
 3. **Builder:** mech/pilot builder with COMP/CON import; content packs (real NPC data).
 4. **Campaign:** the full narrative loop, progression, saves, procedural missions.
 5. **Polish:** effects coverage, animations, audio, accessibility, customization, human GM.
+
+## Parked: your own story additions (not built until you say)
+
+Ideas that are fun but not canon LANCER. Kept here so they're not lost; the game stays canon
+until you decide to turn any of these on as your own campaign rules.
+
+- Tracked wallet: manna and local currency with prices for food, drinks, lodging, travel,
+  information, pilot supplies and repair kits; mission pay; selling salvage.
+- Printer scarcity: frontier worlds without printers, paying for printer access, a destroyed
+  mech staying destroyed until you reach a printer.
+- Paid travel: company/patron members ride free, independents buy passage.
+- "Can't afford it? Fight for it": an unaffordable deal turns into a generated combat job;
+  lose and the deal is off, but you can come back and pay with scrap, a spare mech, manna or
+  local money.
+- Buying food and water as a survival need.
 
 ## Rule differences: Lancer Tactics vs. the book
 
