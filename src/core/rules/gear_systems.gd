@@ -980,6 +980,114 @@ static func fade_roll(state: GameState, u: Unit) -> Array[Dictionary]:
 	return events
 
 
+## Mesmer Beacon: Systems save, or until the end of its next turn its only voluntary movements
+## are toward you.
+static func mesmer(state: GameState, u: Unit, t: Unit) -> Array[Dictionary]:
+	var save := Combat.skill_check(state, t, "systems", "Save vs Mesmer Beacon", u.save_target, 0, 0, [], true)
+	var events: Array[Dictionary] = [{"type": "skill_check", "unit": t.id, "check": save, "rule_ref": "systems: Mesmer Charges"}]
+	if not save["success"]:
+		events.append_array(Effects.activate(state, t, [{"kind": "mesmerized", "by": u.id, "label": "Mesmer Beacon"}], "Mesmer Beacon", "end_next_turn"))
+	return events
+
+
+## Mimic Mesh: until the end of your next turn, Battlefield Awareness for an ally in Sensors.
+static func mimic_mesh(state: GameState, u: Unit, ally: Unit) -> Array[Dictionary]:
+	return Effects.activate(state, u, [{"kind": "mimic_target", "ally": ally.id, "label": "Mimic Mesh"}], "Mimic Mesh", "end_next_turn")
+
+
+## Battlefield Awareness (reaction): a hostile action against your Mimic Mesh target: move 3
+## spaces toward it first, ignoring engagement, without provoking. PROVISIONAL: hostile actions
+## are attacks and tech actions; "as many times per round as it's triggered" means it doesn't
+## use up your one reaction per turn.
+static func battlefield_awareness(state: GameState, actor: Unit, target: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if actor == null or target == null or actor.side == target.side:
+		return events
+	var ids: Array = state.units.keys()
+	ids.sort()
+	for id: String in ids:
+		var o := state.unit(id)
+		if o == target or not Combat.is_present(o) or o.has_status("Stunned"):
+			continue
+		var on := false
+		for e: Dictionary in Effects.of(o, "mimic_target"):
+			on = on or String(e.get("ally", "")) == target.id
+		if not on or Sight.unit_distance(state, o, target) <= 1:
+			continue
+		var d := Reactions.offer(state, o, "battlefield_awareness", {"target": target.id, "suggested": {"take": true}}, {"take": true})
+		if not d.get("take", false):
+			continue
+		var path := Movement.pull_path_to(state, o, Sight.body_of(state, target), 1, 3)
+		if path.size() < 2:
+			continue
+		var last: Array = path.back()
+		o.cell = Vector2i(last[0], last[1])
+		o.level = int(last[2])
+		events.append({"type": "moved", "unit": o.id, "path": path, "mode": "walk", "cost": 0, "rule_ref": "systems: Mimic Mesh"})
+		events.append_array(Combat.refresh_engagement(state))
+	return events
+
+
+## Guide the Flock (Puppetmaster): drones within Sensors, anyone's, each move up to 4 spaces.
+## params.moves: [{"drone": id, "to": [x, y]}].
+static func check_guide(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+	var ref := "systems: Puppetmaster"
+	var moves: Variant = params.get("moves", [])
+	if not moves is Array or (moves as Array).is_empty():
+		return RuleResult.deny("Say which drones go where (params.moves: [{drone, to}]).", ref)
+	for m: Variant in moves:
+		var d := state.unit(String((m as Dictionary).get("drone", "")))
+		var to: Variant = TurnAction.cell_param(m, "to")
+		if d == null or d.destroyed or String(d.counters.get("deploy_type", "")) != "Drone":
+			return RuleResult.deny("Only drones.", ref)
+		if Sight.unit_distance(state, u, d) > u.sensors:
+			return RuleResult.deny("That drone is out of your Sensors.", ref)
+		if to == null or not state.map.has_cell(to) or state.map.grid.distance(d.cell, to) > 4:
+			return RuleResult.deny("Up to 4 spaces.", ref)
+	return RuleResult.allow()
+
+
+static func guide_flock(state: GameState, _u: Unit, params: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for m: Dictionary in params.get("moves", []):
+		var d := state.unit(String(m["drone"]))
+		var to: Vector2i = TurnAction.cell_param(m, "to")
+		var from := [d.cell.x, d.cell.y, d.level]
+		var lv := maxi(d.level, state.map.ground_height(to))
+		var clear := true
+		for o: Unit in state.units.values():
+			if o != d and Combat.is_present(o) and Movement._overlaps(Sight.make_body(state, to, lv, d.size), Sight.body_of(state, o)):
+				clear = false
+		if not clear:
+			continue
+		d.cell = to
+		d.level = lv
+		events.append({"type": "moved", "unit": d.id, "path": [from, [to.x, to.y, lv]], "mode": "fly", "cost": 0, "rule_ref": "systems: Puppetmaster"})
+	return events
+
+
+## Annihilation Nexus secondary attack (Protocol): if you attacked with it on your last turn,
+## attack again centered on yourself or one of your drones within Sensors (params.center); no
+## bonus damage, no further secondary attack.
+static func annihilation_second(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+	var w: Dictionary = {}
+	for x: Dictionary in u.loadout.get("weapons", []):
+		if String(x.get("id", "")) == "mw_annihilation_nexus":
+			w = x
+	if w.is_empty():
+		return [] as Array[Dictionary]
+	var center := state.unit(String(params.get("center", u.id)))
+	var at := [u.cell, u.level]
+	if center != null and center != u:
+		u.cell = center.cell  # the Burst is centered on the drone
+		u.level = center.level
+	var events := Areas.attack(state, u, w, {"skip_spend": true, "no_bonus_damage": true, "secondary": true, "aim": [u.cell.x, u.cell.y]})
+	u.cell = at[0]
+	u.level = at[1]
+	u.counters.erase("annihilation_round")
+	return events
+
+
 ## SISYPHUS Bend Probability: roll 2d20 and keep them (X, Y) until the end of your next turn,
 ## with the Probabilistic Cannibalism reaction.
 static func bend_probability(state: GameState, u: Unit) -> Array[Dictionary]:

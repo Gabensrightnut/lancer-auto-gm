@@ -125,6 +125,8 @@ static func _check_aux(state: GameState, u: Unit, aux: Array, fired: Array[Dicti
 
 static func _run(state: GameState, u: Unit, a0: Dictionary, aux: bool) -> Array[Dictionary]:
 	var a := AttackActions.from_drone(state, u, a0)
+	if String(Weapons.find(u, String(a.get("weapon", ""))).get("id", "")) == "mw_annihilation_nexus" and state.active_unit == u.id:
+		u.counters["annihilation_round"] = state.round_number  # its secondary attack next turn
 	var w := WeaponRules.variant(Weapons.find(u, String(a["weapon"])), a)
 	var pre := TalentRules.spend_ammo(u, String(a.get("ammo", "")))
 	var lunge: Array[Dictionary] = TalentRules.lunge(state, u, state.unit(String(a.get("target", "")))) if a.get("lunge", false) else ([] as Array[Dictionary])

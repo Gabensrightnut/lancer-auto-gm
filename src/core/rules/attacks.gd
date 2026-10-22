@@ -286,6 +286,7 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 	var afterimage: bool = target.counters.get("afterimage", false)
 	if afterimage:
 		target.counters.erase("afterimage")  # Flicker Field: Invisible the next time it's attacked
+	events.append_array(GearSystems.battlefield_awareness(state, attacker, target))  # Mimic Mesh
 	var barrier := Zones.wall_field_between(state, attacker, target)
 	if barrier.get("flavor", "") == "stasis" and kind != KIND_TECH and not target.has_status("Invisible"):
 		# Stasis Barrier: on 4+ on 1d6 the attack is consumed with no effect at all.

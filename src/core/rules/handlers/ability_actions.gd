@@ -275,6 +275,14 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				events.append_array(Attacks.attack(state, u, Weapons.find(u, "cbi:0"), target, {"fired_by_rule": true}))
 			"jackhammer":
 				events.append_array(TalentRules.jackhammer(state, u, target))
+			"mesmer":
+				events.append_array(GearSystems.mesmer(state, u, target))
+			"mimic_mesh":
+				events.append_array(GearSystems.mimic_mesh(state, u, target))
+			"guide_flock":
+				events.append_array(GearSystems.guide_flock(state, u, params))
+			"annihilation_second":
+				events.append_array(GearSystems.annihilation_second(state, u, params))
 			"bend_probability":
 				events.append_array(GearSystems.bend_probability(state, u))
 			"puppet":
@@ -542,6 +550,21 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 			var mt := state.unit(String(params.get("target", "")))
 			if mt == null or mt == u or mt.side != u.side or not Combat.is_present(mt) or Sight.unit_distance(state, u, mt) > 1:
 				return RuleResult.deny("Choose an adjacent allied character (params.target).", "systems: Monitor Module")
+		if op.get("op", "") == "guide_flock":
+			var gr := GearSystems.check_guide(state, u, params)
+			if not gr.ok:
+				return gr
+		if op.get("op", "") == "annihilation_second":
+			if int(u.counters.get("annihilation_round", -9)) != state.round_number - 1:
+				return RuleResult.deny("Only if you attacked with the Annihilation Nexus on your last turn.", "weapons: Annihilation Nexus")
+			var c := state.unit(String(params.get("center", u.id)))
+			if c == null or (c != u and (String(c.counters.get("owner", "")) != u.id or String(c.counters.get("deploy_type", "")) != "Drone" or Sight.unit_distance(state, u, c) > u.sensors)):
+				return RuleResult.deny("Center it on yourself or one of your drones within Sensors (params.center).", "weapons: Annihilation Nexus")
+		if op.get("op", "") in ["mesmer", "mimic_mesh"]:
+			var mt := state.unit(String(params.get("target", "")))
+			var reach := 5 if op["op"] == "mesmer" else u.sensors
+			if mt == null or mt == u or not Combat.is_present(mt) or Sight.unit_distance(state, u, mt) > reach or (op["op"] == "mimic_mesh" and mt.side != u.side):
+				return RuleResult.deny("Choose %s within %d." % ["a character" if op["op"] == "mesmer" else "an allied character", reach], "systems: " + String(a.get("source_name", "")))
 		if op.get("op", "") == "puppet" and TurnAction.cell_param(params, "toward") == null:
 			return RuleResult.deny("Choose the direction it moves (params.toward: a space).", "systems: H0R_OS System Upgrade I")
 		if op.get("op", "") == "metahook":

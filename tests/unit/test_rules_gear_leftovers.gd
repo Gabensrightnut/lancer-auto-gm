@@ -348,3 +348,45 @@ func test_sisyphus() -> void:
 	expect_eq(int(a.counters["bent_uses"]), 1)
 	var check := Combat.skill_check(s, t, "hull", "test", 10)
 	expect(check.get("reroll_source", "") == "", "a reaction per turn: no second use this turn")
+
+
+func test_mesmer_beacon_and_mimic_mesh() -> void:
+	_setup(["ms_mesmer_charges", "ms_mimic_mesh"], Vector2i(4, 0))
+	var ally := F.mech(s, "ally", "players", Vector2i(0, 4))
+	F.load_dice(s, [3])
+	var out := F.act(e, s, "activate", "a", {"ability": _key("Mesmer Beacon"), "target": "t"})
+	expect(F.ok(out), F.reason(out))
+	out = F.act(e, s, "activate", "a", {"ability": _key("Activate Mimic Mesh"), "target": "ally"})
+	expect(F.ok(out), F.reason(out))
+	F.act(e, s, "end_turn", "a")
+	F.act(e, s, "start_turn", "t")
+	expect(not F.ok(F.act(e, s, "move", "t", {"to": [6, 0]})), "mesmerized: only toward the Minotaur")
+	expect(F.ok(F.act(e, s, "move", "t", {"to": [3, 1]})), "toward is fine")
+	F.load_dice(s, [2])
+	out = F.act(e, s, "skirmish", "t", {"weapon": "0:0", "target": "ally"})
+	expect(Sight.unit_distance(s, a, ally) < 4, "Battlefield Awareness: moved toward the ally first")
+
+
+func test_guide_the_flock_and_annihilation_secondary() -> void:
+	_setup(["ms_puppetmaster"], Vector2i(9, 9))
+	var drone := F.mech(s, "d", "enemies", Vector2i(3, 3), 0.5)
+	drone.kind = Unit.KIND_DEPLOYABLE
+	drone.counters["deploy_type"] = "Drone"
+	var out := F.act(e, s, "activate", "a", {"ability": _key("Guide the Flock"), "moves": [{"drone": "d", "to": [6, 3]}]})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(drone.cell, Vector2i(6, 3), "anyone's drone, up to 4 spaces")
+	s.units.erase("a")
+	a = UnitFactory.build_mech(db(), "a", "mf_standard_pattern_i_everest", {"mounts": [{"weapons": []}, {"weapons": []}, {"weapons": ["mw_annihilation_nexus"]}], "systems": []}, {"ll": 12})
+	a.side = "players"
+	s.add_unit(a)
+	s.active_unit = "a"
+	a.turn = {"quick": 0, "full": false, "taken": [], "quick_tech": [], "move_spent": 0, "moved": false, "acted": false, "overcharged": false, "free_quick": 0}
+	var key := _key("Annihilation Nexus Secondary Attack")
+	expect(key != "", "the weapon's protocol")
+	expect(not F.ok(F.act(e, s, "activate", "a", {"ability": key})), "only after attacking with it last turn")
+	a.counters["annihilation_round"] = s.round_number - 1
+	t.cell = Vector2i(1, 1)
+	F.load_dice(s, [15, 3])
+	out = F.act(e, s, "activate", "a", {"ability": key})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(F.events_of(out, "area_attack").size(), 1, "the second Burst")

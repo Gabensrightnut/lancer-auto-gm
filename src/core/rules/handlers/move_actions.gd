@@ -23,6 +23,14 @@ static func _plan(state: GameState, u: Unit, params: Dictionary, mode: String) -
 			plan["ok"] = false
 			plan["reason"] = "The cable holds you within 5 spaces of the other end."
 			plan["rule_ref"] = Riders.REF_WINCH
+	for me: Dictionary in Effects.of(u, "mesmerized"):
+		var lure := state.unit(String(me.get("by", "")))
+		if plan["ok"] and lure != null and Combat.is_present(lure) and not (plan["path"] as Array).is_empty():
+			var lm: Array = (plan["path"] as Array).back()
+			if Sight.distance(state, Sight.make_body(state, Vector2i(lm[0], lm[1]), int(lm[2]), u.size), Sight.body_of(state, lure)) >= Sight.unit_distance(state, u, lure):
+				plan["ok"] = false
+				plan["reason"] = "Mesmerized: you can only move toward it."
+				plan["rule_ref"] = "systems: Mesmer Charges"
 	var scary := state.unit(String(u.counters.get("terrified_of", "")))
 	if plan["ok"] and scary != null and Combat.is_present(scary) and u.has_status("Impaired") and String(u.statuses["Impaired"].get("source", "")) == scary.id \
 			and not (plan["path"] as Array).is_empty():

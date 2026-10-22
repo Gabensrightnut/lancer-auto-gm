@@ -1073,5 +1073,30 @@
       "label": "Bend Probability"
     }
   ],
-  "ms_sisyphus_class_nhp:Probabilistic Cannibalism": []
+  "ms_sisyphus_class_nhp:Probabilistic Cannibalism": [],
+  "ms_mesmer_charges:Mesmer Beacon": [
+    {
+      "op": "mesmer",
+      "label": "Mesmer Beacon"
+    }
+  ],
+  "ms_mimic_mesh:Activate Mimic Mesh": [
+    {
+      "op": "mimic_mesh",
+      "label": "Mimic Mesh"
+    }
+  ],
+  "ms_mimic_mesh:Battlefield Awareness": [],
+  "ms_puppetmaster:Guide the Flock": [
+    {
+      "op": "guide_flock",
+      "label": "Guide the Flock"
+    }
+  ],
+  "mw_annihilation_nexus:Annihilation Nexus Secondary Attack": [
+    {
+      "op": "annihilation_second",
+      "label": "Annihilation Nexus Secondary Attack"
+    }
+  ]
 }
