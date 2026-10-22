@@ -83,6 +83,8 @@ func step() -> bool:
 		if not carry.is_empty():
 			host.submit(NetHost.GM_SEAT, carry)
 			return true
+	if _maybe_join():
+		return true
 	if _maybe_narrate():
 		return true
 	if _maybe_reinforce():
@@ -278,6 +280,27 @@ func _explore_step(first: String) -> bool:
 				_log("", "Contact: %s sees the enemy. The fight starts." % p.name)
 				return (host.submit(NetHost.GM_SEAT, {"type": "start_combat", "params": {"first_side": first, "center": [mid.x, mid.y], "radius": FIGHT_RADIUS}})["result"] as RuleResult).ok
 	return _follow_step()
+
+
+## A unit still exploring (outside the fight) that comes within CONTACT of a fighting enemy
+## joins the fight where it is (join_combat: it takes turns from the next round, Core p.60).
+func _maybe_join() -> bool:
+	var state := host.state
+	if state.phase != GameState.PHASE_COMBAT or not state.pending.is_empty():
+		return false
+	for u: Unit in state.units.values():
+		if u.destroyed or not bool(u.counters.get("exploring", false)):
+			continue
+		for o: Unit in state.units.values():
+			if o.destroyed or o.side == u.side or bool(o.counters.get("exploring", false)):
+				continue
+			if state.map.grid.distance(u.cell, o.cell) <= CONTACT:
+				var out := host.submit_ai({"type": "join_combat", "actor": u.id, "params": {"to": [u.cell.x, u.cell.y]}})
+				if (out["result"] as RuleResult).ok:
+					_log(u.id, "%s arrives and joins the fight (from the next round)." % u.name)
+					return true
+				break
+	return false
 
 
 ## AI squadmates exploring follow the nearest person on their side (the user: AI players follow

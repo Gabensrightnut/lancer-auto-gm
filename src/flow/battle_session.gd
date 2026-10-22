@@ -185,9 +185,15 @@ func _walk_step() -> void:
 func _walk_next(id: String, at: Vector2i, to: Vector2i) -> Vector2i:
 	var st: GameState = host.state if is_host else mirror
 	var field := _walk_field(st, to)
+	if not field.has(at):
+		# The target is somewhere the walk field doesn't reach (up a steep rise): head straight
+		# for it as far as the ground allows.
+		field = {}
+		for c: Vector2i in st.map.cells():
+			field[c] = st.map.grid.distance(c, to)
 	var here := int(field.get(at, 1 << 20))
 	var best := at
-	var best_key := Vector2(here, 0)
+	var best_key := Vector2(here, 1e9)
 	for sp: Dictionary in RulesQueries.reachable(st, id).get("spaces", []):
 		var c := Vector2i(int(sp["cell"][0]), int(sp["cell"][1]))
 		var key := Vector2(int(field.get(c, 1 << 20)), maxi(0, int(sp.get("cost", 0)) - WALK_SPACES))
@@ -202,7 +208,7 @@ var _field: Dictionary = {}
 
 
 ## Spaces from each cell to `to` over ground a walker can cross (no impassable terrain, steps
-## of at most 2 levels): the way around walls and cliffs. Cached per target.
+## of at most 1 level): the way around walls and cliffs. Cached per target.
 func _walk_field(st: GameState, to: Vector2i) -> Dictionary:
 	if to == _field_for:
 		return _field
@@ -215,7 +221,7 @@ func _walk_field(st: GameState, to: Vector2i) -> Dictionary:
 		for n: Vector2i in map.grid.neighbors(c):
 			if _field.has(n) or not map.has_cell(n) or map.column(n).has_tag(BattleMap.TAG_IMPASSABLE):
 				continue
-			if absi(map.ground_height(n) - map.ground_height(c)) > 2:
+			if absi(map.ground_height(n) - map.ground_height(c)) > 1:
 				continue
 			_field[n] = int(_field[c]) + 1
 			queue.append(n)
@@ -226,7 +232,15 @@ func _explore_move(id: String, cell: Vector2i) -> bool:
 	var a := {"type": "explore_move", "actor": id, "params": {"to": [cell.x, cell.y]}}
 	if is_host:
 		var u := host.state.unit(id)
-		return u != null and (host.submit(u.controller, a)["result"] as RuleResult).ok
+		if u == null:
+			return false
+		var r: RuleResult = host.submit(u.controller, a)["result"]
+		if r.ok and r.grey_area != "" and host.is_ai_seat(NetHost.GM_SEAT) and Rulings.CATALOG.has(r.grey_area):
+			# A table ruling the step needs (e.g. uneven ground): the AI GM answers it with the
+			# suggested reading, as it does in a fight, and the step goes again.
+			host.submit(NetHost.GM_SEAT, {"type": "set_ruling", "params": {"id": r.grey_area, "choice": Rulings.suggested(r.grey_area)}})
+			r = host.submit(u.controller, a)["result"]
+		return r.ok and r.grey_area == ""
 	client.submit(a)
 	return true
 
