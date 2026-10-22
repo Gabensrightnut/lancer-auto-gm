@@ -170,6 +170,10 @@ static func mission_vars(story: StoryState, campaign: Campaign, outcome: String)
 	var ejected: Array = sm.get("ejected", [])
 	v["ejected_line"] = ("%s had to get out on foot." % ", ".join(PackedStringArray(ejected))) if not ejected.is_empty() else ""
 	v["rival_line"] = str(story.flags.get(Rivals.DEBRIEF, ""))
+	var cascades: Array = sm.get("cascades", [])
+	if not cascades.is_empty() and SessionZero.allowed(campaign, "story", "nhp_cascade"):
+		v["cascade"] = " and ".join(PackedStringArray(cascades))
+		v["cascade_line"] = StoryText.fill(pool_line("debrief_cascade", story), story, campaign, {"vars": {"cascade": v["cascade"]}})
 	return v
 
 

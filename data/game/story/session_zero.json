@@ -64,6 +64,7 @@
   },
   "content_tags": {
     "twists": {"civilians": "civilian_harm", "nhp_involved": "nhp_themes", "patron_lied": "betrayal", "leak": "betrayal", "turncoat": "betrayal"},
-    "arcs": {"betrayal": "betrayal"}
+    "arcs": {"betrayal": "betrayal"},
+    "story": {"nhp_cascade": "nhp_themes"}
   }
 }

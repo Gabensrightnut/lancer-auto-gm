@@ -38,6 +38,10 @@
         "Get some sleep, {other}. You look like you need it.",
         "Who's on watch tonight? I'll take second.",
         "Hydrate. Seriously."
+      ],
+      "cascade": [
+        "My NHP cascaded out there. I keep running the logs. It knew exactly what it was doing.",
+        "I want my NHP cycled before the next drop. No arguments."
       ]
     },
     "bold": {
@@ -76,6 +80,10 @@
         "Somebody spar with me. {other}?",
         "I'm going to win the next sparring round. Bet on it.",
         "I could go another mission right now."
+      ],
+      "cascade": [
+        "My own mech turned on me out there. I'd still rather fly with an NHP than without one.",
+        "So my NHP woke up and wanted to drive. Next time I'm keeping the keys."
       ]
     },
     "kind": {
@@ -114,6 +122,10 @@
         "Have you called home lately, {other}?",
         "I saved you some of the good rations, {other}.",
         "Get some rest. We all need it."
+      ],
+      "cascade": [
+        "I keep wondering what my NHP was thinking when it slipped loose. If it was afraid.",
+        "I shut it down. It felt like shutting a door on someone."
       ]
     },
     "mercenary": {
@@ -152,6 +164,10 @@
         "Never work for free, {other}.",
         "Our rates are going up after this one.",
         "I'm keeping track of every favor. Every one."
+      ],
+      "cascade": [
+        "A cascading NHP is a liability. I'm having it cycled, and I'm billing someone for it.",
+        "That NHP nearly cost me a mech. Never again without a clean reset."
       ]
     },
     "curious": {
@@ -190,6 +206,10 @@
         "{other}, have you ever wondered how the blink gates actually work?",
         "Did anyone else notice the printer hums in a minor key?",
         "I'm reading up on the local history. It's wild."
+      ],
+      "cascade": [
+        "When my NHP cascaded, it said something. I can't stop thinking about it.",
+        "Nobody really knows what an unshackled NHP sees. I got a glimpse."
       ]
     },
     "sly": {
@@ -228,6 +248,10 @@
         "{other}, never say anything important near the windows.",
         "Smile at the quartermaster. Trust me.",
         "Don't leave your terminal unlocked, {other}."
+      ],
+      "cascade": [
+        "Funny thing about NHPs: you only find out what they want when the shackles come off.",
+        "My NHP had its own plans out there. I'd like to know whose idea they were."
       ]
     },
     "grim": {
@@ -266,6 +290,10 @@
         "Clean your weapons, {other}. Then do it again.",
         "Write your letters. Just in case.",
         "Quiet. Enjoy it."
+      ],
+      "cascade": [
+        "My NHP went somewhere I couldn't follow. Then it came back. That's worse.",
+        "Shut it down, cycle it, fly again. Don't think about it."
       ]
     },
     "joker": {
@@ -304,6 +332,10 @@
         "Who wants to hear a joke about blink gates? You'll get it instantly. Probably.",
         "New rule: whoever gets shot first buys drinks.",
         "I named my mech. It doesn't like the name."
+      ],
+      "cascade": [
+        "Good news: my mech has opinions now. Bad news: they're about me.",
+        "Note to self: when the NHP starts humming, stop asking it questions."
       ]
     }
   },

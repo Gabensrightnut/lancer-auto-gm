@@ -89,6 +89,7 @@ book in a way that changes the setting; parked.
 | Commanders who got away come back for revenge on later jobs; captured ones don't | Consistent | Recurring NPCs and changing goals (p.42-43) |
 | Parley checks: Threaten / Pull Rank / Charm to make them stand down, Charm / Lead or Inspire to reason with a zealot (difficult), a both-sides truce is heroic | Canon (procedure) | Skill checks with triggers, difficult and heroic levels (p.45-46) |
 | Talking terms gives a Knowledge reserve when they trade what they know | Canon | Knowledge is a book reserve (lancer-data reserves.json) |
+| A squad NHP that cascades in battle (the rules engine's roll, Core p.107) gets barks, a debrief line and banter; "have it cycled" | Consistent | Cascade is Core p.107; NHPs being cycled (reset) is setting lore; flavor only, and off when the table leaves NHP themes out (session zero) |
 
 ## When canon allows more than one answer
 

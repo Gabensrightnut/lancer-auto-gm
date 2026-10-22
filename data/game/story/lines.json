@@ -778,6 +778,11 @@
       "Well. That changes things.",
       "Not many pilots would say that. Thank you.",
       "You've been there, haven't you?"
+    ],
+    "debrief_cascade": [
+      "{cascade} had an NHP cascade out there. You got it shut down. Have it cycled before it flies again.",
+      "I read the logs: {cascade}'s NHP slipped its shackles mid-fight. That doesn't go in a report lightly.",
+      "{cascade}'s NHP cascaded. You all walked away from it, which is more than some squads can say."
     ]
   }
 }

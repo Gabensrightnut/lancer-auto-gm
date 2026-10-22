@@ -114,10 +114,26 @@
        "var": "rival_line"
       }
      },
-     "next": "talk"
+     "next": "cascade"
     }
    ],
    "line": "{rival_line}",
+   "next": "cascade"
+  },
+  "cascade": {
+   "speaker": "npc",
+   "expression": "worried",
+   "branch": [
+    {
+     "if": {
+      "not": {
+       "var": "cascade_line"
+      }
+     },
+     "next": "talk"
+    }
+   ],
+   "line": "{cascade_line}",
    "next": "talk"
   },
   "talk": {
