@@ -117,7 +117,10 @@ Every effect gets an animation, a combat-log line, and floating text (damage, MI
     in settings so we can tune it together; it scales with resolution.
   - Players can rearrange buttons; the layout is saved per pilot.
   - **Cooldowns shown WoW-style:** an unusable button greys out with a dark radial sweep and
-    the reason on it. Lancer doesn't have many plain cooldowns, so the overlay shows what
+    the reason on it. Like a clock hand, the grey slice shrinks as the wait runs down,
+    un-greying the button bit by bit (it animates smoothly to the new size each time a turn
+    or round passes) until it's fully lit and usable. Waits with no fixed length (Recharge,
+    Loading) stay fully grey with their label until they're ready. Lancer doesn't have many plain cooldowns, so the overlay shows what
     actually applies:
     - a **number of turns/rounds** when the wait is fixed (e.g. an effect lasting "until the
       end of your next turn", 1/round abilities until the next round);
