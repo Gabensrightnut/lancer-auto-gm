@@ -365,3 +365,9 @@ elevated highway over it (`highway`: a deck two levels up on gap columns, ramps 
 units pass under and walk on top, like river bridges). Modern towns get a two-lane highway
 that bridges rivers. In a city every open space is street, sidewalk/lot or a paved square
 (`plaza`: warm stone pavers); no bare ground. Roads are never cover.
+Ramps two spaces long (one level a step) lead from the boulevard's outer lanes up to the
+elevated deck. Crosswalks (`crosswalk`) sit on the last road cell before each intersection
+(streets two lanes or wider); the intersection itself is plain. Railways (`rail`, `rail_x`):
+frontier, industrial, port, atomic-age and Union towns often have one past them on a level bed
+(embankments and cuttings), bridged over water, with level crossings where it meets a road;
+ballast, sleepers and two rails; look only (track is open ground).

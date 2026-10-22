@@ -321,20 +321,36 @@ void fragment() {
 			relief = n3 * 0.5 - seam;
 			rough = 0.95;
 		} else if (kind == 14) {
-			// Road. vcol.g: 0.15 runs along x, 0.5 along z, 0.85 a crossing. UV: offset from the cell center.
+			// Road. vcol.g (renderer): along x 0.05 + code/255, along z 0.45 + code/255 (code =
+			// n*6 + i, +42 for a crosswalk), 0.85 a crossing, 0.9 / 0.915 rail along x / z,
+			// 0.97 a lot, 0.99 a square. UV: offset from the cell center.
 			vec2 loc = UV;
-			bool along_z = vcol.g > 0.3 && vcol.g < 0.7;
 			bool lot = vcol.g > 0.93;  // a yard, sidewalk or square: paving without markings
 			bool plaza = vcol.g > 0.985;
-			bool crossing = vcol.g > 0.7 && !lot;
-			// Lane code (renderer): along x 0.05 + code/255, along z 0.4 + code/255; code = n*6 + i.
-			float lbase = vcol.g < 0.3 ? 0.05 : 0.4;
+			bool rail = vcol.g > 0.895 && vcol.g < 0.93;
+			bool crossing = vcol.g > 0.8 && !lot && !rail;
+			bool along_z = (vcol.g > 0.42 && vcol.g < 0.8) || (rail && vcol.g > 0.91);
+			float lbase = vcol.g < 0.42 ? 0.05 : 0.45;
 			int code = int(round((vcol.g - lbase) * 255.0));
-			int lane_n = (crossing || lot) ? 0 : code / 6;
-			int lane_i = (crossing || lot) ? 0 : code - lane_n * 6;
+			bool zebra = !crossing && !lot && !rail && code >= 42;
+			if (zebra) {
+				code -= 42;
+			}
+			int lane_n = (crossing || lot || rail) ? 0 : code / 6;
+			int lane_i = (crossing || lot || rail) ? 0 : code - lane_n * 6;
 			float across = along_z ? loc.x : loc.y;   // distance from the lane's middle
 			float along = along_z ? wpos.z : wpos.x;
-			if (road_style == 0) {
+			if (rail) {
+				// Railway: gravel ballast, timber sleepers across, two steel rails.
+				col = mix(vec3(0.32, 0.3, 0.28), vec3(0.42, 0.4, 0.37), n3) * (0.85 + 0.2 * n2);
+				float sleeper = step(0.55, fract(along * 2.4)) * step(abs(across), 0.36);
+				col = mix(col, vec3(0.26, 0.19, 0.13), sleeper);
+				float rails = smoothstep(0.03, 0.012, abs(abs(across) - 0.2));
+				col = mix(col, vec3(0.62, 0.62, 0.64), rails);
+				metal = rails * 0.8;
+				rough = mix(0.95, 0.35, rails);
+				relief = n3 * 0.6 + rails * 0.5 + sleeper * 0.3;
+			} else if (road_style == 0) {
 				col = mix(soil * 1.1, soil * 0.8, n2) * (0.85 + 0.25 * n3);
 				float rut = smoothstep(0.06, 0.0, abs(abs(across) - 0.22)) * (crossing || lot ? 0.0 : 1.0);
 				col *= 1.0 - 0.3 * rut;
@@ -417,11 +433,12 @@ void fragment() {
 					float edge = smoothstep(0.03, 0.012, abs(abs(across) - 0.44));
 					col = mix(col, vec3(0.85, 0.82, 0.7), lane * 0.9);
 					col = mix(col, vec3(0.75, 0.75, 0.72), edge * 0.6);
-				} else {
-					// Crosswalk: zebra stripes near the edges of the crossing.
-					float zx = step(0.5, fract(wpos.x * 3.5)) * step(0.3, abs(loc.y)) * step(abs(loc.y), 0.48);
-					float zz = step(0.5, fract(wpos.z * 3.5)) * step(0.3, abs(loc.x)) * step(abs(loc.x), 0.48);
-					col = mix(col, vec3(0.86, 0.86, 0.84), clamp(zx + zz, 0.0, 1.0) * 0.85);
+				}
+				if (zebra) {
+					// Crosswalk on the last stretch before the intersection: bars across the road.
+					float along_l = along_z ? loc.y : loc.x;
+					float bar = step(0.5, fract(across * 5.0 + 0.25)) * step(abs(along_l), 0.3);
+					col = mix(col, vec3(0.86, 0.86, 0.84), bar * 0.85);
 				}
 				relief = n3 * 0.2;
 			}
