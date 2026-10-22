@@ -31,6 +31,9 @@ func screenshot_stage(tag: String) -> void:
 	var map_name := spec[0].trim_suffix("_sq")
 	var map: BattleMap
 	var kit := ""
+	if map_name.begins_with("hub"):
+		await _hub(map_name.trim_prefix("hub").trim_prefix("-"), cam)
+		return
 	if map_name.begins_with("gen"):
 		# gen<seed>[+landscape[+culture]][+size]
 		var parts := map_name.trim_prefix("gen").split("+")
@@ -141,3 +144,74 @@ func _place_mechs(map: BattleMap) -> void:
 			"size": float(frame.get("stats", {}).get("size", 1)), "cell": [c.x, c.y], "level": map.ground_height(c),
 			"loadout": {"mounts": [], "systems": []}, "statuses": {}}
 		view.add_unit(u)
+
+
+
+# --- Hub towns (WorldKits) ---------------------------------------------------------------
+
+var _hub_root: Node3D
+
+
+## A small on-foot town laid out like the story hubs (HubLayout), dressed with WorldKits.
+## Tag: hub-<culture> (story or map culture id), views wide (default) or close.
+func _hub(culture: String, cam: String) -> void:
+	view.visible = false
+	if _hub_root:
+		_hub_root.queue_free()
+	_hub_root = Node3D.new()
+	add_child(_hub_root)
+	var env := WorldEnvironment.new()
+	var e := Environment.new()
+	env.environment = e
+	_hub_root.add_child(env)
+	var sun := DirectionalLight3D.new()
+	sun.shadow_enabled = true
+	sun.directional_shadow_max_distance = 80.0
+	_hub_root.add_child(sun)
+	view.world_env.environment = e
+	WorldKits.apply_hub_environment(culture, e, sun)
+	var colors := WorldKits.hub_ground(culture)
+	var ground := MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(160, 160)
+	ground.mesh = pm
+	ground.material_override = MeshKit.paint(colors["ground"], 0.0, 0.95, 0.3)
+	_hub_root.add_child(ground)
+	MeshKit.part(_hub_root, MeshKit.cylinder(8.5, 0.06, 28), MeshKit.paint(colors["pave"], 0.05, 0.9, 0.3), Vector3(0, 0.03, 0))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	for spot: Dictionary in HubLayout.spots("town", rng):
+		var pos := Vector3(float(spot["pos"][0]), 0, float(spot["pos"][1]))
+		var to := Vector3(float(spot["door"][0]), 0, float(spot["door"][1]))
+		if str(spot["kind"]) != "plaza":
+			var road := MeshKit.part(_hub_root, MeshKit.chamfer_box(Vector3(2.6, 0.05, to.length()), 0.01), MeshKit.paint(colors["pave"], 0.05, 0.9, 0.3), to * 0.5 + Vector3(0, 0.025, 0))
+			road.rotation.y = atan2(to.x, to.z)
+		var b := WorldKits.build_hub_building(culture, spot, 3)
+		b.position = pos
+		b.rotation.y = atan2(-pos.x, -pos.z) if pos.length() > 0.1 else 0.0
+		_hub_root.add_child(b)
+	var center := WorldKits.build_hub_centerpiece(culture, 1)
+	_hub_root.add_child(center)
+	var kinds := WorldKits.hub_prop_kinds(culture)
+	for i in range(18):
+		var a := rng.randf_range(0, TAU)
+		var r := rng.randf_range(9.5, 13.0) if i % 3 else 8.0
+		var prop := WorldKits.build_hub_prop(culture, "lamp" if i % 3 == 0 else kinds[i % kinds.size()], i)
+		prop.position = Vector3(cos(a) * r, 0, sin(a) * r)
+		prop.rotation.y = rng.randf() * TAU
+		_hub_root.add_child(prop)
+	# People for scale (1.8 m capsules).
+	for i in range(4):
+		var p := MeshKit.part(_hub_root, MeshKit.cylinder(0.25, 1.8, 10), MeshKit.paint(Color(0.3, 0.4, 0.55), 0.1, 0.7, 0.0), Vector3(-2.0 + i * 1.3, 0.9, 5.5))
+		p.name = "Person"
+	var c3 := Camera3D.new()
+	c3.fov = 50
+	_hub_root.add_child(c3)
+	if cam == "close":
+		c3.position = Vector3(2, 4.5, 16)
+		c3.look_at(Vector3(0, 2.0, 0))
+	else:
+		c3.position = Vector3(0, 22, 30)
+		c3.look_at(Vector3(0, 0, 0))
+	c3.current = true
+	await get_tree().process_frame

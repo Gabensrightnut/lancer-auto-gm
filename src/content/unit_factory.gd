@@ -260,6 +260,27 @@ static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dic
 			if not w.is_empty():
 				weapons.append(weapon_profile(w, "%d:%d" % [i, slot], i))
 			slot += 1
+	# Integrated mounts: the frame's own weapons, always included, never destroyed, removed or
+	# modified (Core p.32).
+	var integ := 0
+	for wid: Variant in (frame.get("core_system", {}) as Dictionary).get("integrated", []):
+		var w := db.weapon(String(wid))
+		if w.is_empty():
+			continue
+		var prof := weapon_profile(w, "int:%d" % integ, -1)
+		prof["integrated"] = true
+		# Weapons fired only through their own rule (Apocalypse Rail: "skirmish": false; Latch
+		# Drone: "can't make normal attacks").
+		if w.get("skirmish", true) == false or "make normal attacks" in String(w.get("effect", "")):
+			prof["no_attack"] = true
+		if w.has("profiles"):
+			var all: Array = []
+			for i in range((w["profiles"] as Array).size()):
+				all.append(weapon_profile(_with_profile(w, i), "", -1))
+			prof["profiles"] = all
+			prof["profile"] = 0
+		weapons.append(prof)
+		integ += 1
 	var systems: Array = []
 	var n := 0
 	for sid: String in loadout.get("systems", []):
@@ -451,6 +472,13 @@ static func _frame_effects(u: Unit, frame: Dictionary) -> void:
 
 ## The fields of a lancer-data weapon the rules use. Weapons with several profiles use the
 ## first one (choosing a profile isn't supported yet).
+static func _with_profile(w: Dictionary, i: int) -> Dictionary:
+	var src := w.duplicate(true)
+	src.erase("profiles")
+	src.merge(w["profiles"][i], true)
+	return src
+
+
 static func weapon_profile(w: Dictionary, key: String, mount: int) -> Dictionary:
 	var src := w
 	if w.has("profiles") and not (w["profiles"] as Array).is_empty():

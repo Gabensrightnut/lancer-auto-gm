@@ -251,6 +251,7 @@
        }
       ],
       "fail_effects": [],
+      "teamwork": true,
       "tags": [
        "machines",
        "repair"

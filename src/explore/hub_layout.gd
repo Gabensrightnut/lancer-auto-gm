@@ -24,11 +24,13 @@ const RING := ["bar", "office", "market", "workshop", "printer", "landing"]
 const BOUNDS := 30.0
 
 
-## The buildings for a hub kind, placed around the plaza with a little seeded jitter.
+## The buildings for a hub kind, placed around the plaza with a little seeded jitter. `names`
+## = a culture kit's building names (cultures.json "spots"), mixed in with the general ones.
 ## [{id, kind, name, pos: [x, z], size: [w, d, h], color: html, door: [x, z], facing}]
-static func spots(kind: String, rng: RandomNumberGenerator) -> Array:
+static func spots(kind: String, rng: RandomNumberGenerator, names: Dictionary = {}) -> Array:
 	var out: Array = []
-	var plaza_name := _pick(rng, SPOT_NAMES["plaza"])
+	var pool := func(k: String) -> Array: return (names.get(k, []) as Array) + (names.get(k, []) as Array) + (SPOT_NAMES[k] as Array) if names.has(k) else SPOT_NAMES[k]
+	var plaza_name := _pick(rng, pool.call("plaza"))
 	out.append(_spot("plaza", plaza_name, Vector2.ZERO, 0.0))
 	var order := RING.duplicate()
 	if kind == "station":
@@ -39,7 +41,7 @@ static func spots(kind: String, rng: RandomNumberGenerator) -> Array:
 		var a := start + TAU * i / order.size() + rng.randf_range(-0.15, 0.15)
 		var r := rng.randf_range(15.0, 19.0)
 		var pos := Vector2(cos(a), sin(a)) * r
-		out.append(_spot(order[i], _pick(rng, SPOT_NAMES[order[i]]), pos, a))
+		out.append(_spot(order[i], _pick(rng, pool.call(order[i])), pos, a))
 	return out
 
 
@@ -58,7 +60,7 @@ static func npc_position(hub: Dictionary, spot_kind: String, index: int) -> Vect
 		if str(s["kind"]) == spot_kind and spot_kind != "plaza":
 			var d := Vector2(float(s["door"][0]), float(s["door"][1]))
 			var side := Vector2(-d.y, d.x).normalized() if d.length() > 0.01 else Vector2.RIGHT
-			return d + side * (index * 1.8 - 0.9 * mini(index, 1))
+			return d + side * [0.0, 2.2, -2.2, 4.4][index % 4]
 	# The plaza, or no such building: stand around the plaza, between the roads.
 	var a := 0.45 + index * 2.4
 	return Vector2(cos(a), sin(a)) * 5.2

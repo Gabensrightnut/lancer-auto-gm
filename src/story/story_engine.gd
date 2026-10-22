@@ -7,9 +7,9 @@ extends RefCounted
 ## The host runs it; clients get the events (and StoryView.view_for for their seat).
 ##
 ## Actions (params):
-##   set_seat {seat, pilot, ai, persona}             enter_hub {kind, seed}
+##   set_seat {seat, pilot, ai, persona}             enter_hub {kind, seed, culture}
 ##   talk {npc}                                      dialogue_next {}
-##   dialogue_choose {choice}                        skill_check {goal, label, skills, tags, difficult, risky, heroic, consequence}
+##   dialogue_choose {choice}   dialogue_help {on}   skill_check {goal, label, skills, tags, difficult, risky, heroic, consequence}
 ##   rest {}                                         set_pilot_gear {pilot, gear: [ids]}
 ##   choose_hook {hook}                              confirm_reserves {}
 ##   mission_finished {outcome, reason, dead: [pilot ids], down: [pilot ids]}
@@ -35,6 +35,7 @@ func submit(story: StoryState, campaign: Campaign, action: Dictionary) -> Dictio
 		return {"ok": false, "reason": why["reason"], "rule_ref": why.get("rule_ref", ""), "events": []}
 	var events := _resolve(story, campaign, action)
 	events.append_array(_run_ai(story, campaign))
+	events.append_array(Tutorial.observe_story(story, campaign, events))
 	for e: Dictionary in events:
 		if str(e.get("type", "")) == "combat_requested" and story.phase != "mission":
 			events.append_array(_combat_from_scene(story, campaign, e["spec"]))
@@ -86,6 +87,14 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 					return _no("%s is the one talking, so their player chooses (or switch the host setting to a squad vote)." % sp_pilot.get("callsign", "Another pilot"), "DESIGN.md section 10: dialogue choices")
 				if story.is_ai(seat):
 					return _no("That seat is an AI squadmate; it picks for itself.")
+		"dialogue_help":
+			if not Dialogue.is_open(story):
+				return _no("No one is talking.")
+			var w := _able(story, campaign, me)
+			if not w.is_empty():
+				return w
+			if story.pilot_of_seat(seat) == str(story.dialogue.get("ctx", {}).get("speaker", "")):
+				return _no("You're the one rolling; helpers are the rest of the squad.", NarrativeCheck.REF_TEAMWORK)
 		"skill_check":
 			var w := _able(story, campaign, me)
 			if not w.is_empty():
@@ -162,19 +171,21 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 			if not r.is_empty():
 				return r
 		"downtime_choose":
-			var pc := story.pending_choice
+			var pid := _choice_pilot(story, seat, p)
+			var pc := story.first_choice_for(pid) if pid != "" else story.pending_choice
 			if pc.is_empty():
 				return _no("Nothing is waiting for a choice.")
 			if str(pc.get("chooser", "player")) == "player" and not _controls(story, seat, str(pc.get("pilot", ""))):
 				return _no("This choice belongs to %s's player." % campaign.pilots.get(str(pc.get("pilot", "")), {}).get("callsign", "another pilot"))
-			var r := Downtime.choice_refusal(story, p.get("picks", []))
+			var r := Downtime.choice_refusal(story, p.get("picks", []), pid)
 			if not r.is_empty():
 				return r
 		"end_downtime":
 			if story.phase != "downtime":
 				return _no("Not in downtime.")
-			if not story.pending_choice.is_empty():
-				return _no("A downtime result is still waiting for a choice.")
+			if not story.all_choices().is_empty():
+				var who: String = campaign.pilots.get(str(story.all_choices()[0].get("pilot", "")), {}).get("callsign", "Someone")
+				return _no("A downtime result is still waiting for %s's choice." % who)
 		_:
 			return _no("Unknown story action '%s'." % type)
 	return {}
@@ -191,10 +202,11 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 		"enter_hub":
 			var events: Array = []
 			if story.hub.is_empty() or int(story.hub.get("seed", -1)) != int(p.get("seed", story.hub.get("seed", 0))):
-				NpcGen.make_hub(story, campaign, int(p.get("seed", story.mission_number)), str(p.get("kind", "town")))
+				NpcGen.make_hub(story, campaign, int(p.get("seed", story.mission_number)), str(p.get("kind", "town")), str(p.get("culture", "")))
 				events.append({"type": "hub_entered", "hub": story.hub.duplicate(true)})
-			for h: Dictionary in MissionHooks.fill_board(story, campaign):
-				events.append({"type": "hook_added", "hook": h})
+			if not bool(p.get("no_jobs", false)):
+				for h: Dictionary in MissionHooks.fill_board(story, campaign):
+					events.append({"type": "hook_added", "hook": h})
 			return events
 		"talk":
 			var npc_id := str(p["npc"])
@@ -214,6 +226,11 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 			if winner != "":
 				events.append_array(_downtime_follow(story, campaign, Dialogue.resolve_choice(story, campaign, winner, "vote")))
 			return events
+		"dialogue_help":
+			if not story.dialogue.has("helpers"):
+				story.dialogue["helpers"] = {}
+			story.dialogue["helpers"][seat] = bool(p.get("on", true))
+			return [{"type": "dialogue_help", "seat": seat, "on": bool(p.get("on", true)), "rule_ref": NarrativeCheck.REF_TEAMWORK}]
 		"skill_check":
 			var opts := p.duplicate(true)
 			if bool(p.get("push", false)):
@@ -243,8 +260,10 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 			story.hooks = story.hooks.filter(func(h: Dictionary) -> bool: return h["id"] != story.current_hook["id"])
 			story.phase = "reserves"
 			var events: Array = [{"type": "hook_chosen", "hook": story.current_hook.duplicate(true), "rule_ref": "Core p.40: briefing"}]
-			if not Dialogue.is_open(story) and not Dialogue.scene("briefing").is_empty():
-				events.append_array(Dialogue.start(story, campaign, "briefing", {"speaker": _first_alive(story, campaign), "npc": str(story.current_hook.get("patron_id", "")), "hook": story.current_hook}))
+			var brief := str(story.current_hook.get("briefing_scene", "briefing"))
+			if not Dialogue.is_open(story) and not Dialogue.scene(brief).is_empty():
+				events.append_array(Dialogue.start(story, campaign, brief, {"speaker": _first_alive(story, campaign), "npc": str(story.current_hook.get("patron_id", "")), "hook": story.current_hook,
+					"vars": StoryText.briefing_vars(story, campaign)}))
 			return events
 		"confirm_reserves":
 			story.phase = "mission"
@@ -282,10 +301,12 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 			var pid := str(p.get("pilot", me))
 			return Downtime.perform(story, campaign, pid, str(p["action"]), p)
 		"downtime_choose":
-			return Downtime.choose(story, campaign, p.get("picks", []))
+			return Downtime.choose(story, campaign, p.get("picks", []), _choice_pilot(story, seat, p))
 		"end_downtime":
 			story.phase = "briefing"
-			var events: Array = [{"type": "downtime_ended", "rule_ref": REF_FLOW}]
+			var recap: Array = (story.downtime.get("log", []) as Array).duplicate(true)
+			story.flags["_last_downtime"] = recap
+			var events: Array = [{"type": "downtime_ended", "rule_ref": REF_FLOW, "recap": recap}]
 			for h: Dictionary in MissionHooks.fill_board(story, campaign):
 				events.append({"type": "hook_added", "hook": h})
 			return events
@@ -374,13 +395,15 @@ func _finish_mission(story: StoryState, campaign: Campaign, p: Dictionary) -> Ar
 			events.append_array(StoryEffects.apply({"standing": "$npc.faction", "add": 1}, story, campaign, dctx))
 		events.append({"type": "deal_" + ("kept" if won else "off"), "npc": npc_id, "reward": deal["reward"], "rule_ref": "Core p.40-43: reserves"})
 	events.append_array(StoryArc.advance(story, campaign, hook, won))
-	story.last_mission = {"number": story.mission_number, "outcome": outcome, "reason": str(p.get("reason", "")), "hook": hook.get("title", "")}
+	story.last_mission = {"number": story.mission_number, "outcome": outcome, "reason": str(p.get("reason", "")), "hook": hook.get("short_title", hook.get("title", "")),
+		"place": hook.get("place", ""), "patron": hook.get("patron", ""), "enemy": hook.get("enemy", ""), "summary": (p.get("summary", {}) as Dictionary).duplicate(true),
+		"twist": hook.get("twist", {}).get("reveal", "")}
 	story.current_hook = {}
 	story.mission_number += 1
 	story.phase = "debrief"
 	if not Dialogue.scene("debrief").is_empty():
 		events.append_array(Dialogue.start(story, campaign, "debrief", {"speaker": _first_alive(story, campaign), "npc": str(hook.get("patron_id", "")),
-			"hook": hook, "vars": {"outcome": outcome}}))
+			"hook": hook, "vars": StoryText.mission_vars(story, campaign, outcome)}))
 	return events
 
 
@@ -460,13 +483,19 @@ func _run_ai(story: StoryState, campaign: Campaign) -> Array:
 			break
 	# Pending downtime choices that belong to an AI squadmate: take the first fitting option.
 	guard = 0
-	while guard < 8 and not story.pending_choice.is_empty():
+	while guard < 16:
 		guard += 1
-		var seat := story.seat_of(str(story.pending_choice.get("pilot", "")))
-		if seat == "" or not story.is_ai(seat):
+		var pc: Dictionary = {}
+		for c: Dictionary in story.all_choices():
+			var s := story.seat_of(str(c.get("pilot", "")))
+			if s != "" and story.is_ai(s):
+				pc = c
+				break
+		if pc.is_empty():
 			break
-		var opts: Array = story.pending_choice.get("options", [])
-		var n := int(story.pending_choice.get("count", 1))
+		var seat := story.seat_of(str(pc.get("pilot", "")))
+		var opts: Array = pc.get("options", [])
+		var n := int(pc.get("count", 1))
 		# Least harmful first (no standing lost, no harm, no new trouble), ties broken by the dice.
 		var ranked: Array = []
 		for o: Dictionary in opts:
@@ -474,7 +503,7 @@ func _run_ai(story: StoryState, campaign: Campaign) -> Array:
 		ranked.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["score"] < b["score"])
 		var uniq: Array = ranked.slice(0, n).map(func(x: Dictionary) -> Variant: return x["id"])
 		events.append({"type": "ai_chose", "seat": seat, "picks": uniq, "why": "AI squadmate's downtime choice"})
-		events.append_array(Downtime.choose(story, campaign, uniq))
+		events.append_array(Downtime.choose(story, campaign, uniq, str(pc.get("pilot", ""))))
 	return events
 
 
@@ -570,6 +599,17 @@ func _able(story: StoryState, campaign: Campaign, pid: String) -> Dictionary:
 	if story.down_and_out.has(pid):
 		return _no("%s is Down and Out: unconscious and unable to act until they rest for an hour." % campaign.pilots[pid].get("callsign", "That pilot"), "Core p.49: down and out")
 	return {}
+
+
+## Whose choice a downtime_choose answers: params.pilot, else the seat's own pilot, else
+## (for the host) the head of the queue.
+func _choice_pilot(story: StoryState, seat: String, p: Dictionary) -> String:
+	if str(p.get("pilot", "")) != "":
+		return str(p["pilot"])
+	var mine := story.pilot_of_seat(seat)
+	if mine != "" and not story.first_choice_for(mine).is_empty():
+		return mine
+	return str(story.pending_choice.get("pilot", ""))
 
 
 func _controls(story: StoryState, seat: String, pid: String) -> bool:

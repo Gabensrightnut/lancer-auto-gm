@@ -26,6 +26,13 @@ uniform float soil_depth = 0.3;
 uniform float wetness = 0.0;
 // 1 = columnar basalt: tall hexagonal joints on cliff faces.
 uniform float columnar = 0.0;
+// Readability: a thin light rim along every edge where the ground drops (tops and the top of
+// cliff faces), so elevation and cover edges read on any ground; rim_glow makes it emissive
+// for night styles. backdrop_fade darkens and greys the land outside the board.
+uniform vec3 rim_color : source_color = vec3(1.0, 0.96, 0.88);
+uniform float rim_strength = 0.45;
+uniform float rim_glow = 0.0;
+uniform float backdrop_fade = 0.5;
 
 varying vec3 wpos;
 varying vec4 vcol;
@@ -332,8 +339,22 @@ void fragment() {
 		relief -= web * 0.6;
 	}
 	col *= 0.92 + 0.16 * vcol.g;
-	col *= 1.0 - 0.6 * vcol.b;
-	emit *= 1.0 - 0.6 * vcol.b;
+	// Elevation rim: on tops along drop edges, on cliff faces just under the top.
+	float rim = 0.0;
+	if (vcol.b < 0.01 && kind != 4 && kind != 8) {
+		if (top) {
+			rim = smoothstep(0.06, 0.015, vcol.a);
+		} else if (wnrm.y > -0.5) {
+			rim = smoothstep(0.035, 0.012, top_y - wpos.y);
+		}
+	}
+	col = mix(col, rim_color, rim * rim_strength);
+	emit += rim_color * rim * rim_glow;
+	// Land outside the board: darker and greyer so the board stands out.
+	float lum = dot(col, vec3(0.3, 0.59, 0.11));
+	col = mix(col, vec3(lum), clamp(vcol.b * 2.0, 0.0, 1.0) * 0.45 * backdrop_fade);
+	col *= 1.0 - (0.6 + 0.6 * backdrop_fade) * vcol.b;
+	emit *= 1.0 - clamp(vcol.b * 5.0, 0.0, 0.85);
 	// Surface relief: bump from the material's own height pattern plus fine grain.
 	float g0 = relief + fbm3((top ? wpos.xz : vec2(hcoord, wpos.y)) * 7.0) * 0.6;
 	vec3 dpx = dFdx(wpos);

@@ -1,5 +1,5 @@
 {
-  "_note": "Our own mission hook templates (src/story/mission_hooks.gd). A briefing sets the goal and the stakes (Core p.40). 'sitreps' = which generated sitreps fit (data/game/gm/missions.json). Text fields are line lists; one variant is picked. {patron} = who asked, {target} / {place} / {cargo} are filled from the lists below and COMP/CON's name lists. success/failure effects use StoryEffects. 'board' = whether it shows on the hub's job board by itself (others only come from story events). 'question' = the stakes as a question, the way the book frames them (Core p.43). 'hazardous' = getting there means crossing hostile ground: a skill challenge at the briefing unless the squad brought a Supplies reserve (Core p.47, p.51). Templates follow the kinds of goals in the book's goal table (Core p.42), written in our own words.",
+  "_note": "Our own mission hook templates (src/story/mission_hooks.gd). A briefing sets the goal and the stakes (Core p.40). 'sitreps' = which generated sitreps fit (data/game/gm/missions.json). Text fields are line lists; one variant is picked. {patron} = who asked, {target} / {place} / {cargo} are filled from the lists below and COMP/CON's name lists. success/failure effects use StoryEffects. 'board' = whether it shows on the hub's job board by itself (others only come from story events). 'question' = the stakes as a question, the way the book frames them (Core p.43). 'hazardous' = getting there means crossing hostile ground: a skill challenge at the briefing unless the squad brought a Supplies reserve (Core p.47, p.51). Templates follow the kinds of goals in the book's goal table (Core p.42), written in our own words. 'cultures' = only offered at hubs of those kits. 'tutorial' = the guided first mission.",
   "places": [
     "the ridge road",
     "the old pumping station",
@@ -880,6 +880,214 @@
       "failure": [
         {
           "set_flag": "prisoner_lost"
+        }
+      ]
+    },
+    "train_job": {
+      "weight": 2,
+      "board": true,
+      "cultures": [
+        "old_west",
+        "frontier_colony"
+      ],
+      "sitreps": [
+        "sitrep_gauntlet"
+      ],
+      "hazardous": true,
+      "title": [
+        "The Night Train",
+        "Iron Road",
+        "Hold the Train"
+      ],
+      "objective": [
+        "Get the ore train through {place} with {enemy} riding hard behind it.",
+        "Stop {enemy} from taking the supply train at {place}."
+      ],
+      "stakes": [
+        "That train is the whole season's pay for {hub}.",
+        "If the train goes over, so does the bridge, and {hub} is cut off for months."
+      ],
+      "question": [
+        "Will the train reach {hub}?"
+      ],
+      "success": [
+        {
+          "standing": "$hook.faction",
+          "add": 1
+        },
+        {
+          "set_flag": "train_through"
+        }
+      ],
+      "failure": [
+        {
+          "standing": "$hook.faction",
+          "add": -1
+        },
+        {
+          "set_flag": "train_lost"
+        }
+      ]
+    },
+    "champion_duel": {
+      "weight": 2,
+      "board": true,
+      "cultures": [
+        "medieval_tech",
+        "east_asian"
+      ],
+      "sitreps": [
+        "sitrep_standardcombat"
+      ],
+      "title": [
+        "Trial by Combat",
+        "The Champion's Field",
+        "A Matter of Honor"
+      ],
+      "objective": [
+        "Stand as champions for {patron} against the lancers {enemy} have hired.",
+        "Settle the dispute over {place} on the field, mech against mech."
+      ],
+      "stakes": [
+        "By custom, whoever loses the field loses the claim.",
+        "{patron}'s name, and the people under it, ride on this."
+      ],
+      "question": [
+        "Whose claim will the field decide for?"
+      ],
+      "success": [
+        {
+          "standing": "$hook.faction",
+          "add": 1
+        },
+        {
+          "set_flag": "champions_won"
+        }
+      ],
+      "failure": [
+        {
+          "standing": "$hook.faction",
+          "add": -1
+        },
+        {
+          "set_flag": "champions_lost"
+        }
+      ]
+    },
+    "data_heist": {
+      "weight": 2,
+      "board": true,
+      "cultures": [
+        "cyberpunk"
+      ],
+      "sitreps": [
+        "sitrep_control",
+        "sitrep_gauntlet"
+      ],
+      "title": [
+        "Offline",
+        "The Vault Job",
+        "Hard Copy"
+      ],
+      "objective": [
+        "Hold the server stack at {place} while {patron}'s people pull the data.",
+        "Hit the corporate data vault at {place} and keep {enemy} off the extraction team."
+      ],
+      "stakes": [
+        "What's on those drives could bring a tower down.",
+        "If {enemy} lock the vault, nobody gets another try."
+      ],
+      "question": [
+        "Will the data get out, and who wants it buried?"
+      ],
+      "success": [
+        {
+          "standing": "$hook.faction",
+          "add": 1
+        },
+        {
+          "set_flag": "data_out"
+        }
+      ],
+      "failure": [
+        {
+          "set_flag": "data_locked"
+        }
+      ]
+    },
+    "shrine_guard": {
+      "weight": 2,
+      "board": true,
+      "cultures": [
+        "east_asian",
+        "medieval_tech"
+      ],
+      "sitreps": [
+        "sitrep_holdout",
+        "sitrep_control"
+      ],
+      "title": [
+        "The Festival Watch",
+        "Keep the Lanterns Lit",
+        "Sanctuary"
+      ],
+      "objective": [
+        "Guard {place} through the festival night: {enemy} have promised to burn it.",
+        "Protect the pilgrims at {place} until the ceremony ends."
+      ],
+      "stakes": [
+        "Lose the shrine and {hub} loses more than a building.",
+        "Thousands will be in the streets tonight."
+      ],
+      "question": [
+        "Will the lanterns still be lit at dawn?"
+      ],
+      "success": [
+        {
+          "standing": "$hub.faction",
+          "add": 1
+        },
+        {
+          "set_flag": "festival_safe"
+        }
+      ],
+      "failure": [
+        {
+          "standing": "$hub.faction",
+          "add": -1
+        },
+        {
+          "set_flag": "shrine_burned"
+        }
+      ]
+    },
+    "tutorial_drill": {
+      "weight": 0,
+      "board": false,
+      "sitreps": [
+        "sitrep_standardcombat"
+      ],
+      "tutorial": true,
+      "title": [
+        "First Drop: Live-Fire Drill"
+      ],
+      "objective": [
+        "Take your Everests onto the range and put down the training drones, one lesson at a time."
+      ],
+      "stakes": [
+        "Nobody dies today. But this is where you learn whether you're ready for the real thing."
+      ],
+      "question": [
+        "Can the new squad work together under fire?"
+      ],
+      "success": [
+        {
+          "set_flag": "drill_passed"
+        }
+      ],
+      "failure": [
+        {
+          "set_flag": "drill_rough"
         }
       ]
     }

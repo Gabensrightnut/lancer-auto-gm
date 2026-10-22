@@ -31,7 +31,7 @@ static func build(t: TerrainRenderer, root: Node3D) -> void:
 			if q.distance_to(p) < 3.0:
 				near = true
 				break
-		if near or lit.size() >= 8:
+		if near or lit.size() >= WorldQuality.lights(8):
 			continue
 		lit.append(p)
 		var l := FlickerLight.new()
@@ -75,7 +75,7 @@ static func _particles(points: PackedVector3Array, amount: int, life: float) -> 
 
 
 static func _flames(points: PackedVector3Array, hot: Color) -> CPUParticles3D:
-	var p := _particles(points, mini(points.size() * 10, 1500), 0.8)
+	var p := _particles(points, WorldQuality.particles(mini(points.size() * 10, 1500)), 0.8)
 	p.name = "Flames"
 	p.direction = Vector3.UP
 	p.spread = 8.0

@@ -49,6 +49,8 @@ var current_hook: Dictionary = {}
 var deals: Dictionary = {}
 ## The arc running at this hub (StoryArc) or {}.
 var arc: Dictionary = {}
+## The guided first-time opening (Tutorial): {active, step, shown, turns, tips}.
+var tutorial: Dictionary = {}
 var last_mission: Dictionary = {}
 ## pilot id -> {"trigger": n, "mech_skill": n, "talent": n, "license": n, "core_bonus": n}
 var pending_picks: Dictionary = {}
@@ -114,6 +116,31 @@ func has_reserve(pilot_id: String, reserve_id: String) -> bool:
 	return false
 
 
+## Every choice waiting on this pilot (the head first, then the queue).
+func choices_for(pilot_id: String) -> Array:
+	var out: Array = []
+	if not pending_choice.is_empty() and str(pending_choice.get("pilot", "")) == pilot_id:
+		out.append(pending_choice)
+	for c: Dictionary in downtime.get("queue", []):
+		if str(c.get("pilot", "")) == pilot_id:
+			out.append(c)
+	return out
+
+
+func first_choice_for(pilot_id: String) -> Dictionary:
+	var all := choices_for(pilot_id)
+	return all[0] if not all.is_empty() else {}
+
+
+## Every pending choice, for anyone.
+func all_choices() -> Array:
+	var out: Array = []
+	if not pending_choice.is_empty():
+		out.append(pending_choice)
+	out.append_array(downtime.get("queue", []))
+	return out
+
+
 func get_standing(faction: String) -> int:
 	return int(standing.get(faction, 0))
 
@@ -133,7 +160,7 @@ func to_dict() -> Dictionary:
 		"hub": hub.duplicate(true), "contacts": contacts.duplicate(), "reserves": reserves.duplicate(true),
 		"pilot_hp": pilot_hp.duplicate(), "down_and_out": down_and_out.duplicate(), "dead": dead.duplicate(true),
 		"downtime": downtime.duplicate(true), "hooks": hooks.duplicate(true), "current_hook": current_hook.duplicate(true),
-		"deals": deals.duplicate(true), "arc": arc.duplicate(true),
+		"deals": deals.duplicate(true), "arc": arc.duplicate(true), "tutorial": tutorial.duplicate(true),
 		"last_mission": last_mission.duplicate(true), "pending_picks": pending_picks.duplicate(true),
 		"pending_choice": pending_choice.duplicate(true), "dialogue": dialogue.duplicate(true),
 		"failed_goals": failed_goals.duplicate(true), "line_memory": line_memory.duplicate(),
@@ -145,7 +172,7 @@ static func from_dict(d: Dictionary, story_flags: Dictionary = {}) -> StoryState
 	var s := StoryState.new(int(d.get("story_seed", 0)))
 	s.flags = story_flags
 	for key in ["standing", "seats", "npcs", "hub", "reserves", "pilot_hp", "down_and_out", "dead", "downtime",
-			"current_hook", "deals", "arc", "last_mission", "pending_picks", "pending_choice", "dialogue", "failed_goals", "line_memory"]:
+			"current_hook", "deals", "arc", "tutorial", "last_mission", "pending_picks", "pending_choice", "dialogue", "failed_goals", "line_memory"]:
 		if d.get(key) is Dictionary:
 			s.set(key, (d[key] as Dictionary).duplicate(true))
 	for key in ["contacts", "hooks", "log"]:

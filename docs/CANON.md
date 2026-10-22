@@ -58,6 +58,15 @@ book in a way that changes the setting; parked.
 | NPC archetypes with secrets, revealed by Read a Situation | Consistent | Skill triggers (p.26-27); NPCs don't roll in narrative play (p.47) |
 | Every pilot levels up after a mission; +2 trigger, +1 mech skill, talent, license; core bonus at 3/6/9/12 | Canon | Core p.18 |
 | Long Rim's optional manna advancement system | Official optional (supplement), not built | The Long Rim (Massif); core rules don't track currency (p.18). Parked with the wallet. |
+| Culture/era hub kits (frontier colony, Old West, medieval-tech, cyberpunk, retrofuturistic, East Asian-inspired, Union core): names, titles, lines, conflicts, jobs | Consistent | Diaspora worlds differ greatly (p.10, p.21); feudal baronies (p.92); the Core is communal and post-capital (p.10). Flavor only: no new canon factions or rules |
+| Culture-only jobs: train job (frontier), champions' duel (feudal/East Asian), data heist (megacity), festival shrine guard | Consistent | Goal table kinds (p.42: escort, defend, retrieve) in local dress |
+| Tutorial opening: training base, briefing first, drill vs. training drones, lessons in order, then debrief, level up, first downtime | Canon order, Consistent setting | Order of play p.40-44; first session starts with the brief (p.40); every lesson's rule text cites its page (p.18, p.31, p.43, p.50-55, p.60-81) |
+| Teaching prompts and first-time tips with page refs; hints can be switched off | Consistent | DESIGN.md section 8; rules text paraphrased from the book |
+| Portrait parts, colors and expressions as data (builder hooks) | Canon (look only) | Custom look has no gameplay effect (p.32) |
+| Downtime screen: every pilot's actions narrated, then the next briefing recaps them | Consistent | Downtime is narrative and structured actions (p.50, p.53-55); our own narration |
+| Teamwork helpers opt in, give +1 and share the consequences | Canon | Core p.45 ("If people want to help... everyone helping suffers any complications") |
+| Multiplayer: the speaking pilot's player chooses, or a squad vote; AI squadmates choose in character; clients never see NPC secrets or hidden twists | Consistent | DESIGN.md section 10; secrets stay on the host (CLAUDE.md) |
+| Debrief recounts the fight (rounds, enemies down, mechs wrecked and reprinted at the full repair, who fell) | Canon / Consistent | Debrief: talk about the mission (p.44); wrecked mechs reprinted (p.31, p.82); pilot death (p.49, p.83) |
 
 ## When canon allows more than one answer
 

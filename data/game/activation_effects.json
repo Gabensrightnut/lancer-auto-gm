@@ -26,5 +26,40 @@
       "op": "revive",
       "repairs": 4
     }
-  ]
+  ],
+  "mf_tokugawa:Overclock": [
+    {
+      "op": "status",
+      "who": "self",
+      "status": "Exposed",
+      "duration": "end_next_turn"
+    }
+  ],
+  "mf_deaths_head:Mark for Death": [
+    {
+      "op": "focus",
+      "range": 30,
+      "min": 5
+    }
+  ],
+  "mf_deaths_head:Cease Focus": [
+    {
+      "op": "unfocus"
+    }
+  ],
+  "mf_pegasus:Fire Omnigun": [
+    {
+      "op": "omnigun",
+      "damage": 1,
+      "range": 15,
+      "los": true
+    }
+  ],
+  "mf_saladin:Retarget Tachyon Shield": [
+    {
+      "op": "tachyon_target"
+    }
+  ],
+  "mf_saladin:Defensive Pulse": [],
+  "mf_swallowtail:Tactical Simulation": []
 }

@@ -72,11 +72,12 @@ static func build(t: TerrainRenderer, root: Node3D, b: Rect2) -> void:
 	mi.mesh = st.commit()
 	var look: Dictionary = arch.duplicate()
 	look.merge(sky.get("look", {}), true)
+	look["backdrop"] = 1.0
 	mi.material_override = CityBuilder.make_material(look)
 	# No shadows: long evening shadows from the skyline would darken the board.
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(mi)
-	var fires := int(sky.get("fires", 0))
+	var fires := WorldQuality.lights(int(sky.get("fires", 0)))
 	if fires > 0:
 		_fires(root, roofs, fires, WorldStyle.color(arch.get("fire", "#ff6a1a")))
 	if bool(WorldStyle.value(t.style, "horizon.traffic", false)):

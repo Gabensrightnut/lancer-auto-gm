@@ -283,7 +283,7 @@
        "sk_assault"
       ],
       "goal": "brawl:{npc_id}",
-      "consequence": "You get clocked in the face for 1 damage (Core p.48: minor harm).",
+      "consequence": "You get clocked in the face for 1 damage (Core p.48: minor harm); anyone who jumps in with you shares it.",
       "success": "check_ok",
       "fail": "check_bad",
       "success_effects": [
@@ -300,6 +300,7 @@
        }
       ],
       "difficult": true,
+      "teamwork": true,
       "tags": [
        "combat",
        "streets"

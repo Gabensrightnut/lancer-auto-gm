@@ -278,7 +278,7 @@ static func _land(t: TerrainRenderer, root: Node3D, b: Rect2, height_fn: Callabl
 			verts[k] = p
 			norms[k] = n if n.y >= 0.0 else -n
 			var dist := _dist(p.x, p.z, b)
-			cols[k] = Color(TerrainRenderer.KIND_GROUND / 16.0, WorldRand.f("l", k), 0.1 * smoothstep(0.0, 2.0, dist) + 0.25 * smoothstep(20.0, 140.0, dist), 1.0)
+			cols[k] = Color(TerrainRenderer.KIND_GROUND / 16.0, WorldRand.f("l", k), 0.12 + 0.1 * smoothstep(0.0, 2.0, dist) + 0.2 * smoothstep(20.0, 140.0, dist), 1.0)
 			# Soil/stone depth on slopes: measured from a little above this point.
 			uv2[k] = Vector2(0, p.y + 0.05)
 	var idx := PackedInt32Array()
@@ -317,7 +317,7 @@ static func _forest(t: TerrainRenderer, root: Node3D, b: Rect2, height_fn: Calla
 	var n := 0
 	var reach := 70.0
 	var area := (b.size.x + 2.0 * reach) * (b.size.y + 2.0 * reach)
-	var tries := int(area * 0.09 * density)
+	var tries := WorldQuality.scenery(int(area * 0.09 * density))
 	for i in range(tries):
 		n += 1
 		var x := b.position.x - reach + WorldRand.f("fx", n) * (b.size.x + 2.0 * reach)

@@ -41,6 +41,10 @@ and follows the core book. Page numbers are the free core book ("Core p.N").
 | `campaign_loop.gd` | Builds the battle for the chosen job (squad with pilot units, mechanical reserves applied) and feeds the result back (`finish_mission`). |
 | `mission_hooks.gd` / `npc_gen.gd` / `story_text.gd` | Procedural jobs, hubs and people from our tables + COMP/CON's name lists; line pools with variants, personality and standing flavors. |
 | `story_arc.gd` | `StoryArc`: a few-mission situation at a hub (`arcs.json`) whose next mission is always on the job board; every mission moves it on, win or lose. |
+| `tutorial.gd` | `Tutorial`: the guided first opening (`tutorial.json`). `CampaignLoop.start_tutorial()` sets up the training base and the drill; lessons advance on story events automatically and on battle events via `Tutorial.observe_battle(story, campaign, events, my_unit_ids)`; first-time rule tips while `campaign.options.teaching_hints` is on. `ui/tutorial_panel.gd` shows them (hub or battle). |
+| `portrait_spec.gd` | `PortraitSpec`: portrait builder data hooks (`portraits.json`): parts with options and color slots, palettes, randomize with locks, old-look upgrade, the expression set (10 ids, placeholder faces via `draw_as`) and automatic expressions (NPC standing/personality, pilot reply tags, check results). Pilots: `pilot["portrait"]`. |
+| `story_session.gd` / `story_client.gd` / `story_view.gd` | Multiplayer story. The host's `StorySession` runs every action as the sending seat (remote players can never act as the GM), broadcasts `StoryView` views (no NPC secrets, hidden twists or story dice) over the lobby channel (`attach_net_host`); a remote player's `StoryClient` is a drop-in `StoryEngine` for the UI that forwards actions and mirrors the view (`attach_net_client`). Downtime choices wait per pilot, so one player never blocks another; teamwork helpers opt in or out (`dialogue_help`). |
+| `ui/downtime_screen.gd` | Downtime as its own scene: the squad's cards with every narrated result (AI too), the action picker, back to the hub or on to the briefing. |
 | `story_data.gd` | `StoryData.lint()`: checks every scene, effect, condition, pool, trigger and reserve id (run by the tests). |
 | `ui/` | `DialogueView` (portrait cards, speech bubble, choices, votes, log), `Portrait` (drawn placeholder faces with expressions), `StoryCheckPopup` (instant roll, one big number, breakdown on hover), `DowntimePanel`, `LevelUpPanel`, `PilotGearPanel` (the quartermaster's racks). |
 
@@ -105,6 +109,15 @@ The walkable hub is in `src/explore/` (`HubScene`, `scenes/explore/hub.tscn`).
   reveal it mid-mission (a narration event, e.g. at round 2-3); `mission.flavor["arrived_late"]`
   / `["arrived_spent"]` say how the squad got there. Side jobs and arc missions are ordinary
   hooks with a `sitrep`, built by `CampaignLoop.build_mission` -> `MissionGenerator`.
+- **Flow / battle screen**: create a `TutorialPanel`, and after each batch of battle events call
+  `Tutorial.observe_battle(story, campaign, events, my_unit_ids)` and pass the result to the
+  panel (works in any campaign for the first-time tips). Start a new campaign with
+  `CampaignLoop.start_tutorial()` when the player picks "Tutorial".
+- **World/maps**: hubs and jobs carry `culture` (frontier_colony, old_west, medieval_tech,
+  cyberpunk, retrofuturistic, east_asian, union_core) for picking a matching map kit; the hub's
+  3D town could use the same kit's props.
+- **Visuals**: draw the parts and 10 expressions in `portraits.json`; `Portrait.set_look()` already
+  takes a v2 portrait and any expression id.
 - **Net**: route story actions (`StoryEngine.submit`) through the host like battle actions, send
   story events to clients, and relay hub walking positions to `HubScene.set_avatar_position()`.
 - **Menus / builder**: talent, license and core bonus picks waiting in

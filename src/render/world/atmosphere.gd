@@ -77,6 +77,7 @@ static func apply(style: Dictionary, env: Environment, sun: DirectionalLight3D, 
 	sun.rotation_degrees = Vector3(float(light.get("sun_pitch", -40.0)), float(light.get("sun_yaw", -40.0)), 0)
 	sun.light_volumetric_fog_energy = float(light.get("sun_fog_energy", 1.0))
 	sun.light_angular_distance = float(light.get("sun_softness", 0.5))
+	WorldQuality.apply_environment(env, sun)
 	if fill:
 		fill.light_color = WorldStyle.color(light.get("fill_color", "#8cb3ff"))
 		fill.light_energy = float(light.get("fill_energy", 0.28))

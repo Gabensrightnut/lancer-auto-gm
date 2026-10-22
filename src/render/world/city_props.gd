@@ -171,7 +171,7 @@ static func _street_props(cb: CityBuilder, root: Node3D) -> void:
 			var h := 0.75 if style == "post" else 0.45
 			poles.append(Transform3D(Basis.from_scale(Vector3(1, h, 1)), p + Vector3.UP * h * 0.5))
 			heads.append(Transform3D(Basis(), p + Vector3.UP * (h + 0.03)))
-			if lights < 14 and WorldRand.f(key, 2) < 0.5:
+			if lights < WorldQuality.lights(14) and WorldRand.f(key, 2) < 0.5:
 				lights += 1
 				var l: OmniLight3D
 				if style == "torch":
