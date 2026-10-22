@@ -7,21 +7,16 @@ extends RefCounted
 const FILE := "user://settings.cfg"
 
 ## Rebindable actions: name -> [label, default key].
-const ACTIONS := {
-	"confirm": ["Confirm action", KEY_ENTER],
-	"cancel": ["Cancel / back", KEY_ESCAPE],
-	"end_turn": ["End turn", KEY_E],
-	"next_unit": ["Next unit", KEY_TAB],
-	"camera_left": ["Camera: rotate left", KEY_Q],
-	"camera_right": ["Camera: rotate right", KEY_R],
-	"camera_up": ["Camera: pan up", KEY_W],
-	"camera_down": ["Camera: pan down", KEY_S],
-	"camera_pan_left": ["Camera: pan left", KEY_A],
-	"camera_pan_right": ["Camera: pan right", KEY_D],
+## Keys beyond the battle controls in data/game/keybinds.json (BattleKeys): action ->
+## [label, default key]. Everything rebindable is actions().
+const EXTRA_ACTIONS := {
+	"end_turn": ["End turn", KEY_X],
 	"toggle_log": ["Show battle log", KEY_L],
-	"skip_to_my_turn": ["Skip to my turn", KEY_SPACE],
 	"codex": ["Codex: look up what's under the mouse", KEY_F1],
 }
+## Saved key bindings from before this list (different action names and clashing defaults:
+## E, Space and Tab) are dropped once.
+const KEYS_VERSION := 2
 const COLORBLIND := ["off", "deuteranopia", "protanopia", "tritanopia"]
 ## Battlefield quality presets (WorldQuality.PRESETS), lowest first.
 const GRAPHICS := ["low", "medium", "high"]
@@ -49,8 +44,9 @@ var house_rules: Dictionary = {}
 static func load_settings(path: String = FILE) -> GameSettings:
 	var s := GameSettings.new()
 	s.graphics = default_graphics()
-	for a: String in ACTIONS:
-		s.keybinds[a] = int(ACTIONS[a][1])
+	var table := actions()
+	for a: String in table:
+		s.keybinds[a] = int(table[a][1])
 	var cfg := ConfigFile.new()
 	if cfg.load(path) != OK:
 		return s
@@ -63,8 +59,9 @@ static func load_settings(path: String = FILE) -> GameSettings:
 	s.animation_speed = _one_of(cfg.get_value("gameplay", "animation_speed", "normal"), ANIMATION, "normal")
 	s.popup_duration = clampf(float(cfg.get_value("gameplay", "popup_duration", 1.0)), 0.5, 2.0)
 	s.ai_squad_auto = bool(cfg.get_value("gameplay", "ai_squad_auto", true))
-	for a: String in ACTIONS:
-		s.keybinds[a] = int(cfg.get_value("keys", a, s.keybinds[a]))
+	if int(cfg.get_value("keys", "_version", 1)) == KEYS_VERSION:
+		for a: String in s.keybinds:
+			s.keybinds[a] = int(cfg.get_value("keys", a, s.keybinds[a]))
 	for id: String in HouseRules.defaults():
 		if cfg.has_section_key("house_rules", id):
 			s.house_rules[id] = bool(cfg.get_value("house_rules", id))
@@ -81,6 +78,7 @@ func save(path: String = FILE) -> Error:
 	cfg.set_value("gameplay", "animation_speed", animation_speed)
 	cfg.set_value("gameplay", "popup_duration", popup_duration)
 	cfg.set_value("gameplay", "ai_squad_auto", ai_squad_auto)
+	cfg.set_value("keys", "_version", KEYS_VERSION)
 	for a: String in keybinds:
 		cfg.set_value("keys", a, keybinds[a])
 	for id: String in house_rules:
@@ -114,13 +112,45 @@ static func default_graphics() -> String:
 
 
 func apply_keys() -> void:
+	var table := actions()
+	var primary := {}
+	for a: String in keybinds:
+		primary[int(keybinds[a])] = true
 	for a: String in keybinds:
 		if not InputMap.has_action(a):
 			InputMap.add_action(a)
 		InputMap.action_erase_events(a)
-		var ev := InputEventKey.new()
-		ev.physical_keycode = int(keybinds[a])
-		InputMap.action_add_event(a, ev)
+		var keys: Array = [int(keybinds[a])]
+		# The defaults' second keys (arrows, keypad...) stay, unless one is now another's key.
+		for i in range(2, (table.get(a, []) as Array).size()):
+			if not primary.has(int(table[a][i])):
+				keys.append(int(table[a][i]))
+		for k: int in keys:
+			var ev := InputEventKey.new()
+			ev.physical_keycode = k
+			InputMap.action_add_event(a, ev)
+
+
+## Every rebindable key: the battle controls (data/game/keybinds.json via BattleKeys) and
+## EXTRA_ACTIONS. action -> [label, default key, more default keys...]
+static func actions() -> Dictionary:
+	var out := BattleKeys.defaults().duplicate()
+	out.merge(EXTRA_ACTIONS)
+	return out
+
+
+## Pairs of actions whose default keys are the same (none should be).
+static func default_clashes() -> Array:
+	var owner := {}
+	var out: Array = []
+	var table := actions()
+	for a: String in table:
+		for i in range(1, (table[a] as Array).size()):
+			var k := int(table[a][i])
+			if owner.has(k):
+				out.append([owner[k], a, key_name(k)])
+			owner[k] = a
+	return out
 
 
 ## Binds `key` to `action`. If another action used that key, it's swapped onto the old key

@@ -75,12 +75,23 @@ func step() -> bool:
 		if not host.is_ai_seat(NetHost.GM_SEAT):
 			return false  # A human GM starts the fight.
 		var first := mission.first_side if mission != null else Mission.PLAYERS
+		if mission != null and bool(mission.flavor.get("explore_first", false)):
+			return _explore_step(first)
 		return (host.submit(NetHost.GM_SEAT, {"type": "start_combat", "params": {"first_side": first}})["result"] as RuleResult).ok
 	if mission != null:
 		var carry := mission.carry_action()
 		if not carry.is_empty():
 			host.submit(NetHost.GM_SEAT, carry)
 			return true
+	if state.phase == GameState.PHASE_COMBAT and state.turn_mode == "explore" and state.active_unit == "" and _contact() != Vector2i(-99999, -99999):
+		# Careful mode met the enemy: the turn-based exploring ends and the fight begins there.
+		var at := _contact()
+		host.submit(NetHost.GM_SEAT, {"type": "end_combat"})
+		var first := mission.first_side if mission != null else Mission.PLAYERS
+		_log("", "Contact: the fight starts.")
+		return (host.submit(NetHost.GM_SEAT, {"type": "start_combat", "params": {"first_side": first, "center": [at.x, at.y], "radius": FIGHT_RADIUS}})["result"] as RuleResult).ok
+	if _maybe_join():
+		return true
 	if _maybe_narrate():
 		return true
 	if _maybe_reinforce():
@@ -136,6 +147,11 @@ func step() -> bool:
 
 ## Plans and plays the active AI unit's whole turn, then ends it.
 func play_turn(u: Unit) -> void:
+	if host.state.turn_mode == "explore":
+		# Turn-based exploring (careful mode): nobody's fighting yet; the AI's units hold
+		# their ground until there's contact.
+		host.submit_ai({"type": "end_turn", "actor": u.id})
+		return
 	var know := AiKnowledge.for_side(host.state, host.view_filter, u.side)
 	know.seen_harm = seen_harm.get(u.side, {})
 	var plan: Dictionary
@@ -251,6 +267,86 @@ func _choose_activation(units: Array[Unit]) -> Unit:
 			best_score = score
 			best = u
 	return best
+
+
+# --- Exploring before the fight (DESIGN.md "Exploring vs. fighting") ------------------------
+
+## Spaces between the squad and the enemy at which the fight starts (our pacing: about where
+## they'd see each other across open ground).
+const CONTACT := 10
+## Units within this many spaces of the first contact take part; the rest keep exploring and
+## can join later (join_combat).
+const FIGHT_RADIUS := 16
+
+
+## While the squad explores in real time: AI squadmates follow the nearest person on their
+## side; once the squad and the enemy are within CONTACT, the fight starts around them.
+func _explore_step(first: String) -> bool:
+	var at := _contact()
+	if at != Vector2i(-99999, -99999):
+		_log("", "Contact: the squad sees the enemy. The fight starts.")
+		return (host.submit(NetHost.GM_SEAT, {"type": "start_combat", "params": {"first_side": first, "center": [at.x, at.y], "radius": FIGHT_RADIUS}})["result"] as RuleResult).ok
+	return _follow_step()
+
+
+## Where the squad first meets the enemy (between the two), or (-99999, -99999).
+func _contact() -> Vector2i:
+	var state := host.state
+	for p: Unit in state.units_on_side(Mission.PLAYERS):
+		if p.destroyed:
+			continue
+		for e: Unit in state.units_on_side(Mission.ENEMIES):
+			if not e.destroyed and state.map.grid.distance(p.cell, e.cell) <= CONTACT:
+				return Vector2i((p.cell.x + e.cell.x) / 2, (p.cell.y + e.cell.y) / 2)
+	return Vector2i(-99999, -99999)
+
+
+## A unit still exploring (outside the fight) that comes within CONTACT of a fighting enemy
+## joins the fight where it is (join_combat: it takes turns from the next round, Core p.60).
+func _maybe_join() -> bool:
+	var state := host.state
+	if state.phase != GameState.PHASE_COMBAT or not state.pending.is_empty():
+		return false
+	for u: Unit in state.units.values():
+		if u.destroyed or not bool(u.counters.get("exploring", false)):
+			continue
+		for o: Unit in state.units.values():
+			if o.destroyed or o.side == u.side or bool(o.counters.get("exploring", false)):
+				continue
+			if state.map.grid.distance(u.cell, o.cell) <= CONTACT:
+				var out := host.submit_ai({"type": "join_combat", "actor": u.id, "params": {"to": [u.cell.x, u.cell.y]}})
+				if (out["result"] as RuleResult).ok:
+					_log(u.id, "%s arrives and joins the fight (from the next round)." % u.name)
+					return true
+				break
+	return false
+
+
+## AI squadmates exploring follow the nearest person on their side (the user: AI players follow
+## whatever you do), one step per call, keeping a couple of spaces back.
+func _follow_step() -> bool:
+	var state := host.state
+	var people: Array[Unit] = []
+	for u: Unit in state.units_on_side(Mission.PLAYERS):
+		if not u.destroyed and not host.is_ai_seat(u.controller):
+			people.append(u)
+	if people.is_empty():
+		return false
+	for u: Unit in state.units_on_side(Mission.PLAYERS):
+		if u.destroyed or not host.is_ai_seat(u.controller) or str(orders.get(u.id, {}).get("explore", "follow")) == "stay":
+			continue
+		var lead := people[0]
+		for p: Unit in people:
+			if state.map.grid.distance(u.cell, p.cell) < state.map.grid.distance(u.cell, lead.cell):
+				lead = p
+		var d := state.map.grid.distance(u.cell, lead.cell)
+		if d <= 3:
+			continue
+		var line := state.map.grid.line(u.cell, lead.cell)
+		for i in range(mini(u.speed, line.size() - 3), 0, -1):
+			if (host.submit_ai({"type": "explore_move", "actor": u.id, "params": {"to": [line[i].x, line[i].y]}})["result"] as RuleResult).ok:
+				return true
+	return false
 
 
 func _orders_for(u: Unit) -> Dictionary:
