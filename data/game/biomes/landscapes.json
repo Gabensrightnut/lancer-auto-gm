@@ -1317,5 +1317,178 @@
 			"contrast": 1.05,
 			"exposure": 1.0
 		}
+	},
+	"molten_world": {
+		"base": "volcanic",
+		"name": "molten world",
+		"environment": "env_moltenworld",
+		"ground": {
+			"top_a": "#1e1a18",
+			"top_b": "#2a2420",
+			"top_dry": "#3a2e26",
+			"rock_a": "#2e2824",
+			"rock_b": "#120e0c",
+			"hazard": "#ff5a10",
+			"rim": "#ffb070",
+			"rim_strength": 0.45,
+			"rim_glow": 0.6,
+			"columnar": 1.0,
+			"backdrop_fade": 0.6
+		},
+		"liquid": {
+			"kind": "lava",
+			"shallow": "#ff6a10",
+			"deep": "#3a0a02"
+		},
+		"horizon": {
+			"land": "mesas",
+			"land_height": 10.0,
+			"far": "volcanoes",
+			"far_color": "#2a1814",
+			"far_height": 80.0,
+			"haze_color": "#5a2418"
+		},
+		"particles": [
+			"embers",
+			"ash"
+		],
+		"sky": {
+			"top": "#1a0a0a",
+			"horizon": "#c8401a",
+			"ground": "#140808",
+			"haze_color": "#ff5a20",
+			"haze": 1.0,
+			"clouds": 0.85,
+			"cloud_color": "#8a3a20",
+			"cloud_shade": "#1a0c0a",
+			"sun_glow": 0.4,
+			"stars": 0.0
+		},
+		"light": {
+			"sun_color": "#ff8a50",
+			"sun_energy": 1.2,
+			"sun_pitch": -30.0,
+			"sun_yaw": -100.0,
+			"ambient": 0.55,
+			"ambient_color": "#6a2a18",
+			"sky_ambient": 0.6,
+			"fill_color": "#ff5020",
+			"fill_energy": 0.5,
+			"fog_color": "#5a2214",
+			"fog_density": 0.009,
+			"fog_aerial": 0.5,
+			"volumetric": 0.008,
+			"volumetric_albedo": "#a06050",
+			"volumetric_emission": "#3a0800",
+			"volumetric_emission_energy": 0.8,
+			"glow": 1.1,
+			"bloom": 0.1,
+			"saturation": 1.1,
+			"contrast": 1.1,
+			"exposure": 1.2
+		}
+	},
+	"toxic_swamp": {
+		"base": "grassy_hills",
+		"name": "toxic swamp",
+		"environment": "env_primordealworld",
+		"ground": {
+			"style": "moss",
+			"top_a": "#3a3a1a",
+			"top_b": "#4a4a20",
+			"top_dry": "#5a5228",
+			"soil": "#2a2214",
+			"rock_a": "#4a4a3a",
+			"rock_b": "#24241a",
+			"rough": "#3a3018",
+			"bed": "#1e1e10",
+			"hazard": "#b8e030",
+			"veins": "#a8d830",
+			"vein_strength": 0.25,
+			"wetness": 1.0,
+			"rim": "#d8e8a0",
+			"rim_strength": 0.35
+		},
+		"liquid": {
+			"kind": "water",
+			"shallow": "#4a5028",
+			"deep": "#1a1e0e",
+			"toxic_glow": "#8ab020"
+		},
+		"flora": {
+			"grass": 10,
+			"grass_height": 1.2,
+			"grass_colors": [
+				"#4a4a20",
+				"#5a5a24",
+				"#3a4018"
+			],
+			"flowers": [],
+			"glow_plants": [
+				"#c8ff40",
+				"#e0a030"
+			],
+			"woods": [
+				"dead_tree",
+				"dead_tree",
+				"jungle_tree",
+				"bush"
+			],
+			"leaf_colors": [
+				"#3a4a1e",
+				"#4a5024",
+				"#2e3a18"
+			],
+			"bark": "#2a2418",
+			"stones": "#4a4a3a",
+			"rough": "stones"
+		},
+		"horizon": {
+			"land": "hills",
+			"land_height": 4.0,
+			"forest": 0.9,
+			"far": "mountains",
+			"far_color": "#2a2e1e",
+			"far_height": 30.0,
+			"snowcaps": false,
+			"haze_color": "#6a7040",
+			"storm": false
+		},
+		"particles": [
+			"spores",
+			"mist"
+		],
+		"sky": {
+			"top": "#3a4228",
+			"horizon": "#a0a060",
+			"ground": "#1e2010",
+			"haze_color": "#d8d880",
+			"haze": 0.5,
+			"clouds": 0.8,
+			"cloud_color": "#8a9060",
+			"cloud_shade": "#2a3018",
+			"sun_glow": 0.5
+		},
+		"light": {
+			"sun_color": "#e8e8a0",
+			"sun_energy": 1.6,
+			"sun_pitch": -35.0,
+			"sun_yaw": -40.0,
+			"ambient": 0.55,
+			"fill_color": "#a8c860",
+			"fill_energy": 0.25,
+			"fog_color": "#6a6e40",
+			"fog_density": 0.008,
+			"fog_aerial": 0.5,
+			"fog_height": 1.0,
+			"fog_height_density": 0.1,
+			"volumetric": 0.01,
+			"volumetric_albedo": "#b0b880",
+			"glow": 0.9,
+			"bloom": 0.06,
+			"saturation": 1.0,
+			"contrast": 1.05,
+			"exposure": 1.1
+		}
 	}
 }

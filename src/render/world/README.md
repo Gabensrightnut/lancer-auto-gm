@@ -22,8 +22,9 @@ and no CC0 assets yet (so no CREDITS entries are needed for this folder).
 
 ## Landscapes, cultures and weather
 
-Landscapes: grassy_hills, desert_mesas, tundra, volcanic, alien_wilds, crystal_fields,
-toxic_marsh, city, station, starship, moon, asteroid, ocean, jungle. Cultures: ruins,
+Landscapes: grassy_hills, desert_mesas, tundra, volcanic, molten_world, alien_wilds,
+crystal_fields, toxic_marsh, toxic_swamp, city, station, starship, moon, asteroid, ocean,
+jungle. Cultures: ruins,
 cyberpunk, burning, medieval, old_west, retro, east_asian, union. Weather (`data/game/biomes/
 weather.json`): clear, rain, storm, snow, blizzard, sandstorm, ashfall, spores, mist. A kit can
 end in `+weather`: `"jungle+rain"`, `"desert_mesas/old_west+sandstorm"`. The mission generator
@@ -33,8 +34,25 @@ picks weather to suit the landscape (`opts.weather` overrides) and puts it in `f
 should *do* something in the rules comes from a LANCER environment (lancer-data
 `environments.json`), which the rules engine applies; weather.json names the matching one in
 `environment` (sandstorm: `env_particulatestorms`, storm: `env_electricalstorms`, blizzard:
-`env_extremecold`) so a mission that uses that environment can show it. Low gravity on moons
+`env_extremecold`) so a mission that uses that environment can show it. Landscapes name theirs
+too: molten_world `env_moltenworld` (its lava cells are tagged `lava`), toxic_swamp
+`env_primordealworld` (boiling mud: difficult + dangerous). Low gravity on moons
 and asteroids is also look only (slow-hanging dust); its rules are `env_lowgravity`.
+
+## Sitrep objectives on the board
+
+`TerrainRenderer.show_objectives(zones, deployment, show_deployment = true)` draws a mission's
+zones (`Mission.zones`, name -> [[x, y]]) and deployment zones: tinted floor with a bold
+pulsing border, a light beacon and a label ("ZONE A", "ZONE", "EXTRACTION", "OBJECTIVE");
+extraction pads get landing rings and blinking lights; deployment zones a soft blue/red tint
+(pass `show_deployment = false` once the battle starts). Flat or thin: never cover. Redrawn on
+rebuilds; `show_objectives({})` clears it. Pass only what the seat may know (Recon's True
+Control Zone is a host secret and is never marked).
+
+Layouts per sitrep come from `src/gm/sitrep_layout.gd`; fairness checks and repairs from
+`src/gm/map_fairness.gd` (cover balance, hidden deployment, reachability for Size 1-3), run by
+`MissionGenerator.battlefield()` and tested for 50 seeds per landscape
+(`tests/unit/test_gm_fairness.gd`).
 
 ## Destroyed terrain
 

@@ -51,6 +51,9 @@ var structure_cells: Dictionary = {}
 ## Cells whose terrain the rules destroyed (cell -> true). Remembered across rebuilds of the
 ## same board so the debris stays; reset when a different board is built.
 var broken_cells: Dictionary = {}
+## Sitrep objectives shown on the board ([zones, deployment, show_deployment]), redrawn on
+## every rebuild. Set with show_objectives().
+var objectives: Array = []
 var _props: Node3D
 var _shape: Dictionary
 var _bottom := -BASE_DEPTH
@@ -89,6 +92,8 @@ func build(battle_map: BattleMap, kit_name: String = "grassy_hills") -> void:
 	_lap("city")
 	WorldDressing.build(self, _props)
 	_lap("dressing")
+	if not objectives.is_empty():
+		_draw_objectives()
 
 
 ## Build timing for profiling: set TerrainRenderer.profile = true to print each step.
@@ -102,6 +107,26 @@ static func _lap(step: String) -> void:
 		if step != "start":
 			print("  terrain %s: %d ms" % [step, now - _lap_t])
 		_lap_t = now
+
+
+## Draws the sitrep's zones on the board (ObjectiveMarkers): zone name -> [[x, y]] and side
+## -> [[x, y]] as in Mission.zones / Mission.deployment. Pass only what the seat may know.
+## Empty zones and deployment clear the markers. Deployment tints are for the setup phase.
+func show_objectives(zones: Dictionary, deployment: Dictionary = {}, show_deployment: bool = true) -> void:
+	objectives = [] if zones.is_empty() and deployment.is_empty() else [zones, deployment, show_deployment]
+	_draw_objectives()
+
+
+func _draw_objectives() -> void:
+	var old := get_node_or_null("Objectives")
+	if old:
+		remove_child(old)
+		old.queue_free() if is_inside_tree() else old.free()
+	if objectives.is_empty() or map == null:
+		return
+	var m := ObjectiveMarkers.new()
+	add_child(m)
+	m.setup(self, objectives[0], objectives[1], objectives[2])
 
 
 ## Sky, sun and fog for this board's style (BattleView calls it after build()).
