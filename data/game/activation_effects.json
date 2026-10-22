@@ -975,5 +975,29 @@
   ],
   "deploy:ms_stasis_barrier:Stasis Barrier": {
     "skip": true
+  },
+  "deploy:ms_roller_directed_payload_charges:Bouncing Mine": {
+    "mine_kind": "bouncing",
+    "damage": [
+      {
+        "type": "Explosive",
+        "val": "2d6",
+        "save": "sys",
+        "save_half": true
+      }
+    ]
+  },
+  "deploy:ms_havok_charges:HAVOK Mine": {
+    "mine_kind": "line",
+    "line": 5
+  },
+  "ms_roller_directed_payload_charges:Roller Grenade": {
+    "activation": "Quick",
+    "ops": [
+      {
+        "op": "roller_grenade",
+        "label": "Roller Grenade"
+      }
+    ]
   }
 }

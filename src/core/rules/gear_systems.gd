@@ -952,6 +952,60 @@ static func reload_one(state: GameState, u: Unit, key: String, source: String) -
 	return [{"type": "reloaded", "unit": u.id, "weapon": w["key"], "source": source}] as Array[Dictionary]
 
 
+## Lands a flyer at once without falling damage; it can't fly until the end of its next turn
+## (Bouncing Mine).
+static func ground_flyer(state: GameState, t: Unit, by: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if t.flying:
+		var start := [t.cell.x, t.cell.y, t.level]
+		var lv := state.map.ground_height(t.cell)
+		t.level = lv
+		t.flying = false
+		events.append({"type": "moved", "unit": t.id, "path": [start, [t.cell.x, t.cell.y, lv]], "mode": "fall", "cost": 0, "note": "lands without damage"})
+	events.append_array(Combat.add_status(state, t, "Grounded", by.id if by != null else "", t.id))
+	return events
+
+
+## Roller Grenade: rolls along a line 10 path from the user toward params.aim and goes off at
+## the first character it passes through or next to: Agility save or 1d6+3 explosive and
+## knocked 3 spaces the way it rolled; half damage and no knockback on a success.
+## PROVISIONAL: it rolls over terrain (it bounces over obstructions up to Size 1).
+static func roller_grenade(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var aim: Vector2i = TurnAction.cell_param(params, "aim")
+	var line := state.map.grid.line(u.cell, u.cell + (aim - u.cell) * 12)
+	var path: Array = []
+	var victim: Unit = null
+	for c: Vector2i in line:
+		if c == u.cell:
+			continue
+		if path.size() >= 10 or not state.map.has_cell(c):
+			break
+		path.append([c.x, c.y])
+		var ids: Array = state.units.keys()
+		ids.sort()
+		for id: String in ids:
+			var o := state.unit(id)
+			if o != u and Combat.is_present(o) and o.kind != Unit.KIND_DEPLOYABLE and state.map.grid.footprint_distance(state.map.grid.footprint(o.cell, o.size), [c] as Array[Vector2i]) <= 1:
+				victim = o
+				break
+		if victim != null:
+			break
+	events.append({"type": "area_effect", "unit": u.id, "cells": path, "center": path.back() if not path.is_empty() else [u.cell.x, u.cell.y], "rule_ref": "systems: Roller Grenade"})
+	if victim == null:
+		return events
+	var roll := state.dice.roll("1d6+3")
+	var save := Combat.skill_check(state, victim, "agility", "Save vs Roller Grenade", u.save_target, 0, 0, [], true)
+	events.append({"type": "skill_check", "unit": victim.id, "check": save, "rule_ref": "systems: Roller Grenade"})
+	var amount := int(roll["total"])
+	if save["success"]:
+		amount -= amount / 2
+	events.append_array(Combat.deal_damage(state, victim, [{"type": "Explosive", "amount": amount}], {"source": u.id, "area": true}))
+	if not save["success"] and Combat.is_present(victim):
+		events.append_array(Attacks.knock_back(state, victim, victim.cell - (aim - u.cell), 3, u))
+	return events
+
+
 ## Flak Launcher: a flying character saves (Agility) or lands at once (no damage), is Slowed
 ## and can't fly until the end of its next turn.
 static func flak(state: GameState, u: Unit, t: Unit) -> Array[Dictionary]:

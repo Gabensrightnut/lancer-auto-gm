@@ -333,7 +333,7 @@ static func deploy(state: GameState, owner: Unit, a: Dictionary, cell: Vector2i)
 	u.counters = {"owner": owner.id, "ability": a["key"], "deploy_type": d.get("type", "Deployable"),
 		"turret": d.get("turret", false), "trigger": d.get("trigger", ""),
 		"pattern": (d.get("range", []) as Array).duplicate(true), "damage": (d.get("damage", []) as Array).duplicate(true),
-		"text": d.get("detail", ""), "object_damage": d.get("object_damage", {})}
+		"text": d.get("detail", ""), "object_damage": d.get("object_damage", {}), "mine_kind": d.get("mine_kind", ""), "line": int(d.get("line", 0))}
 	u.loadout = {"weapons": [], "systems": [], "effects": []}
 	var events: Array[Dictionary] = []
 	state.add_unit(u)
@@ -404,11 +404,17 @@ static func check_mines(state: GameState, mover: Unit, path: Array) -> Array[Dic
 		if m.counters.get("trigger", "") == "manual":
 			continue  # Breaching Charge: detonated with a quick action
 		var mb := Sight.body_of(state, m)
+		var bouncing: bool = m.counters.get("mine_kind", "") == "bouncing"
+		if bouncing and not mover.flying:
+			continue  # Bouncing Mine: only flying characters set it off
 		var was_adjacent := true
 		for i in range(path.size()):
 			var p: Array = path[i]
 			var body := Sight.make_body(state, Vector2i(p[0], p[1]), int(p[2]), mover.size)
 			var adjacent := Sight.distance(state, body, mb) <= 1
+			if bouncing:
+				# Over or next to it, up to 10 spaces high.
+				adjacent = state.map.grid.footprint_distance(body.cells, mb.cells) <= 1 and int(p[2]) - mb.level <= 10
 			if adjacent and (i > 0 and not was_adjacent):
 				events.append_array(detonate(state, m, mover))
 				break
@@ -450,9 +456,26 @@ static func detonate(state: GameState, m: Unit, trigger: Unit) -> Array[Dictiona
 		return events
 	var skill_of := {"agi": "agility", "hull": "hull", "sys": "systems", "eng": "engineering"}
 	var hit: Array = []
+	var kind := String(m.counters.get("mine_kind", ""))
+	var line_cells: Array = []
+	if kind == "line":
+		# HAVOK Mine: a line path toward the character that set it off.
+		var dir := trigger.cell - m.cell
+		var far := m.cell + dir * (int(m.counters.get("line", 5)) + 2)
+		for c: Vector2i in state.map.grid.line(m.cell, far):
+			if c != m.cell and line_cells.size() < int(m.counters.get("line", 5)):
+				line_cells.append(c)
+	if kind == "bouncing":
+		center = Sight.body_of(state, trigger)  # it launches itself up to the flyer
 	for u: Unit in state.units.values():
-		if u != m and Combat.is_present(u) and u.kind != Unit.KIND_DEPLOYABLE and Sight.distance(state, center, Sight.body_of(state, u)) <= radius:
+		if u == m or not Combat.is_present(u) or u.kind == Unit.KIND_DEPLOYABLE:
+			continue
+		var inside := Sight.distance(state, center, Sight.body_of(state, u)) <= radius
+		if kind == "line":
+			inside = state.map.grid.footprint(u.cell, u.size).any(func(c: Vector2i) -> bool: return line_cells.has(c))
+		if inside:
 			hit.append(u)
+	hit.sort_custom(func(x: Unit, y: Unit) -> bool: return x.id < y.id)
 	for d: Dictionary in damage:
 		var roll := state.dice.roll(str(d.get("val", "0")))
 		for u: Unit in hit:
@@ -464,6 +487,8 @@ static func detonate(state: GameState, m: Unit, trigger: Unit) -> Array[Dictiona
 					amount = amount - amount / 2 if d.get("save_half", false) else 0
 					if d.get("save_half", false) and Effects.has(u, "heavy_shielding"):
 						amount = mini(amount, 1)
+				elif kind == "bouncing":
+					events.append_array(GearSystems.ground_flyer(state, u, owner))
 			if amount > 0:
 				events.append_array(Combat.deal_damage(state, u, [{"type": d.get("type", "Kinetic"), "amount": amount}], {"source": owner.id, "ap": d.get("ap", false), "area": true}))
 	var od: Dictionary = m.counters.get("object_damage", {})

@@ -272,6 +272,8 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				events.append_array(Attacks.attack(state, u, Weapons.find(u, "cbi:0"), target, {"fired_by_rule": true}))
 			"jackhammer":
 				events.append_array(TalentRules.jackhammer(state, u, target))
+			"roller_grenade":
+				events.append_array(GearSystems.roller_grenade(state, u, params))
 			"wall_field":
 				events.append_array(Zones.make_wall_field(state, u, String(op.get("label", "")), String(op.get("flavor", "")), params))
 			"wall_field_off":
@@ -515,6 +517,10 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 			var ww := String(a["source_key"]).trim_prefix("mod:")
 			if not (u.turn.get("hits", {}).get(ww, []) as Array).has(String(params.get("target", ""))):
 				return RuleResult.deny("Only right after hitting that character with the wreathed weapon this turn.", "mods: Shock Wreath")
+		if op.get("op", "") == "roller_grenade":
+			var ra: Variant = TurnAction.cell_param(params, "aim")
+			if ra == null or ra == u.cell or not state.map.has_cell(ra):
+				return RuleResult.deny("Choose a direction to roll it (params.aim: a space it rolls toward).", "systems: Roller Grenade")
 		if op.get("op", "") == "wall_field":
 			var aim: Variant = TurnAction.cell_param(params, "aim")
 			if aim == null or not state.map.has_cell(aim) or state.map.grid.footprint_distance(state.map.grid.footprint(u.cell, u.size), [aim] as Array[Vector2i]) != 1:
