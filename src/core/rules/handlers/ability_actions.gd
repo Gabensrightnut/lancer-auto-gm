@@ -141,6 +141,24 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				events.append({"type": "effect_triggered", "unit": u.id, "effect": "Mark for Death", "target": target.id, "rule_ref": "frames: Death's Head core system"})
 			"unfocus":
 				events.append_array(AbilityActions._unfocus(u))
+			"contest_prone":
+				events.append_array(GearSystems.contest_prone(state, u, target))
+			"argonaut":
+				events.append_array(GearSystems.argonaut(state, u, target))
+			"whitewash":
+				events.append_array(GearSystems.whitewash(state, u, target, params))
+			"overshield":
+				events.append_array(GearSystems.overshield(state, u, target, op))
+			"remove_effects":
+				events.append_array(GearSystems.remove_effects(state, u, String(op.get("label", ""))))
+			"impale":
+				events.append_array(GearSystems.impale(state, u, target))
+			"detonate":
+				for m: Unit in state.units.values().duplicate():
+					if m.counters.get("owner", "") == u.id and m.name == String(op.get("deployable", "")) and not m.destroyed and m.counters.get("armed", false):
+						events.append_array(Abilities.detonate(state, m, u))
+			"spin_up", "spin_down":
+				events.append_array(WeaponRules.spin(state, u, String(op.get("weapon", "")), op["op"] == "spin_up"))
 			"blast_save":
 				events.append_array(GearSystems.blast_save(state, u, op, params))
 			"smoke":
@@ -174,6 +192,33 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 					target.hp = 1
 					events.append({"type": "revived", "unit": target.id, "by": u.id})
 	return events
+
+
+## Target rules for an op: op.target = {who: ally|hostile|any|ally_mech, range, los?,
+## adjacent?, or_space?}.
+static func check_target_op(state: GameState, u: Unit, op: Dictionary, t: Unit, params: Dictionary) -> RuleResult:
+	var spec: Dictionary = op["target"]
+	var ref := "systems: " + String(op.get("label", ""))
+	if t == null and spec.get("or_space", false) and TurnAction.cell_param(params, "aim") != null:
+		return GearSystems.check_aimed(state, u, {"range": spec.get("range", 5)}, params)
+	if t == null or not Combat.is_present(t) or t.kind == Unit.KIND_DEPLOYABLE:
+		return RuleResult.deny("Choose a character (params.target).", ref)
+	match String(spec.get("who", "any")):
+		"ally":
+			if t.side != u.side or t == u:
+				return RuleResult.deny("Choose an allied character.", ref)
+		"ally_mech":
+			if t.side != u.side or t.kind != Unit.KIND_MECH:
+				return RuleResult.deny("Choose an allied mech.", ref)
+		"other":
+			if t == u:
+				return RuleResult.deny("Choose another character.", ref)
+	var reach := 1 if spec.get("adjacent", false) else int(spec.get("range", 5))
+	if Sight.unit_distance(state, u, t) > reach:
+		return RuleResult.deny("It must be %s." % ("adjacent" if reach == 1 else "within range %d" % reach), ref)
+	if spec.get("los", false) and not Sight.unit_line_of_sight(state, u, t):
+		return RuleResult.deny("No line of sight to the target.", Sight.REF_LOS)
+	return RuleResult.allow()
 
 
 static func extra_mines(params: Dictionary) -> Array[Vector2i]:
@@ -282,6 +327,16 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 					(" but further than range %d" % int(op["min"])) if op.has("min") else ""], ref)
 			if op.get("los", false) and not Sight.unit_line_of_sight(state, u, t):
 				return RuleResult.deny("No line of sight to the target.", Sight.REF_LOS)
+		if op.has("target"):
+			var tr := AbilityActions.check_target_op(state, u, op, state.unit(String(params.get("target", ""))), params)
+			if not tr.ok:
+				return tr
+		if op.get("op", "") == "detonate":
+			var any := false
+			for m: Unit in state.units.values():
+				any = any or (m.counters.get("owner", "") == u.id and m.name == String(op.get("deployable", "")) and not m.destroyed and m.counters.get("armed", false))
+			if not any:
+				return RuleResult.deny("No armed %s to detonate." % op.get("deployable", ""), "tags: Mine")
 		if op.get("op", "") in ["blast_save", "smoke"]:
 			var gr := GearSystems.check_aimed(state, u, op, params)
 			if not gr.ok:
@@ -328,10 +383,11 @@ const BASIC := [
 	["shut_down", "Shut Down", "other"], ["boot_up", "Boot Up", "other"], ["eject", "Eject", "other"],
 	["dismount", "Dismount", "other"], ["mount", "Mount", "other"], ["self_destruct", "Self-Destruct", "other"],
 	["end_grapple", "Let Go", "other"], ["break_free", "Break Free", "other"], ["grapple_contest", "Grapple Contest", "other"],
+	["pull_stake", "Pull Out Stake", "other"], ["use_object", "Use Object", "other"],
 ]
 ## Actions whose own check needs no target, so the bar can show exactly whether they work.
 const NO_TARGET := ["stand_up", "bonus_move", "disengage", "hide", "overcharge", "shut_down", "boot_up",
-	"core_power", "end_grapple", "break_free", "grapple_contest", "self_destruct"]
+	"core_power", "end_grapple", "break_free", "grapple_contest", "self_destruct", "pull_stake"]
 
 
 ## Everything `u` might do now, for the action bar. See RulesQueries.available_actions.

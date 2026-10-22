@@ -66,6 +66,19 @@ static func _run(state: GameState, u: Unit, a: Dictionary, aux: bool) -> Array[D
 	if not p["ok"]:
 		# An earlier attack in the same action changed things (target destroyed, pushed away).
 		return [{"type": "attack_skipped", "attacker": u.id, "weapon": a["weapon"], "target": a["target"], "reason": p["reason"], "rule_ref": p["rule_ref"]}] as Array[Dictionary]
+	if WeaponRules.rules(w).get("line_attack", false):
+		# Impact Lance: also attacks every character on the line to the target, 1 heat each
+		# past the first.
+		var events: Array[Dictionary] = []
+		var extra := WeaponRules.line_targets(state, u, target)
+		for o: Unit in extra:
+			var o_opts := opts.duplicate()
+			o_opts["skip_spend"] = true
+			events.append_array(Attacks.attack(state, u, w, o, o_opts))
+		events.append_array(Attacks.attack(state, u, w, target, opts))
+		if not extra.is_empty():
+			events.append_array(Combat.apply_heat(state, u, extra.size(), "Impact Lance"))
+		return events
 	return Attacks.attack(state, u, w, target, opts)
 
 
@@ -80,7 +93,8 @@ class Skirmish:
 
 	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
 		var w := Weapons.find(u, String(params.get("weapon", "")))
-		if w.get("size", "") == "Superheavy":
+		var spin: Dictionary = WeaponRules.rules(w).get("spin_up", {})
+		if w.get("size", "") == "Superheavy" and not (spin.get("skirmish_only_standard", false) and not w.get("spun", false)):
 			return RuleResult.deny("Superheavy weapons can only be fired as part of a Barrage.", Attacks.REF_SKIRMISH)
 		var r := AttackActions._check_attack(state, u, params, Attacks.REF_SKIRMISH)
 		if not r.ok or not params.has("aux"):

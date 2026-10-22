@@ -92,7 +92,7 @@ static func can_react(u: Unit, reaction: String, state: GameState = null) -> Rul
 		return RuleResult.deny("Jammed characters can't take reactions.", "statuses: Jammed")
 	if u.has_status("Braced"):
 		return RuleResult.deny("After Bracing you can't take reactions until the end of your next turn.", REF_BRACE)
-	if u.counters.has("grapple") and not Effects.has(u, "grapple_free"):
+	if u.counters.has("grapple") and not Effects.has(u, "grapple_free") and not (reaction == "brace" and Effects.has(u, "armor_lock")):
 		return RuleResult.deny("Grappling characters can't take reactions.", "actions: Grapple")
 	if u.counters.has("prepared"):
 		return RuleResult.deny("Holding a prepared action: no other reactions until it triggers.", "actions: Prepare")
@@ -133,6 +133,12 @@ static func brace(state: GameState, u: Unit, attacker: String) -> Array[Dictiona
 	_mark_used(u, "brace", state)
 	u.counters["brace_next_turn"] = true
 	var events: Array[Dictionary] = [{"type": "reaction", "unit": u.id, "reaction": "brace", "trigger": attacker, "rule_ref": REF_BRACE}]
+	if Effects.has(u, "armor_lock"):
+		# Armor-Lock Plating: grapples end; until the end of its following turn +1 Difficulty
+		# against it, no failed Hull/Agility saves, Immunity to Knockback, Grapple and Prone.
+		events.append_array(CloseCombat.end_grapple(state, u, "Armor-Lock Plating"))
+		events.append_array(Effects.activate(state, u, [{"kind": "defense_difficulty", "value": 1}, {"kind": "auto_save", "skills": ["hull", "agility"]},
+			{"kind": "immune", "status": "Prone"}, {"kind": "immovable"}, {"kind": "immune_grapple"}], "Armor-Lock Plating", "end_next_turn"))
 	events.append_array(Combat.add_status(state, u, "Braced", "Brace", u.id))
 	if u.has_status("Hidden"):
 		events.append_array(Combat.remove_status(u, "Hidden", "took a reaction"))

@@ -120,6 +120,9 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 	if target.has_status("Braced"):
 		sources.append(_src("Target Braced", "difficulty", "actions: Brace"))
 		diff += 1
+	for e: Dictionary in Effects.of(target, "defense_difficulty"):
+		sources.append(_src(String(e.get("label", "")), "difficulty", Effects.REF, int(e.get("value", 1))))
+		diff += int(e.get("value", 1))
 	var shield := GearSystems.shield_difficulty(attacker, target)
 	if shield > 0:
 		sources.append(_src("Projected Shield", "difficulty", "systems: Type-3 Projected Shield", shield))
@@ -132,7 +135,7 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 		else:
 			diff += int(src["value"])
 	var ranged_like := kind == KIND_RANGED or out.has("thrown")
-	if kind == KIND_RANGED and attacker.has_status("Engaged"):
+	if kind == KIND_RANGED and attacker.has_status("Engaged") and not WeaponRules.rules(w).get("ignore_engaged", false):
 		sources.append(_src("Engaged", "difficulty", "statuses: Engaged"))
 		diff += 1
 	if ranged_like and not seeking and int(cover["difficulty"]) > 0:
@@ -242,6 +245,9 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		p["difficulty"] = int(p["difficulty"]) + int(src["value"])
 	var check := {}
 	var result := "miss"
+	var roland: bool = attacker.counters.get("roland", false) and Weapons.has_tag(w, "tg_loading")
+	if roland:
+		attacker.counters.erase("roland")  # the next attack with a Loading weapon after a reload
 	var momentum: bool = kind == KIND_MELEE and attacker.counters.get("momentum", false)
 	if momentum:
 		attacker.counters.erase("momentum")  # Nelson Momentum: the next melee attack after a Boost
@@ -298,6 +304,7 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		hit_opts["momentum"] = momentum
 		hit_opts["chambers"] = chambers
 		hit_opts["resist_all"] = pre["resist_all"]
+		hit_opts["roland"] = roland
 		events.append_array(_hit(state, attacker, w, target, result == "crit", hit_opts))
 		if result == "crit" and kind == KIND_RANGED:
 			events.append_array(avenger_silos(state, attacker, target))
@@ -343,11 +350,16 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 	if not obj.is_empty():
 		damage = obj  # Sherman COREBURN against objects and deployables
 		ap = true
+	var instead := WeaponRules.damage_override(attacker, w, target)
+	if not instead.is_empty():
+		damage = instead
+		ap = ap or instead[0].get("ap", false)
 	var chambers := int(opts.get("chambers", -1))
 	if chambers >= 0:
 		# Raleigh Thunder God: 4 kinetic per loaded round; four or more gain AP and Shred.
 		damage = [{"type": "Kinetic", "val": str(4 * chambers)}]
 		ap = ap or chambers >= 4
+	var roland: bool = opts.get("roland", false)
 	if Weapons.has_tag(w, "tg_archaic") and target.kind != Unit.KIND_PILOT:
 		damage = []  # Archaic weapons can't harm mechs (tags: Archaic).
 		events.append({"type": "no_effect", "target": target.id, "reason": "Archaic weapons can't harm mechs.", "rule_ref": "tags: Archaic"})
@@ -365,6 +377,19 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 	if reliable > 0 and total < reliable and not parts.is_empty():
 		parts[0]["amount"] = int(parts[0]["amount"]) + reliable - total
 		events.append({"type": "reliable_damage", "attacker": attacker.id, "target": target.id, "amount": reliable, "rule_ref": "tags: Reliable"})
+	if roland and not opts.get("no_bonus_damage", false):
+		# Roland Chamber: +1d6 explosive bonus damage (Core p.67 rules apply).
+		var rr := roll_damage(state, "1d6", crit, false)
+		var amount := int(rr["total"])
+		if int(opts.get("area_targets", 1)) > 1:
+			amount -= amount / 2
+		events.append({"type": "bonus_damage", "attacker": attacker.id, "target": target.id, "source": "Roland Chamber", "damage_type": "Explosive", "roll": rr, "amount": amount, "halved": int(opts.get("area_targets", 1)) > 1, "rule_ref": "systems: Roland Chamber"})
+		parts.append({"type": "Explosive", "amount": amount})
+	var drill := WeaponRules.drill_bonus(state, attacker, w, target, overkill_heat)
+	if int(drill["total"]) > 0 or int(drill["heat"]) > 0:
+		events.append_array(drill["events"])
+		parts.append({"type": "Kinetic", "amount": int(drill["total"])})
+		overkill_heat += int(drill["heat"])
 	var pv: Dictionary = opts.get("preview", {})
 	if not opts.get("no_bonus_damage", false) and not damage.is_empty():
 		# PROVISIONAL (docs/RULES_TODO.md): bonus damage only on attacks that deal damage.
@@ -387,7 +412,15 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 	events.append_array(_apply(state, attacker, target, parts, ap, opts.has("area_origin"), pv.get("seeking_payload", false), opts.get("resist_all", false)))
 	if chambers >= 4 and Combat.is_present(target):
 		events.append_array(Combat.add_status(state, target, "Shredded", attacker.id, target.id))
+	events.append_array(WeaponRules.on_hit(state, attacker, w, target, crit))
+	if roland and Combat.is_present(target):
+		var save := Combat.skill_check(state, target, "hull", "Save vs Roland Chamber", attacker.save_target, 0, 0, GearSystems.prone_save_sources(target), true)
+		events.append({"type": "skill_check", "unit": target.id, "check": save, "rule_ref": "systems: Roland Chamber"})
+		if not save["success"]:
+			events.append_array(Combat.add_status(state, target, "Prone", attacker.id))
 	var kb := Weapons.tag_value(w, "tg_knockback")
+	if Weapons.is_melee(w):
+		kb = maxi(kb, Effects.value(attacker, "melee_knockback"))  # Ramjet
 	var want: Variant = opts.get("knockback", false)
 	if kb > 0 and not target.destroyed and want != null and (want is int or bool(want)):
 		var spaces: int = mini(kb, int(want)) if want is int else kb
@@ -466,6 +499,33 @@ static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array,
 	if brace:
 		events.append_array(Reactions.brace(state, target, attacker.id))
 	var aegis := brace and Effects.has(target, "flash_aegis")
+	# HyperDense Armor: half damage, heat and burn to characters beyond its range.
+	var dist := Sight.unit_distance(state, attacker, target)
+	for e: Dictionary in Effects.of(attacker, "half_damage_beyond"):
+		if dist > int(e.get("value", 3)):
+			var halved: Array = []
+			for p: Dictionary in parts:
+				var c := p.duplicate()
+				c["amount"] = int(c.get("amount", 0)) - int(c.get("amount", 0)) / 2
+				halved.append(c)
+			parts = halved
+			break
+	var gen := GearSystems.aegis_reduce(state, target, parts)
+	events.append_array(gen["events"])
+	parts = gen["parts"]
+	var guard := GearSystems.argonaut_for(state, target)
+	if guard != null and guard != attacker:
+		# Argonaut Shield: Resistance for the target; the shield-bearer takes half the damage
+		# before Armor and Resistance.
+		resist_all = true
+		var share: Array = []
+		for p: Dictionary in parts:
+			if p.get("type", "") != "Heat" and int(p.get("amount", 0)) > 0:
+				share.append({"type": p["type"], "amount": int(p["amount"]) - int(p["amount"]) / 2, "mark": false})
+		events.append({"type": "effect_triggered", "unit": guard.id, "effect": "Argonaut Shield", "target": target.id, "rule_ref": "systems: Argonaut Shield"})
+		events.append_array(Combat.deal_damage(state, guard, share, {"source": attacker.id}))
+	if area and Zones.bunker_protects(state, target, attacker):
+		resist_all = true  # Portable Bunker: Resistance to area attacks from outside
 	events.append_array(Combat.deal_damage(state, target, parts, {"source": attacker.id, "ap": ap, "resist_all": (brace and not aegis) or resist_all,
 		"damage_to_one": aegis, "area": area, "distance": Sight.unit_distance(state, attacker, target), "unreducible": unreducible}))
 	events.append_array(TraitReactions.teleport(state, target, sim["teleport"]))

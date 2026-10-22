@@ -127,6 +127,10 @@ static func skill_check(state: GameState, u: Unit, skill: String, label: String,
 	if u.has_status("Stunned") and (skill == "hull" or skill == "agility"):
 		record["success"] = false
 		record["auto_fail"] = "Stunned mechs automatically fail Hull and Agility checks and saves."
+	for e: Dictionary in Effects.of(u, "auto_save"):
+		if (e.get("skills", []) as Array).has(skill):
+			record["success"] = true  # Armor-Lock Plating: can't fail these
+			record["auto_success"] = String(e.get("label", ""))
 	return record
 
 
@@ -508,6 +512,8 @@ static func destroy(state: GameState, u: Unit, why: String) -> Array[Dictionary]
 	u.destroyed = true
 	u.hp = 0
 	var events: Array[Dictionary] = [{"type": "unit_destroyed", "unit": u.id, "reason": why}]
+	if u.counters.get("snare", false):
+		events.append_array(GearSystems.snare_gone(state, u))
 	if Pilots.castigating(state, u) and not u.counters.get("vaporized", false) and why != "Self Destruct.":
 		# Manticore Castigate the Enemies of the Godhead: it explodes at once (burst 2, 8d6).
 		events.append_array(Pilots.explode(state, u, "Castigation: " + why))

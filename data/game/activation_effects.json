@@ -116,5 +116,189 @@
   },
   "deploy:ms_turret_drones:Turret Drone": {
     "turret": true
+  },
+  "ms_reinforced_cabling:Drag Down": [
+    {
+      "op": "contest_prone",
+      "label": "Drag Down",
+      "target": {
+        "who": "other",
+        "range": 5,
+        "los": true
+      }
+    }
+  ],
+  "ms_argonaut_shield:Argonaut Shield": [
+    {
+      "op": "argonaut",
+      "label": "Argonaut Shield",
+      "target": {
+        "who": "ally",
+        "adjacent": true
+      }
+    }
+  ],
+  "ms_whitewash_sealant_spray:Whitewash Sealant Spray": [
+    {
+      "op": "whitewash",
+      "label": "Whitewash Sealant Spray",
+      "target": {
+        "who": "any",
+        "range": 5,
+        "los": true,
+        "or_space": true
+      }
+    }
+  ],
+  "ms_aceso_stabilizer:Aceso Stabilizer": [
+    {
+      "op": "overshield",
+      "plus": 4,
+      "immune_while": [
+        "Impaired",
+        "Jammed"
+      ],
+      "label": "Aceso Stabilizer",
+      "target": {
+        "who": "ally_mech",
+        "range": 5
+      }
+    }
+  ],
+  "ms_ramjet:Ramjet": [
+    {
+      "op": "self_effects",
+      "duration": "start_next_turn",
+      "effects": [
+        {
+          "kind": "boost_bonus",
+          "value": 2
+        },
+        {
+          "kind": "melee_knockback",
+          "value": 2
+        }
+      ]
+    }
+  ],
+  "ms_hyperdense_armor:HyperDense Armor": [
+    {
+      "op": "self_effects",
+      "duration": "scene",
+      "effects": [
+        {
+          "kind": "resist",
+          "damage": [
+            "All"
+          ],
+          "beyond": 3
+        },
+        {
+          "kind": "status",
+          "status": "Slowed",
+          "when": "always"
+        },
+        {
+          "kind": "half_damage_beyond",
+          "value": 3
+        }
+      ]
+    }
+  ],
+  "ms_hyperdense_armor:Deactivate HyperDense Armor": [
+    {
+      "op": "remove_effects",
+      "label": "HyperDense Armor"
+    }
+  ],
+  "ms_bb_breach_blast_charges:Thermal Grenade": {
+    "activation": "Quick",
+    "ops": [
+      {
+        "op": "blast_save",
+        "range": 5,
+        "blast": 1,
+        "save": "agility",
+        "damage": "1d6",
+        "type": "Energy",
+        "half": true,
+        "grenade": true,
+        "object_damage": 10,
+        "label": "Thermal Grenade"
+      }
+    ]
+  },
+  "deploy:ms_bb_breach_blast_charges:Breaching Charge": {
+    "trigger": "manual",
+    "range": [
+      {
+        "type": "Burst",
+        "val": 1
+      }
+    ],
+    "damage": [
+      {
+        "type": "Explosive",
+        "val": "2d6",
+        "ap": true,
+        "save": "agi",
+        "save_half": true
+      }
+    ]
+  },
+  "actions:ms_bb_breach_blast_charges": [
+    {
+      "name": "Detonate Breaching Charge",
+      "activation": "Quick",
+      "detail": "Detonate your armed Breaching Charge.",
+      "ops": [
+        {
+          "op": "detonate",
+          "deployable": "Breaching Charge"
+        }
+      ]
+    }
+  ],
+  "ms_charged_stake:Charged Stake": [
+    {
+      "op": "impale",
+      "label": "Charged Stake",
+      "target": {
+        "who": "other",
+        "adjacent": true
+      }
+    }
+  ],
+  "deploy:ms_restock_drone:Restock Drone": {
+    "interact": [
+      {
+        "op": "restock"
+      }
+    ]
+  },
+  "deploy:ms_aegis_shield_generator:Aegis Shield Generator": {
+    "aegis_dice": 3
+  },
+  "deploy:ms_portable_bunker:Portable Bunker": {
+    "zone": {
+      "kind": "bunker",
+      "size": 4
+    }
+  },
+  "deploy:ms_caltrop_launcher:Caltrop Field": {
+    "zone": {
+      "kind": "caltrops",
+      "size": 1
+    },
+    "range": [
+      {
+        "type": "Range",
+        "val": 5
+      }
+    ],
+    "size": 1
+  },
+  "deploy:ms_webjaw_snare:Webjaw Snare": {
+    "snare": true
   }
 }

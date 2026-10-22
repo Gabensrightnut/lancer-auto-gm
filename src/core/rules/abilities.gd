@@ -286,6 +286,8 @@ static func check_spot(state: GameState, owner: Unit, d: Dictionary, cell: Vecto
 
 static func deploy(state: GameState, owner: Unit, a: Dictionary, cell: Vector2i) -> Array[Dictionary]:
 	var d: Dictionary = a["deployable"]
+	if d.has("zone"):
+		return Zones.from_deployable(state, owner, d, cell)  # an area, not an object
 	var stats := deploy_stats(owner, d)
 	var n := int(owner.counters.get("deployed_count", 0)) + 1
 	owner.counters["deployed_count"] = n
@@ -318,6 +320,14 @@ static func deploy(state: GameState, owner: Unit, a: Dictionary, cell: Vector2i)
 	state.add_unit(u)
 	if d.has("zone_size"):
 		u.counters["zone_size"] = int(d["zone_size"])
+	if d.has("aegis_dice"):
+		u.counters["aegis_dice"] = int(d["aegis_dice"])
+	if d.get("snare", false):
+		u.counters["snare"] = true  # Webjaw Snare: hidden, armed at the end of the turn
+		u.counters["armed"] = false
+		u.statuses["Hidden"] = {"source": owner.id}
+	if d.has("interact"):
+		u.counters["interact"] = (d["interact"] as Array).duplicate(true)
 	if not u.counters["turret"]:
 		u.counters.erase("turret")
 	if u.counters["trigger"] == "":
@@ -345,6 +355,9 @@ static func recall(state: GameState, owner: Unit, a: Dictionary) -> Array[Dictio
 
 ## Mines arm at the end of their owner's turn (tags: Mine).
 static func arm_mines(state: GameState, owner: Unit) -> void:
+	for sn: Unit in state.units.values():
+		if sn.counters.get("snare", false) and sn.counters.get("owner", "") == owner.id:
+			sn.counters["armed"] = true
 	for u: Unit in state.units.values():
 		if u.counters.get("deploy_type", "") == "Mine" and u.counters.get("owner", "") == owner.id:
 			u.counters["armed"] = true
@@ -353,7 +366,7 @@ static func arm_mines(state: GameState, owner: Unit) -> void:
 ## A character moved through `path`: armed mines next to a space it entered go off (tags: Mine).
 ## PROVISIONAL (RULES_TODO "Mines"): the mine goes off after the move resolves.
 static func check_mines(state: GameState, mover: Unit, path: Array) -> Array[Dictionary]:
-	var events: Array[Dictionary] = []
+	var events: Array[Dictionary] = GearSystems.check_snares(state, mover, path)
 	if mover.kind == Unit.KIND_DEPLOYABLE or Effects.has(mover, "mine_immune"):
 		return events  # Iskander Skeleton Key: never sets off mines unless it chooses to
 	for m: Unit in state.units.values():
@@ -361,6 +374,8 @@ static func check_mines(state: GameState, mover: Unit, path: Array) -> Array[Dic
 			continue
 		if m.counters.get("trigger", "") == "ally" and mover.side != m.side:
 			continue  # Smoke Mine: only allied characters set it off
+		if m.counters.get("trigger", "") == "manual":
+			continue  # Breaching Charge: detonated with a quick action
 		var mb := Sight.body_of(state, m)
 		var was_adjacent := true
 		for i in range(path.size()):

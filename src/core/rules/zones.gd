@@ -72,9 +72,39 @@ static func cells_around(state: GameState, around: Array[Vector2i], radius: int)
 
 static func difficult_at(state: GameState, c: Vector2i) -> bool:
 	for z: Dictionary in state.zones:
-		if z.get("kind", "") == "mag_field" and _has_cell(z, c):
+		if z.get("kind", "") in ["mag_field", "sealant", "caltrops"] and _has_cell(z, c):
 			return true
 	return false
+
+
+## Portable Bunker: a character completely inside has hard cover against attacks from outside.
+static func bunker_protects(state: GameState, target: Unit, attacker: Unit) -> bool:
+	for z: Dictionary in of_kind(state, "bunker"):
+		if z.get("phase", "") != "up":
+			continue
+		var inside := true
+		for c in state.map.grid.footprint(target.cell, target.size):
+			inside = inside and _has_cell(z, c)
+		if inside and (attacker == null or not contains(state, z, attacker)):
+			return true
+	return false
+
+
+## A zone from a deployed system (Caltrop Launcher, Portable Bunker).
+static func from_deployable(state: GameState, owner: Unit, d: Dictionary, cell: Vector2i) -> Array[Dictionary]:
+	var spec: Dictionary = d["zone"]
+	var cells: Array = []
+	if spec.get("kind", "") == "bunker":
+		for c in state.map.grid.footprint(cell, float(spec.get("size", 4))):
+			cells.append([c.x, c.y])
+	else:
+		cells = cells_around(state, [cell] as Array[Vector2i], int(spec.get("size", 1)))
+	var z := {"kind": spec["kind"], "owner": owner.id, "label": String(d.get("name", "")), "center": [cell.x, cell.y], "cells": cells,
+		"rule_ref": "systems: " + String(d.get("name", ""))}
+	if spec.get("kind", "") == "bunker":
+		z["phase"] = "folded"  # unfolds at the start of the owner's next turn
+		z["unfold"] = {"unit": owner.id}
+	return add(state, z)
 
 
 # --- Attacks --------------------------------------------------------------------------
@@ -126,7 +156,7 @@ static func check_path(state: GameState, mover: Unit, path: Array) -> Array[Dict
 		return events
 	for z: Dictionary in state.zones.duplicate():
 		match String(z.get("kind", "")):
-			"mag_field", "smoke_cloud":
+			"mag_field", "smoke_cloud", "caltrops":
 				var entered := false
 				for i in range(1, path.size()):
 					var c := Vector2i(int(path[i][0]), int(path[i][1]))
@@ -178,6 +208,8 @@ static func _enter(state: GameState, z: Dictionary, u: Unit) -> Array[Dictionary
 			var center := Vector2i(int(z["center"][0]), int(z["center"][1]))
 			events.append_array(Attacks.pull_to(state, u, Sight.make_body(state, center, state.map.ground_height(center), 0.5), 0))
 			events.append_array(Combat.add_status(state, u, "Immobilized", String(z["id"])))
+		"caltrops":
+			events.append_array(_caltrops(state, z, u))
 		"smoke_cloud":
 			if z.get("phase", "") != "smoke" or u.id == z.get("owner", ""):
 				return events
@@ -187,8 +219,23 @@ static func _enter(state: GameState, z: Dictionary, u: Unit) -> Array[Dictionary
 	return events
 
 
+## Caltrops: mechs take 1d3 AP explosive entering for the first time in a round or ending
+## their turn inside.
+static func _caltrops(state: GameState, z: Dictionary, u: Unit) -> Array[Dictionary]:
+	if u.kind != Unit.KIND_MECH and u.kind != Unit.KIND_NPC:
+		return [] as Array[Dictionary]
+	var roll := state.dice.roll("1d3")
+	var events: Array[Dictionary] = [{"type": "zone_triggered", "zone": z["id"], "unit": u.id, "rule_ref": z.get("rule_ref", "")}]
+	events.append_array(Combat.deal_damage(state, u, [{"type": "Explosive", "amount": int(roll["total"])}], {"ap": true, "source": String(z.get("owner", ""))}))
+	return events
+
+
 static func turn_started(state: GameState, u: Unit) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
+	for z: Dictionary in of_kind(state, "bunker"):
+		if z.get("phase", "") == "folded" and String(z.get("unfold", {}).get("unit", "")) == u.id:
+			z["phase"] = "up"
+			events.append({"type": "zone_changed", "zone": z.duplicate(true), "rule_ref": z.get("rule_ref", "")})
 	events.append_array(_tick(state, u, "start"))
 	if not Combat.is_present(u) or u.kind == Unit.KIND_DEPLOYABLE:
 		return events
@@ -204,7 +251,12 @@ static func turn_started(state: GameState, u: Unit) -> Array[Dictionary]:
 
 
 static func turn_ended(state: GameState, u: Unit) -> Array[Dictionary]:
-	return _tick(state, u, "end")
+	var events: Array[Dictionary] = []
+	for z: Dictionary in of_kind(state, "caltrops"):
+		if Combat.is_present(u) and contains(state, z, u):
+			events.append_array(_caltrops(state, z, u))
+	events.append_array(_tick(state, u, "end"))
+	return events
 
 
 static func _tick(state: GameState, u: Unit, when: String) -> Array[Dictionary]:

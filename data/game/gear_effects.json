@@ -127,5 +127,27 @@
       "value": 1
     }
   ],
-  "ms_manipulators": []
+  "ms_manipulators": [],
+  "ms_synthetic_muscle_netting": [
+    {
+      "kind": "muscle_netting"
+    }
+  ],
+  "ms_armor_lock_plating": [
+    {
+      "kind": "armor_lock"
+    }
+  ],
+  "ms_roland_chamber": [
+    {
+      "kind": "roland_chamber"
+    }
+  ],
+  "ms_siege_ram": [
+    {
+      "kind": "ram_damage",
+      "value": 2,
+      "objects": 10
+    }
+  ]
 }

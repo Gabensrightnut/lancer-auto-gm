@@ -117,6 +117,8 @@ static func resists(u: Unit, dtype: String, area: bool, distance: int) -> bool:
 			continue
 		if e.has("within") and (distance < 0 or distance > int(e["within"])):
 			continue
+		if e.has("beyond") and (distance < 0 or distance <= int(e["beyond"])):
+			continue
 		return true
 	return false
 
@@ -133,7 +135,7 @@ static func shepherded(state: GameState, u: Unit) -> bool:
 
 static func immune_to_status(u: Unit, status: String) -> bool:
 	for e: Dictionary in of(u, "immune"):
-		if e.get("status", "") == status:
+		if e.get("status", "") == status and (not e.get("while_overshield", false) or u.overshield > 0):
 			return true
 	return false
 
@@ -328,7 +330,9 @@ static func turn_ending(state: GameState, u: Unit) -> Array[Dictionary]:
 		u.counters["chambers"] = mini(6, int(u.counters.get("chambers", 0)) + 2)
 		events.append({"type": "effect_triggered", "unit": u.id, "effect": of(u, "mjolnir_chambers")[0].get("label", ""),
 			"target": u.id, "chambers": u.counters["chambers"], "rule_ref": "frames: Raleigh core system"})
+	events.append_array(GearSystems.impaled_turn_end(state, u))
 	if has(u, "reload_if_idle") and not u.turn.get("attacked", false):
+		GearSystems.reloaded(u)
 		for w: Dictionary in u.loadout.get("weapons", []):
 			if Weapons.has_tag(w, "tg_loading"):
 				Weapons.state_of(u, w)["loaded"] = true

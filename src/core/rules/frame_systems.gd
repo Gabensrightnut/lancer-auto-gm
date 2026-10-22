@@ -288,7 +288,7 @@ static func extra_cover(state: GameState, target: Unit, cover: Dictionary, attac
 	if cover.get("cover", "none") == "hard":
 		return cover
 	var give := ""
-	if Effects.has(target, "always_hard_cover") or target.counters.has("symbiosis"):
+	if Effects.has(target, "always_hard_cover") or target.counters.has("symbiosis") or Zones.bunker_protects(state, target, attacker):
 		give = "hard"
 	elif cover.get("cover", "none") == "none":
 		if Effects.has(target, "soft_cover_aura") or Zones.soft_cover(state, target, attacker):
