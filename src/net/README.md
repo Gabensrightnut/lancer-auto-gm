@@ -51,6 +51,15 @@ it missed. The screen passes automatically when the active unit belongs to anoth
 
 `seat_table()` / `seats_changed(table)`: `seat -> {name, side, player, where: "local" | "remote" | "open", connected}`.
 
+Content packs: hosts refuse players without the game's packs (`state.packs`, same versions)
+with code `missing_packs`; the reason names each pack. `Net.join_online` sends the packs in
+`user://packs/` automatically.
+
+Resuming a saved mission: `Net.resume_mission(store, campaign_id)` reopens the same room code
+and `waiting_on()` reports `state: "reconnect"` until every remote player is back
+(`host.stop_holding()` goes on without them). Players rejoin with `Net.rejoin_last()`, which
+remembers their seat on their own computer.
+
 Refusal codes (`NetProtocol.REFUSE_*`): `version_mismatch` (tell them to update via the
 launcher), `no_free_seat`, `seat_taken`.
 
