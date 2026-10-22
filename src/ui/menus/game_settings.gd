@@ -36,10 +36,6 @@ var popup_duration := 1.0
 var ai_squad_auto := true
 ## action name -> keycode
 var keybinds: Dictionary = {}
-## Mouse look while exploring (first and third person): how fast the view turns, and whether
-## moving the mouse up looks down.
-var mouse_sensitivity := 1.0
-var invert_y := false
 ## This player's house rules (HouseRules: id -> on). They're the game's when this player
 ## decides: the GM, or the host when the AI is the GM.
 var house_rules: Dictionary = {}
@@ -63,8 +59,6 @@ static func load_settings(path: String = FILE) -> GameSettings:
 	s.animation_speed = _one_of(cfg.get_value("gameplay", "animation_speed", "normal"), ANIMATION, "normal")
 	s.popup_duration = clampf(float(cfg.get_value("gameplay", "popup_duration", 1.0)), 0.5, 2.0)
 	s.ai_squad_auto = bool(cfg.get_value("gameplay", "ai_squad_auto", true))
-	s.mouse_sensitivity = clampf(float(cfg.get_value("mouse", "sensitivity", 1.0)), 0.25, 3.0)
-	s.invert_y = bool(cfg.get_value("mouse", "invert_y", false))
 	if int(cfg.get_value("keys", "_version", 1)) == KEYS_VERSION:
 		for a: String in s.keybinds:
 			s.keybinds[a] = int(cfg.get_value("keys", a, s.keybinds[a]))
@@ -84,8 +78,6 @@ func save(path: String = FILE) -> Error:
 	cfg.set_value("gameplay", "animation_speed", animation_speed)
 	cfg.set_value("gameplay", "popup_duration", popup_duration)
 	cfg.set_value("gameplay", "ai_squad_auto", ai_squad_auto)
-	cfg.set_value("mouse", "sensitivity", mouse_sensitivity)
-	cfg.set_value("mouse", "invert_y", invert_y)
 	cfg.set_value("keys", "_version", KEYS_VERSION)
 	for a: String in keybinds:
 		cfg.set_value("keys", a, keybinds[a])
@@ -185,7 +177,7 @@ func conflicts() -> Dictionary:
 static func context_of(action: String) -> String:
 	if action in ["confirm", "cancel", "codex"]:
 		return "both"
-	return str(_contexts().get(action, "battle"))
+	return BattleKeys.context(action)
 
 
 static func shares_context(a: String, b: String) -> bool:
@@ -194,21 +186,6 @@ static func shares_context(a: String, b: String) -> bool:
 	return ca == cb or ca == "both" or cb == "both"
 
 
-static var _ctx_cache: Dictionary = {}
-
-
-static func _contexts() -> Dictionary:
-	if _ctx_cache.is_empty():
-		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(BattleKeys.FILE)) if FileAccess.file_exists(BattleKeys.FILE) else null
-		_ctx_cache["_loaded"] = true
-		if d is Dictionary:
-			for e: Dictionary in (d as Dictionary).get("actions", []):
-				_ctx_cache[str(e.get("id", ""))] = str(e.get("context", "battle"))
-	return _ctx_cache
-
-
-## Binds `key` to `action`. If another action used that key, it's swapped onto the old key
-## so nothing is left unbound. Returns the action that was swapped ("" if none).
 func rebind(action: String, key: int) -> String:
 	var old := int(keybinds.get(action, 0))
 	for other: String in keybinds:

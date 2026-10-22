@@ -59,6 +59,13 @@ func _ready() -> void:
 	skip.button_pressed = StorySettings.skip_seen()
 	skip.toggled.connect(func(on: bool) -> void: StorySettings.set_skip_seen(on))
 	sb.add_child(skip)
+	sb.add_child(_slider("Mouse look speed (walking, first person)", StorySettings.look_sensitivity(), 0.25, 3.0, func(v: float) -> void: StorySettings.set_look_sensitivity(v),
+		"How fast the view turns when you move the mouse while walking around in first person."))
+	var inv := CheckButton.new()
+	inv.text = "Invert mouse up/down (walking, first person)"
+	inv.button_pressed = StorySettings.invert_y()
+	inv.toggled.connect(func(on: bool) -> void: StorySettings.set_invert_y(on))
+	sb.add_child(inv)
 
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 20)
@@ -123,13 +130,6 @@ func _refresh_keys() -> void:
 		keys_box.add_child(MenuTheme.label(ctx[1], 13, MenuTheme.MUTED))
 		for a: String in ids:
 			_key_row(a, table, clash)
-	keys_box.add_child(MenuTheme.label("MOUSE (EXPLORING)", 13, MenuTheme.MUTED))
-	keys_box.add_child(_slider("Mouse sensitivity", s.mouse_sensitivity, 0.25, 3.0, func(v: float) -> void: s.mouse_sensitivity = v, "How fast the view turns when you move the mouse."))
-	var inv := CheckButton.new()
-	inv.text = "Invert mouse up/down"
-	inv.button_pressed = s.invert_y
-	inv.toggled.connect(func(on: bool) -> void: s.invert_y = on)
-	keys_box.add_child(inv)
 
 
 func _key_row(a: String, table: Dictionary, clash: Dictionary) -> void:

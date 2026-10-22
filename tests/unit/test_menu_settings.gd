@@ -80,27 +80,22 @@ func test_old_saved_keys_are_dropped_once() -> void:
 	DirAccess.remove_absolute(path)
 
 
-## Exploring has its own keys (keybinds.json "context": "explore"): W may walk forward and also
-## pan the battle camera; a clash only counts within the same context.
-func test_keys_by_context_and_mouse_settings() -> void:
-	var path := "user://test_ctx_%d.cfg" % Time.get_ticks_usec()
-	var s := GameSettings.load_settings(path)
-	var saved_ctx := GameSettings._ctx_cache.duplicate()
-	GameSettings._ctx_cache["move_forward"] = "explore"
-	GameSettings._ctx_cache["jump"] = "explore"
+## Exploring has its own keys (keybinds.json "context": "explore", story's actions): W walks
+## forward and also pans the battle camera; a clash only counts within the same context.
+func test_keys_by_context() -> void:
+	var s := GameSettings.load_settings("user://does_not_exist.cfg")
+	expect_eq(GameSettings.context_of("move_forward"), "explore")
+	expect_eq(GameSettings.context_of("cam_pan_up"), "battle")
+	expect_eq(GameSettings.context_of("confirm"), "both")
 	s.keybinds["move_forward"] = KEY_W
-	s.keybinds["jump"] = KEY_SPACE
+	s.keybinds["cam_pan_up"] = KEY_W
 	expect(not s.conflicts().has("move_forward"), "W walks (exploring) and pans (battle): no clash")
-	expect_eq(s.rebind("jump", KEY_W), "move_forward", "the same key in the same context: they swap")
-	expect_eq(s.keybinds["move_forward"], KEY_SPACE)
+	var other := ""
+	for a: String in s.keybinds:
+		if a != "move_forward" and GameSettings.context_of(a) == "explore":
+			other = a
+			break
+	expect_eq(s.rebind(other, KEY_W), "move_forward", "the same key in the same context: they swap")
 	expect_eq(s.keybinds["cam_pan_up"], KEY_W, "the battle's W is untouched")
 	s.keybinds["move_forward"] = KEY_W  # a file edited by hand
-	expect(s.conflicts().has("jump") and s.conflicts()["jump"].has("move_forward"), "flagged")
-	s.mouse_sensitivity = 1.75
-	s.invert_y = true
-	s.save(path)
-	var back := GameSettings.load_settings(path)
-	expect_eq(back.mouse_sensitivity, 1.75)
-	expect(back.invert_y)
-	GameSettings._ctx_cache = saved_ctx
-	DirAccess.remove_absolute(path)
+	expect(s.conflicts().has(other) and s.conflicts()[other].has("move_forward"), "flagged")
