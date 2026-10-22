@@ -208,3 +208,17 @@ func test_pinaka_delayed() -> void:
 	expect_eq(s.round_number, round + 2)
 	expect(t.hp < 40, "landed: 3d6 explosive")
 	expect(Zones.of_kind(s, "pinaka_strike").is_empty())
+
+
+func test_terrify_and_reactive_weave() -> void:
+	_setup(["ms_hunter_logic_suite", "ms_reactive_weave"], Vector2i(4, 0))
+	t.statuses["Impaired"] = {"source": "a"}
+	t.counters["terrified_of"] = "a"
+	F.act(e, s, "end_turn", "a")
+	F.act(e, s, "start_turn", "t")
+	expect(not F.ok(F.act(e, s, "move", "t", {"to": [3, 0]})), "Terrify: no moving closer")
+	expect(F.ok(F.act(e, s, "move", "t", {"to": [5, 0]})), "away is fine")
+	var hp := a.hp
+	Reactions.brace(s, a, "t", [0, 3])
+	expect_eq(a.cell, Vector2i(0, 3), "Reactive Weave: a move after Bracing")
+	expect(a.has_status("Invisible"))

@@ -711,14 +711,16 @@ static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array,
 	events.append_array(sim["events"])
 	resist_all = resist_all or sim["resist_all"]
 	var brace := false
+	var brace_answer := {}
 	# Objects (deployables, terrain) don't Brace.
 	if not unreducible and target.kind != Unit.KIND_DEPLOYABLE and Reactions.can_react(target, "brace", state).ok and not parts.is_empty() \
 			and (not Rulings.lancer_tactics(state, "lt_brace_prompt") or _brace_worthwhile(target, parts, ap)):
 		var d := Reactions.offer(state, target, "brace", {"attacker": attacker.id, "damage": parts, "ap": ap},
 			{"take": _wants_brace(target, parts, ap)})
 		brace = d.get("take", false)
+		brace_answer = d
 	if brace:
-		events.append_array(Reactions.brace(state, target, attacker.id))
+		events.append_array(Reactions.brace(state, target, attacker.id, brace_answer.get("move_to")))
 	var aegis := brace and Effects.has(target, "flash_aegis")
 	if half:
 		var halved_parts: Array = []

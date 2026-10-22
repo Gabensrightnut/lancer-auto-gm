@@ -355,6 +355,7 @@ static func deploy(state: GameState, owner: Unit, a: Dictionary, cell: Vector2i)
 		u.counters["fail_status"] = (d["fail_status"] as Dictionary).duplicate()  # Mesmer Mine
 	if d.has("interact"):
 		u.counters["interact"] = (d["interact"] as Array).duplicate(true)
+		u.counters["primed"] = false  # Restock Drone: primes at the end of your turn
 	if not u.counters["turret"]:
 		u.counters.erase("turret")
 	if u.counters["trigger"] == "":
@@ -388,6 +389,8 @@ static func arm_mines(state: GameState, owner: Unit) -> void:
 	for u: Unit in state.units.values():
 		if u.counters.get("deploy_type", "") == "Mine" and u.counters.get("owner", "") == owner.id:
 			u.counters["armed"] = true
+		if u.counters.has("interact") and u.counters.get("owner", "") == owner.id:
+			u.counters["primed"] = true
 
 
 ## A character moved through `path`: armed mines next to a space it entered go off (tags: Mine).

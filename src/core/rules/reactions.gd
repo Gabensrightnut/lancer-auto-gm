@@ -133,13 +133,25 @@ static func _mark_used(u: Unit, reaction: String, state: GameState = null) -> vo
 ## BRACE: resistance to the triggering attack's damage, burn and heat (applied by the caller),
 ## +1 Difficulty on other attacks against you and no reactions until the end of your next
 ## turn, and next turn only one quick action.
-static func brace(state: GameState, u: Unit, attacker: String) -> Array[Dictionary]:
+static func brace(state: GameState, u: Unit, attacker: String, move_to: Variant = null) -> Array[Dictionary]:
 	_mark_used(u, "brace", state)
 	u.counters["brace_next_turn"] = true
 	var events: Array[Dictionary] = [{"type": "reaction", "unit": u.id, "reaction": "brace", "trigger": attacker, "rule_ref": REF_BRACE}]
 	if Effects.has(u, "reactive_weave"):
-		# Reactive Weave: Invisible until the end of its next turn (its free move is the table's).
+		# Reactive Weave: Invisible until the end of its next turn, and a move up to its Speed
+		# (the brace answer's "move_to").
 		events.append_array(Combat.add_status(state, u, "Invisible", "Reactive Weave", u.id))
+		if move_to is Array and (move_to as Array).size() >= 2:
+			var saved := u.turn
+			u.turn = {"move_spent": 0}
+			var plan := Movement.plan(state, u, Vector2i(int(move_to[0]), int(move_to[1])))
+			u.turn = saved
+			if plan["ok"]:
+				var last: Array = (plan["path"] as Array).back()
+				u.cell = Vector2i(last[0], last[1])
+				u.level = int(last[2])
+				events.append({"type": "moved", "unit": u.id, "path": plan["path"], "mode": "move", "cost": plan["cost"], "rule_ref": "systems: Reactive Weave"})
+				events.append_array(Combat.after_movement(state))
 	if Effects.has(u, "armor_lock"):
 		# Armor-Lock Plating: grapples end; until the end of its following turn +1 Difficulty
 		# against it, no failed Hull/Agility saves, Immunity to Knockback, Grapple and Prone.

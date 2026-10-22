@@ -20,6 +20,15 @@ static func _plan(state: GameState, u: Unit, params: Dictionary, mode: String) -
 			plan["ok"] = false
 			plan["reason"] = "The cable holds you within 5 spaces of the other end."
 			plan["rule_ref"] = Riders.REF_WINCH
+	var scary := state.unit(String(u.counters.get("terrified_of", "")))
+	if plan["ok"] and scary != null and Combat.is_present(scary) and u.has_status("Impaired") and String(u.statuses["Impaired"].get("source", "")) == scary.id \
+			and not (plan["path"] as Array).is_empty():
+		# Hunter Logic Suite Terrify: no voluntary moves that bring it closer.
+		var lt: Array = (plan["path"] as Array).back()
+		if Sight.distance(state, Sight.make_body(state, Vector2i(lt[0], lt[1]), int(lt[2]), u.size), Sight.body_of(state, scary)) < Sight.unit_distance(state, u, scary):
+			plan["ok"] = false
+			plan["reason"] = "Terrified: you can't move any closer to it."
+			plan["rule_ref"] = "systems: Hunter Logic Suite"
 	var foe := state.unit(String(u.counters.get("duel", "")))
 	if plan["ok"] and foe != null and Combat.is_present(foe) and not (plan["path"] as Array).is_empty():
 		# Exemplar To The Death: can't voluntarily move away from the mark.
