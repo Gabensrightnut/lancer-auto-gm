@@ -177,6 +177,24 @@ them, and they disappear when the turn moves on.
 - Square-grid diagonal movement follows the core book rule (to confirm against the book).
 - Grid spaces line up 1:1 with a tabletop board so measurements match play on paper.
 
+### Living, themed battlefields
+- **Bigger maps:** sized for real Lancer fights with room to maneuver and flank (roughly
+  20x20 to 40x40 spaces depending on mission type and squad size), not small test boards.
+- **Biomes drive both look and terrain:** grassy hills, desert, snow/tundra, urban ruins,
+  industrial yard, forest, swamp, volcanic, space station, moon base... Each biome has its own
+  height shapes (rolling hills vs. mesas vs. city blocks) and its own materials.
+- **Blocks look like real ground, not flat colors:** e.g. grassy hills = grass tops with
+  variation, brown dirt and rock on the cliff sides, stone strata on tall columns; textured
+  PBR materials with blending, edge wear, and per-tile variation so it doesn't tile visibly.
+- **Life and detail:** trees, bushes, rocks, crates, wrecks, buildings, fences, wind in grass
+  and trees, water, dust, birds, smoke from fires, lighting and weather per biome
+  (time of day, fog, rain, snow).
+- **What you see is what the rules use:** anything that looks like cover, an obstacle, or
+  difficult/dangerous terrain IS that in the rules (it's built from the same map data).
+  Purely decorative details stay small and flat so they never look like cover they aren't.
+  Destructible terrain visibly breaks when destroyed.
+- The grid stays readable on top of everything (toggle-able grid lines, clear tile edges).
+
 ### Elevation and flying (3D grid)
 
 The board is a stacked 3D grid, like blocks: every hex/square column has height levels, so
