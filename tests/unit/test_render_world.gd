@@ -240,3 +240,13 @@ func test_objective_markers_replace_and_clear() -> void:
 	t.show_objectives({})
 	expect(t.get_node_or_null("Objectives") == null, "empty zones clear the markers")
 	_free(t)
+
+
+func test_every_place_has_its_own_look() -> void:
+	var a := WorldStyle.resolve("city/retro+rain#5")
+	var b := WorldStyle.resolve("city/retro+rain#6")
+	var again := WorldStyle.resolve("city/retro+rain#5")
+	expect_eq(a["kit"], "city/retro+rain#5", "the kit keeps its place seed")
+	expect_eq(a["light"]["sun_yaw"], again["light"]["sun_yaw"], "same place, same look")
+	expect(a["light"]["sun_yaw"] != b["light"]["sun_yaw"] or a["architecture"]["walls"] != b["architecture"]["walls"], "another place looks different")
+	expect_eq(WorldStyle.resolve("city/retro")["kit"], "city/retro", "no seed, the plain kit")

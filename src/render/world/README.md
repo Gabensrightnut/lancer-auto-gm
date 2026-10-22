@@ -259,3 +259,29 @@ medieval carts on cobbles, cyberpunk cars, vans and bikes with traffic lights, k
 wires, retro finned cars, East Asian scooters under lantern wires, Union hover-pods on lit
 panels, ruins and burning cities wrecks. Vehicles are about a quarter of a mech's height and
 are scenery only: the rules see no cover in them.
+
+## Every city its own look
+
+A culture's `in_city` block (cultures.json) applies only on a city map: its sky, light and
+ground palette. Medieval: misty morning in stone streets. Old West: hot gold afternoon. East
+Asian: soft pink-hazed morning. Union: bright noon over white towers. Retro: sunny pastels.
+Ruins: grey overcast. Cyberpunk: the wet neon night. Industrial: smoggy amber, brick and tanks,
+smokestacks. Port: clear harbor morning, a basin with a quay, container stacks, cranes. City
+weather follows the culture (`TerrainGen.CITY_WEATHER`).
+
+Only the mega-cities (`TerrainGen.MEGA_CITIES`: cyberpunk, Union) build towers; every other
+city is like a city on modern Earth: mostly 1-2 levels, some lots left empty, alleys between
+buildings, low skylines. Nothing tall stands between the camera and the board.
+
+Landscapes can chain `base` (boarding -> starship -> station); the nearest overrides last.
+
+## Boarding (ship to ship)
+
+`boarding`: two ships docked side by side. Each side fights from its own ship's outer hull:
+armor ridges (bulkhead, straight runs), turret housings (machinery), clamped cargo
+(containers), behind an armored hull rim (Armor 4, Core p.68 objects) with hatches. Open space
+between the hulls is impassable; boarding tubes (2 wide, deck) cross it. A boarding torpedo
+has punched through each hull: a hole in the rim, its body in the deck, wreckage (difficult).
+The far ship is the near one turned around, so both sides get the same ground. Beyond the board
+(`SpaceScenery._docked`) both hulls run on with the gap between them, armor belts down their
+flanks, more docking tubes, and the far ship's superstructure.

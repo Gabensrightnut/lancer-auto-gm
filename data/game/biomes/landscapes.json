@@ -1490,5 +1490,14 @@
 			"contrast": 1.05,
 			"exposure": 1.1
 		}
+	},
+	"boarding": {
+		"base": "starship",
+		"name": "ship-to-ship boarding",
+		"horizon": {
+			"land": "none",
+			"far": "boarding",
+			"far_color": "#2a2622"
+		}
 	}
 }
