@@ -299,3 +299,35 @@ func test_dimensional_emblems_and_shackles() -> void:
 	out = F.act(e, s, "shackle_return", "a", {"target": "t"})
 	expect(F.ok(out), F.reason(out))
 	expect_eq(t.cell, Vector2i(4, 4), "pulled back to its marked space")
+
+
+func test_puppet_system_and_law_of_blades() -> void:
+	_setup(["ms_h0r_os_system_upgrade_i", "ms_law_of_blades"], Vector2i(4, 0))
+	var other := F.mech(s, "o", "enemies", Vector2i(6, 0))
+	F.load_dice(s, [19])
+	var out := F.act(e, s, "activate", "a", {"ability": _key("Puppet System"), "target": "t", "toward": [4, 5]})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(t.cell, Vector2i(4, 4), "moves its full Speed where you choose")
+	F.act(e, s, "end_turn", "a")
+	s.acted = PackedStringArray()
+	s.turn_side = "players"
+	F.act(e, s, "start_turn", "a")
+	t.cell = Vector2i(5, 0)
+	F.load_dice(s, [19, 15, 3])
+	out = F.act(e, s, "activate", "a", {"ability": _key("Predator/Prey Concepts"), "target": "t", "forced_target": "o"})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(F.events_of(out, "attack_rolled").filter(func(x: Dictionary) -> bool: return x["attacker"] == "t" and x["target"] == "o").size(), 1, "it shoots its friend")
+
+
+func test_metahook_shares_heat_and_systems() -> void:
+	_setup(["ms_metahook"], Vector2i(9, 9))
+	var ally := F.mech(s, "ally", "players", Vector2i(0, 2))
+	a.systems = 4
+	var out := F.act(e, s, "activate", "a", {"ability": _key("Metahook"), "target": "ally"})
+	expect(F.ok(out), F.reason(out))
+	var check := Combat.skill_check(s, ally, "systems", "test", 10)
+	expect_eq(check["bonus"], 4, "the ally uses the Goblin's Systems")
+	Combat.apply_heat(s, ally, 2, "test")
+	expect_eq(a.heat, 2, "heat is shared")
+	Combat.add_status(s, a, "Jammed", "test")
+	expect(ally.has_status("Jammed"), "conditions are shared")

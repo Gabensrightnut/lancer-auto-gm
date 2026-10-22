@@ -63,6 +63,9 @@ static func add_status(state: GameState, u: Unit, status: String, source: String
 		events.append_array(begin_falling(u, "Flying characters begin falling if Immobilized or Stunned."))
 	if not had:
 		events.append_array(FrameSystems.on_status(state, u, status))
+		var hooked := GearSystems.metahook_partner(state, u)
+		if hooked != null and source != "Metahook (shared)" and GearSystems.CONDITIONS.has(status):
+			events.append_array(add_status(state, hooked, status, "Metahook (shared)", next_turn_end_of, until_start_of))  # shared conditions
 	return events
 
 
@@ -125,6 +128,9 @@ static func skill_check(state: GameState, u: Unit, skill: String, label: String,
 		all_sources.append({"label": "Bolstered", "kind": "accuracy", "type": "accuracy", "value": 2, "rule_ref": "actions: Bolster"})
 		u.statuses.erase("Bolstered")
 	var bonus := int(u.get(skill)) if SKILLS.has(skill) else 0
+	var hook := GearSystems.metahook_partner(state, u)
+	if skill == "systems" and hook != null and hook.systems > bonus:
+		bonus = hook.systems  # Metahook: the linked Goblin's Systems
 	if skill == "systems" and u.counters.has("hosting"):
 		bonus = FrameSystems.shared_stat(state, u, "systems")  # Goblin Symbiosis
 	if u.kind == Unit.KIND_PILOT:
@@ -427,6 +433,9 @@ static func apply_heat(state: GameState, u: Unit, amount: int, source: String, r
 	var events: Array[Dictionary] = []
 	if amount <= 0 or u.destroyed:
 		return events
+	var hooked := GearSystems.metahook_partner(state, u)
+	if hooked != null and not source.begins_with("Metahook"):
+		events.append_array(apply_heat(state, hooked, amount, "Metahook (shared)"))  # shared heat
 	if not u.has_status("Shredded") and (resist_all or _resists(u, "Heat") or Effects.resists(u, "Heat", false, -1)):
 		amount -= amount / 2
 	if u.heat_cap <= 0:

@@ -275,6 +275,14 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				events.append_array(Attacks.attack(state, u, Weapons.find(u, "cbi:0"), target, {"fired_by_rule": true}))
 			"jackhammer":
 				events.append_array(TalentRules.jackhammer(state, u, target))
+			"puppet":
+				events.append_array(GearSystems.puppet(state, u, target, params))
+			"metahook":
+				events.append_array(GearSystems.metahook(state, u, target))
+			"predator_prey":
+				events.append_array(GearSystems.predator_prey(state, u, target, params))
+			"slave_systems":
+				events.append_array(GearSystems.slave_systems(state, u, target, params))
 			"emblems":
 				events.append_array(GearSystems.emblems(state, u, target, params))
 			"shackle":
@@ -532,6 +540,16 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 			var mt := state.unit(String(params.get("target", "")))
 			if mt == null or mt == u or mt.side != u.side or not Combat.is_present(mt) or Sight.unit_distance(state, u, mt) > 1:
 				return RuleResult.deny("Choose an adjacent allied character (params.target).", "systems: Monitor Module")
+		if op.get("op", "") == "puppet" and TurnAction.cell_param(params, "toward") == null:
+			return RuleResult.deny("Choose the direction it moves (params.toward: a space).", "systems: H0R_OS System Upgrade I")
+		if op.get("op", "") == "metahook":
+			var mt := state.unit(String(params.get("target", "")))
+			if mt == null or mt == u or mt.side != u.side or Sight.unit_distance(state, u, mt) > u.sensors or not Sight.unit_line_of_sight(state, u, mt):
+				return RuleResult.deny("Choose an allied character within Sensors and line of sight.", "systems: Metahook")
+		if op.get("op", "") == "slave_systems" and not String(params.get("forced_action", "")) in ["boost", "stabilize", "improvised_attack", "grapple", "ram"]:
+			return RuleResult.deny("Choose its action: boost, stabilize, improvised_attack, grapple or ram (params.forced_action).", "systems: Law of Blades")
+		if op.get("op", "") == "predator_prey" and state.unit(String(params.get("forced_target", ""))) == null:
+			return RuleResult.deny("Choose who it attacks (params.forced_target).", "systems: Law of Blades")
 		if op.get("op", "") == "roller_grenade":
 			var ra: Variant = TurnAction.cell_param(params, "aim")
 			if ra == null or ra == u.cell or not state.map.has_cell(ra):

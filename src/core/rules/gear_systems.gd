@@ -980,6 +980,99 @@ static func fade_roll(state: GameState, u: Unit) -> Array[Dictionary]:
 	return events
 
 
+## Conditions (statuses: Impaired, Immobilized, Jammed, Lock On, Shredded, Slowed, Stunned).
+const CONDITIONS := ["Impaired", "Immobilized", "Jammed", "Lock On", "Shredded", "Slowed", "Stunned"]
+
+
+## Metahook: the character linked with `u`, while it's within the Goblin's Sensors and line
+## of sight; null otherwise.
+static func metahook_partner(state: GameState, u: Unit) -> Unit:
+	if state == null or u == null or not u.counters.has("metahook"):
+		return null
+	var o := state.unit(String(u.counters["metahook"]))
+	if o == null or not Combat.is_present(o) or not Combat.is_present(u):
+		return null
+	var goblin: Unit = u if u.counters.get("metahook_owner", false) else o
+	var other: Unit = o if goblin == u else u
+	if Sight.unit_distance(state, goblin, other) > goblin.sensors or not Sight.unit_line_of_sight(state, goblin, other):
+		return null
+	return o
+
+
+static func metahook(state: GameState, u: Unit, ally: Unit) -> Array[Dictionary]:
+	for x: Unit in state.units.values():
+		if String(x.counters.get("metahook", "")) == u.id or x == u:
+			x.counters.erase("metahook")
+			x.counters.erase("metahook_owner")
+	u.counters["metahook"] = ally.id
+	u.counters["metahook_owner"] = true
+	ally.counters["metahook"] = u.id
+	return [{"type": "effect_triggered", "unit": u.id, "effect": "Metahook", "target": ally.id, "rule_ref": "systems: Metahook"}] as Array[Dictionary]
+
+
+## Puppet System (H0R_OS I): the target moves its maximum Speed toward params.toward. It's
+## involuntary but provokes reactions and Engagement as normal (not a knockback, push or pull).
+## PROVISIONAL: in a straight line, stopping at obstructions.
+static func puppet(state: GameState, u: Unit, t: Unit, params: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = Reactions.overwatch(state, t)
+	if not Combat.is_present(t):
+		return events
+	var toward: Vector2i = TurnAction.cell_param(params, "toward")
+	var path := Movement.push_path(state, t, t.cell * 2 - toward, t.speed)
+	if path.size() < 2:
+		return events
+	var last: Array = path.back()
+	t.cell = Vector2i(last[0], last[1])
+	events.append({"type": "moved", "unit": t.id, "path": path, "mode": "involuntary", "cost": 0, "rule_ref": "systems: H0R_OS System Upgrade I"})
+	events.append_array(Abilities.check_mines(state, t, path))
+	events.append_array(Zones.check_path(state, t, path))
+	events.append_array(Combat.after_movement(state))
+	return events
+
+
+## Law of Blades, Predator/Prey Concepts: the target attacks a character or object you choose
+## (params.forced_target, not you... any different character) with a weapon you choose
+## (params.forced_weapon, else its first that can reach), as a reaction.
+static func predator_prey(state: GameState, u: Unit, t: Unit, params: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var victim := state.unit(String(params.get("forced_target", "")))
+	if victim == null or victim == t or not Combat.is_present(victim):
+		return events
+	var w := Weapons.find(t, String(params.get("forced_weapon", "")))
+	if w.is_empty():
+		for x: Dictionary in t.loadout.get("weapons", []):
+			if Attacks.preview(state, t, x, victim, {"reaction": true})["ok"]:
+				w = x
+				break
+	if w.is_empty() or not Attacks.preview(state, t, w, victim, {"reaction": true})["ok"]:
+		events.append({"type": "action_skipped", "unit": t.id, "action": "predator_prey", "reason": "No weapon can reach that target.", "rule_ref": "systems: Law of Blades"})
+		return events
+	Reactions._mark_used(t, "law_of_blades", state)
+	events.append_array(Attacks.attack(state, t, w, victim, {"reaction": true}))
+	return events
+
+
+## Law of Blades, Slave Systems: the target takes an action you choose as a reaction: boost,
+## stabilize, improvised_attack, grapple or ram (params.forced_action, forced_params).
+static func slave_systems(state: GameState, u: Unit, t: Unit, params: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var what := String(params.get("forced_action", ""))
+	if not what in ["boost", "stabilize", "improvised_attack", "grapple", "ram"]:
+		return events
+	var h: TurnAction = RulesEngine.registry[what]
+	var p: Dictionary = (params.get("forced_params", {}) as Dictionary).duplicate()
+	var saved := t.turn
+	t.turn = {"quick": 0, "full": false, "taken": [], "quick_tech": [], "move_spent": 0, "moved": false, "acted": false, "overcharged": false, "free_quick": 0}
+	var r := h.check(state, t, p)
+	if r.ok:
+		Reactions._mark_used(t, "law_of_blades", state)
+		events.append_array(h.apply(state, t, p))
+	else:
+		events.append({"type": "action_skipped", "unit": t.id, "action": what, "reason": r.reason, "rule_ref": "systems: Law of Blades"})
+	t.turn = saved
+	return events
+
+
 ## H0R_OS III Dimensional Emblems: three Size 1 constructs in free spaces next to the target,
 ## not next to each other (params.cells to choose, else the first that fit). Replaces your
 ## earlier ones.

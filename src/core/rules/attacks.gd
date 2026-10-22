@@ -988,6 +988,11 @@ static func tech_target_check(state: GameState, user: Unit, target: Unit, action
 	var in_sensors := Sight.within(state, Sight.body_of(state, user), Sight.body_of(state, target), user.sensors)
 	if in_sensors["grey_area"] != "":
 		return Rulings.needed(in_sensors["grey_area"])
+	var mate := GearSystems.metahook_partner(state, user)
+	if mate != null and (not in_sensors["ok"] or not Sight.unit_line_of_sight(state, user, target)):
+		# Metahook: use the linked ally's Sensors and line of sight for tech actions.
+		if Sight.unit_distance(state, mate, target) <= mate.sensors and Sight.unit_line_of_sight(state, mate, target):
+			return RuleResult.allow()
 	if not in_sensors["ok"]:
 		return RuleResult.deny("Out of Sensors range (%d)." % user.sensors, "glossary: Sensors")
 	if not Sight.unit_line_of_sight(state, user, target):

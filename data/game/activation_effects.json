@@ -1040,5 +1040,31 @@
   ],
   "deploy:ms_h0r_os_system_upgrade_iii:Dimensional Emblems": {
     "skip": true
-  }
+  },
+  "ms_h0r_os_system_upgrade_i:Puppet System": [
+    {
+      "op": "puppet",
+      "label": "Puppet System"
+    }
+  ],
+  "ms_metahook:Metahook": [
+    {
+      "op": "metahook",
+      "label": "Metahook"
+    }
+  ],
+  "ms_law_of_blades:Predator/Prey Concepts": [
+    {
+      "op": "predator_prey",
+      "tech_attack": true,
+      "label": "Predator/Prey Concepts"
+    }
+  ],
+  "ms_law_of_blades:Slave Systems": [
+    {
+      "op": "slave_systems",
+      "tech_attack": true,
+      "label": "Slave Systems"
+    }
+  ]
 }
