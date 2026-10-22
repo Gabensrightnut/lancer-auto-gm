@@ -84,6 +84,8 @@ func play_event(e: Dictionary) -> void:
 		"turn_started":
 			_log("[b]%s's turn.[/b]" % _name(e.get("unit", "")))
 			var mv := _view(e.get("unit", ""))
+			if mv and mv.battle:
+				mv.battle.labels.active_unit = String(e.get("unit", ""))
 			if on_banner.is_valid() and mv:
 				on_banner.call("%s's turn" % mv.unit.get("name", e["unit"]))
 			if on_turn_started.is_valid():
@@ -96,6 +98,27 @@ func play_event(e: Dictionary) -> void:
 			await Fx.wait(self, 0.8)
 		"next_side", "combat_started":
 			pass
+		"bonus_damage":
+			# Extra damage riding on a hit (a talent, system or core bonus); also part of the
+			# damage_dealt that follows.
+			var bmv := _view(e.get("target", ""))
+			var bt := String(e.get("damage_type", "Kinetic"))
+			_log("%s adds +%d %s damage (%s)%s." % [_name(e.get("attacker", "")), int(e.get("amount", 0)), bt.to_lower(), e.get("source", "bonus"), ", halved" if e.get("halved", false) else ""])
+			if bmv and Fx.speed > 0.0:
+				Fx.float_text(battle.fx_root, bmv.body_center() + Vector3.UP * 0.5, "+%d %s" % [int(e.get("amount", 0)), String(e.get("source", "")).to_upper()], RollDisplay.damage_color(bt), 40)
+		"attack_rerolled":
+			var first: Dictionary = e.get("first", {}) if e.get("first") is Dictionary else {}
+			_log("%s rerolls the attack (%s): the first roll, %d, missed." % [_name(e.get("attacker", "")), e.get("source", "reroll"), int(first.get("total", 0))])
+			var rmv2 := _view(e.get("attacker", ""))
+			if rmv2 and Fx.speed > 0.0:
+				Fx.float_text(battle.fx_root, rmv2.body_center() + Vector3.UP * 0.4, "REROLL", Color(0.5, 0.8, 1.0), 48)
+				await Fx.wait(self, 0.35)
+		"attack_cancelled":
+			_log("%s's attack on %s doesn't happen: %s" % [_name(e.get("attacker", "")), _name(e.get("target", "")), e.get("reason", "")])
+			var cmv := _view(e.get("attacker", ""))
+			if cmv and Fx.speed > 0.0:
+				Fx.float_text(battle.fx_root, cmv.body_center() + Vector3.UP * 0.4, "ATTACK CANCELLED", Color(0.8, 0.8, 0.85), 44)
+				await Fx.wait(self, 0.4)
 		"reaction_offered":
 			_log("%s can react: %s?" % [_name(e.get("unit", "")), String(e.get("reaction", "")).capitalize()])
 		"reaction":

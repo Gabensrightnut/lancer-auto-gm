@@ -101,6 +101,40 @@ const BATTLE_LOADOUTS := {
 ## Where the demo roster stands on each biome's board (added to ROSTER positions).
 const BIOME_OFFSET := {"urban_ruins": Vector2.ZERO, "grassy_hills": Vector2(6.0, 6.5), "alien_wilds": Vector2(4.0, 7.0)}
 const BIOMES := ["urban_ruins", "grassy_hills", "alien_wilds"]
+## Screenshot-only: battle board from the world styles (see start_battle).
+var world_spec := ""
+var battle_offset := Vector2.ZERO
+
+
+## [BattleMap, kit] for a world_preview-style spec.
+func _world_map(spec_text: String) -> Array:
+	var spec := spec_text.replace("=", ":").split(":")
+	var name := spec[0]
+	var map: BattleMap
+	var kit := "urban_ruins"
+	if name.begins_with("gen"):
+		var parts := name.trim_prefix("gen").split("+")
+		var opts := {"db": content, "shape": "hex"}
+		if parts.size() > 1:
+			opts["landscape"] = parts[1]
+		if parts.size() > 2:
+			opts["culture"] = parts[2]
+		var g := MissionGenerator.generate(int(parts[0]), opts)
+		map = (g["state"] as GameState).map
+		kit = (g["mission"] as Mission).flavor.get("kit", "grassy_hills")
+	else:
+		match name:
+			"hills":
+				map = DemoMap.build_hills(shape)
+				kit = "grassy_hills"
+			"alien":
+				map = DemoMap.build_alien(shape)
+				kit = "alien_wilds"
+			_:
+				map = DemoMap.build(shape)
+	if spec.size() > 1:
+		kit = spec[1].replace("-", "/")
+	return [map, kit]
 
 
 func _build_board() -> void:
@@ -204,7 +238,9 @@ func _stop_battle() -> void:
 	player.cancel()
 
 
-## Starts a playable battle on the grassy hills board (hex).
+## Starts a playable battle on the grassy hills board (hex), or on a world-style board
+## when `world_spec` is set (screenshots: "gen<seed>[+landscape[+culture]]" or
+## "urban|hills|alien[=landscape-culture]", as in world_preview).
 func start_battle() -> void:
 	_stop_battle()
 	combat_log.clear_log()
@@ -212,8 +248,21 @@ func start_battle() -> void:
 	biome = "grassy_hills"
 	shape = GridLayout.Shape.HEX
 	var map := DemoMap.build_hills(shape)
-	view.set_map(map, biome)
+	var kit := biome
 	var off: Vector2 = BIOME_OFFSET[biome]
+	if world_spec != "":
+		var w := _world_map(world_spec)
+		map = w[0]
+		kit = w[1]
+		var lo := Vector3(INF, 0, INF)
+		var hi := Vector3(-INF, 0, -INF)
+		for c in map.cells():
+			var p := map.grid.to_world(c)
+			lo = Vector3(minf(lo.x, p.x), 0, minf(lo.z, p.z))
+			hi = Vector3(maxf(hi.x, p.x), 0, maxf(hi.z, p.z))
+		off = Vector2((lo.x + hi.x) * 0.5 - 7.5, (lo.z + hi.z) * 0.5 - 8.5)
+	battle_offset = off
+	view.set_map(map, kit)
 	battle = DemoBattle.new()
 	add_child(battle)
 	battle.setup(content, view, player, _ui)
@@ -479,7 +528,7 @@ func _battle_stage(tag: String) -> void:
 	await start_battle()
 	if tag == "turn_order":
 		Fx.speed = 1.0
-		var off: Vector2 = BIOME_OFFSET[biome]
+		var off := battle_offset
 		view.tactical.look_at_point(Vector3(7.5 + off.x, 0.8, 7.5 + off.y), 15.0)
 		view.tactical.pitch = -50.0
 		view.tactical.snap()
@@ -548,6 +597,7 @@ func _battle_stage(tag: String) -> void:
 ## must contain %s. Tags: board square move sky los roll kinetic beam missile melee tech
 ## deploy heat vent destroy cockpit.
 func screenshot_setup(args: PackedStringArray) -> Array:
+	view.labels.cursor = Vector2(-10000, -10000)  # no mouse in screenshots
 	var tags: Array = Array(args)
 	if tags.is_empty() or tags[0] == "all":
 		tags = ["board", "square", "move", "sky", "los", "roll", "kinetic", "beam", "missile", "melee", "tech", "deploy", "heat", "vent", "destroy", "cockpit", "hud", "hills", "hills_close", "hills_nogrid", "hills_square", "alien", "alien_close", "alien_vista",
@@ -590,6 +640,12 @@ func lockout_samples() -> Array:
 
 
 func screenshot_stage(tag: String) -> void:
+	world_spec = ""
+	if tag.begins_with("world="):
+		# The player's turn HUD on one of the world session's boards.
+		world_spec = tag.trim_prefix("world=")
+		await _battle_stage("my_turn")
+		return
 	if tag in ["turn_order", "my_turn", "target", "cooldowns", "enemy_turn", "skill", "bar_small", "bar_large", "reaction"]:
 		await _battle_stage(tag)
 		return

@@ -1,0 +1,15 @@
+{
+  "_about": "Mech paint presets for the customizer (MechPaint format). Our own schemes, not taken from any other game.",
+  "presets": [
+    {"name": "Union Navy", "primary": "#1f4466", "secondary": "#c9c7c0", "glow": "#59d8ff", "markings": "#f2f0ea"},
+    {"name": "Desert Patrol", "primary": "#c2a878", "secondary": "#5b4a35", "glow": "#ff9a26", "markings": "#2c2f35"},
+    {"name": "Arctic", "primary": "#f2f0ea", "secondary": "#6fa4c8", "glow": "#59d8ff", "markings": "#142a44"},
+    {"name": "Olive Drab", "primary": "#45553a", "secondary": "#8a7350", "glow": "#ffd24a", "markings": "#e8dcc0"},
+    {"name": "Night Ops", "primary": "#2c2f35", "secondary": "#131417", "glow": "#ff3c4a", "markings": "#8d8f93"},
+    {"name": "Hazard", "primary": "#e6b422", "secondary": "#2c2f35", "glow": "#ff9a26", "markings": "#131417"},
+    {"name": "Crimson", "primary": "#8c2a22", "secondary": "#f0d75a", "glow": "#ff7a1a", "markings": "#f2f0ea"},
+    {"name": "Parade White", "primary": "#f2f0ea", "secondary": "#b5523b", "glow": "#f05ad8", "markings": "#1f4466"},
+    {"name": "Jungle", "primary": "#2e3a2a", "secondary": "#a3b18a", "glow": "#5aff73", "markings": "#e8dcc0"},
+    {"name": "Violet Corsair", "primary": "#4a2d63", "secondary": "#c24f86", "glow": "#f05ad8", "markings": "#f2f0ea"}
+  ]
+}

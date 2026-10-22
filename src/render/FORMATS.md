@@ -140,6 +140,67 @@ button. Everything is submitted to `RulesEngine`; the events go to `EventPlayer`
 `skip_to_my_turn`, `on_banner`, `on_turn_started`, `popup`. Speeds: `EventPlayer.SPEEDS`
 (cinematic 0.7, normal 1.0, fast 1.8; debug 4.0 and instant 0 for tests and demos).
 
+## Floating labels (`BattleView.labels: LabelDeclutter`)
+
+Nameplates (name, HP/heat/structure, status tags) are a fixed size on screen (1080p pixels,
+scaled with the window). Each frame they are laid out in screen space:
+- `labels.active_unit` (set on `turn_started` and by `PlayerTurn.begin`) and `labels.hover_unit`
+  (the hovered target) are placed first; other units' plates keep off the active mech.
+- A plate that overlaps another plate or a planning label steps up (at most 70 px, then it
+  fades). Plates at the window edges slide back on screen.
+- Plates under HUD panels vanish: any visible Control in group `LabelDeclutter.GROUP_KEEPOUT`
+  (turn-order bar and banner, hint, action bar, hover card, prompts, combat log).
+- Plates next to the cursor dim, except the hovered unit (your own unit's plate dims less).
+- Overlay labels made with `screen_px` (move cost, terrain flags, cover, NO LOS) are also fixed
+  size and in group `GROUP_PRIORITY`: plates make room for them, and they step past each other.
+
+## Mech paint and the customizer preview (`MechPaint`, `MechPreview`)
+
+Paint is cosmetic and stored with the mech, e.g. `mech["paint"]` (every key optional; missing
+means the frame's factory look):
+
+    {"primary": "#rrggbb", "secondary": "#rrggbb", "glow": "#rrggbb", "markings": "#rrggbb",
+     "decals": {"chest": "chevron", "shoulder_l": "roundel", "shoulder_r": "number:07",
+                "leg_l": "stripes", "leg_r": ""}}
+
+Decal ids: chevron, stripes, roundel, star, hazard, bars, diamond, number:NN. Primary and
+secondary are the model's two biggest painted color groups (imported frames name them); dark
+trim and bare metal keep their color. `MechPaint.apply(model, paint)` repaints a built model
+(inside the tree, for decals); `MechView` applies `unit["paint"]` when present.
+
+Builder hookup (the builder's `preview_area`):
+
+    var pv := MechPreview.new()          # turntable + paint controls; show_paint_controls = false for the turntable only
+    preview_area.add_child(pv)
+    pv.set_mech(model.db, m["frame"], m.get("loadout", {}), m.get("paint", {}))   # again on frame/loadout change
+    pv.paint_changed.connect(func(p: Dictionary) -> void: m["paint"] = p)
+
+Presets: `data/game/paint_presets.json` plus the player's saved ones in
+`user://paint_presets.json`. Screenshot scene: `scenes/customizer.tscn` (tags paint_factory,
+paint_preset, paint_random, paint_everest).
+
+## Pilot looks (`PortraitArt`, `PilotCreator`, `PilotToken`)
+
+All three read the story session's v2 portrait (`PortraitSpec`, `data/game/story/portraits.json`):
+`{version: 2, parts: {part id: {option, primary, secondary}}}`, stored in `pilot["portrait"]`.
+
+- `PortraitArt` (Control): the illustrated bust, drawn in code from the parts. It is a drop-in
+  for the placeholder `Portrait`, with the same `set_look(look, expr)` and `lit`. It draws all
+  10 expressions in portraits.json (neutral, smiling, angry, worried, shouting, sad,
+  surprised, determined, smug, hurt) and also reads older flat looks. `card = false` skips
+  the background.
+- `PilotCreator` (PanelContainer, full screen): `open(portrait)`, then the
+  `confirmed(portrait)` or `cancelled` signal. It has the parts list with lock pins, an
+  option grid with live thumbnails, primary and secondary colors from the part's palette,
+  saved color pairs, the expression strip, a Token tab, Randomize all (keeps locked parts),
+  save and load looks, Reset, Cancel and Confirm. Saved files: `user://pilot_looks.json` and
+  `user://portrait_colors.json`.
+- `PilotToken` (Node3D): `PilotToken.new().build(portrait)` builds the on-foot figure, about
+  1.8 m tall and facing -Z.
+
+Screenshot scene: `scenes/customizer.tscn`, tags creator_portrait, creator_token,
+creator_beard, portraits, expressions.
+
 ## Cameras
 
 `BattleView.set_camera_mode("tactical")` or `set_camera_mode("cockpit", unit_id, target_id)`.

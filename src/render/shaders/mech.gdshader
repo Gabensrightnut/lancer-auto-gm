@@ -15,6 +15,8 @@ instance uniform float glitch = 0.0;
 instance uniform float flash = 0.0;
 // Darkens the model: wrecks, and units out of line of sight.
 instance uniform float dim = 0.0;
+// Dark maps: a soft cool rim and a little self-light so mechs still read (BattleView sets it).
+instance uniform float lift = 0.0;
 
 varying vec3 opos;
 varying vec3 onrm;
@@ -74,6 +76,8 @@ void fragment() {
 	ALBEDO *= 1.0 - 0.7 * h;
 	e += hc * h * (0.12 + 0.9 * fres + 2.2 * seam) * pulse;
 	e += vec3(1.0, 0.95, 0.9) * flash * 1.1;
+	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
+	e += lift * (1.0 - 0.75 * dim) * (ALBEDO * 0.3 + vec3(0.55, 0.68, 0.95) * rim * 0.8);
 	if (glitch > 0.0) {
 		float scan = step(0.5, fract(SCREEN_UV.y * 140.0 + TIME * 9.0));
 		e += mix(vec3(0.1, 0.95, 1.0), vec3(1.0, 0.1, 0.6), step(0.5, fract(TIME * 7.0))) * glitch * scan * 0.9;

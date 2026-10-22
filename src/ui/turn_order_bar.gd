@@ -15,6 +15,7 @@ var data: Dictionary = {}
 var portraits: Dictionary = {}  # unit id -> Texture2D
 var _box: HBoxContainer
 var _banner: Label
+var _zone: Control
 
 
 func _init() -> void:
@@ -23,6 +24,11 @@ func _init() -> void:
 	_box = HBoxContainer.new()
 	_box.add_theme_constant_override("separation", 6)
 	add_child(_box)
+	# Nameplates fade under the portraits, buttons and banner (LabelDeclutter).
+	_zone = Control.new()
+	_zone.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_zone.add_to_group(LabelDeclutter.GROUP_KEEPOUT)
+	add_child(_zone)
 	_banner = Label.new()
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_banner.add_theme_constant_override("outline_size", 6)
@@ -61,14 +67,19 @@ func _rebuild() -> void:
 		_banner.text = "ROUND %d  ·  %s's TURN" % [int(data.get("round", 1)), String(data["active_name"]).to_upper()]
 	_banner.add_theme_color_override("font_color", col.lightened(0.3))
 	_banner.add_theme_font_size_override("font_size", int(px * 0.24))
-	_banner.position = Vector2(0, 8 + px * 1.62 + px * 0.42)  # below the "I'll go" buttons
-	_banner.size = Vector2(vp.x, px * 0.3)
+	# Below the "I'll go" buttons, sized to its text so nameplates only fade right under it.
+	_banner.size = Vector2.ZERO
+	_banner.reset_size()
+	_banner.position = Vector2((vp.x - _banner.size.x) * 0.5, 8 + px * 1.62 + px * 0.42)
 
 
 func _center_box() -> void:
 	var vp := get_viewport_rect().size
 	_box.reset_size()
 	_box.position = Vector2((vp.x - _box.size.x) / 2.0, 8)
+	var r := Rect2(_box.position, _box.size).merge(Rect2(_banner.position, _banner.size))
+	_zone.position = r.position
+	_zone.size = r.size
 
 
 func _portrait(u: Dictionary, px: float, can_pick: bool) -> Control:

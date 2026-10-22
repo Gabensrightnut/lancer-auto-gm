@@ -27,6 +27,12 @@ var _status: Label3D
 var _drop: MeshInstance3D
 var _alt: Label3D
 var _burn: Node3D
+var _push := 0.0
+
+## Nameplate font sizes in 1080p screen pixels.
+const NAME_PX := 24
+const BARS_PX := 19
+const STATUS_PX := 17
 
 
 func setup(unit_dict: Dictionary, view: BattleView) -> void:
@@ -38,9 +44,17 @@ func setup(unit_dict: Dictionary, view: BattleView) -> void:
 		frame = {"id": unit.get("content_id", ""), "source": "GMS", "mechtype": ["Balanced"], "stats": {"size": unit.get("size", 1)}}
 	model = MechBuilder.build(frame, unit.get("loadout", {}), view.content, float(unit.get("size", -1)))
 	add_child(model)
-	_label = _make_label(40, Vector3.ZERO)
-	_bars = _make_label(34, Vector3.ZERO)
-	_status = _make_label(30, Vector3.ZERO)
+	if unit.get("paint") is Dictionary:
+		MechPaint.apply(model, unit["paint"])  # cosmetic scheme from the customizer
+	# Nameplate: fixed size on screen; LabelDeclutter scales, nudges and fades it.
+	_label = _make_label(NAME_PX, Vector3.ZERO)
+	_bars = _make_label(BARS_PX, Vector3.ZERO)
+	_status = _make_label(STATUS_PX, Vector3.ZERO)
+	for l: Label3D in [_label, _bars, _status]:
+		l.fixed_size = true
+		l.pixel_size = 0.0008
+		l.outline_size = 8
+		l.outline_modulate = Color(0, 0, 0, 0.95)
 	_status.modulate = Color(1.0, 0.85, 0.3)
 	var c: Array = unit.get("cell", [0, 0])
 	place(Vector2i(int(c[0]), int(c[1])), int(unit.get("level", 0)))
@@ -153,14 +167,12 @@ func refresh() -> void:
 	for l: Label3D in [_label, _bars, _status]:
 		l.position = Vector3(0, h + 0.3, 0)
 		l.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-	_bars.offset = Vector2(0, 0)
-	_label.offset = Vector2(0, 46)
-	_status.offset = Vector2(0, 92)
 	_bars.text = _bar_text()
 	var tags: Array = []
 	for s: String in (unit.get("statuses", {}) as Dictionary):
 		tags.append(STATUS_TAGS.get(s, s.to_upper()))
 	_status.text = "  ".join(tags)
+	set_plate_push(_push)
 	if unit.has("heat") and unit.has("heat_cap"):
 		set_heat(int(unit["heat"]), int(unit["heat_cap"]))
 	var burning := (unit.get("statuses", {}) as Dictionary).has("Burn")
@@ -169,6 +181,46 @@ func refresh() -> void:
 	elif not burning and _burn:
 		_burn.queue_free()
 		_burn = null
+
+
+## Where the nameplate's bottom edge sits in the world.
+func plate_anchor() -> Vector3:
+	return global_position + Vector3.UP * (model.height + 0.3)
+
+
+## Nameplate size in 1080p screen pixels.
+func plate_size() -> Vector2:
+	var w := 0.0
+	var h := 0.0
+	for l: Label3D in [_bars, _label, _status]:
+		if l.text == "":
+			continue
+		var font: Font = l.font if l.font else ThemeDB.fallback_font
+		var s := font.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, l.font_size)
+		w = maxf(w, s.x + l.outline_size)
+		h = l.offset.y - _push + s.y
+	return Vector2(w, h)
+
+
+## Lifts the nameplate by `px` screen pixels (1080p) to clear other labels.
+func set_plate_push(px: float, dx: float = 0.0) -> void:
+	_push = px
+	_bars.offset = Vector2(dx, px)
+	_label.offset = Vector2(dx, px + BARS_PX + 3)
+	_status.offset = Vector2(dx, px + BARS_PX + NAME_PX + 6)
+
+
+func set_plate_alpha(a: float) -> void:
+	for l: Label3D in [_label, _bars, _status]:
+		l.modulate.a = a
+		l.visible = a > 0.01
+		l.outline_modulate.a = 0.95 * a
+
+
+## Pixel size that makes one font pixel one 1080p screen pixel for the current camera.
+func set_plate_scale(ps: float) -> void:
+	for l: Label3D in [_label, _bars, _status]:
+		l.pixel_size = ps
 
 
 func _bar_text() -> String:

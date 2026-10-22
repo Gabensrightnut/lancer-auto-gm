@@ -66,7 +66,9 @@ func setup(ui_layer: CanvasLayer) -> void:
 	h.add_child(no)
 	_prompt.visible = false
 	ui_layer.add_child(_prompt)
+	_prompt.add_to_group(LabelDeclutter.GROUP_KEEPOUT)
 	_hint = Label.new()
+	_hint.add_to_group(LabelDeclutter.GROUP_KEEPOUT)
 	_hint.add_theme_font_size_override("font_size", 17)
 	_hint.add_theme_constant_override("outline_size", 6)
 	_hint.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
@@ -78,6 +80,7 @@ func setup(ui_layer: CanvasLayer) -> void:
 
 func begin(uid: String) -> void:
 	unit_id = uid
+	view.labels.active_unit = uid
 	active = true
 	mode = "idle"
 	selected = {}
@@ -98,8 +101,6 @@ func refresh() -> void:
 
 func _set_hint() -> void:
 	var vp := _hint.get_viewport_rect().size
-	_hint.position = Vector2(0, vp.y * 0.115)  # under the turn-order bar, clear of hover cards
-	_hint.size = Vector2(vp.x, 30)
 	match mode:
 		"target":
 			_hint.text = "Pick a target for %s  ·  right-click to cancel" % selected.get("name", "")
@@ -107,6 +108,11 @@ func _set_hint() -> void:
 			_hint.text = "Boost: click where to move  ·  right-click to cancel"
 		_:
 			_hint.text = "Click the board to move  ·  pick an action below  ·  End Turn when done" if active else ""
+	# Under the turn-order bar's round banner, clear of hover cards; sized to its text so
+	# nameplates only fade right under it.
+	_hint.size = Vector2.ZERO
+	_hint.reset_size()
+	_hint.position = Vector2((vp.x - _hint.size.x) * 0.5, vp.y * 0.163 + 6)
 
 
 # --- input -----------------------------------------------------------------------------
@@ -267,6 +273,7 @@ func _on_action(a: Dictionary) -> void:
 
 
 func hover_target(id: String) -> void:
+	view.labels.hover_unit = id
 	if id == "" or selected.is_empty():
 		bar.card.visible = false
 		view.overlays.clear()
