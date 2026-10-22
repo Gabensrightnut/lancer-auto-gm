@@ -212,6 +212,10 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				events.append_array(Zones.add(state, {"kind": "interdiction", "owner": u.id, "anchor": u.id, "radius": 3, "cells": [], "center": [u.cell.x, u.cell.y],
 					"label": "Interdiction Field", "rule_ref": "systems: Interdiction Field"}))
 				events.append_array(Combat.add_status(state, u, "Slowed", "Interdiction Field"))
+			"attach_cable":
+				events.append_array(Riders.attach_cable(state, u, target))
+			"transfer_control":
+				events.append_array(Riders.transfer(state, u))
 			"flash_grenade":
 				var fa: Vector2i = TurnAction.cell_param(params, "aim")
 				GearSystems._mark_launcher(state, u, op, fa)
@@ -487,6 +491,8 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 			var pv := Attacks.preview(state, u, fw, state.unit(String(params.get("target", ""))), {"fired_by_rule": true})
 			if not pv["ok"]:
 				return RuleResult.deny(pv["reason"], pv["rule_ref"])
+		if op.get("op", "") == "transfer_control" and Riders.passenger_of(state, u) == null and not u.counters.has("passenger_control"):
+			return RuleResult.deny("There's no passenger to hand the controls to.", Riders.REF_COMPARTMENT)
 		if op.get("op", "") in ["napalm", "flash_grenade"]:
 			var nr := GearSystems.check_aimed(state, u, op, params)
 			if not nr.ok:
@@ -550,6 +556,7 @@ const BASIC := [
 	["shut_down", "Shut Down", "other"], ["boot_up", "Boot Up", "other"], ["eject", "Eject", "other"],
 	["dismount", "Dismount", "other"], ["mount", "Mount", "other"], ["self_destruct", "Self-Destruct", "other"],
 	["end_grapple", "Let Go", "other"], ["break_free", "Break Free", "other"], ["grapple_contest", "Grapple Contest", "other"],
+	["climb_on", "Climb On", "move"], ["board", "Board", "other"], ["disembark", "Climb Out", "other"], ["cut_cable", "Cut Cable", "attack"],
 	["pull_stake", "Pull Out Stake", "other"], ["use_object", "Use Object", "other"], ["ai_control", "Hand Over to AI", "other"],
 ]
 ## Actions whose own check needs no target, so the bar can show exactly whether they work.

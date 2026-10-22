@@ -861,5 +861,20 @@
     {
       "op": "oasis"
     }
+  ],
+  "ms_expanded_compartment:Transfer Control": [
+    {
+      "op": "transfer_control"
+    }
+  ],
+  "ms_cable_winch_system:Cable Winch System": [
+    {
+      "op": "attach_cable",
+      "label": "Cable Winch System",
+      "target": {
+        "who": "other",
+        "adjacent": true
+      }
+    }
   ]
 }

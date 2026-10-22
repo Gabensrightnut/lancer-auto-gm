@@ -34,6 +34,105 @@ class AIControl:
 		return AISystems.hand_over(state, u, String(u.loadout["ai"]["source"]))
 
 
+class ClimbOn:
+	extends TurnAction
+	## Quick action: climb onto an adjacent mech's MULE Harness. params: {"host"}
+
+	func type() -> String:
+		return "climb_on"
+
+	func kinds() -> Array:
+		return [Unit.KIND_MECH, Unit.KIND_NPC, Unit.KIND_PILOT]
+
+	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		return Riders.check_climb(state, u, state.unit(String(params.get("host", ""))))
+
+	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+		return Riders.climb(state, u, state.unit(String(params["host"])))
+
+
+class Board:
+	extends TurnAction
+	## Full action: board an adjacent mech's Expanded Compartment as its passenger.
+	## params: {"mech"}
+
+	func type() -> String:
+		return "board"
+
+	func kinds() -> Array:
+		return [Unit.KIND_PILOT]
+
+	func cost() -> String:
+		return TurnRules.FULL
+
+	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		return Riders.check_board(state, u, state.unit(String(params.get("mech", ""))))
+
+	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+		u.counters["passenger_in"] = String(params["mech"])
+		return [{"type": "boarded", "unit": u.id, "mech": params["mech"], "rule_ref": Riders.REF_COMPARTMENT}] as Array[Dictionary]
+
+
+class Disembark:
+	extends TurnAction
+	## Full action: a passenger climbs out to a free adjacent space. params: {"to"}
+
+	func type() -> String:
+		return "disembark"
+
+	func kinds() -> Array:
+		return [Unit.KIND_PILOT]
+
+	func cost() -> String:
+		return TurnRules.FULL
+
+	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		if not u.counters.has("passenger_in"):
+			return RuleResult.deny("You aren't a passenger.", Riders.REF_COMPARTMENT)
+		var mech := state.unit(String(u.counters["passenger_in"]))
+		var to: Variant = TurnAction.cell_param(params, "to")
+		if to == null or Pilots.free_adjacent(state, mech, to) == null:
+			return RuleResult.deny("Choose a free space next to the mech (params.to).", Riders.REF_COMPARTMENT)
+		return RuleResult.allow()
+
+	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+		var mech := state.unit(String(u.counters["passenger_in"]))
+		var spot: Array = Pilots.free_adjacent(state, mech, TurnAction.cell_param(params, "to"))
+		u.counters.erase("passenger_in")
+		u.cell = spot[0]
+		u.level = int(spot[1])
+		if mech.counters.has("passenger_control"):
+			Riders.transfer(state, mech)
+		return [{"type": "disembarked", "unit": u.id, "mech": mech.id, "cell": [u.cell.x, u.cell.y, u.level], "rule_ref": Riders.REF_COMPARTMENT}] as Array[Dictionary]
+
+
+class CutCable:
+	extends TurnAction
+	## Quick action: a melee hit against Evasion 10 cuts a Cable Winch cable on an adjacent
+	## character. params: {"target": a character at one end}
+
+	func type() -> String:
+		return "cut_cable"
+
+	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		var t := state.unit(String(params.get("target", "")))
+		if t == null or not t.counters.has("cable"):
+			return RuleResult.deny("Choose a character tied by a cable.", Riders.REF_WINCH)
+		if t != u and Sight.unit_distance(state, u, t) > 1:
+			return RuleResult.deny("It must be adjacent (or yourself).", Riders.REF_WINCH)
+		return RuleResult.allow()
+
+	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+		var check := state.dice.check(u.grit, 0, 0, 10, [])
+		check["target_label"] = "Evasion 10"
+		var events: Array[Dictionary] = [{"type": "attack_rolled", "attacker": u.id, "target": String(params["target"]), "weapon": "", "weapon_name": "Cut the cable",
+			"kind": "melee", "check": check, "result": "hit" if check["success"] else "miss", "cover": "none", "cover_cells": [], "invisible_miss": false,
+			"lock_on_consumed": false, "rule_ref": Riders.REF_WINCH}]
+		if check["success"]:
+			events.append_array(Riders.cut(state, state.unit(String(params["target"]))))
+		return events
+
+
 class PullStake:
 	extends TurnAction
 	## Full action: an impaled character repeats the Hull save to remove a Charged Stake.

@@ -533,6 +533,7 @@ static func destroy(state: GameState, u: Unit, why: String) -> Array[Dictionary]
 	var events: Array[Dictionary] = [{"type": "unit_destroyed", "unit": u.id, "reason": why}]
 	if u.counters.get("snare", false):
 		events.append_array(GearSystems.snare_gone(state, u))
+	events.append_array(Riders.on_destroyed(state, u))
 	if Pilots.castigating(state, u) and not u.counters.get("vaporized", false) and why != "Self Destruct.":
 		# Manticore Castigate the Enemies of the Godhead: it explodes at once (burst 2, 8d6).
 		events.append_array(Pilots.explode(state, u, "Castigation: " + why))
@@ -690,7 +691,7 @@ static func is_present(u: Unit) -> bool:
 		return false  # Fold Space: off the battlefield until the start of its next turn
 	if u == null or u.destroyed:
 		return false
-	var inside := String(u.counters.get("mounted_in", ""))
+	var inside := String(u.counters.get("mounted_in", u.counters.get("passenger_in", "")))
 	if inside == "":
 		return true
 	# A pilot inside a destroyed mech can be targeted and affected (Core p.74).
@@ -780,6 +781,7 @@ static func refresh_hidden(state: GameState) -> Array[Dictionary]:
 ## After any movement: engagement, Hidden, grapples.
 static func after_movement(state: GameState) -> Array[Dictionary]:
 	FrameSystems.follow_hosts(state)
+	Riders.follow(state)
 	var events := refresh_hidden(state)
 	events.append_array(refresh_engagement(state))
 	events.append_array(CloseCombat.check_grapples(state))

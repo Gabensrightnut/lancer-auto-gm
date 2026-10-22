@@ -120,6 +120,7 @@ static func on_status(state: GameState, u: Unit, status: String) -> Array[Dictio
 			var link: Dictionary = x.counters.get("core_link", {})
 			if link.get("ends_on_stun", false) and (x == u or String(link.get("target", "")) == u.id):
 				events.append_array(end_link(state, x, "Stunned"))
+	events.append_array(Riders.on_status(state, u, status))
 	if status == "Stunned":
 		for z: Dictionary in Zones.of_kind(state, "cloak"):
 			if z.get("owner", "") == u.id:
@@ -271,6 +272,8 @@ static func core_off(state: GameState, u: Unit) -> Array[Dictionary]:
 
 ## Limits on what `u` may do from frame systems (Napoleon Aegis, Barbarossa after firing).
 static func action_allowed(state: GameState, u: Unit, type: String) -> RuleResult:
+	if u.counters.has("passenger_in") and not type in ["disembark", "start_turn", "end_turn", "react", "set_reaction_policy", "set_ruling"]:
+		return RuleResult.deny("A passenger can only climb out (or take control through the mech's own system).", Riders.REF_COMPARTMENT)
 	if u.counters.has("symbiosis") and (NO_MOVE.has(type) or type == "overcharge"):
 		return RuleResult.deny("Attached by Symbiosis: you move with your host and can't move or Overcharge yourself.", "frames: Goblin core system")
 	if u.turn.get("rail_fired", false) and state.active_unit == u.id and not type in ["end_turn", "react", "set_reaction_policy", "set_ruling"]:
@@ -294,7 +297,7 @@ static func extra_cover(state: GameState, target: Unit, cover: Dictionary, attac
 	if Effects.has(target, "always_hard_cover") or target.counters.has("symbiosis") or Zones.bunker_protects(state, target, attacker) or Zones.oasis_cover(state, target):
 		give = "hard"
 	elif cover.get("cover", "none") == "none":
-		if Effects.has(target, "soft_cover_aura") or Zones.soft_cover(state, target, attacker) or TalentRules.soft_cover(state, target):
+		if target.counters.has("riding") or Effects.has(target, "soft_cover_aura") or Zones.soft_cover(state, target, attacker) or TalentRules.soft_cover(state, target):
 			give = "soft"
 		else:
 			for o: Unit in state.units.values():

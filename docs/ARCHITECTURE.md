@@ -147,11 +147,12 @@ cover, line of sight, attack/area/tech previews with hit chance).
 | `attached` / `detached` | `unit` (Goblin), `host`, `reason` (Symbiosis). A riding Goblin acts during its host's turn |
 | `area_effect` | `unit`, `cells`, `center` (a grenade or other non-attack area) |
 | `weapon_profile` | `unit`, `weapon`, `profile` (Spin-Up and other profile switches). Attacks may pick `profile` (index) or `pattern` ("Cone"/"Line") for weapons that have several |
-| New actions | `pull_stake` (full: an impaled character's Hull save), `shake_off` {`what`: chains/excommunicate} (full: a Systems save), `use_object` {`object`, `condition`, `weapon`} (an adjacent ally's Restock Drone) |
+| New actions | `climb_on` {`host`}, `board` {`mech`}, `disembark` {`to`}, `cut_cable` {`target`}, `pull_stake` (full: an impaled character's Hull save), `shake_off` {`what`: chains/excommunicate} (full: a Systems save), `use_object` {`object`, `condition`, `weapon`} (an adjacent ally's Restock Drone) |
 | `ai_control` | `unit`, `on`, `source` (Core p.107; action `{"type": "ai_control", "params": {"take_back": bool}}`) |
 | `cascade_check` | `unit`, `roll`, `cascade` (a 1: the NHP takes over; `unit.controller` becomes "gm" until Shut Down) |
 | `allegiance_changed` | `unit`, `side`, `reason` (OSIRIS Fourth Gate) |
 | `attack_retargeted` | `attacker`, `from`, `to` (TLALOC) |
+| `climbed_on` / `climbed_off` / `boarded` / `disembarked` / `control_transferred` / `cable_attached` / `cable_cut` | `unit` and `host` / `mech` / `to` / `target` / `other` (riders, passengers, cables) |
 | `ruling_needed` | `id`, `question`, `options` {id: text}, `rule_ref`, `trigger_action`: the engine is paused; the host answers `{"type": "set_ruling", "params": {"id", "choice"}}` |
 | `ruling_made` | `id`, `choice`, `text` |
 

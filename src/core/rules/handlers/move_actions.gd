@@ -13,6 +13,17 @@ static func _can_move_voluntarily(u: Unit) -> RuleResult:
 
 
 static func _plan(state: GameState, u: Unit, params: Dictionary, mode: String) -> Dictionary:
+	var plan := _plan_raw(state, u, params, mode)
+	if plan["ok"] and u.counters.has("cable") and not (plan["path"] as Array).is_empty():
+		var last: Array = (plan["path"] as Array).back()
+		if not Riders.tether_ok(state, u, Vector2i(last[0], last[1]), int(last[2])):
+			plan["ok"] = false
+			plan["reason"] = "The cable holds you within 5 spaces of the other end."
+			plan["rule_ref"] = Riders.REF_WINCH
+	return plan
+
+
+static func _plan_raw(state: GameState, u: Unit, params: Dictionary, mode: String) -> Dictionary:
 	var to: Variant = TurnAction.cell_param(params, "to")
 	if to == null:
 		return {"ok": false, "reason": "Say where to move (params.to = [x, y]).", "rule_ref": Movement.REF_MOVE}
@@ -82,6 +93,8 @@ static func _do_move(state: GameState, u: Unit, plan: Dictionary, mode: String, 
 		events.append_array(Combat.begin_falling(u, "Jump jets: the Boost didn't end on a surface."))
 		events.append_array(Combat.fall_unit(state, u))
 	events.append_array(Effects.moved(state, u, mode))
+	if u.counters.has("riding"):
+		events.append_array(Riders.drop(state, u, false, "climbed down"))  # riders climb down by moving away
 	events.append_array(Zones.leave_hologram(state, u, from, from_level))
 	Zones.oasis_trail(state, u, path)
 	events.append_array(GearSystems.horus_moved(state, u, maxi(0, path.size() - 1)))

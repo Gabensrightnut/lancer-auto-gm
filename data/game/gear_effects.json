@@ -435,5 +435,15 @@
         "range": 3
       }
     ]
-  }
+  },
+  "ms_mule_harness": [
+    {
+      "kind": "mule_harness"
+    }
+  ],
+  "ms_expanded_compartment": [
+    {
+      "kind": "compartment"
+    }
+  ]
 }
