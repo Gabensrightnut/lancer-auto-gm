@@ -109,3 +109,54 @@ func test_reaction_prompt_offers_choices() -> void:
 	(rp._buttons.get_child(0) as Button).pressed.emit()
 	expect_eq(got[2], {"take": true})
 	rp.free()
+
+
+func _gear_state() -> Array:
+	var db := ContentDB.new()
+	db.load_all()
+	var s := F.state()
+	var u := UnitFactory.build_mech(db, "me", "mf_standard_pattern_i_everest", {"mounts": [{"weapons": ["mw_assault_rifle"]}],
+		"systems": ["ms_pattern_a_smoke_charges", "ms_javelin_rockets", "ms_caltrop_launcher", "ms_comp_con_class_assistant_unit"]}, {"ll": 3})
+	u.side = "players"
+	u.cell = Vector2i(3, 3)
+	s.add_unit(u)
+	var foe := F.mech(s, "foe", "enemies", Vector2i(8, 3))
+	foe.name = "Foe"
+	var engine := RulesEngine.new()
+	F.begin(engine, s, u)
+	return [db, s, engine, u]
+
+
+func test_catalog_lists_systems_with_table_badges() -> void:
+	var g := _gear_state()
+	var list := ActionCatalog.for_unit(g[1], g[2], g[0], "me")
+	var names := list.map(func(a: Dictionary) -> String: return String(a.get("name", "")))
+	expect(names.any(func(n: String) -> bool: return n.contains("Smoke Grenade")), "system abilities are listed")
+	expect(names.any(func(n: String) -> bool: return n.contains("Javelin")), "Javelin Rockets are listed")
+	var comp: Array = list.filter(func(a: Dictionary) -> bool: return String(a.get("name", "")).contains("COMP/CON"))
+	expect(not comp.is_empty() and comp[0].has("table") and String(comp[0].get("table_note", "")) != "", "manual entries carry a table badge and note")
+	var more: Array = list.filter(func(a: Dictionary) -> bool: return a.get("type", "") == "self_destruct")
+	expect(not more.is_empty() and more[0]["group"] == "more", "situational actions go to the More tab")
+
+
+func test_action_inputs_for_gear() -> void:
+	var g := _gear_state()
+	var s: GameState = g[1]
+	var u: Unit = g[3]
+	var by_name := {}
+	for a: Dictionary in ActionCatalog.for_unit(s, g[2], g[0], "me"):
+		by_name[String(a.get("name", ""))] = a
+	var smoke: Dictionary = by_name.get("Smoke Grenade", {})
+	var st := ActionInputs.steps(s, g[2], u, smoke)
+	expect_eq(st.size(), 1)
+	expect_eq(st[0]["param"], "aim", "a grenade is aimed at a space")
+	expect(int(st[0].get("area", 0)) > 0, "with its blast previewed")
+	var jav := ActionInputs.steps(s, g[2], u, by_name.get("Javelin Rockets", {}))
+	expect_eq(jav[0]["param"], "spaces")
+	expect_eq(int(jav[0]["count"]), 3, "three spaces")
+	var dep := ActionInputs.steps(s, g[2], u, by_name.get("Deploy Caltrop Field", {}))
+	expect_eq(dep[0]["param"], "to", "deployables are placed on a space")
+	expect_eq(ActionInputs.value_of({"count": 1}, [[4, 2]]), [4, 2])
+	expect_eq(ActionInputs.value_of({"count": 4, "pairs": true}, [[1, 1], [1, 2], [3, 3], [3, 4]]), [[[1, 1], [1, 2]], [[3, 3], [3, 4]]])
+	var smoke_act := {"type": smoke["type"], "actor": "me", "params": (smoke["params"] as Dictionary).merged({"aim": [5, 3]})}
+	expect((g[2] as RulesEngine).validate(s, smoke_act).ok, "the picked aim makes a legal action")

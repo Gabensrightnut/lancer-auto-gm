@@ -20,6 +20,7 @@ var bar: ActionBar
 var turn: PlayerTurn
 var banner: Label
 var reaction_prompt: ReactionPrompt
+var table_notice: TableNotice
 ## Staging/tests: answer reaction prompts automatically with the suggested answer.
 var auto_react := false
 ## Set by screenshot staging to pick units without clicks.
@@ -52,6 +53,9 @@ func setup(db: ContentDB, battle_view: BattleView, events: EventPlayer, layer: C
 	reaction_prompt = ReactionPrompt.new()
 	reaction_prompt.db = content
 	ui.add_child(reaction_prompt)
+	table_notice = TableNotice.new()
+	ui.add_child(table_notice)
+	player.on_table_note = table_notice.show_note
 	player.camera = view.tactical
 	turn = PlayerTurn.new()
 	turn.bar = bar
@@ -77,7 +81,7 @@ func load_battle(map: BattleMap, roster: Dictionary, offset: Vector2) -> void:
 		var mounts: Array = []
 		for m: Array in r[6]:
 			mounts.append({"weapons": m[1], "mod": ""})
-		var u := UnitFactory.build_mech(content, id, r[0], {"mounts": mounts, "systems": []}, {"ll": 2, "hull": 1, "agility": 1, "systems": 1, "engineering": 1})
+		var u := UnitFactory.build_mech(content, id, r[0], {"mounts": mounts, "systems": r[7] if r.size() > 7 else []}, {"ll": 2, "hull": 1, "agility": 1, "systems": 1, "engineering": 1})
 		u.name = r[5]
 		u.side = r[1]
 		u.controller = SEAT if r[1] == "players" else "gm"
@@ -143,6 +147,9 @@ func sync_views() -> void:
 			if ud.has(k):
 				mv.unit[k] = ud[k]
 		mv.refresh()
+	# Zones (smoke, caltrops...): the seat's view once ViewFilter carries them; this demo is
+	# the host, so state.zones until then.
+	view.zones.set_zones(v.get("zones", state.zones))
 	_update_order()
 
 

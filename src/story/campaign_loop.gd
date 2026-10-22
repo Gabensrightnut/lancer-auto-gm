@@ -152,6 +152,51 @@ static func start_tutorial(campaign: Campaign, story: StoryState, engine: StoryE
 	return events
 
 
+## A new campaign with the same pilots, after an ending: the living pilots keep their License
+## Level, builds and portraits (reserves are spent); bonds and memories come along; the dead
+## stay dead. The new story starts at a new hub, briefing first. {"campaign", "story", "events"}.
+static func sequel(campaign: Campaign, story: StoryState, engine: StoryEngine, hub_kind: String = "town") -> Dictionary:
+	var suffix := str(Ending.data().get("sequel", {}).get("suffix", " II"))
+	var c := Campaign.create(campaign.name + suffix, campaign.options.duplicate(true))
+	c.packs = campaign.packs.duplicate(true)
+	c.gm_settings = campaign.gm_settings.duplicate(true)
+	c.rulings = campaign.rulings.duplicate(true)
+	var alive: Array = campaign.pilots.keys().filter(func(p: String) -> bool: return story.is_alive(p))
+	alive.sort()
+	for pid: String in alive:
+		var p: Dictionary = (campaign.pilots[pid] as Dictionary).duplicate(true)
+		p["reserves"] = []
+		c.pilots[pid] = p
+	var ending: Dictionary = story.flags.get(Ending.KEY, {})
+	c.story_flags["_legacy"] = {"name": campaign.name, "kind": ending.get("kind", ""), "missions": campaign.history.size(),
+		"fallen": ending.get("summary", {}).get("fallen", [])}
+	var bonds := {}
+	for k: String in story.flags.get(Bonds.KEY, {}):
+		var pair := k.split("|")
+		if alive.has(pair[0]) and alive.has(pair[1]):
+			bonds[k] = (story.flags[Bonds.KEY][k] as Dictionary).duplicate(true)
+	c.story_flags[Bonds.KEY] = bonds
+	var mem := {}
+	for pid: String in story.flags.get(Squadmate.KEY, {}):
+		if alive.has(pid):
+			var m: Dictionary = (story.flags[Squadmate.KEY][pid] as Dictionary).duplicate(true)
+			m["recent"] = {}
+			mem[pid] = m
+	c.story_flags[Squadmate.KEY] = mem
+	var s := StoryState.new(hash([c.id, "story"]))
+	s.flags = c.story_flags
+	var events: Array = []
+	var seats := story.seats.keys()
+	seats.sort()
+	for seat: String in seats:
+		var pid := story.pilot_of_seat(seat)
+		if alive.has(pid):
+			events.append_array(engine.submit(s, c, {"type": "set_seat", "seat": "gm", "params": {"seat": seat, "pilot": pid,
+				"ai": story.is_ai(seat), "persona": story.seats[seat].get("persona", "")}})["events"])
+	events.append_array(engine.submit(s, c, {"type": "enter_hub", "seat": "gm", "params": {"kind": hub_kind, "seed": int(hash([c.id, "hub"])) % 100000}})["events"])
+	return {"campaign": c, "story": s, "events": events}
+
+
 ## The result for StoryEngine's mission_finished: outcome, and which pilots died or are
 ## Down and Out (their pilot Units, matched back through the seat).
 static func mission_result(state: GameState, mission: Mission, story: StoryState, events: Array = []) -> Dictionary:

@@ -117,6 +117,33 @@ func refresh() -> void:
 				info.add_child(StoryStyle.label("• " + str(entry.get("text", "")), 14, StoryStyle.TEXT, 260))
 		for r: Dictionary in story.reserves.get(pid, []):
 			info.add_child(StoryStyle.label("+ " + str(r["name"]), 13, StoryStyle.GREEN, 260))
+		# Bonds with the rest of the squad (and the Bonded talent's bondmate).
+		var bond_bits := PackedStringArray()
+		for o: String in campaign.pilots:
+			if o != pid and story.is_alive(o):
+				var b := Bonds.get_bond(story, pid, o)
+				if str(b["label"]) != "Squadmates":
+					bond_bits.append("%s: %s" % [campaign.pilots[o].get("callsign", ""), b["label"]])
+		if not bond_bits.is_empty():
+			info.add_child(StoryStyle.label("Bonds: " + ", ".join(bond_bits), 13, StoryStyle.BLUE, 260))
+		if str(p.get("bondmate", "")) != "":
+			info.add_child(StoryStyle.label("Bondmate (Bonded talent): %s" % campaign.pilots.get(str(p["bondmate"]), {}).get("callsign", "?"), 13, StoryStyle.GOLD, 260))
+		if s == seat and Bonds.has_bonded(p):
+			var ob := OptionButton.new()
+			ob.add_item("Choose a bondmate...")
+			for o: String in campaign.pilots:
+				if o != pid and story.is_alive(o):
+					ob.add_item(str(campaign.pilots[o].get("callsign", "")))
+					ob.set_item_metadata(ob.item_count - 1, o)
+			ob.item_selected.connect(func(i: int) -> void:
+				if i <= 0:
+					return
+				var r := engine.submit(story, campaign, {"type": "set_bondmate", "seat": seat, "params": {"pilot": pid, "mate": ob.get_item_metadata(i)}})
+				if not r["ok"]:
+					_intro.text = "✕ " + str(r["reason"])
+				story_events.emit(r["events"])
+				refresh())
+			info.add_child(ob)
 		if not story.first_choice_for(pid).is_empty():
 			info.add_child(StoryStyle.label("Waiting on a choice", 13, StoryStyle.RED))
 		_cards.add_child(card)

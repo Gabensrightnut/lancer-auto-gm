@@ -53,3 +53,13 @@ func test_token_builds_for_any_look() -> void:
 		var t := PilotToken.new().build(PortraitSpec.randomize(rng))
 		expect(t.get_child_count() > 0, "token has a body")
 		t.free()
+
+
+func test_lookups_keep_the_full_portrait() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 12
+	var v2 := PortraitSpec.randomize(rng)
+	expect_eq(PortraitArt.look_for_pilot({"id": "p1", "portrait": v2}), v2, "a pilot's v2 portrait comes back whole")
+	var a := PortraitArt.look_for_pilot({"id": "p2"})
+	expect_eq(a, PortraitArt.look_for_pilot({"id": "p2"}), "no portrait: the same random one every time")
+	expect_eq(int(PortraitArt.look_for_npc({"id": "n1", "look": {"skin": "#a16a45"}})["version"]), 2, "flat NPC looks become v2")

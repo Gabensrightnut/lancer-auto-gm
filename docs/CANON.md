@@ -72,6 +72,12 @@ book in a way that changes the setting; parked.
 | Background-only dialogue options (once per person) and jobs made personal by a pilot's background | Consistent | Backgrounds are prompts for play (p.20-24); stakes tied to backgrounds (p.43); background +1 Accuracy still applies to checks (p.20) |
 | Arc shapes: betrayal (the patron was wrong), manhunt, gold rush | Consistent | Goal table kinds (p.42); goals and sides can change (p.42-43) |
 | Twists: sabotage, surrender offered, allies pinned down, leaked plan, prize in the wreckage, turncoat | Consistent | p.43 (goals change mid-mission); p.60 (surrender and retreat are valid ends to a fight) |
+| Every speaker (pilots, generated NPCs, banter, barks) carries a full builder portrait spec | Canon (look only) | Custom look has no gameplay effect (p.32) |
+| Squad bonds from shared missions, mourning, teamwork, drinking together, vote clashes; shown in debrief and downtime | Consistent | Freeform downtime bonding (p.50); no rules effect except the next two rows |
+| A bond the GM rewards: +1 Accuracy on skill checks to help each other during the next mission (pairs at Friends+, or who drank together) | Canon (GM option, on by default: options.bond_rewards) | Core p.50, the book's own example |
+| Bonded talent: choose a bondmate; replace them between missions only if the relationship changed | Canon | Core p.90 (the talent's mechanical bonuses are the rules engine's) |
+| Campaign endings (triumph / bittersweet / defeat) with an epilogue per pilot; ends after N situations, at LL12, if the squad falls, or when retired | Consistent | LL tops out at 12 (p.18); campaign shape is the table's choice; epilogues are our own text |
+| New campaign with the same pilots: they keep LL, builds and bonds; the dead stay dead | Canon / Consistent | Never lose licensed access (p.31); starting above LL0 is allowed (p.18) |
 
 ## When canon allows more than one answer
 

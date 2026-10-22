@@ -20,6 +20,11 @@ var lit := true:
 		queue_redraw()
 ## Draw the card background (off for thumbnails on a panel that has its own).
 var card := true
+## Mirror the drawing (the right-hand speaker in dialogue faces the left one).
+var flip := false:
+	set(v):
+		flip = v
+		queue_redraw()
 
 var _o := Vector2.ZERO  # canvas origin (head center line)
 var _s := 1.0  # canvas scale: 1 unit = portrait width
@@ -40,6 +45,28 @@ func set_look(l: Dictionary, expr: String = "neutral") -> void:
 	if not EXPRESSIONS.has(expression):
 		expression = "neutral"
 	queue_redraw()
+
+
+## The full v2 look for a pilot record: pilot["portrait"], else an older look, else a stable
+## random one from its id (unlike the placeholder's, nothing is flattened away).
+static func look_for_pilot(p: Dictionary) -> Dictionary:
+	for k: String in ["portrait", "look"]:
+		if p.get(k) is Dictionary and not (p[k] as Dictionary).is_empty():
+			return PortraitSpec.normalize(p[k])
+	return _seeded(str(p.get("id", p.get("name", "pilot"))))
+
+
+## An NPC's look: npc["look"] (v2 or flat), else a stable random one from its id.
+static func look_for_npc(npc: Dictionary) -> Dictionary:
+	if npc.get("look") is Dictionary and not (npc["look"] as Dictionary).is_empty():
+		return PortraitSpec.normalize(npc["look"])
+	return _seeded(str(npc.get("id", npc.get("name", "npc"))))
+
+
+static func _seeded(key: String) -> Dictionary:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(key)
+	return PortraitSpec.randomize(rng)
 
 
 func _part(id: String) -> Dictionary:
@@ -193,6 +220,8 @@ func _draw() -> void:
 	_s = minf(w * 1.12, h * 0.98)
 	_o = Vector2(w * 0.5, h * 0.46)
 	_skin = _col("face", "primary", "#c68d66")
+	if flip:
+		draw_set_transform(Vector2(w, 0), 0.0, Vector2(-1, 1))
 	if card:
 		_draw_card(w, h)
 	_hair_back()

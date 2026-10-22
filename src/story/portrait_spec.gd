@@ -56,6 +56,51 @@ static func randomize(rng: RandomNumberGenerator, keep: Dictionary = {}, locks: 
 	return out
 
 
+## A portrait with every part filled in: the given parts kept, the rest picked by `rng`.
+static func complete(spec: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
+	var base := normalize(spec)
+	var full := PortraitSpec.randomize(rng, base, _all_locked(base))
+	full["seed"] = base.get("seed", 0)
+	return full
+
+
+static func _all_locked(spec: Dictionary) -> Dictionary:
+	var locks := {}
+	for pid: String in spec.get("parts", {}):
+		locks[pid] = true
+	return locks
+
+
+## The complete portrait for an NPC record (its own, or one made from its look).
+static func for_npc(npc: Dictionary) -> Dictionary:
+	if npc.get("portrait") is Dictionary and not (npc["portrait"] as Dictionary).is_empty():
+		return npc["portrait"]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([str(npc.get("id", "")), "portrait"])
+	return complete(npc.get("look", {}), rng)
+
+
+## The complete portrait for a pilot (pilot["portrait"], else one made from their id).
+static func for_pilot(p: Dictionary) -> Dictionary:
+	if p.get("portrait") is Dictionary and int((p["portrait"] as Dictionary).get("version", 1)) >= 2:
+		return p["portrait"]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([str(p.get("id", p.get("name", ""))), "portrait"])
+	return complete(Portrait.look_for_pilot(p), rng)
+
+
+## Who's talking, for any UI: {"portrait": v2 spec, "expression": id}, or {} for the narrator.
+static func of_speaker(story: StoryState, campaign: Campaign, ctx: Dictionary, speaker: String, expression: String = "neutral") -> Dictionary:
+	match speaker:
+		"npc":
+			var npc: Dictionary = story.npcs.get(str(ctx.get("npc", "")), {})
+			return {} if npc.is_empty() else {"portrait": for_npc(npc), "expression": expression}
+		"pilot":
+			var p: Dictionary = campaign.pilots.get(str(ctx.get("speaker", "")), {}) if campaign != null else {}
+			return {} if p.is_empty() else {"portrait": for_pilot(p), "expression": expression}
+	return {}
+
+
 ## Any look (v2 portrait or an older flat look) as a v2 portrait.
 static func normalize(look: Dictionary) -> Dictionary:
 	if int(look.get("version", 1)) >= 2 and look.has("parts"):

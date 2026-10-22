@@ -11,8 +11,8 @@ signal action_pressed(action: Dictionary)
 signal action_hovered(action: Dictionary, on: bool)
 signal end_turn_pressed
 
-const GROUPS := ["weapons", "quick", "full", "tech", "systems", "reactions", "core"]
-const GROUP_NAMES := {"all": "All", "weapons": "Weapons", "quick": "Quick", "full": "Full", "tech": "Tech",
+const GROUPS := ["weapons", "quick", "full", "tech", "systems", "reactions", "core", "more"]
+const GROUP_NAMES := {"all": "All", "more": "More", "weapons": "Weapons", "quick": "Quick", "full": "Full", "tech": "Tech",
 	"systems": "Systems", "reactions": "Reactions", "core": "Core"}
 ## Bar height as a fraction of the screen height (DESIGN: ~9% at 1080p).
 const BASE_HEIGHT := 0.09
@@ -115,7 +115,8 @@ func _visible_actions() -> Array:
 	for id: String in _order:
 		if by_id.has(id):
 			var a: Dictionary = by_id[id]
-			if tab == "all" or String(a.get("group", "quick")) == tab:
+			# "All" leaves out the situational extras on the More tab (Eject, Mount...).
+			if (tab == "all" and String(a.get("group", "")) != "more") or String(a.get("group", "quick")) == tab:
 				out.append(a)
 	return out
 

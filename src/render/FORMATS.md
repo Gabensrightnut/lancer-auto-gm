@@ -201,6 +201,32 @@ All three read the story session's v2 portrait (`PortraitSpec`, `data/game/story
 Screenshot scene: `scenes/customizer.tscn`, tags creator_portrait, creator_token,
 creator_beard, portraits, expressions.
 
+## Abilities, picks and zones
+
+- **Catalog:** `ActionCatalog.for_unit` adds everything in `RulesQueries.available_actions`
+  that it doesn't build itself: the remaining basic actions, system, talent and trait
+  abilities, trait reactions and the core power.
+  - Situational basics (Eject, Mount, Self-Destruct...) go on the **More** tab, which All
+    leaves out.
+  - Entries whose `automation` is manual or partial get `table` ("manual"/"partial") and
+    `table_note`. The button shows a TABLE badge and the hover card shows the note.
+- **Picks:** `ActionInputs.steps(state, engine, unit, action)` is the list of things to pick
+  before submitting. Each step is `{param, pick: unit|cell, count, optional, label, area,
+  weapon, who, pairs}`.
+  - Weapons: aim, aims, targets, fold_to.
+  - Abilities: to (deploy), target, toward, aim, spaces.
+  - Core power: target, aim (mag field), sections (pairs), drones.
+  - Anything else is probed with validate.
+  - `PlayerTurn` runs the steps on the board (mode "pick"): hover previews the area, picked
+    spaces are marked, the last pick is checked with validate (the reason shows in the hint),
+    Space finishes "up to" or optional steps, and a confirm prompt follows.
+  - TODO(rules): a `RulesQueries.action_inputs` query would replace the guessing.
+- **Zones:** `BattleView.zones: ZoneLayer` draws `state.zones` (smoke, sealant, caltrops,
+  bunker, javelin, cloak, mag_field, smoke_cloud, hologram, enclave and others), from
+  `zone_created`/`zone_removed` events or `set_zones(list)`.
+- **Table notes:** `manual_effect` events log their `guidance` and pop up a `TableNotice`
+  ("For the table").
+
 ## Cameras
 
 `BattleView.set_camera_mode("tactical")` or `set_camera_mode("cockpit", unit_id, target_id)`.

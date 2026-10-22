@@ -11,6 +11,7 @@ const COLORS := {
 	"hard": Color(0.3, 0.6, 1.0), "soft": Color(0.45, 1.0, 0.6),
 	"footprint": Color(0.35, 0.85, 1.0), "bad": Color(1.0, 0.25, 0.2),
 	"blocked": Color(0.08, 0.08, 0.09), "sky": Color(0.55, 0.8, 1.0), "dim": Color(0.0, 0.0, 0.02),
+	"area": Color(1.0, 0.5, 0.2), "pick": Color(1.0, 0.82, 0.35), "pick_bad": Color(1.0, 0.25, 0.2),
 }
 const FLAG_TEXT := {
 	"provoke": "PROVOKES", "boost": "BOOST", "difficult": "DIFFICULT",
@@ -56,6 +57,14 @@ func show_plan(new_plan: Dictionary) -> void:
 		_draw_footprint(plan["footprint"])
 	if plan.has("cover_from"):
 		_draw_cover_from(plan["cover_from"])
+	# Step-by-step picking: the area an aim would hit, spaces already picked, the hovered one.
+	if plan.has("area"):
+		_draw_cells(plan["area"], -1, COLORS["area"], 0.32)
+	if plan.has("picked"):
+		_draw_cells(plan["picked"], -1, COLORS["pick"], 0.55)
+	if plan.has("hover_cell"):
+		var ok: bool = plan.get("hover_ok", true)
+		_draw_cells([plan["hover_cell"]], -1, COLORS["pick"] if ok else COLORS["pick_bad"], 0.4)
 
 
 # --- helpers ---------------------------------------------------------------------------

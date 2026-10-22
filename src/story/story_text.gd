@@ -178,6 +178,11 @@ static func briefing_vars(story: StoryState, campaign: Campaign) -> Dictionary:
 		v["last_place"] = str(lm.get("place", ""))
 		v["last_outcome_line"] = {"victory": "it went our way", "defeat": "it went badly", "draw": "nobody won"}.get(str(lm.get("outcome", "")), "it's over")
 		v["last_twist"] = str(lm.get("twist", ""))
+	var legacy: Dictionary = story.flags.get("_legacy", {})
+	if not legacy.is_empty() and campaign != null and campaign.history.is_empty():
+		var opts: Array = Ending.data().get("sequel", {}).get("briefing_legacy", [])
+		if not opts.is_empty():
+			v["legacy_line"] = str(opts[story.dice.die(opts.size()) - 1]).replace("{legacy_name}", str(legacy.get("name", "the last campaign")))
 	var recap: Array = story.flags.get("_last_downtime", [])
 	if not recap.is_empty():
 		v["downtime_recap"] = " ".join(PackedStringArray(recap.slice(0, 4).map(func(r: Dictionary) -> String: return str(r.get("text", "")))))
