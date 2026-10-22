@@ -59,6 +59,14 @@ extends RefCounted
 ##                           ranged attack gets +2d6 bonus damage, AP, ignores cover (Gunslinger 3)
 ##   called_shot             1/round, steadied Rifle crit: Hull save or headshot/leg/body
 ##                           (params.called_shot, default leg) (Crack Shot 3)
+##   return_fire             1/round reaction: hit by a ranged attack, shoot back with an
+##                           Auxiliary ranged weapon (Gunslinger 2)
+##   intercede               1/round reaction: take the damage the adjacent bondmate would take
+##                           from a source in line of sight (Bonded 2)
+##   flank                   1/round reaction: an ally hits a character with no cover from you;
+##                           attack it for half damage (Tactician 3)
+##   melee_reroll            1/round, a missed melee attack is rerolled against another
+##                           character in Threat (params.reroll_target, else the nearest) (Executioner 3)
 ##   prowl                   on its own turn: Hidden isn't lost to line of sight or leaving cover,
 ##                           Hide in plain sight, pass through enemies (Infiltrator 1)
 
@@ -607,6 +615,82 @@ static func damaged_by(target: Unit, source: Unit) -> void:
 static func gunslinger_ready(u: Unit, w: Dictionary) -> bool:
 	return Effects.has(u, "gunslinger_die") and int(u.counters.get("gunslinger_die", 6)) <= 1 \
 		and String(w.get("size", "")) == "Auxiliary" and RANGED_TYPES.has(String(w.get("type", "")))
+
+
+## Reactions and follow-ups after an attack resolves: Return Fire, Flank, Executioner 3.
+static func after_attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit, kind: String, result: String, opts: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if target.kind == Unit.KIND_DEPLOYABLE or attacker.destroyed:
+		return events
+	if result == "miss" and kind == Attacks.KIND_MELEE and Effects.has(attacker, "melee_reroll") and _round_ok(state, attacker, "melee_reroll") and not opts.get("reroll", false):
+		var other := state.unit(String(opts.get("reroll_target", "")))
+		if other == null:
+			var best := 1000
+			for o: Unit in state.units.values():
+				if o != target and o.side != attacker.side and Combat.is_present(o) and o.kind != Unit.KIND_DEPLOYABLE \
+						and Attacks.preview(state, attacker, w, o, {"fired_by_rule": true})["ok"] and Sight.unit_distance(state, attacker, o) < best:
+					best = Sight.unit_distance(state, attacker, o)
+					other = o
+		if other != null and other != target and Attacks.preview(state, attacker, w, other, {"fired_by_rule": true})["ok"]:
+			_use_round(state, attacker, "melee_reroll")
+			events.append({"type": "attack_rerolled", "attacker": attacker.id, "target": other.id, "source": "Executioner", "rule_ref": REF})
+			events.append_array(Attacks.attack(state, attacker, w, other, {"fired_by_rule": true, "skip_spend": true, "reroll": true}))
+	if result == "miss" or not Combat.is_present(target):
+		return events
+	if kind == Attacks.KIND_RANGED and Effects.has(target, "return_fire") and _round_ok(state, target, "return_fire") and Combat.is_present(attacker) \
+			and Reactions.can_react(target, "return_fire", state).ok:
+		for rw: Dictionary in target.loadout.get("weapons", []):
+			if String(rw.get("size", "")) == "Auxiliary" and RANGED_TYPES.has(String(rw.get("type", ""))) and Attacks.preview(state, target, rw, attacker, {"reaction": true})["ok"]:
+				var d := Reactions.offer(state, target, "return_fire", {"attacker": attacker.id, "weapon": rw.get("key", ""), "suggested": {"take": true}}, {"take": true})
+				if d.get("take", false):
+					_use_round(state, target, "return_fire")
+					Reactions._mark_used(target, "return_fire", state)
+					events.append_array(Attacks.attack(state, target, rw, attacker, {"reaction": true}))
+				break
+	var ids: Array = state.units.keys()
+	ids.sort()
+	for id: String in ids:
+		var o := state.unit(id)
+		if o == attacker or o.side != attacker.side or not Effects.has(o, "flank") or not Combat.is_present(o) or not Combat.is_present(target):
+			continue
+		if not _round_ok(state, o, "flank") or not Reactions.can_react(o, "flank", state).ok:
+			continue
+		if String(Sight.unit_cover(state, o, target).get("cover", "none")) != "none":
+			continue
+		for fw: Dictionary in o.loadout.get("weapons", []):
+			if Attacks.preview(state, o, fw, target, {"reaction": true})["ok"]:
+				var d := Reactions.offer(state, o, "flank", {"target": target.id, "weapon": fw.get("key", ""), "suggested": {"take": true}}, {"take": true})
+				if d.get("take", false):
+					_use_round(state, o, "flank")
+					Reactions._mark_used(o, "flank", state)
+					events.append_array(Attacks.attack(state, o, fw, target, {"reaction": true, "half_damage": true}))
+				break
+	return events
+
+
+## Bonded Intercede: the bondmate next to `target` (who has the talent and chose it) takes the
+## damage instead, if it can see the source. Returns that bondmate, or null.
+static func intercede(state: GameState, target: Unit, source: Unit, parts: Array) -> Unit:
+	if source == null or parts.all(func(p: Dictionary) -> bool: return String(p.get("type", "")) == "Heat"):
+		return null
+	for o: Unit in state.units.values():
+		if o == target or not Effects.has(o, "intercede") or String(o.counters.get("bondmate", "")) != target.id:
+			continue
+		if not Combat.is_present(o) or Sight.unit_distance(state, o, target) > 1 or not Sight.unit_line_of_sight(state, o, source):
+			continue
+		if not _round_ok(state, o, "intercede") or not Reactions.can_react(o, "intercede", state).ok:
+			continue
+		# Suggested only when the hit would take the bondmate down and the interceder can take it.
+		var total := 0
+		for p: Dictionary in parts:
+			total += int(p.get("amount", 0))
+		var d := Reactions.offer(state, o, "intercede", {"target": target.id, "source": source.id, "suggested": {"take": total >= target.hp and o.hp > total}},
+			{"take": total >= target.hp and o.hp > total})
+		if d.get("take", false):
+			_use_round(state, o, "intercede")
+			Reactions._mark_used(o, "intercede", state)
+			return o
+	return null
 
 
 ## Infiltrator Prowl is active (its own turn).

@@ -154,6 +154,15 @@ static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dict
 	if target.destroyed:
 		return events
 	var source: String = opts.get("source", "")
+	if not opts.get("interceded", false):
+		var mate := TalentRules.intercede(state, target, state.unit(source), parts)
+		if mate != null:
+			# Bonded Intercede: the bondmate takes the damage instead.
+			var o2 := opts.duplicate()
+			o2["interceded"] = true
+			var moved: Array[Dictionary] = [{"type": "effect_triggered", "unit": mate.id, "effect": "Intercede", "target": target.id, "rule_ref": "talents: Bonded"}]
+			moved.append_array(deal_damage(state, mate, parts, o2))
+			return moved
 	TalentRules.damaged_by(target, state.unit(source))  # Heavy Gunner: Covering Fire ends
 	var shredded := target.has_status("Shredded")
 	# "Can't be reduced in any way" (Monarch Seeking Payload, Pegasus Omnigun): no Armor,
