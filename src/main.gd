@@ -551,7 +551,7 @@ func screenshot_setup(args: PackedStringArray) -> Array:
 	var tags: Array = Array(args)
 	if tags.is_empty() or tags[0] == "all":
 		tags = ["board", "square", "move", "sky", "los", "roll", "kinetic", "beam", "missile", "melee", "tech", "deploy", "heat", "vent", "destroy", "cockpit", "hud", "hills", "hills_close", "hills_nogrid", "hills_square", "alien", "alien_close", "alien_vista",
-			"turn_order", "my_turn", "target", "cooldowns", "enemy_turn", "skill", "walk", "reaction"]
+			"turn_order", "my_turn", "target", "cooldowns", "enemy_turn", "skill", "walk", "reaction", "wreck"]
 	return tags
 
 
@@ -667,11 +667,22 @@ func screenshot_stage(tag: String) -> void:
 			if tag == "vent":
 				player.play([ev["heat"][2]])
 				await Fx.wait(self, 0.7)
-		"destroy":
+		"destroy", "wreck":
 			_focus_for("destroy")
+			view.tactical.distance = 4.5
 			view.tactical.snap()
-			player.play(ev["structure"] + ev["destroy"])
-			await Fx.wait(self, 3.4)
+			await player.play(ev["structure"])
+			player.play(ev["destroy"])
+			# The fireball at its peak, or the burning wreck once it settles.
+			await Fx.wait(self, 0.35 if tag == "destroy" else 2.6)
+		"firetest":
+			var at: Vector3 = view.units["goblin"].global_position + Vector3(1.5, 0, 0)
+			view.units["goblin"].visible = false
+			Fx.fire(view.fx_root, at + Vector3.UP * 0.1, 0.8)
+			view.tactical.look_at_point(at + Vector3.UP * 0.4, 3.0)
+			view.tactical.pitch = -12
+			view.tactical.snap()
+			await Fx.wait(self, 1.5)
 		"walk":
 			_focus_for("move")
 			view.tactical.distance = 4.0

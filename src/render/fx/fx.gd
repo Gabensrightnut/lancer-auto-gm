@@ -11,6 +11,25 @@ const GLYPHS := ["0", "1", "7", "A", "F", "#", "%", "<", ">", "/", "=", "∆", "
 
 static var speed := 1.0
 static var _soft_tex: GradientTexture2D
+static var _soft_add_tex: GradientTexture2D
+
+
+## Soft round puff that fades to black as well as to clear, for additive blending (which
+## ignores alpha, so a white-edged texture would draw every puff as a square).
+static func soft_add_texture() -> GradientTexture2D:
+	if _soft_add_tex == null:
+		var g := Gradient.new()
+		g.set_color(0, Color(1, 1, 1, 1))
+		g.add_point(0.5, Color(0.35, 0.35, 0.35, 0.35))
+		g.set_color(g.get_point_count() - 1, Color(0, 0, 0, 0))
+		_soft_add_tex = GradientTexture2D.new()
+		_soft_add_tex.gradient = g
+		_soft_add_tex.fill = GradientTexture2D.FILL_RADIAL
+		_soft_add_tex.fill_from = Vector2(0.5, 0.5)
+		_soft_add_tex.fill_to = Vector2(1.0, 0.5)
+		_soft_add_tex.width = 64
+		_soft_add_tex.height = 64
+	return _soft_add_tex
 
 
 static func wait(root: Node, seconds: float) -> void:
@@ -144,8 +163,12 @@ static func _soft_material(color: Color, emissive: float = 0.0) -> StandardMater
 	m.vertex_color_use_as_albedo = true
 	m.albedo_color = color
 	if emissive > 0.0:
-		m.emission_enabled = true
-		m.emission = Color(color.r, color.g, color.b) * emissive
+		# Glowing puffs (fire): additive, so overlapping puffs brighten and the soft
+		# texture keeps every puff round.
+		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+		m.albedo_texture = soft_add_texture()
+		m.albedo_color = Color(color.r * emissive, color.g * emissive, color.b * emissive, color.a)  # HDR: glows
 	return m
 
 
@@ -246,15 +269,59 @@ static func warning_ring(root: Node3D, center: Vector3, radius: float, dur: floa
 
 
 static func explosion(root: Node3D, pos: Vector3, radius: float = 0.8) -> void:
-	var fire := _glow_sphere(root, pos, Color(1.0, 0.55, 0.15), radius * 0.2, 4.0)
-	var tw := fire.create_tween()
-	tw.tween_property(fire, "scale", Vector3.ONE * radius, t(0.18)).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_method(func(a: float) -> void: fire.set_instance_shader_parameter("alpha", a), 1.0, 0.0, t(0.45))
-	tw.tween_callback(fire.queue_free)
-	light_flash(root, pos + Vector3.UP * 0.3, Color(1.0, 0.6, 0.25), 8.0, radius * 5.0, 0.5)
+	# A brief white-hot flash, then a churning fireball of puffs (yellow -> orange -> dark
+	# red -> smoke), sparks, debris and a dark smoke column rising after it.
+	var flash_s := _glow_sphere(root, pos, Color(1.0, 0.85, 0.6), radius * 0.35, 5.0)
+	var tw := flash_s.create_tween()
+	tw.tween_method(func(a: float) -> void: flash_s.set_instance_shader_parameter("alpha", a), 1.0, 0.0, t(0.12))
+	tw.tween_callback(flash_s.queue_free)
+	light_flash(root, pos + Vector3.UP * 0.3, Color(1.0, 0.55, 0.2), 7.0, radius * 5.0, 0.6)
+	fireball(root, pos, radius)
 	sparks(root, pos, Color(1.0, 0.7, 0.3), 30, 5.0)
 	debris(root, pos, 10)
-	dust(root, pos, 10, Color(0.25, 0.22, 0.2, 0.75), radius * 1.4, 1.2, 2.0)
+	var smoke := dust(root, pos + Vector3.UP * radius * 0.3, 12, Color(0.12, 0.11, 0.1, 0.8), radius * 1.6, 1.0, 3.0)
+	smoke.explosiveness = 0.6
+	smoke.gravity = Vector3(0, 0.6, 0)
+
+
+## The fireball itself: emissive soft puffs that bloom out and burn down to smoke.
+static func fireball(root: Node3D, pos: Vector3, radius: float) -> void:
+	var p := CPUParticles3D.new()
+	p.position = pos
+	p.one_shot = true
+	p.explosiveness = 0.95
+	p.amount = 22
+	p.lifetime = 0.9
+	p.speed_scale = speed
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = radius * 0.25
+	p.direction = Vector3.UP
+	p.spread = 180.0
+	p.initial_velocity_min = radius * 0.8
+	p.initial_velocity_max = radius * 2.0
+	p.damping_min = radius * 2.0
+	p.damping_max = radius * 3.0
+	p.gravity = Vector3(0, radius * 0.8, 0)
+	p.scale_amount_min = radius * 0.7
+	p.scale_amount_max = radius * 1.3
+	var curve := Curve.new()
+	curve.add_point(Vector2(0, 0.35))
+	curve.add_point(Vector2(0.3, 1.0))
+	curve.add_point(Vector2(1, 1.25))
+	p.scale_amount_curve = curve
+	var g := Gradient.new()
+	g.set_color(0, Color(1.0, 0.95, 0.7, 1.0))
+	g.add_point(0.18, Color(1.0, 0.6, 0.15, 1.0))
+	g.add_point(0.45, Color(0.75, 0.18, 0.04, 0.9))
+	g.add_point(0.7, Color(0.15, 0.1, 0.08, 0.7))
+	g.set_color(g.get_point_count() - 1, Color(0.08, 0.07, 0.06, 0.0))
+	p.color_ramp = g
+	var q := QuadMesh.new()
+	q.material = _soft_material(Color.WHITE, 2.5)
+	p.mesh = q
+	root.add_child(p)
+	p.emitting = true
+	_free_after(p, 2.0)
 
 
 static func debris(root: Node3D, pos: Vector3, amount: int, color: Color = Color(0.3, 0.29, 0.28)) -> void:
@@ -378,27 +445,61 @@ static func steam(root: Node3D, pos: Vector3, scale: float = 1.0) -> void:
 static func fire(root: Node3D, pos: Vector3, scale: float = 1.0) -> CPUParticles3D:
 	var p := CPUParticles3D.new()
 	p.position = pos
-	p.amount = 24
-	p.lifetime = 0.7
+	# Tongues of flame: puffs born wide at the base that shrink and cool as they rise,
+	# with a thin dark smoke trail above (a child emitter freed with the fire).
+	p.amount = 18
+	p.lifetime = 0.8
 	p.direction = Vector3.UP
-	p.spread = 15.0
-	p.initial_velocity_min = 0.5 * scale
-	p.initial_velocity_max = 1.2 * scale
-	p.gravity = Vector3(0, 1.0, 0)
+	p.spread = 22.0
+	p.initial_velocity_min = 0.6 * scale
+	p.initial_velocity_max = 1.1 * scale
+	p.gravity = Vector3(0, 1.2 * scale, 0)
+	p.spread = 12.0
 	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
-	p.emission_sphere_radius = 0.15 * scale
-	p.scale_amount_min = 0.15 * scale
-	p.scale_amount_max = 0.35 * scale
+	p.emission_sphere_radius = 0.12 * scale
+	p.scale_amount_min = 0.14 * scale
+	p.scale_amount_max = 0.28 * scale
+	var curve := Curve.new()
+	curve.add_point(Vector2(0, 0.6))
+	curve.add_point(Vector2(0.25, 1.0))
+	curve.add_point(Vector2(1, 0.35))
+	p.scale_amount_curve = curve
 	var g := Gradient.new()
-	g.set_color(0, Color(1.0, 0.8, 0.3, 1.0))
-	g.add_point(0.4, Color(1.0, 0.35, 0.05, 0.8))
-	g.set_color(g.get_point_count() - 1, Color(0.2, 0.15, 0.12, 0.0))
+	g.set_color(0, Color(1.0, 0.7, 0.3, 0.6))
+	g.add_point(0.3, Color(1.0, 0.4, 0.08, 0.55))
+	g.add_point(0.7, Color(0.7, 0.12, 0.02, 0.35))
+	g.set_color(g.get_point_count() - 1, Color(0.2, 0.05, 0.02, 0.0))
 	p.color_ramp = g
 	var q := QuadMesh.new()
-	q.material = _soft_material(Color.WHITE, 3.0)
+	q.material = _soft_material(Color.WHITE, 1.9)
 	p.mesh = q
 	root.add_child(p)
 	p.emitting = true
+	var smoke := CPUParticles3D.new()
+	smoke.position = Vector3.UP * 0.35 * scale
+	smoke.amount = 14
+	smoke.lifetime = 2.2
+	smoke.direction = Vector3.UP
+	smoke.spread = 12.0
+	smoke.initial_velocity_min = 0.3 * scale
+	smoke.initial_velocity_max = 0.5 * scale
+	smoke.gravity = Vector3(0.15, 0.2, 0)
+	smoke.scale_amount_min = 0.25 * scale
+	smoke.scale_amount_max = 0.45 * scale
+	var sc := Curve.new()
+	sc.add_point(Vector2(0, 0.5))
+	sc.add_point(Vector2(1, 1.6))
+	smoke.scale_amount_curve = sc
+	var sg := Gradient.new()
+	sg.set_color(0, Color(0.1, 0.09, 0.08, 0.0))
+	sg.add_point(0.15, Color(0.1, 0.09, 0.08, 0.55))
+	sg.set_color(sg.get_point_count() - 1, Color(0.15, 0.14, 0.13, 0.0))
+	smoke.color_ramp = sg
+	var sq := QuadMesh.new()
+	sq.material = _soft_material(Color.WHITE)
+	smoke.mesh = sq
+	p.add_child(smoke)
+	smoke.emitting = true
 	return p
 
 
