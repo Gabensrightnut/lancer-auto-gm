@@ -278,3 +278,16 @@ func test_gm_edits_reach_the_board() -> void:
 	Fx.speed = 1.0
 	ep.free()
 	view.free()
+
+
+func test_terrain_hits_show_damage() -> void:
+	var view := BattleView.new()
+	view.set_map(DemoMap.build_showcase(GridLayout.Shape.HEX), "grassy_hills")
+	var ep := EventPlayer.new(view, null, null)
+	Fx.speed = 0.0
+	await ep.play_event({"type": "terrain_damaged", "cell": [3, 3], "amount": 4, "damage_type": "Kinetic"})
+	await ep.play_event({"type": "terrain_damaged", "cell": [3, 3], "amount": 3, "damage_type": "Kinetic"})
+	expect_eq(int(view.terrain.damage.get("3,3", 0)), 7, "clients add up the hits they've seen")
+	Fx.speed = 1.0
+	ep.free()
+	view.free()
