@@ -157,7 +157,7 @@ them, and they disappear when the turn moves on.
 - **Mechs look as close as possible to their official art** (your choice): each frame is
   modeled individually to match its book / Lancer Tactics look: same silhouette, armor
   shapes, proportions, head, and signature details, with smooth curved surfaces, panel lines
-  and bevels, not blocks. Reference: the official frame art linked in 
+  and bevels, not blocks. Reference: the official frame art linked in `frames.json`
   (`image_url`), viewed for reference only; those images are never put in the game or repo.
 - Modeled in Blender by script (free, open source), exported as glTF, one model per frame,
   with mount points where weapons attach. Weapons and systems still come from the real
