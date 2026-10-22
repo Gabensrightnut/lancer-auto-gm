@@ -19,9 +19,11 @@ static func _check_attack(state: GameState, u: Unit, a: Variant, ref: String) ->
 		var r := Attacks.weapon_ready(u, w, a.get("improvised", false))
 		if not r.ok:
 			return r
-		var plan := Areas.plan(state, u, w, TurnAction.cell_param(a, "aim"), int(a.get("aim_level", -1)))
+		var plan := Areas.plan(state, u, w, TurnAction.cell_param(a, "aim"), int(a.get("aim_level", -1)), TurnAction.cell_param(a, "from"))
 		return RuleResult.allow() if plan["ok"] else RuleResult.deny(plan["reason"], plan["rule_ref"])
 	var p := Attacks.preview(state, u, w, state.unit(String(a.get("target", ""))), a)
+	if p.get("grey_area", "") != "":
+		return Rulings.needed(String(p["grey_area"]))
 	if not p["ok"]:
 		return RuleResult.deny(p["reason"], p["rule_ref"])
 	return RuleResult.allow()

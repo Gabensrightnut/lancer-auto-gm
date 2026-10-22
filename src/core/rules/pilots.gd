@@ -122,8 +122,11 @@ static func explode(state: GameState, mech: Unit, why: String) -> Array[Dictiona
 			hit.append(u)
 	events.append({"type": "reactor_explosion", "unit": mech.id, "reason": why, "roll": roll,
 		"targets": hit.map(func(x: Unit) -> String: return x.id), "rule_ref": REF_EXPLOSION})
+	var save_target := mech.save_target
+	if not hit.is_empty() and save_target != Combat.CHECK_TARGET and Rulings.ask(state, "explosion_save_target") == "ten":
+		save_target = Combat.CHECK_TARGET
 	for u: Unit in hit:
-		var save := Combat.skill_check(state, u, "agility", "Agility save vs reactor explosion", mech.save_target, 0, 0, [], true)
+		var save := Combat.skill_check(state, u, "agility", "Agility save vs reactor explosion", save_target, 0, 0, [], true)
 		events.append({"type": "skill_check", "unit": u.id, "check": save, "rule_ref": REF_EXPLOSION})
 		var amount := int(roll["total"])
 		if save["success"]:

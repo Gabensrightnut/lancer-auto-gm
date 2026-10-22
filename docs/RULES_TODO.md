@@ -6,39 +6,52 @@ book (free version, `local/books/core.txt`, never committed); page references ar
 "Confirmed". Any difference from Lancer Tactics goes in DESIGN.md's Rule differences table
 for the user to decide. Code that depends on a row here is marked `PROVISIONAL`.
 
-## Open (the book doesn't say, or only says it for a flat tabletop)
+## Table rulings (the book allows more than one reading)
 
-| Rule | Current assumption | Where in code |
+Each reading is supported; the table picks (a "table rules" screen from
+`RulesQueries.rulings()`, or when it first comes up: actions are refused with the ruling id,
+or paused mid-action with a `ruling_needed` event, until `set_ruling` answers). The campaign
+keeps the choices. An AI GM answers with the suggested reading and logs it. Code:
+`src/core/rules/rulings.gd`.
+
+| Ruling id | Question | Readings (suggested first) | Book |
+|---|---|---|---|
+| `big_mech_uneven_ground` | Can a Size 2+ mech stand partly over lower ground? | forbid / allow | p.59, 62 silent |
+| `climb_cost` | Cost of a step up or down | 1 + 2 per level / 2 per level, step included | p.63 |
+| `flight_difficult` | Do flyers pay for difficult terrain below? | ignore / pay | p.62, 63 |
+| `distance_3d` | Range, Threat, Sensors when heights differ | spaces in any direction / along the ground | p.62, 63, 64 |
+| `heat_overflow` | Heat that carries over after overheating | beyond Cap + 1 / beyond Cap | p.81 |
+| `unforced_save_target` | Flyer's Agility save after structure/stress damage | 10 / the damager's Save Target | p.13, 63 |
+| `explosion_save_target` | Reactor explosion Agility save | the mech's Save Target / 10 | p.72, 81 |
+| `npc_brace` | Can NPCs Brace? | no / yes | p.73 (no NPC rules in the free book) |
+| `overwatch_area_weapons` | Overwatch with Blast/Burst/Cone/Line weapons | no / yes, aimed at the mover | p.64, 73 |
+| `slowed_jump` | Can a Slowed character jump? | no / yes | p.63, 78 |
+| `teleport_move_cost` | Movement a teleporting move uses | the whole move / 1 space | p.63 |
+| `prone_ignore_difficult` | Does "ignore difficult terrain" cancel Prone's extra cost? | cancels / still double | p.77 |
+| `eject_distance` | Where an ejecting pilot lands | exactly 6 in a line / anywhere within 6 | p.71 |
+
+## Engine geometry (consistent with the book, which only describes a flat tabletop)
+
+| Topic | How the engine does it | Where |
 |---|---|---|
-| Hex footprints for big mechs | Size 2 = 3-hex triangle, Size 3 = 7-hex flower. The book only says Size N is N spaces on each side (p.59, 79) | `hex_grid.gd` |
-| Big mechs on uneven ground | Table ruling `big_mech_uneven_ground` ("allow" / "forbid"), asked the first time a move needs it | `movement.gd`, `move_actions.gd` |
-| Climbing cost per step | Climbing is half speed (p.63); a step up or down d levels costs 1 + 2d; down costs the same as up; no height limit | `movement.gd` |
-| Flight and difficult terrain | Flying ignores difficult terrain on the ground | `movement.gd` |
-| Distance in 3D | Larger of ground distance and height gap; adjacency including vertical is confirmed (p.62), range/threat/sensors in 3D aren't spelled out | `sight.gd` |
-| Line of sight sampling | Lines between the middles of the spaces a character fills (plus the top of its head); only terrain and wrecks block; characters don't (p.66: they never grant cover) | `sight.gd` |
-| Cover geometry in 3D | The book's tests are for a flat map (p.66). Flanking uses lines from the attacker's spaces to the target's spaces or the top of its head; the soft-cover line runs between the centers of the two bodies; a column's terrain "size" is its height above the target's base; cover next to the attacker no taller than it is ignored unless it is also next to the target | `sight.gd` |
+| Hex footprints | Size 2 = 3-hex triangle, Size 3 = 7-hex flower: N spaces across (p.59, 79: "N spaces on all sides") | `hex_grid.gd` |
+| Line of sight | Lines between the middles of the spaces a character fills (plus the top of its head); terrain and wrecks block, characters don't (p.65, 66) | `sight.gd` |
+| Cover in 3D | Flanking (p.66) uses lines from the attacker's spaces to the target's spaces or the top of its head; the soft-cover line runs center to center; a column's "size" is its height above the target's base; attackers shoot over cover no taller than themselves unless it's also next to the target | `sight.gd` |
 | Soft cover zones | A column tagged `soft_cover` (smoke, foliage) is soft cover over its whole height | `sight.gd` |
-| Heat overflow | Over the cap, "the excess beyond what was required to exceed" (p.81) read as heat − (cap + 1) | `combat.gd` |
-| Unforced saves | Saves nobody forces (flyers' Agility save after structure/stress damage, p.63) need 10+; forced saves use the forcer's Save Target (p.13) | `combat.gd` |
-| Reactor explosion save | Agility save against the exploding mech's Save Target (p.72, 81 don't name one) | `pilots.gd` |
-| Dangerous terrain damage type | "Depending on the hazard" (p.62): Kinetic unless the column is tagged `dangerous_energy` / `dangerous_explosive` / `dangerous_burn` | `combat.gd` |
-| Reaction decisions | Player units are asked (engine pauses); GM/AI seats answer with `Reactions.suggested_answer`: take Overwatch and prepared actions, Brace when the hit would take the last HP | `reactions.gd`, `src/gm/ai_director.gd` |
-| NPCs and Brace | NPCs can't Brace (lancer-data has NPC versions of Overwatch, Ram, Grapple, Stabilize, Improvised Attack but not of Brace); NPC rules aren't in the free book | `reactions.gd` |
-| Overwatch weapons | Any weapon whose THREAT reaches the mover except Ordnance (tag), Superheavy (can't Skirmish, p.70) and area weapons | `reactions.gd` |
-| Area templates | Cone width grows evenly from 1 to X; templates are flat and catch characters within X levels of the origin; Line/Cone start at the user's space nearest the aim; characters out of line of sight of the origin aren't hit (unless Arcing/Seeking); a crit on any target rolls the extra dice once. Line/Cone/Burst with a listed Range (origin within range, p.64) not supported yet | `areas.gd` |
-| Grapple | Same-Size contest at the start of a turn (p.69) isn't automated: nobody is Immobilized; only two-character grapples | `close_combat.gd` |
-| Jump | Horizontal: straight line at the jumper's height (crosses pits and lower ground, not taller terrain), lands on the highest ground at or below; vertical rises max(1, Size); Slowed and Prone can't jump | `close_combat.gd` |
+| Dangerous terrain type | The map says which hazard: `dangerous` = kinetic, plus `dangerous_energy` / `dangerous_explosive` / `dangerous_burn` ("depending on the hazard", p.62) | `combat.gd` |
+| Area templates | Cone widens evenly from 1 to X; templates are flat and catch characters within X levels of the origin; Line/Cone start at the user's space nearest the aim (or a point in Range, p.64); characters out of line of sight of the origin aren't hit unless Arcing/Seeking; one damage roll, a crit rolls the extra dice once | `areas.gd` |
+| Jump geometry | Horizontal jumps keep their height (crossing pits and lower ground) and land on the highest ground at or below; vertical jumps rise max(1, Size) (p.63) | `close_combat.gd` |
+| Reaction prompts | Player units are asked; AI seats answer with `Reactions.suggested_answer` | `reactions.gd`, `src/gm/ai_director.gd` |
+| Eject flight | The pilot flies, so nothing on the way blocks it; it must land in a free space | `pilot_actions.gd` |
+
+## Still open
+
+| Rule | Current state | Where in code |
+|---|---|---|
 | Prepare triggers | Only movement triggers so far (a character moves adjacent / within a range); the book allows any "When X, then Y" (p.72) | `pilot_actions.gd`, `reactions.gd` |
-| Pilot of a destroyed mech | Climbs out into a free adjacent space ("you may still exit it as normal", p.80); the wreck stops protecting it (p.74) | `combat.gd`, `pilots.gd` |
-| Eject | Lands in any free space within 6 (no straight-line or path check) | `pilot_actions.gd` |
-| Self Destruct timing | "Within the following two rounds" read as your next turn (delay 1) or the one after (delay 2) | `pilot_actions.gd` |
-| Frame trait readings | Tortuga Sentinel counts Overwatch as a reaction attack; Blast Plating resists all damage types from area attacks; Vlad's core resistance applies to attackers within range 3; Shrike Armor damage comes before the attack roll | `data/game/frame_effects.json` |
-| Teleport moves | A teleporting standard move or Boost (Mourning Cloak core) reaches up to that move's budget and uses all of it; the book says a teleport "counts as moving 1 space" (p.63) | `movement.gd`, `move_actions.gd` |
-| Ignoring difficult terrain while Prone | Bulwark Mods / Kai Bioplating also cancel Prone's "counts as moving in difficult terrain" | `movement.gd` |
-| After-attack moves | Taken right away (lost if another action comes first); only on your own turn, so the Skirmisher talent's "before" option and its use after Overwatch aren't supported yet | `move_actions.gd`, `effects.gd` |
-| Kai Bioplating jumps | "Up to full Speed across and half Speed up, in any combination" read as: horizontal jumps up to Speed, vertical jumps rise up to half Speed (rounded up) | `close_combat.gd` |
-| Iskander's Broad-Sweep Seeder | Range 50 measured from the Iskander at the time of each move (the text says the hostiles within range 50 when it fires); jumps count as movement other than the standard move | `effects.gd` |
-| Mech building limits | Each license rank 1-3, ranks add up to at most LL (p.31: +1 rank per LL, ranks bought in order) | `unit_factory.gd` |
+| After-attack moves | Taken right away, on your own turn only; the Skirmisher talent's "before" option and its use after Overwatch aren't supported yet | `move_actions.gd`, `effects.gd` |
+| Multi-character grapples | Sizes add up on each side (p.69): not supported, only two-character grapples | `close_combat.gd` |
+| Frame trait readings | Tortuga Sentinel counts Overwatch as a reaction attack; Blast Plating resists all damage types from area attacks; Vlad's core resistance applies to attackers within range 3; Shrike Armor damage comes before the attack roll; Kai Bioplating jumps up to Speed across, half Speed up; Iskander's range is measured at each move | `data/game/frame_effects.json`, `gear_effects.json` |
 
 ## Movement audit (Core p.62-63, 77-78 and lancer-data text)
 
@@ -136,6 +149,9 @@ and Slowed), NHP control (p.75).
 | Mounts: Main, Heavy, Aux/Aux, Main/Aux (Main + Aux or two Aux), Flex (one Main or two Aux); Superheavy needs a Heavy mount plus one other | Core p.32 |
 | SP = frame + Grit + 1 per 2 Systems; Grit = half LL rounded up | Core p.33, 78 |
 | Mech skill bonuses: Grit to HP/Save Target/SP/attacks; Hull +2 HP, +1 Repair Cap per 2; Agility +1 Evasion, +1 Speed per 2; Systems +1 E-Def and Tech Attack, +1 SP per 2; Engineering +1 Heat Cap, +1 Limited use per 2 | Core p.34-35 |
-| Licenses: +1 rank per LL up to 12, ranks I-III in order, rank II unlocks the frame; GMS and the Everest always available | Core p.31 |
+| Licenses: +1 rank per LL up to 12, ranks I-III in order (so ranks add up to at most LL), rank II unlocks the frame; GMS and the Everest always available | Core p.31 |
+| Same-Size grapples: contested Hull at the start of a turn, winner counts as larger | Core p.69 |
+| A destroyed mech's pilot can be targeted and may exit as normal | Core p.74, 80 |
+| Line/Cone/Burst with a listed Range: origin within that Range and line of sight | Core p.64 |
 | Core system: usually once per mission; Full Repair recovers it | Core p.32, 82 |
 | High ground: no general rule (only some talents mention it) | Core (no rule found) |

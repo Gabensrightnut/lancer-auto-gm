@@ -78,7 +78,9 @@ static func _nearest(grid: GridLayout, cells: Array[Vector2i], aim: Vector2i) ->
 ## Everything about an area attack before it's rolled. Never changes the state.
 ## Returns {ok, reason, rule_ref, pattern, size, cells: [[x, y]], origin: [x, y, level],
 ##  targets: [unit ids], origin_body (Sight.Body, host-side only)}.
-static func plan(state: GameState, attacker: Unit, w: Dictionary, aim: Variant, aim_level: int = -1) -> Dictionary:
+## `from`: for Line/Cone weapons that list a Range, the origin point within that Range and
+## line of sight (Core p.64); Burst weapons with a Range are centered on `aim`.
+static func plan(state: GameState, attacker: Unit, w: Dictionary, aim: Variant, aim_level: int = -1, from: Variant = null) -> Dictionary:
 	var out := {"ok": false, "reason": "", "rule_ref": REF, "pattern": Weapons.area(w), "size": 0,
 		"cells": [], "origin": [], "targets": []}
 	var pattern: String = out["pattern"]
@@ -97,6 +99,26 @@ static func plan(state: GameState, attacker: Unit, w: Dictionary, aim: Variant, 
 	elif pattern != "Burst":
 		out["reason"] = "Choose where to aim (params.aim = [x, y])."
 		return out
+	var listed_range := Weapons.range_value(w, "Range")
+	var origin_cells: Array[Vector2i] = me.cells
+	if pattern != "Blast" and listed_range > 0:
+		# "The attack's origin point can be drawn from a point within the range specified and
+		# line of sight" (Core p.64).
+		var point: Variant = aim_cell if pattern == "Burst" else from
+		if point is Vector2i:
+			var plv := state.map.ground_height(point)
+			var pbody := Sight.make_body(state, point, plv, 0.5)
+			if Sight.distance(state, me, pbody) > listed_range:
+				out["reason"] = "The origin point must be within Range %d." % listed_range
+				out["rule_ref"] = "Core p.64 Range and Patterns"
+				return out
+			if not ignores_los and not Sight.line_of_sight(state, me, pbody):
+				out["reason"] = "No line of sight to the origin point."
+				out["rule_ref"] = "Core p.64 Range and Patterns"
+				return out
+			origin_cells = [point] as Array[Vector2i]
+			origin_body = pbody
+			out["origin"] = [point.x, point.y, plv]
 	if pattern == "Blast":
 		if not state.map.has_cell(aim_cell):
 			out["reason"] = "Aim at a space on the map."
@@ -113,10 +135,10 @@ static func plan(state: GameState, attacker: Unit, w: Dictionary, aim: Variant, 
 			out["rule_ref"] = "glossary: Blast"
 			return out
 		out["origin"] = [aim_cell.x, aim_cell.y, lv]
-	else:
+	elif origin_body == null:
 		origin_body = me
 		out["origin"] = [attacker.cell.x, attacker.cell.y, attacker.level]
-	var cells := template(grid, pattern, size, me.cells, aim_cell)
+	var cells := template(grid, pattern, size, origin_cells, aim_cell)
 	var cell_set := {}
 	for c in cells:
 		if state.map.has_cell(c):
@@ -156,7 +178,7 @@ static func _vertical_gap(a: Sight.Body, b: Sight.Body) -> int:
 
 ## Rolls the attack against everyone in the area. Damage is rolled once and shared.
 static func attack(state: GameState, attacker: Unit, w: Dictionary, params: Dictionary) -> Array[Dictionary]:
-	var p := plan(state, attacker, w, TurnAction.cell_param(params, "aim"), int(params.get("aim_level", -1)))
+	var p := plan(state, attacker, w, TurnAction.cell_param(params, "aim"), int(params.get("aim_level", -1)), TurnAction.cell_param(params, "from"))
 	var events: Array[Dictionary] = []
 	if not p["ok"]:
 		events.append({"type": "attack_skipped", "attacker": attacker.id, "weapon": w.get("key", ""), "reason": p["reason"], "rule_ref": p["rule_ref"]})

@@ -206,6 +206,12 @@ func waiting_on(for_seat: String = "") -> Dictionary:
 		info["ai"] = is_ai_seat(GM_SEAT)
 		info["seats"] = [] if info["ai"] else [GM_SEAT]
 		info["text"] = "The GM is setting up the battle." if info["ai"] else "Waiting for the GM to start the battle."
+	elif state.pending.has("ruling"):
+		# The engine is paused on an open rules question: the GM decides (set_ruling).
+		info["state"] = "ruling"
+		info["ai"] = is_ai_seat(GM_SEAT)
+		info["seats"] = [] if info["ai"] else [GM_SEAT]
+		info["text"] = "The GM is deciding a rules question: %s" % state.pending.get("context", {}).get("question", "")
 	elif not state.pending.is_empty():
 		# The engine is paused until this unit's controller decides on a reaction.
 		var r := state.unit(state.pending.get("unit", ""))

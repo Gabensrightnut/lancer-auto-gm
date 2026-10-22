@@ -76,6 +76,30 @@ static func distance(state: GameState, a: Body, b: Body) -> int:
 	return maxi(flat, vertical)
 
 
+## Distance for Range, Threat and Sensors. When heights differ, the table's "distance_3d"
+## ruling decides between spaces in any direction and ground only; `ask` pauses to ask during
+## resolution, otherwise previews use the suggested reading.
+static func range_distance(state: GameState, a: Body, b: Body, ask: bool = false) -> int:
+	var full := distance(state, a, b)
+	var flat := state.map.grid.footprint_distance(a.cells, b.cells)
+	if full == flat:
+		return full
+	var c := Rulings.ask(state, "distance_3d") if ask else Rulings.choice_or_suggested(state, "distance_3d")
+	return flat if c == "ground_only" else full
+
+
+## Within `reach` under the table's distance ruling? Returns {ok, grey_area} where grey_area
+## names the ruling to ask when the readings disagree and the table hasn't decided.
+static func within(state: GameState, a: Body, b: Body, reach: int) -> Dictionary:
+	var full := distance(state, a, b)
+	var flat := state.map.grid.footprint_distance(a.cells, b.cells)
+	if (full <= reach) == (flat <= reach):
+		return {"ok": full <= reach, "grey_area": ""}
+	if not Rulings.decided(state, "distance_3d"):
+		return {"ok": false, "grey_area": "distance_3d"}
+	return {"ok": range_distance(state, a, b) <= reach, "grey_area": ""}
+
+
 static func unit_distance(state: GameState, a: Unit, b: Unit) -> int:
 	return distance(state, body_of(state, a), body_of(state, b))
 

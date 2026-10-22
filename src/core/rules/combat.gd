@@ -206,7 +206,7 @@ static func lose_hp(state: GameState, u: Unit, amount: int, source: String) -> A
 			return events
 		u.hp = u.max_hp - excess
 		events.append({"type": "hp_changed", "unit": u.id, "hp": maxi(u.hp, 0), "overshield": u.overshield, "source": "structure reset"})
-		events.append_array(_flyer_save(state, u, "structure damage"))
+		events.append_array(_flyer_save(state, u, "structure damage", source))
 	return events
 
 
@@ -347,6 +347,8 @@ static func apply_heat(state: GameState, u: Unit, amount: int, source: String, r
 	# PROVISIONAL (RULES_TODO "Heat overflow"): it takes cap + 1 heat to exceed the cap.
 	while u.heat > u.heat_cap and not u.destroyed:
 		var excess := u.heat - u.heat_cap - 1
+		if Rulings.ask(state, "heat_overflow") == "beyond_cap":
+			excess = u.heat - u.heat_cap
 		u.heat = 0
 		u.stress -= 1
 		events.append({"type": "stress_lost", "unit": u.id, "stress": u.stress, "rule_ref": "Core p.81 Overheating"})
@@ -457,12 +459,8 @@ static func destroy(state: GameState, u: Unit, why: String) -> Array[Dictionary]
 	var events: Array[Dictionary] = [{"type": "unit_destroyed", "unit": u.id, "reason": why}]
 	for status: String in u.statuses.keys():
 		events.append_array(remove_status(u, status, "destroyed"))
-	# PROVISIONAL (RULES_TODO "Pilots"): the pilot of a destroyed mech climbs out next to it.
-	var pilot := Pilots.pilot_of(state, u)
-	if pilot != null and not pilot.destroyed and pilot.counters.get("mounted_in", "") == u.id:
-		var spot: Variant = Pilots.free_adjacent(state, u)
-		if spot != null:
-			events.append_array(Pilots.unseat(state, pilot, u, spot[0], spot[1]))
+	# The pilot stays in the wreck, no longer protected by it, and "may still exit it as normal"
+	# (Core p.74, 80): it takes its own turns and can Dismount.
 	events.append_array(refresh_engagement(state))
 	return events
 
@@ -478,10 +476,14 @@ static func begin_falling(u: Unit, why: String) -> Array[Dictionary]:
 
 ## Flying characters that take structure damage or stress must pass an AGILITY save or begin
 ## falling (glossary: Flight/Hover). PROVISIONAL: save target 10.
-static func _flyer_save(state: GameState, u: Unit, what: String) -> Array[Dictionary]:
+static func _flyer_save(state: GameState, u: Unit, what: String, source: String = "") -> Array[Dictionary]:
 	if not u.flying:
 		return [] as Array[Dictionary]
-	var check := skill_check(state, u, "agility", "Agility save after %s while flying" % what, CHECK_TARGET, 0, 0, [], true)
+	var target := CHECK_TARGET
+	var by := state.unit(source)
+	if by != null and by.save_target != CHECK_TARGET and Rulings.ask(state, "unforced_save_target") == "attacker":
+		target = by.save_target
+	var check := skill_check(state, u, "agility", "Agility save after %s while flying" % what, target, 0, 0, [], true)
 	var events: Array[Dictionary] = [{"type": "skill_check", "unit": u.id, "check": check, "rule_ref": "glossary: Flight/Hover"}]
 	if not check["success"]:
 		events.append_array(begin_falling(u, "Failed the Agility save after %s." % what))
@@ -599,7 +601,18 @@ static func _is_character(u: Unit) -> bool:
 
 ## On the battlefield: not destroyed, and not a pilot riding inside a mech.
 static func is_present(u: Unit) -> bool:
-	return u != null and not u.destroyed and String(u.counters.get("mounted_in", "")) == ""
+	if u == null or u.destroyed:
+		return false
+	var inside := String(u.counters.get("mounted_in", ""))
+	if inside == "":
+		return true
+	# A pilot inside a destroyed mech can be targeted and affected (Core p.74).
+	var mech: Unit = state_for_presence.get_ref().unit(inside) if state_for_presence != null and state_for_presence.get_ref() != null else null
+	return mech != null and mech.destroyed
+
+
+## Set by the engine so presence checks can see a pilot's mech.
+static var state_for_presence: WeakRef = null
 
 
 ## Recomputes ENGAGED for everyone: adjacent to a hostile character, neither Hidden

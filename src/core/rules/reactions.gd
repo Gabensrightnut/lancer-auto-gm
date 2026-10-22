@@ -94,7 +94,8 @@ static func can_react(u: Unit, reaction: String, state: GameState = null) -> Rul
 	if u.counters.has("prepared"):
 		return RuleResult.deny("Holding a prepared action: no other reactions until it triggers.", "actions: Prepare")
 	if reaction == "brace" and u.kind == Unit.KIND_NPC:
-		return RuleResult.deny("NPCs don't Brace.", REF_BRACE)
+		if state == null or Rulings.ask(state, "npc_brace") != "yes":
+			return RuleResult.deny("NPCs don't Brace (table ruling).", REF_BRACE)
 	if (u.counters.get("reactions", []) as Array).has(reaction):
 		return RuleResult.deny("You've already used that reaction; it comes back at the start of your next turn.", "Core p.73 Reactions")
 	return RuleResult.allow()
@@ -138,6 +139,19 @@ static func overwatch_weapons(state: GameState, u: Unit, mover: Unit) -> Array[S
 	return out
 
 
+## Area weapons that could Overwatch `mover` (if the table allows it): in THREAT, not
+## Ordnance or Superheavy, and the template can be aimed at the mover.
+static func _area_overwatch_weapons(state: GameState, u: Unit, mover: Unit) -> Array[String]:
+	var out: Array[String] = []
+	var dist := Sight.range_distance(state, Sight.body_of(state, u), Sight.body_of(state, mover))
+	for w: Dictionary in u.loadout.get("weapons", []):
+		if Weapons.area(w) == "" or Weapons.threat(w) < dist or Weapons.has_tag(w, "tg_ordnance") or w.get("size", "") == "Superheavy":
+			continue
+		if Attacks.weapon_ready(u, w).ok and Areas.plan(state, u, w, mover.cell, mover.level)["ok"]:
+			out.append(String(w["key"]))
+	return out
+
+
 ## OVERWATCH: hostiles whose THREAT the mover starts a move in may Skirmish it first, as a
 ## reaction (actions: Overwatch; tags: Ordnance can't Overwatch). Returns events.
 static func overwatch(state: GameState, mover: Unit) -> Array[Dictionary]:
@@ -150,7 +164,14 @@ static func overwatch(state: GameState, mover: Unit) -> Array[Dictionary]:
 		var h := state.unit(id)
 		if not can_react(h, "overwatch", state).ok or not Combat.is_present(mover) or mover.destroyed:
 			continue
+		var body_h := Sight.body_of(state, h)
+		var body_m := Sight.body_of(state, mover)
+		if Sight.distance(state, body_h, body_m) != state.map.grid.footprint_distance(body_h.cells, body_m.cells):
+			Rulings.ask(state, "distance_3d")
 		var weapons := overwatch_weapons(state, h, mover)
+		var area := _area_overwatch_weapons(state, h, mover)
+		if not area.is_empty() and Rulings.ask(state, "overwatch_area_weapons") == "yes":
+			weapons.append_array(area)
 		if weapons.is_empty():
 			continue
 		var d := offer(state, h, "overwatch", {"mover": mover.id, "weapons": weapons}, {"take": true, "weapon": weapons[0]})
@@ -161,7 +182,11 @@ static func overwatch(state: GameState, mover: Unit) -> Array[Dictionary]:
 			key = weapons[0]
 		_mark_used(h, "overwatch", state)
 		events.append({"type": "reaction", "unit": h.id, "reaction": "overwatch", "trigger": mover.id, "weapon": key, "rule_ref": REF_OVERWATCH})
-		events.append_array(Attacks.attack(state, h, Weapons.find(h, key), mover, {"reaction": true}))
+		var w := Weapons.find(h, key)
+		if Weapons.area(w) != "":
+			events.append_array(Areas.attack(state, h, w, {"aim": [mover.cell.x, mover.cell.y], "aim_level": mover.level, "reaction": true}))
+		else:
+			events.append_array(Attacks.attack(state, h, w, mover, {"reaction": true}))
 	return events
 
 

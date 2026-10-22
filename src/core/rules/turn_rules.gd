@@ -28,7 +28,7 @@ const REACTION := "reaction"
 ## Units that take turns: not destroyed, not deployables.
 static func takes_turns(u: Unit) -> bool:
 	if u.kind == Unit.KIND_PILOT and not u.destroyed and u.counters.has("mounted_in"):
-		return false  # acts through its mech
+		return Combat.is_present(u)  # acts through its mech, unless the mech was destroyed
 	return Combat.is_present(u) and u.kind != Unit.KIND_DEPLOYABLE and not u.counters.get("empty", false)
 
 

@@ -93,6 +93,15 @@ static func tech_preview(state: GameState, attacker_id: String, target_id: Strin
 	return p
 
 
+## Every open question the book leaves to the table, with its readings and the current
+## choice: [{id, question, options {id: text}, suggested, rule_ref, choice}].
+static func rulings(state: GameState) -> Array:
+	var out := Rulings.catalog()
+	for r: Dictionary in out:
+		r["choice"] = Rulings.choice(state, r["id"])
+	return out
+
+
 ## Hostiles that could react (Overwatch) if the unit starts moving now.
 static func threatened_by(state: GameState, unit_id: String) -> Array[String]:
 	return Movement.threatened_by(state, state.unit(unit_id))

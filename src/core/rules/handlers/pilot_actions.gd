@@ -15,9 +15,9 @@ static func _hand_turn(state: GameState, from: Unit, to: Unit) -> void:
 
 class Eject:
 	extends TurnAction
-	## Quick action: the pilot flies up to 6 spaces to a free space of your choice; the mech
-	## is Impaired, and you can't Eject again, until a Full Repair (actions: Eject).
-	## PROVISIONAL: any free space within 6 (no straight-line or path check).
+	## Quick action: the pilot flies 6 spaces in the direction of your choice; the mech is
+	## Impaired, and you can't Eject again, until a Full Repair (Core p.71). Whether that means
+	## exactly 6 in a line or anywhere within 6 is the table's "eject_distance" ruling.
 	## params: {"to": [x, y]}
 
 	func type() -> String:
@@ -35,8 +35,16 @@ class Eject:
 		if to == null or not state.map.has_cell(to):
 			return RuleResult.deny("Choose a space up to 6 away to land in.", "actions: Eject")
 		var lv := state.map.ground_height(to)
-		if Sight.distance(state, Sight.body_of(state, u), Sight.make_body(state, to, lv, 0.5)) > 6:
-			return RuleResult.deny("Ejecting flies you at most 6 spaces.", "actions: Eject")
+		var dist := state.map.grid.distance(u.cell, to)
+		match Rulings.choice(state, "eject_distance"):
+			"":
+				return Rulings.needed("eject_distance")
+			"straight_six":
+				if dist != 6:
+					return RuleResult.deny("Ejecting flies you 6 spaces: pick a space exactly 6 away.", "Core p.71 Eject")
+			_:
+				if dist > 6:
+					return RuleResult.deny("Ejecting flies you at most 6 spaces.", "Core p.71 Eject")
 		if not Pilots._free_for_pilot(state, to, lv):
 			return RuleResult.deny("That space isn't free.", "actions: Eject")
 		return RuleResult.allow()
@@ -59,8 +67,8 @@ class Eject:
 
 class Dismount:
 	extends TurnAction
-	## Full action: the pilot climbs off into an adjacent free space (actions: Dismount).
-	## Actor: the mech, or the pilot of a destroyed mech. params: {"to": [x, y]} (optional)
+	## Full action: the pilot climbs off into an adjacent free space (Core p.71). Actor: the mech,
+	## or the pilot inside a destroyed mech (Core p.80). params: {"to": [x, y]} (optional)
 
 	func type() -> String:
 		return "dismount"
@@ -69,21 +77,29 @@ class Dismount:
 		return TurnRules.FULL
 
 	func kinds() -> Array:
-		return [Unit.KIND_MECH]
+		return [Unit.KIND_MECH, Unit.KIND_PILOT]
+
+	func _mech(state: GameState, u: Unit) -> Unit:
+		return state.unit(String(u.counters.get("mounted_in", ""))) if u.kind == Unit.KIND_PILOT else u
 
 	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
-		if u.counters.get("empty", false):
-			return RuleResult.deny("Nobody is inside.", "actions: Dismount")
-		if Pilots.free_adjacent(state, u, TurnAction.cell_param(params, "to")) == null:
-			return RuleResult.deny("No free adjacent space to dismount into.", "actions: Dismount")
+		var m := _mech(state, u)
+		if m == null:
+			return RuleResult.deny("You aren't inside a mech.", "Core p.71 Dismount")
+		if m.counters.get("empty", false):
+			return RuleResult.deny("Nobody is inside.", "Core p.71 Dismount")
+		if Pilots.free_adjacent(state, m, TurnAction.cell_param(params, "to")) == null:
+			return RuleResult.deny("No free adjacent space to dismount into.", "Core p.71 Dismount")
 		return RuleResult.allow()
 
 	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
-		var spot: Array = Pilots.free_adjacent(state, u, TurnAction.cell_param(params, "to"))
-		var pilot := Pilots.ensure_pilot(state, u)
-		var events := Pilots.unseat(state, pilot, u, spot[0], spot[1])
+		var m := _mech(state, u)
+		var spot: Array = Pilots.free_adjacent(state, m, TurnAction.cell_param(params, "to"))
+		var pilot := Pilots.ensure_pilot(state, m)
+		var events := Pilots.unseat(state, pilot, m, spot[0], spot[1])
 		TurnRules.spend(u, cost(), type())
-		PilotActions._hand_turn(state, u, pilot)
+		if u != pilot:
+			PilotActions._hand_turn(state, u, pilot)
 		return events
 
 	func resolve(state: GameState, action: Dictionary) -> Array[Dictionary]:

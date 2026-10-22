@@ -243,6 +243,9 @@ static func plan(state: GameState, u: Unit, dest: Vector2i, level: int = -1, mod
 		out["reason"] = "You're already there."
 		return out
 	out["warnings"] = _warnings(state, u, path, result, fly)
+	for id: String in result.get("rulings", []):
+		if not Rulings.decided(state, id) and out["grey_area"] == "":
+			out["grey_area"] = id
 	if result.get("uneven", false):
 		var choice := uneven_choice(state)
 		if choice == "":
@@ -279,13 +282,18 @@ static func plan_teleport(state: GameState, u: Unit, dest: Vector2i, level: int 
 	else:
 		levels = surface_levels(state, u.size, dest)
 	var others := _others(state, u)
+	# Range: the move's remaining budget, or (if a teleport only uses 1 space of movement)
+	# your Speed while you have any movement left. Table ruling "teleport_move_cost".
+	var reach := int(out["budget"])
+	if Rulings.choice_or_suggested(state, "teleport_move_cost") == "one_space" and reach > 0:
+		reach = u.speed + (Effects.value(u, "boost_bonus") if mode == MODE_BOOST else 0)
 	for lv in levels:
 		var place := placement(state, u.size, dest, lv)
 		if not place["ok"] or (place["airborne"] and not can_fly(u, mode)):
 			continue
 		var body := Sight.make_body(state, dest, lv, u.size)
-		if Sight.distance(state, Sight.body_of(state, u), body) > int(out["budget"]):
-			out["reason"] = "Too far to teleport: up to %d spaces." % out["budget"]
+		if Sight.distance(state, Sight.body_of(state, u), body) > reach:
+			out["reason"] = "Too far to teleport: up to %d spaces." % reach
 			continue
 		if _blocked_by_unit(body, others, true):
 			out["reason"] = "That space is occupied, so the teleport would fail."
@@ -340,6 +348,11 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool) -> Dictionar
 	# Prone's "counts as moving in difficult terrain".
 	var ignore_difficult := Effects.has(u, "ignore_difficult")
 	var climb_cost := 1 if Effects.has(u, "climb_normal") else 2
+	# Table rulings (Rulings): the readings the book allows. Previews use the suggested one
+	# until the table decides; the action itself asks.
+	var climb_rule := Rulings.choice_or_suggested(state, "climb_cost")
+	var fly_diff_rule := Rulings.choice_or_suggested(state, "flight_difficult")
+	var prone_rule := Rulings.choice_or_suggested(state, "prone_ignore_difficult")
 	while not open.is_empty():
 		var best := 0
 		for i in range(1, open.size()):
@@ -384,11 +397,27 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool) -> Dictionar
 				difficult = difficult or col.has_tag(BattleMap.TAG_DIFFICULT) or wreck_cells.has(c)
 				dangerous = dangerous or col.has_tag(BattleMap.TAG_DANGEROUS)
 			difficult = difficult and not ignore_difficult
+			var flags: Array = (node.get("rulings", []) as Array).duplicate()
+			var prone_double := prone and not (ignore_difficult and prone_rule == "cancels")
+			if prone and ignore_difficult and not flags.has("prone_ignore_difficult"):
+				flags.append("prone_ignore_difficult")
 			var cost := 1
+			var climb := absi(lv - k.z)
 			if not fly:
-				if difficult or (prone and not ignore_difficult):
+				if difficult or prone_double:
 					cost = 2
-				cost += climb_cost * absi(lv - k.z)
+				if climb > 0:
+					if not flags.has("climb_cost"):
+						flags.append("climb_cost")
+					if climb_rule == "climb_only":
+						cost = maxi(cost, climb_cost * climb)
+					else:
+						cost += climb_cost * climb
+			elif difficult:
+				if not flags.has("flight_difficult"):
+					flags.append("flight_difficult")
+				if fly_diff_rule == "pay":
+					cost = 2
 			var total: int = node["cost"] + cost
 			if total > cap:
 				continue
@@ -398,7 +427,7 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool) -> Dictionar
 			nodes[nk] = {"cost": total, "parent": k, "stop": stopper.id if stopper else "",
 				"can_end": not _blocked_by_unit(body, others, true),
 				"uneven": node["uneven"] or place["uneven"], "difficult": difficult and not fly,
-				"dangerous": dangerous, "climb": absi(lv - k.z) if not fly else 0}
+				"dangerous": dangerous, "climb": absi(lv - k.z) if not fly else 0, "rulings": flags}
 			open.append(nk)
 	return {"nodes": nodes}
 
@@ -455,11 +484,16 @@ static func _pick(state: GameState, u: Unit, search: Dictionary, dest: Vector2i,
 		path.push_front([k.x, k.y, k.z])
 		k = nodes[k]["parent"]
 	var n: Dictionary = nodes[best]
-	return {"found": true, "path": path, "cost": n["cost"], "stopped_by": n["stop"], "uneven": n["uneven"], "nodes": nodes}
+	return {"found": true, "path": path, "cost": n["cost"], "stopped_by": n["stop"], "uneven": n["uneven"], "nodes": nodes,
+		"rulings": n.get("rulings", [])}
 
 
 static func _why_not(state: GameState, u: Unit, dest: Vector2i, level: int) -> String:
-	var levels: Array[int] = [level] if level >= 0 else surface_levels(state, u.size, dest)
+	var levels: Array[int] = []
+	if level >= 0:
+		levels.append(level)
+	else:
+		levels = surface_levels(state, u.size, dest)
 	if levels.is_empty():
 		return "Off the map."
 	for lv in levels:

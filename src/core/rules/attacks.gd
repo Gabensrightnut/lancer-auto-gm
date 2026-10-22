@@ -70,7 +70,11 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 			out["thrown"] = true
 	out["kind"] = kind
 	out["reach"] = reach
-	if area_origin == null and dist > reach:
+	var in_reach := Sight.within(state, a_body, t_body, reach)
+	if area_origin == null and in_reach["grey_area"] != "":
+		out["grey_area"] = in_reach["grey_area"]
+		return fail.call("Whether that's in reach depends on how your table measures range up and down.", "Core p.64 Range")
+	if area_origin == null and not in_reach["ok"]:
 		return fail.call("Out of %s: %d spaces away, %s reaches %d." % ["Threat" if kind == KIND_MELEE and not out.has("thrown") else "Range", dist, w.get("name", "the weapon"), reach], "glossary: Range" if kind == KIND_RANGED else "glossary: Threat")
 	var ignores_los := Weapons.has_tag(w, "tg_arcing") or Weapons.has_tag(w, "tg_seeking")
 	# Area attacks take cover and line of sight from the area's origin (glossary: Blast, Burst).
@@ -447,7 +451,10 @@ static func tech_target_check(state: GameState, user: Unit, target: Unit, action
 		return RuleResult.deny("Shut Down mechs are immune to tech actions.", "statuses: Shut Down")
 	if target.kind == Unit.KIND_PILOT and action != "scan" and action != "lock_on":
 		return RuleResult.deny("Pilots on foot are BIOLOGICAL: immune to tech actions except Lock On and Scan.", "Core p.74 Fighting on the Ground")
-	if Sight.unit_distance(state, user, target) > user.sensors:
+	var in_sensors := Sight.within(state, Sight.body_of(state, user), Sight.body_of(state, target), user.sensors)
+	if in_sensors["grey_area"] != "":
+		return Rulings.needed(in_sensors["grey_area"])
+	if not in_sensors["ok"]:
 		return RuleResult.deny("Out of Sensors range (%d)." % user.sensors, "glossary: Sensors")
 	if not Sight.unit_line_of_sight(state, user, target):
 		return RuleResult.deny("No line of sight to the target.", Sight.REF_LOS)
