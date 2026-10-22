@@ -24,7 +24,7 @@ static func ensure(story: StoryState, campaign: Campaign) -> Dictionary:
 	if story.hub.is_empty():
 		return {}
 	if story.arc.is_empty() or str(story.arc.get("hub", "")) != str(story.hub.get("id", "")):
-		start(story)
+		start(story, campaign)
 	if story.arc.is_empty():
 		return {}
 	for h: Dictionary in story.hooks:
@@ -38,19 +38,21 @@ static func ensure(story: StoryState, campaign: Campaign) -> Dictionary:
 	return hook
 
 
-static func start(story: StoryState) -> void:
-	var arcs: Array = data().get("arcs", [])
+static func start(story: StoryState, campaign: Campaign = null) -> void:
+	var arcs: Array = (data().get("arcs", []) as Array).filter(func(a: Dictionary) -> bool: return SessionZero.allowed(campaign, "arcs", str(a["id"])))
 	var conflict: Dictionary = story.hub.get("conflict", {})
 	if arcs.is_empty() or conflict.is_empty():
 		story.arc = {}
 		return
+	# The table's tone (session zero) shifts which situations come up.
+	var w := func(a: Dictionary) -> int: return maxi(1, roundi(float(a.get("weight", 1)) * 10.0 * SessionZero.arc_weight(campaign, str(a["id"]))))
 	var total := 0
 	for a: Dictionary in arcs:
-		total += int(a.get("weight", 1))
+		total += int(w.call(a))
 	var roll := story.dice.die(maxi(total, 1))
 	var pick: Dictionary = arcs[0]
 	for a: Dictionary in arcs:
-		roll -= int(a.get("weight", 1))
+		roll -= int(w.call(a))
 		if roll <= 0:
 			pick = a
 			break

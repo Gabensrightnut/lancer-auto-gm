@@ -6,6 +6,8 @@ extends PanelContainer
 ## hints off for the campaign (they can be turned back on in settings).
 
 signal hints_toggled(on: bool)
+## "More in the Codex": look the lesson's topic up in the rules reference.
+signal codex_requested(query: String)
 
 var campaign: Campaign
 var _title: Label
@@ -43,9 +45,15 @@ func _init() -> void:
 	box.add_child(_objective)
 	_ref = StoryStyle.label("", 12, StoryStyle.DIM, 420)
 	box.add_child(_ref)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	box.add_child(row)
 	var ok := StoryStyle.button("Got it", 14)
 	ok.pressed.connect(_next)
-	box.add_child(ok)
+	row.add_child(ok)
+	var more := StoryStyle.button("More in the Codex", 14)
+	more.pressed.connect(func() -> void: codex_requested.emit(str(get_meta("codex", ""))))
+	row.add_child(more)
 	visible = false
 
 
@@ -72,6 +80,7 @@ func _next() -> void:
 		return
 	var p: Dictionary = _queue.pop_front()
 	set_meta("prompt_id", p.get("id", ""))
+	set_meta("codex", str(p.get("codex", p.get("title", ""))))
 	var is_tip := str(p.get("kind", "")) == "tip"
 	_step.text = "TIP" if is_tip else "LESSON %d OF %d" % [int(p.get("step", 0)), int(p.get("of", 0))]
 	_title.text = str(p.get("title", ""))

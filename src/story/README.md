@@ -49,8 +49,10 @@ and follows the core book. Page numbers are the free core book ("Core p.N").
 | `background_story.gd` | `BackgroundStory`: background-only dialogue options per NPC role and personal stakes on jobs (background_story.json). |
 | `bonds.gd` | `Bonds`: relationships between pilots (Rivals .. Inseparable) from shared missions, mourning, teamwork, drinking together and vote clashes; the GM's bond reward (+1 Accuracy helping each other next mission, Core p.50; option `bond_rewards`); the Bonded talent's bondmate rule (`set_bondmate`, Core p.90). |
 | `ending.gd` | `Ending`: when a campaign ends (options.campaign_arcs situations, LL12, the squad fallen, or `end_campaign`), its kind and an epilogue per pilot (endings.json); `CampaignLoop.sequel()` starts a new campaign with the same pilots. `ui/epilogue_screen.gd` shows it. |
+| `codex.gd` | `Codex`: the in-game rules reference (DESIGN.md section 8). Every glossary term, status, action, tag, frame (stats, traits, core system), manufacturer, skill trigger, background, downtime action, reserve, pilot gear and talent, with lancer-data's own text (HTML stripped), plus our own features (`codex_own.json`, marked "Game feature (not a book rule)"). `search(query, category)` ranks exact > prefix > title > text. `ui/codex_panel.gd` shows it in the hub (K, or the HUD button; tutorial tips link to it). |
+| `session_zero.gd` | `SessionZero`: the first-session setup (Core p.40-41, `session_zero.json`, our own lists): who the squad is, who gives it orders (biases which NPCs bring work), history questions between pilots (starting bonds), tone (twist chance, arc weights), focus (long downtime, banter) and content to leave out (filters our twists and arcs). Applied with the `session_zero` action before the first mission; `ui/session_zero_screen.gd` (`scenes/story/session_zero.tscn`). |
 | `story_data.gd` | `StoryData.lint()`: checks every scene, effect, condition, pool, trigger and reserve id (run by the tests). |
-| `ui/` | `DialogueView` (portrait cards, speech bubble, choices, votes, log), `Portrait` (drawn placeholder faces with expressions), `StoryCheckPopup` (instant roll, one big number, breakdown on hover), `DowntimePanel`, `LevelUpPanel`, `PilotGearPanel` (the quartermaster's racks). |
+| `ui/` | `DialogueView` (PortraitArt cards, mirrored speaker, speech bubble, choices, votes, log), `Portrait` (drawn placeholder faces with expressions), `StoryCheckPopup` (instant roll, one big number, breakdown on hover), `DowntimePanel`, `LevelUpPanel`, `PilotGearPanel` (the quartermaster's racks). |
 
 Story tables (all our own writing, patterns from `docs/research/lancer_campaigns.md`, canon checks
 in `docs/CANON.md`): `hooks.json` (22 job templates after the book's goal table, stakes as
@@ -130,3 +132,6 @@ The walkable hub is in `src/explore/` (`HubScene`, `scenes/explore/hub.tscn`).
 - **Menus / builder**: talent, license and core bonus picks waiting in
   `story.pending_picks[pilot]`; the pilot gear picker (`ui_requested` "pilot_gear"); portraits
   read `pilot["look"]` when the portrait builder exists.
+- **Menus**: when a new campaign starts (not the tutorial), show `SessionZeroScreen` (`bind(engine,
+  story, campaign)`, wait for `done(events)`) before the first briefing. A `CodexPanel` can be
+  opened from the main menu / battle screen too (`codex.open(query)`).

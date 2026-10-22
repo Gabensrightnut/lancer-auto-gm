@@ -16,8 +16,8 @@ var story: StoryState
 var campaign: Campaign
 var seat := "p1"
 
-var _left: Portrait
-var _right: Portrait
+var _left: PortraitArt
+var _right: PortraitArt
 var _left_name: Label
 var _right_name: Label
 var _bubble: PanelContainer
@@ -36,8 +36,9 @@ func _init() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	visible = false
-	_left = Portrait.new()
-	_right = Portrait.new()
+	_left = PortraitArt.new()
+	_right = PortraitArt.new()
+	_right.flip = true  # the NPC faces the pilot
 	_left_name = _plate()
 	_right_name = _plate()
 	for n: Control in [_left, _right, _left_name, _right_name]:
@@ -117,8 +118,8 @@ func refresh() -> void:
 	var pilot: Dictionary = campaign.pilots.get(str(ctx.get("speaker", "")), {})
 	var speaker := str(story.dialogue.get("speaker", "npc"))
 	var expr := str(story.dialogue.get("expression", "neutral"))
-	_left.set_look(Portrait.look_for_pilot(pilot), expr if speaker == "pilot" else str(story.dialogue.get("pilot_expression", "neutral")))
-	_right.set_look(npc.get("look", {}), expr if speaker == "npc" else "neutral")
+	_left.set_look(PortraitArt.look_for_pilot(pilot), expr if speaker == "pilot" else str(story.dialogue.get("pilot_expression", "neutral")))
+	_right.set_look(PortraitSpec.for_npc(npc) if not npc.is_empty() else PortraitArt.look_for_npc(npc), expr if speaker == "npc" else "neutral")
 	_right.visible = not npc.is_empty()
 	_right_name.visible = _right.visible
 	_left.lit = speaker != "npc"
@@ -208,7 +209,7 @@ func _layout() -> void:
 	_right.position = Vector2(vp.x - card.x - 28, bottom - card.y - 44)
 	for pair: Array in [[_left_name, _left], [_right_name, _right]]:
 		var l: Label = pair[0]
-		var p: Portrait = pair[1]
+		var p: PortraitArt = pair[1]
 		l.size = Vector2(card.x, 44)
 		l.position = Vector2(p.position.x, p.position.y + card.y)
 	var bx := card.x + 60.0

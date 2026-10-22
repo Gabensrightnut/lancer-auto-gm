@@ -27,7 +27,7 @@ static func make(story: StoryState, campaign: Campaign, template_id: String, opt
 	var names := NameGen.new(rng)
 	var patron_id := str(opts.get("patron", ""))
 	if patron_id == "" or not story.npcs.has(patron_id):
-		patron_id = _pick_patron(story, rng)
+		patron_id = _pick_patron(story, rng, campaign)
 	var patron: Dictionary = story.npcs.get(patron_id, {})
 	var conflict: Dictionary = story.hub.get("conflict", {})
 	var rival := str(opts.get("rival", ""))
@@ -62,7 +62,7 @@ static func make(story: StoryState, campaign: Campaign, template_id: String, opt
 	if not personal.is_empty():
 		hook["personal"] = personal
 		hook["stakes"] = "%s %s" % [hook["stakes"], personal["line"]]
-	var twist := pick_twist(rng, str(opts.get("twist", "")))
+	var twist := pick_twist(rng, str(opts.get("twist", "")), campaign)
 	if not twist.is_empty():
 		twist["reveal"] = StoryText.fill(str(twist["reveal"]), story, campaign, ctx)
 		twist["question"] = StoryText.fill(str(twist["question"]), story, campaign, ctx)
@@ -72,10 +72,13 @@ static func make(story: StoryState, campaign: Campaign, template_id: String, opt
 
 ## A hidden mid-mission twist (Core p.43: goals change when new information comes to light),
 ## or {} (data/game/story/twists.json). `wanted` forces one by id.
-static func pick_twist(rng: RandomNumberGenerator, wanted: String = "") -> Dictionary:
+## The table's tone makes twists likelier or rarer, and content it switched off never comes up
+## (SessionZero).
+static func pick_twist(rng: RandomNumberGenerator, wanted: String = "", campaign: Campaign = null) -> Dictionary:
 	var d: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/game/story/twists.json"))
-	var list: Array = d.get("twists", []) if d is Dictionary else []
-	if list.is_empty() or (wanted == "" and rng.randf() > float(d.get("chance", 0.4))):
+	var list: Array = (d.get("twists", []) if d is Dictionary else []).filter(func(t: Dictionary) -> bool:
+		return str(t["id"]) == wanted or SessionZero.allowed(campaign, "twists", str(t["id"])))
+	if list.is_empty() or (wanted == "" and rng.randf() > float(d.get("chance", 0.4)) * SessionZero.twist_factor(campaign)):
 		return {}
 	var pick: Dictionary = {}
 	if wanted != "":
@@ -163,9 +166,15 @@ static func _weighted(story: StoryState, templates: Dictionary) -> String:
 	return ids[0]
 
 
-static func _pick_patron(story: StoryState, rng: RandomNumberGenerator) -> String:
+static func _pick_patron(story: StoryState, rng: RandomNumberGenerator, campaign: Campaign = null) -> String:
+	var roles: Array = ["faction_agent", "local", "company_rep", "bartender"]
+	# Session zero's patron ("who gives us orders?") decides who usually brings the work.
+	if campaign != null and not (campaign.options.get("patron_roles", []) as Array).is_empty() and rng.randf() < 0.7:
+		roles = campaign.options["patron_roles"]
 	var ids: Array = (story.hub.get("npcs", []) as Array).filter(func(n: String) -> bool:
-		return not bool(story.npcs.get(n, {}).get("dead", false)) and str(story.npcs.get(n, {}).get("role", "")) in ["faction_agent", "local", "company_rep", "bartender"])
+		return not bool(story.npcs.get(n, {}).get("dead", false)) and str(story.npcs.get(n, {}).get("role", "")) in roles)
+	if ids.is_empty():
+		ids = (story.hub.get("npcs", []) as Array).filter(func(n: String) -> bool: return not bool(story.npcs.get(n, {}).get("dead", false)))
 	return str(ids[rng.randi_range(0, ids.size() - 1)]) if not ids.is_empty() else ""
 
 
