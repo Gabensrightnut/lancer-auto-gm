@@ -14,6 +14,8 @@ extends RefCounted
 ##   {"harm": 2, "ap": false, "to": "speaker"}      narrative damage to a pilot (Core p.48-49)
 ##   {"rest": "squad"}                              an hour's rest: half max HP back, Down and Out cleared
 ##   {"npc_dead": "$npc"}                           {"log": "text"}
+##   {"deal": {"template": "$npc.want_hook", "fallback": "clear_raiders"}}  take a side job from
+##     this NPC: a job on the board that pays their deal reward (a reserve) if the squad wins
 ##   {"start_combat": {"hook": ..., "reason": "..."}}  ends the scene, the GM starts a mission
 ##   {"downtime": "dt_get_connected", "subject": "$npc"}  takes that downtime action now for the speaker
 ##   {"ui": "downtime", "action": "dt_get_a_damn_drink"}   asks the UI to open a panel (downtime
@@ -126,6 +128,24 @@ static func apply(e: Dictionary, story: StoryState, campaign: Campaign, ctx: Dic
 		var spec: Dictionary = (e["start_combat"] as Dictionary).duplicate(true)
 		spec["reason"] = StoryText.fill(str(spec.get("reason", "")), story, campaign, ctx)
 		return [{"type": "combat_requested", "spec": spec, "rule_ref": "Core p.45: switching to mech combat"}]
+	if e.has("deal"):
+		var spec: Dictionary = e["deal"]
+		var npc_id := str(ctx.get("npc", ""))
+		var npc: Dictionary = story.npcs.get(npc_id, {})
+		var tid := str(R.call(spec.get("template", "$npc.want_hook")))
+		if tid == "" or not MissionHooks.data().get("templates", {}).has(tid):
+			tid = str(spec.get("fallback", "clear_raiders"))
+		var hook := MissionHooks.make(story, campaign, tid, {"patron": npc_id})
+		if hook.is_empty():
+			return []
+		var reward := str(npc.get("deal_reward", "reserve_backing"))
+		hook["deal"] = {"npc": npc_id, "reward": reward}
+		hook["title"] = "%s (deal with %s)" % [hook["title"], npc.get("name", "a contact")]
+		story.hooks.append(hook)
+		story.deals[npc_id] = {"state": "accepted", "hook": hook["id"], "reward": reward, "mission": story.mission_number,
+			"by": str(ctx.get("speaker", ""))}
+		return [{"type": "deal_made", "npc": npc_id, "reward": reward, "reward_name": reserve_name(reward), "hook": hook,
+			"rule_ref": "Core p.40-43: reserves (a favor for a job done)"}]
 	if e.has("ui"):
 		var ev := e.duplicate()
 		ev.erase("ui")

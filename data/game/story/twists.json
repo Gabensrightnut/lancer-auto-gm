@@ -1,0 +1,26 @@
+{
+  "_note": "Our own writing. Mid-mission twists: the book says a mission's goal can change when new information comes to light (Core p.43). A hook may carry one (hidden from the briefing); the GM reveals it during the mission (gm_twist events, ask for src/gm) and the debrief applies its consequence. 'chance' = how often a hook rolls a twist at all. Effects use StoryEffects; $hook.faction = the patron's faction, $hook.rival = the other side of the hub's conflict.",
+  "chance": 0.45,
+  "twists": [
+    {"id": "patron_lied", "weight": 3, "reveal": ["The cargo isn't what {patron} said it was.", "The 'supply depot' is a weapons cache. {patron} knew.", "Your orders were written to keep you from asking questions."],
+      "question": "Do you finish the job anyway, now that you know?", "effects": [{"standing": "$hook.faction", "add": -1}, {"set_flag": "patron_lied:{patron}"}]},
+    {"id": "defector", "weight": 2, "reveal": ["An enemy pilot is broadcasting on an open channel: they want out.", "One of the opposing mechs powers down and raises its arms."],
+      "question": "Can you get the defector out alive?", "effects": [{"set_flag": "defector_met"}, {"hook": "extract_person"}]},
+    {"id": "third_party", "weight": 3, "reveal": ["A third force drops in, and they aren't on anyone's side.", "New transponders on the scope. Not {enemy}. Someone else wants this too."],
+      "question": "Who sent them, and what do they want here?", "effects": [{"set_flag": "third_party_seen"}]},
+    {"id": "civilians", "weight": 3, "reveal": ["There are people sheltering in the target area. Nobody said there would be.", "Civilian vehicles on the road, right in the line of fire."],
+      "question": "Will you change the plan to keep them safe?", "effects": [{"set_flag": "civilians_in_danger"}]},
+    {"id": "real_objective", "weight": 2, "reveal": ["This was a diversion. The real strike is happening somewhere else right now.", "The enemy wanted you here. Their actual target is behind you."],
+      "question": "Can you get back in time to matter?", "effects": [{"set_flag": "decoyed"}, {"standing": "$hub.faction", "add": -1}]},
+    {"id": "nhp_involved", "weight": 1, "reveal": ["An NHP is running the enemy's systems, and it's asking you questions.", "The thing you came to recover is a casket, and someone is awake inside it."],
+      "question": "What do you owe a mind that didn't choose this fight?", "effects": [{"set_flag": "nhp_contact"}]},
+    {"id": "rival_squad", "weight": 2, "reveal": ["You know those paint schemes. The same squad you met before.", "A lancer team you've crossed paths with is fighting for the other side."],
+      "question": "Is this where your rivalry ends?", "effects": [{"add_flag": "rival_encounters", "amount": 1}]},
+    {"id": "weather", "weight": 2, "reveal": ["A storm front rolls in, faster than forecast. Sensors go to static.", "The ground starts to give way: the whole area is undermined."],
+      "question": "Can you finish before the world itself turns on you?", "effects": []},
+    {"id": "inside_help", "weight": 1, "reveal": ["Someone on the inside opens a gate for you, and won't say why.", "A message arrives on a private channel: patrol routes, door codes, a name."],
+      "question": "Who is helping you, and what will they want for it?", "effects": [{"set_flag": "unknown_ally"}, {"obligation": {"to": "an unknown benefactor", "what": "A favor for whoever opened the gate"}}]},
+    {"id": "orders_change", "weight": 2, "reveal": ["New orders, mid-drop: hold position instead of advancing.", "Command changes the objective: the target is now to be taken intact."],
+      "question": "Will you follow the new orders, or your own judgment?", "effects": [{"set_flag": "orders_changed"}]}
+  ]
+}

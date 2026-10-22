@@ -22,6 +22,9 @@ extends RefCounted
 ##   {"missions_min": 1}                       missions finished
 ##   {"hub_has": "bar"}                        current hub has a place of that kind
 ##   {"role": "company_rep"}                   the NPC in this conversation has that role
+##   {"hook": "hazardous"}                     the mission being briefed has that field set
+##   {"squad_reserve": "reserve_supplies"}     anyone in the squad holds that reserve
+##   {"deal": "$npc", "state": "none"}         a side-job deal with that NPC: none / accepted / won / lost
 ## Values starting with "$" are looked up in the conversation context (see resolve()).
 
 
@@ -98,6 +101,18 @@ static func check(cond: Variant, story: StoryState, campaign: Campaign, ctx: Dic
 			if str(spot.get("kind", "")) == str(c["hub_has"]):
 				return true
 		return false
+	if c.has("hook"):
+		var hook: Dictionary = ctx.get("hook", story.current_hook)
+		var v: Variant = hook.get(str(c["hook"]))
+		return v != null and not (v is bool and v == false) and str(v) != "" and not (v is Dictionary and (v as Dictionary).is_empty())
+	if c.has("squad_reserve"):
+		for pid: String in story.reserves:
+			if story.is_alive(pid) and story.has_reserve(pid, str(c["squad_reserve"])):
+				return true
+		return false
+	if c.has("deal"):
+		var who := str(resolve(c["deal"], story, ctx))
+		return str(story.deals.get(who, {}).get("state", "none")) == str(c.get("state", "accepted"))
 	if c.has("role"):
 		return str(story.npcs.get(str(ctx.get("npc", "")), {}).get("role", "")) == str(c["role"])
 	push_warning("StoryConditions: unknown condition %s" % [c])

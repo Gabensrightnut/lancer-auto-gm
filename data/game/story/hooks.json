@@ -1,96 +1,887 @@
 {
-  "_note": "Our own mission hook templates (src/story/mission_hooks.gd). A briefing sets the goal and the stakes (Core p.40). 'sitreps' = which generated sitreps fit (data/game/gm/missions.json). Text fields are line lists; one variant is picked. {patron} = who asked, {target} / {place} / {cargo} are filled from the lists below and COMP/CON's name lists. success/failure effects use StoryEffects. 'board' = whether it shows on the hub's job board by itself (others only come from story events).",
-  "places": ["the ridge road", "the old pumping station", "the dry riverbed", "the relay tower", "the abandoned agri-dome", "the mining cut",
-    "the crash site", "the north fields", "the spaceport perimeter", "the canyon pass", "the flooded quarter", "the orbital elevator base"],
-  "enemies": ["raiders", "a mercenary company", "rogue automated mechs", "a rival corpro's security", "deserters", "pirates", "a breakaway militia", "smugglers"],
+  "_note": "Our own mission hook templates (src/story/mission_hooks.gd). A briefing sets the goal and the stakes (Core p.40). 'sitreps' = which generated sitreps fit (data/game/gm/missions.json). Text fields are line lists; one variant is picked. {patron} = who asked, {target} / {place} / {cargo} are filled from the lists below and COMP/CON's name lists. success/failure effects use StoryEffects. 'board' = whether it shows on the hub's job board by itself (others only come from story events). 'question' = the stakes as a question, the way the book frames them (Core p.43). 'hazardous' = getting there means crossing hostile ground: a skill challenge at the briefing unless the squad brought a Supplies reserve (Core p.47, p.51). Templates follow the kinds of goals in the book's goal table (Core p.42), written in our own words.",
+  "places": [
+    "the ridge road",
+    "the old pumping station",
+    "the dry riverbed",
+    "the relay tower",
+    "the abandoned agri-dome",
+    "the mining cut",
+    "the crash site",
+    "the north fields",
+    "the spaceport perimeter",
+    "the canyon pass",
+    "the flooded quarter",
+    "the orbital elevator base"
+  ],
+  "enemies": [
+    "raiders",
+    "a mercenary company",
+    "rogue automated mechs",
+    "a rival corpro's security",
+    "deserters",
+    "pirates",
+    "a breakaway militia",
+    "smugglers"
+  ],
   "templates": {
     "escort_convoy": {
-      "weight": 3, "board": true, "sitreps": ["sitrep_gauntlet", "sitrep_standardcombat"],
-      "title": ["Convoy to {place}", "Safe Passage", "The Long Haul", "Running the Road"],
-      "objective": ["Get the convoy through {place}.", "Escort {cargo} past {place} in one piece.", "See the supply trucks safely through {place}."],
-      "stakes": ["If the convoy falls, {hub} goes hungry this season.", "Lose the trucks and {patron} loses everything they've put into this.", "The convoy carries medicine. People die if it doesn't arrive."],
-      "success": [{"standing": "$hook.faction", "add": 1}, {"set_flag": "convoy_arrived"}],
-      "failure": [{"standing": "$hook.faction", "add": -1}, {"set_flag": "convoy_lost"}]
+      "weight": 3,
+      "board": true,
+      "sitreps": [
+        "sitrep_gauntlet",
+        "sitrep_standardcombat"
+      ],
+      "title": [
+        "Convoy to {place}",
+        "Safe Passage",
+        "The Long Haul",
+        "Running the Road"
+      ],
+      "objective": [
+        "Get the convoy through {place}.",
+        "Escort {cargo} past {place} in one piece.",
+        "See the supply trucks safely through {place}."
+      ],
+      "stakes": [
+        "If the convoy falls, {hub} goes hungry this season.",
+        "Lose the trucks and {patron} loses everything they've put into this.",
+        "The convoy carries medicine. People die if it doesn't arrive."
+      ],
+      "success": [
+        {
+          "standing": "$hook.faction",
+          "add": 1
+        },
+        {
+          "set_flag": "convoy_arrived"
+        }
+      ],
+      "failure": [
+        {
+          "standing": "$hook.faction",
+          "add": -1
+        },
+        {
+          "set_flag": "convoy_lost"
+        }
+      ],
+      "question": [
+        "Will the convoy reach {hub}, or will {enemy} pick it apart at {place}?"
+      ],
+      "hazardous": true
     },
     "hold_the_line": {
-      "weight": 2, "board": true, "sitreps": ["sitrep_holdout", "sitrep_control"],
-      "title": ["Hold {place}", "Nobody Gets Through", "Last Light at {place}", "The Line"],
-      "objective": ["Hold {place} until relief arrives.", "Keep {enemy} off {place}.", "Defend {place} for as long as it takes."],
-      "stakes": ["If {place} falls, {enemy} have a straight road into {hub}.", "{patron} has promised the people here that the line will hold.", "Lose it and the whole valley's water goes with it."],
-      "success": [{"standing": "$hook.faction", "add": 1}, {"set_flag": "line_held"}],
-      "failure": [{"standing": "$hook.faction", "add": -1}, {"set_flag": "line_broken"}]
+      "weight": 2,
+      "board": true,
+      "sitreps": [
+        "sitrep_holdout",
+        "sitrep_control"
+      ],
+      "title": [
+        "Hold {place}",
+        "Nobody Gets Through",
+        "Last Light at {place}",
+        "The Line"
+      ],
+      "objective": [
+        "Hold {place} until relief arrives.",
+        "Keep {enemy} off {place}.",
+        "Defend {place} for as long as it takes."
+      ],
+      "stakes": [
+        "If {place} falls, {enemy} have a straight road into {hub}.",
+        "{patron} has promised the people here that the line will hold.",
+        "Lose it and the whole valley's water goes with it."
+      ],
+      "success": [
+        {
+          "standing": "$hook.faction",
+          "add": 1
+        },
+        {
+          "set_flag": "line_held"
+        }
+      ],
+      "failure": [
+        {
+          "standing": "$hook.faction",
+          "add": -1
+        },
+        {
+          "set_flag": "line_broken"
+        }
+      ],
+      "question": [
+        "Can the squad hold {place} until relief comes?"
+      ]
     },
     "raid_depot": {
-      "weight": 2, "board": true, "sitreps": ["sitrep_control", "sitrep_standardcombat"],
-      "title": ["Hit the Depot", "Burn the Stores", "Supply Line Raid", "Knock Out {place}"],
-      "objective": ["Take the depot {enemy} hold at {place}.", "Seize the supply caches {enemy} have stashed at {place}.", "Break the grip {enemy} have on {place}."],
-      "stakes": ["Without those supplies, {enemy} can't keep up the pressure on {hub}.", "{patron} wants this done before {enemy} can dig in.", "If the raid fails, {enemy} will know exactly who sent you."],
-      "success": [{"standing": "$hook.faction", "add": 1}, {"set_flag": "depot_taken"}],
-      "failure": [{"set_flag": "depot_alerted"}]
+      "weight": 2,
+      "board": true,
+      "sitreps": [
+        "sitrep_control",
+        "sitrep_standardcombat"
+      ],
+      "title": [
+        "Hit the Depot",
+        "Burn the Stores",
+        "Supply Line Raid",
+        "Knock Out {place}"
+      ],
+      "objective": [
+        "Take the depot {enemy} hold at {place}.",
+        "Seize the supply caches {enemy} have stashed at {place}.",
+        "Break the grip {enemy} have on {place}."
+      ],
+      "stakes": [
+        "Without those supplies, {enemy} can't keep up the pressure on {hub}.",
+        "{patron} wants this done before {enemy} can dig in.",
+        "If the raid fails, {enemy} will know exactly who sent you."
+      ],
+      "success": [
+        {
+          "standing": "$hook.faction",
+          "add": 1
+        },
+        {
+          "set_flag": "depot_taken"
+        }
+      ],
+      "failure": [
+        {
+          "set_flag": "depot_alerted"
+        }
+      ],
+      "question": [
+        "Will the raid break {enemy}, or tip them off?"
+      ]
     },
     "recover_cargo": {
-      "weight": 2, "board": true, "sitreps": ["sitrep_control", "sitrep_standardcombat"],
-      "title": ["Lost and Found", "Recovery Run", "What Fell at {place}", "Salvage Job"],
-      "objective": ["Recover {cargo} from {place}.", "Find the lost shipment of {cargo} near {place} and bring it back.", "Get to the wreck at {place} before {enemy} strip it."],
-      "stakes": ["{patron} needs that cargo back, and no questions asked.", "Whoever holds the cargo holds {hub}'s future.", "If {enemy} get there first, they'll sell it to the highest bidder."],
-      "success": [{"standing": "$hook.faction", "add": 1}, {"set_flag": "cargo_recovered"}],
-      "failure": [{"set_flag": "cargo_lost"}]
+      "weight": 2,
+      "board": true,
+      "sitreps": [
+        "sitrep_control",
+        "sitrep_standardcombat"
+      ],
+      "title": [
+        "Lost and Found",
+        "Recovery Run",
+        "What Fell at {place}",
+        "Salvage Job"
+      ],
+      "objective": [
+        "Recover {cargo} from {place}.",
+        "Find the lost shipment of {cargo} near {place} and bring it back.",
+        "Get to the wreck at {place} before {enemy} strip it."
+      ],
+      "stakes": [
+        "{patron} needs that cargo back, and no questions asked.",
+        "Whoever holds the cargo holds {hub}'s future.",
+        "If {enemy} get there first, they'll sell it to the highest bidder."
+      ],
+      "success": [
+        {
+          "standing": "$hook.faction",
+          "add": 1
+        },
+        {
+          "set_flag": "cargo_recovered"
+        }
+      ],
+      "failure": [
+        {
+          "set_flag": "cargo_lost"
+        }
+      ],
+      "question": [
+        "Will the squad get to the {cargo} before {enemy} do?"
+      ]
     },
     "clear_raiders": {
-      "weight": 3, "board": true, "sitreps": ["sitrep_standardcombat", "sitrep_control"],
-      "title": ["Clear the Road", "Raider Problem", "Quiet {place}", "Pest Control"],
-      "objective": ["Drive {enemy} away from {place}.", "Break the {enemy} who've been hitting {place}.", "Clear {place} of {enemy}."],
-      "stakes": ["Every week {enemy} stay, another farm empties.", "{patron} is out of patience, and out of other options.", "If they're not stopped, {enemy} will come for {hub} next."],
-      "success": [{"standing": "$hub.faction", "add": 1}, {"set_flag": "raiders_cleared"}],
-      "failure": [{"standing": "$hub.faction", "add": -1}, {"set_flag": "raiders_emboldened"}]
+      "weight": 3,
+      "board": true,
+      "sitreps": [
+        "sitrep_standardcombat",
+        "sitrep_control"
+      ],
+      "title": [
+        "Clear the Road",
+        "Raider Problem",
+        "Quiet {place}",
+        "Pest Control"
+      ],
+      "objective": [
+        "Drive {enemy} away from {place}.",
+        "Break the {enemy} who've been hitting {place}.",
+        "Clear {place} of {enemy}."
+      ],
+      "stakes": [
+        "Every week {enemy} stay, another farm empties.",
+        "{patron} is out of patience, and out of other options.",
+        "If they're not stopped, {enemy} will come for {hub} next."
+      ],
+      "success": [
+        {
+          "standing": "$hub.faction",
+          "add": 1
+        },
+        {
+          "set_flag": "raiders_cleared"
+        }
+      ],
+      "failure": [
+        {
+          "standing": "$hub.faction",
+          "add": -1
+        },
+        {
+          "set_flag": "raiders_emboldened"
+        }
+      ],
+      "question": [
+        "Can the squad end the raids on {place}, and find out who's paying {enemy}?"
+      ]
     },
     "rescue": {
-      "weight": 1, "board": true, "sitreps": ["sitrep_gauntlet", "sitrep_holdout"],
-      "title": ["Bring Them Home", "Search and Rescue", "Past the Perimeter", "No One Left Behind"],
-      "objective": ["Find the missing survey team near {place} and get them out.", "Reach the people trapped at {place}.", "Break through to {place} and bring the survivors back."],
-      "stakes": ["They won't last another night out there.", "{patron} is begging. There's no one else to send.", "If they die out there, {hub} will never trust Union pilots again."],
-      "success": [{"standing": "$hub.faction", "add": 1}, {"set_flag": "survivors_rescued"}],
-      "failure": [{"standing": "$hub.faction", "add": -1}, {"set_flag": "survivors_lost"}]
+      "weight": 1,
+      "board": true,
+      "sitreps": [
+        "sitrep_gauntlet",
+        "sitrep_holdout"
+      ],
+      "title": [
+        "Bring Them Home",
+        "Search and Rescue",
+        "Past the Perimeter",
+        "No One Left Behind"
+      ],
+      "objective": [
+        "Find the missing survey team near {place} and get them out.",
+        "Reach the people trapped at {place}.",
+        "Break through to {place} and bring the survivors back."
+      ],
+      "stakes": [
+        "They won't last another night out there.",
+        "{patron} is begging. There's no one else to send.",
+        "If they die out there, {hub} will never trust Union pilots again."
+      ],
+      "success": [
+        {
+          "standing": "$hub.faction",
+          "add": 1
+        },
+        {
+          "set_flag": "survivors_rescued"
+        }
+      ],
+      "failure": [
+        {
+          "standing": "$hub.faction",
+          "add": -1
+        },
+        {
+          "set_flag": "survivors_lost"
+        }
+      ],
+      "question": [
+        "Will the squad reach the survivors in time?"
+      ],
+      "hazardous": true
     },
     "trouble_followed": {
-      "weight": 1, "board": false, "sitreps": ["sitrep_standardcombat"],
-      "title": ["Trouble Followed You", "Unwanted Attention", "Loose Ends"],
-      "objective": ["Deal with the people who caught you snooping.", "Shake off the {enemy} who followed you back from your digging."],
-      "stakes": ["They know your faces now.", "If this isn't handled, nobody here will talk to you again."],
-      "success": [{"clear_flag": "in_trouble"}],
-      "failure": [{"standing": "$hub.faction", "add": -1}]
+      "weight": 1,
+      "board": false,
+      "sitreps": [
+        "sitrep_standardcombat"
+      ],
+      "title": [
+        "Trouble Followed You",
+        "Unwanted Attention",
+        "Loose Ends"
+      ],
+      "objective": [
+        "Deal with the people who caught you snooping.",
+        "Shake off the {enemy} who followed you back from your digging."
+      ],
+      "stakes": [
+        "They know your faces now.",
+        "If this isn't handled, nobody here will talk to you again."
+      ],
+      "success": [
+        {
+          "clear_flag": "in_trouble"
+        }
+      ],
+      "failure": [
+        {
+          "standing": "$hub.faction",
+          "add": -1
+        }
+      ],
+      "question": [
+        "Can you deal with this before it follows you home?"
+      ]
     },
     "stolen_goods": {
-      "weight": 1, "board": false, "sitreps": ["sitrep_standardcombat", "sitrep_control"],
-      "title": ["Rightful Owners", "Hot Merchandise", "They Want It Back"],
-      "objective": ["The owners of what you bought have come to collect. Stop them, or make it right."],
-      "stakes": ["Lose this and you lose the gear, and your name at the market."],
-      "success": [{"set_flag": "kept_stolen_goods"}],
-      "failure": [{"standing": "$hub.faction", "add": -1}]
+      "weight": 1,
+      "board": false,
+      "sitreps": [
+        "sitrep_standardcombat",
+        "sitrep_control"
+      ],
+      "title": [
+        "Rightful Owners",
+        "Hot Merchandise",
+        "They Want It Back"
+      ],
+      "objective": [
+        "The owners of what you bought have come to collect. Stop them, or make it right."
+      ],
+      "stakes": [
+        "Lose this and you lose the gear, and your name at the market."
+      ],
+      "success": [
+        {
+          "set_flag": "kept_stolen_goods"
+        }
+      ],
+      "failure": [
+        {
+          "standing": "$hub.faction",
+          "add": -1
+        }
+      ],
+      "question": [
+        "Do you keep what you bought, or make it right?"
+      ]
     },
     "deal_gone_wrong": {
-      "weight": 1, "board": false, "sitreps": ["sitrep_standardcombat", "sitrep_gauntlet"],
-      "title": ["Off-Plan", "Bad Deal", "Everything Goes Sideways"],
-      "objective": ["Get out of the mess your last deal made, near {place}."],
-      "stakes": ["If this goes badly, the deal and everyone in it goes down with you."],
-      "success": [{"set_flag": "deal_salvaged"}],
-      "failure": [{"set_flag": "deal_collapsed"}]
+      "weight": 1,
+      "board": false,
+      "sitreps": [
+        "sitrep_standardcombat",
+        "sitrep_gauntlet"
+      ],
+      "title": [
+        "Off-Plan",
+        "Bad Deal",
+        "Everything Goes Sideways"
+      ],
+      "objective": [
+        "Get out of the mess your last deal made, near {place}."
+      ],
+      "stakes": [
+        "If this goes badly, the deal and everyone in it goes down with you."
+      ],
+      "success": [
+        {
+          "set_flag": "deal_salvaged"
+        }
+      ],
+      "failure": [
+        {
+          "set_flag": "deal_collapsed"
+        }
+      ],
+      "question": [
+        "Can you save the deal, or just yourselves?"
+      ]
     },
     "org_trouble": {
-      "weight": 1, "board": false, "sitreps": ["sitrep_holdout", "sitrep_standardcombat"],
-      "title": ["Keeping the Lights On", "Hostile Takeover", "The Organization Needs You"],
-      "objective": ["Your organization is in trouble. Defend its interests at {place}."],
-      "stakes": ["Fail, and the organization you built may not survive the season."],
-      "success": [{"set_flag": "org_saved"}],
-      "failure": [{"set_flag": "org_damaged"}]
+      "weight": 1,
+      "board": false,
+      "sitreps": [
+        "sitrep_holdout",
+        "sitrep_standardcombat"
+      ],
+      "title": [
+        "Keeping the Lights On",
+        "Hostile Takeover",
+        "The Organization Needs You"
+      ],
+      "objective": [
+        "Your organization is in trouble. Defend its interests at {place}."
+      ],
+      "stakes": [
+        "Fail, and the organization you built may not survive the season."
+      ],
+      "success": [
+        {
+          "set_flag": "org_saved"
+        }
+      ],
+      "failure": [
+        {
+          "set_flag": "org_damaged"
+        }
+      ],
+      "question": [
+        "Will your organization survive the season?"
+      ]
     },
     "favor_owed": {
-      "weight": 1, "board": false, "sitreps": ["sitrep_standardcombat", "sitrep_control", "sitrep_gauntlet"],
-      "title": ["Paying Back {patron}", "A Favor Owed", "Calling It In"],
-      "objective": ["{patron} has called in the favor you owe. They need {place} dealt with."],
-      "stakes": ["Do this and the debt is clear. Refuse, and {patron}'s people remember."],
-      "success": [{"pay_obligation": "$hook.faction"}],
-      "failure": [{"standing": "$hook.faction", "add": -1}]
+      "weight": 1,
+      "board": false,
+      "sitreps": [
+        "sitrep_standardcombat",
+        "sitrep_control",
+        "sitrep_gauntlet"
+      ],
+      "title": [
+        "Paying Back {patron}",
+        "A Favor Owed",
+        "Calling It In"
+      ],
+      "objective": [
+        "{patron} has called in the favor you owe. They need {place} dealt with."
+      ],
+      "stakes": [
+        "Do this and the debt is clear. Refuse, and {patron}'s people remember."
+      ],
+      "success": [
+        {
+          "pay_obligation": "$hook.faction"
+        }
+      ],
+      "failure": [
+        {
+          "standing": "$hook.faction",
+          "add": -1
+        }
+      ],
+      "question": [
+        "Will you pay what you owe?"
+      ]
+    },
+    "escort_vip": {
+      "weight": 2,
+      "board": true,
+      "sitreps": [
+        "sitrep_gauntlet"
+      ],
+      "title": [
+        "Safe Conduct",
+        "Get Them Out",
+        "The Passenger"
+      ],
+      "objective": [
+        "Get {patron}'s envoy from {place} to safety.",
+        "Escort a witness out of {place} before {enemy} silence them."
+      ],
+      "stakes": [
+        "If the envoy dies, the talks die with them.",
+        "{enemy} will do anything to stop this person reaching {hub}."
+      ],
+      "question": [
+        "Will the envoy reach {hub} alive, and who tipped off {enemy}?"
+      ],
+      "success": [
+        {
+          "standing": "$hook.faction",
+          "add": 1
+        },
+        {
+          "set_flag": "envoy_safe"
+        }
+      ],
+      "failure": [
+        {
+          "standing": "$hook.faction",
+          "add": -1
+        },
+        {
+          "set_flag": "envoy_lost"
+        }
+      ]
+    },
+    "answer_sos": {
+      "weight": 2,
+      "board": true,
+      "hazardous": true,
+      "sitreps": [
+        "sitrep_standardcombat",
+        "sitrep_holdout"
+      ],
+      "title": [
+        "Mayday",
+        "Distress Call",
+        "Signal from {place}"
+      ],
+      "objective": [
+        "Answer a distress signal from {place}. The sender didn't say who they are.",
+        "Find out who is calling for help from {place}, and help them if you can."
+      ],
+      "stakes": [
+        "Whoever sent it is running out of time.",
+        "Nobody else is close enough to answer."
+      ],
+      "question": [
+        "Who sent the signal, and can the squad get there before {enemy} do?"
+      ],
+      "success": [
+        {
+          "standing": "$hub.faction",
+          "add": 1
+        },
+        {
+          "set_flag": "sos_answered"
+        }
+      ],
+      "failure": [
+        {
+          "set_flag": "sos_too_late"
+        }
+      ]
+    },
+    "investigate_tip": {
+      "weight": 2,
+      "board": true,
+      "sitreps": [
+        "sitrep_standardcombat",
+        "sitrep_control"
+      ],
+      "title": [
+        "Follow the Lead",
+        "A Name and a Place",
+        "Checking It Out"
+      ],
+      "objective": [
+        "An informant says {enemy} are using {place}. Go and see.",
+        "Follow up a tip about what's really happening at {place}."
+      ],
+      "stakes": [
+        "If the tip is good, this changes everything. If it's bad, it's a trap.",
+        "{patron} trusts the informant. You don't have to."
+      ],
+      "question": [
+        "Is the tip true, and who wanted you to hear it?"
+      ],
+      "success": [
+        {
+          "set_flag": "tip_confirmed"
+        },
+        {
+          "standing": "$hook.faction",
+          "add": 1
+        }
+      ],
+      "failure": [
+        {
+          "set_flag": "tip_was_a_trap"
+        }
+      ]
+    },
+    "explore_derelict": {
+      "weight": 1,
+      "board": true,
+      "hazardous": true,
+      "sitreps": [
+        "sitrep_control",
+        "sitrep_standardcombat"
+      ],
+      "title": [
+        "The Wreck at {place}",
+        "Old Bones",
+        "Derelict"
+      ],
+      "objective": [
+        "Search the long-abandoned wreck at {place} and bring back what's worth bringing.",
+        "Get into the derelict at {place} and secure its core."
+      ],
+      "stakes": [
+        "Whatever is inside, {enemy} want it too.",
+        "Nobody who went in last time came out the same."
+      ],
+      "question": [
+        "What is in the wreck, and is it worth what it costs to get?"
+      ],
+      "success": [
+        {
+          "set_flag": "derelict_secured"
+        },
+        {
+          "standing": "$hook.faction",
+          "add": 1
+        }
+      ],
+      "failure": [
+        {
+          "set_flag": "derelict_lost"
+        }
+      ]
+    },
+    "destroy_infrastructure": {
+      "weight": 1,
+      "board": true,
+      "sitreps": [
+        "sitrep_control"
+      ],
+      "title": [
+        "Bring It Down",
+        "Demolition",
+        "Cut the Line"
+      ],
+      "objective": [
+        "Bring down the bridge at {place} before {enemy} can use it.",
+        "Destroy the relay at {place} and cut {enemy} off."
+      ],
+      "stakes": [
+        "Leave it standing and {enemy} roll straight into {hub}.",
+        "It's the only way across. Once it's gone, it's gone for everyone."
+      ],
+      "question": [
+        "Can the squad bring it down, and who gets hurt when it falls?"
+      ],
+      "success": [
+        {
+          "standing": "$hook.faction",
+          "add": 1
+        },
+        {
+          "set_flag": "infrastructure_down"
+        }
+      ],
+      "failure": [
+        {
+          "set_flag": "infrastructure_held"
+        }
+      ]
+    },
+    "create_diversion": {
+      "weight": 1,
+      "board": true,
+      "sitreps": [
+        "sitrep_holdout",
+        "sitrep_standardcombat"
+      ],
+      "title": [
+        "Make Some Noise",
+        "The Distraction",
+        "Look Over Here"
+      ],
+      "objective": [
+        "Draw {enemy} to {place} and keep them busy while another team does the real work.",
+        "Start a fight at {place} loud enough to pull every patrol away."
+      ],
+      "stakes": [
+        "The other team is counting on you lasting long enough.",
+        "If {enemy} see through it, both teams are finished."
+      ],
+      "question": [
+        "Can the squad hold {enemy}'s attention long enough?"
+      ],
+      "success": [
+        {
+          "standing": "$hook.faction",
+          "add": 1
+        },
+        {
+          "set_flag": "diversion_worked"
+        }
+      ],
+      "failure": [
+        {
+          "set_flag": "diversion_failed"
+        }
+      ]
+    },
+    "secure_site": {
+      "weight": 2,
+      "board": true,
+      "sitreps": [
+        "sitrep_control",
+        "sitrep_holdout"
+      ],
+      "title": [
+        "Take and Hold",
+        "Secure {place}",
+        "Lockdown"
+      ],
+      "objective": [
+        "Secure {place} and hold it until {patron}'s people arrive.",
+        "Take {place} from {enemy}, intact."
+      ],
+      "stakes": [
+        "Whoever holds {place} controls the valley.",
+        "{patron} needs it standing, not burning."
+      ],
+      "question": [
+        "Will {place} be in friendly hands when the dust settles?"
+      ],
+      "success": [
+        {
+          "standing": "$hook.faction",
+          "add": 1
+        },
+        {
+          "set_flag": "site_secured"
+        }
+      ],
+      "failure": [
+        {
+          "standing": "$hook.faction",
+          "add": -1
+        }
+      ]
+    },
+    "smuggle_cargo": {
+      "weight": 1,
+      "board": true,
+      "hazardous": true,
+      "sitreps": [
+        "sitrep_gauntlet"
+      ],
+      "title": [
+        "Quiet Delivery",
+        "Through the Lines",
+        "No Questions"
+      ],
+      "objective": [
+        "Get a shipment of {cargo} through {place} without it being seized.",
+        "Run {cargo} past {enemy}'s patrols at {place}."
+      ],
+      "stakes": [
+        "If it's seized, {patron} is finished, and so is your welcome here.",
+        "Someone on the other side is waiting for this, and they can't wait long."
+      ],
+      "question": [
+        "Will the {cargo} get through, and do you want to know what it's for?"
+      ],
+      "success": [
+        {
+          "standing": "$hook.faction",
+          "add": 1
+        },
+        {
+          "set_flag": "smuggled"
+        }
+      ],
+      "failure": [
+        {
+          "standing": "$hook.faction",
+          "add": -1
+        },
+        {
+          "set_flag": "shipment_seized"
+        }
+      ]
+    },
+    "hunt_rivals": {
+      "weight": 1,
+      "board": true,
+      "sitreps": [
+        "sitrep_standardcombat"
+      ],
+      "title": [
+        "Hunting Lancers",
+        "The Other Squad",
+        "Reputation"
+      ],
+      "objective": [
+        "Track down the mercenary squad that's been working for {enemy} and stop them.",
+        "Find the pilots who hit {place} and end their run."
+      ],
+      "stakes": [
+        "They're good. As long as they're out there, {hub} isn't safe.",
+        "Beat them and every crew in the sector will know your names."
+      ],
+      "question": [
+        "Who's the better squad?"
+      ],
+      "success": [
+        {
+          "standing": "$hook.faction",
+          "add": 1
+        },
+        {
+          "set_flag": "rivals_hunted"
+        }
+      ],
+      "failure": [
+        {
+          "set_flag": "rivals_escaped"
+        }
+      ]
+    },
+    "cover_evacuation": {
+      "weight": 2,
+      "board": true,
+      "sitreps": [
+        "sitrep_holdout"
+      ],
+      "title": [
+        "Last Transports Out",
+        "Evacuation",
+        "Buy Them Time"
+      ],
+      "objective": [
+        "Cover the evacuation of {place} until the last transport is away.",
+        "Hold {enemy} off while {place} empties."
+      ],
+      "stakes": [
+        "Every minute you hold is another family out.",
+        "If the line breaks, the transports are sitting targets."
+      ],
+      "question": [
+        "How many get out?"
+      ],
+      "success": [
+        {
+          "standing": "$hub.faction",
+          "add": 1
+        },
+        {
+          "set_flag": "evacuated"
+        }
+      ],
+      "failure": [
+        {
+          "standing": "$hub.faction",
+          "add": -1
+        },
+        {
+          "set_flag": "evacuation_failed"
+        }
+      ]
+    },
+    "extract_person": {
+      "weight": 1,
+      "board": true,
+      "sitreps": [
+        "sitrep_gauntlet",
+        "sitrep_holdout"
+      ],
+      "title": [
+        "Extraction",
+        "Jailbreak",
+        "The Inside Job"
+      ],
+      "objective": [
+        "Get someone out of {place}: they're being held by {enemy}.",
+        "Break into {place}, find the prisoner, and get them out."
+      ],
+      "stakes": [
+        "They know things {enemy} can't let leave.",
+        "If you fail, they won't get another chance."
+      ],
+      "question": [
+        "Can the squad get them out, and are they who {patron} says they are?"
+      ],
+      "success": [
+        {
+          "standing": "$hook.faction",
+          "add": 1
+        },
+        {
+          "set_flag": "extracted"
+        }
+      ],
+      "failure": [
+        {
+          "set_flag": "prisoner_lost"
+        }
+      ]
     }
   }
 }

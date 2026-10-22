@@ -255,6 +255,9 @@ func show_note(text: String) -> void:
 
 
 func _process(delta: float) -> void:
+	if visible:
+		_layout()  # wrapped replies only know their height once they have a width
+		_tail.queue_redraw()
 	if _note_timer > 0.0:
 		_note_timer -= delta
 		if _note_timer <= 0.0:

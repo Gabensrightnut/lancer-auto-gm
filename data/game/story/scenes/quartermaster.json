@@ -15,6 +15,20 @@
    "next": "describe",
    "branch": [
     {
+     "if": [
+      {
+       "deal": "$npc",
+       "state": "lost"
+      },
+      {
+       "not": {
+        "flag": "deal_off_said:{npc_id}"
+       }
+      }
+     ],
+     "next": "deal_off"
+    },
+    {
      "if": {
       "flag": "met:{npc_id}"
      },
@@ -26,7 +40,23 @@
    "speaker": "npc",
    "expression": "smiling",
    "line": "@greet_quartermaster",
-   "next": "menu"
+   "next": "menu",
+   "branch": [
+    {
+     "if": [
+      {
+       "deal": "$npc",
+       "state": "lost"
+      },
+      {
+       "not": {
+        "flag": "deal_off_said:{npc_id}"
+       }
+      }
+     ],
+     "next": "deal_off"
+    }
+   ]
   },
   "describe": {
    "speaker": "narrator",
@@ -59,6 +89,74 @@
     {
      "downtime": "dt_get_connected",
      "subject": "$npc"
+    }
+   ],
+   "next": "menu"
+  },
+  "deal_offer": {
+   "speaker": "npc",
+   "line": "@deal_offer",
+   "choices": [
+    {
+     "id": "deal_yes",
+     "text": [
+      "Deal. We'll do the job.",
+      "You've got yourself a squad."
+     ],
+     "tags": [
+      "practical",
+      "greedy",
+      "bold"
+     ],
+     "effects": [
+      {
+       "deal": {
+        "template": "$npc.want_hook",
+        "fallback": "clear_raiders"
+       }
+      },
+      {
+       "log": "Deal with {npc}: a job for {npc_deal_reward}."
+      }
+     ],
+     "next": "deal_done"
+    },
+    {
+     "id": "deal_no",
+     "text": [
+      "Not right now.",
+      "We'll think about it."
+     ],
+     "tags": [
+      "cautious",
+      "leave"
+     ],
+     "pinned": true,
+     "next": "menu"
+    }
+   ]
+  },
+  "deal_done": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": [
+    "Good. It's on the board. Don't let me down.",
+    "Then we have an understanding."
+   ],
+   "next": "menu"
+  },
+  "deal_waiting": {
+   "speaker": "npc",
+   "line": "@deal_waiting",
+   "next": "menu"
+  },
+  "deal_off": {
+   "speaker": "npc",
+   "expression": "worried",
+   "line": "@deal_off",
+   "effects": [
+    {
+     "set_flag": "deal_off_said:{npc_id}"
     }
    ],
    "next": "menu"
@@ -112,6 +210,19 @@
       "curious"
      ],
      "next": "printing"
+    },
+    {
+     "id": "supplies",
+     "text": [
+      "What supplies do we need for a mission?",
+      "Food, water, repair kits: how does that work out here?"
+     ],
+     "tags": [
+      "practical",
+      "cautious"
+     ],
+     "next": "supplies",
+     "priority": 2
     },
     {
      "id": "licenses",
@@ -233,6 +344,42 @@
      ]
     },
     {
+     "id": "deal",
+     "text": [
+      "Is there something we could do for you, in exchange for {npc_deal_reward}?",
+      "What would it take to get {npc_deal_reward} from you?"
+     ],
+     "condition": [
+      {
+       "deal": "$npc",
+       "state": "none"
+      },
+      {
+       "not": {
+        "phase": "mission"
+       }
+      }
+     ],
+     "tags": [
+      "greedy",
+      "practical",
+      "kind"
+     ],
+     "next": "deal_offer"
+    },
+    {
+     "id": "deal_wait",
+     "text": "About our deal...",
+     "condition": {
+      "deal": "$npc",
+      "state": "accepted"
+     },
+     "tags": [
+      "honest"
+     ],
+     "next": "deal_waiting"
+    },
+    {
      "id": "leave",
      "text": [
       "That's all for now.",
@@ -252,6 +399,80 @@
    "speaker": "npc",
    "line": "@gear_explain",
    "next": "menu"
+  },
+  "supplies": {
+   "speaker": "npc",
+   "line": "@supplies_explain",
+   "next": "supplies_how"
+  },
+  "supplies_how": {
+   "speaker": "npc",
+   "line": "@supplies_how",
+   "choices": [
+    {
+     "id": "requisition",
+     "text": "Requisition it through you. (Get Connected: your downtime action)",
+     "condition": [
+      {
+       "phase": "downtime"
+      },
+      {
+       "downtime_left": true
+      }
+     ],
+     "tags": [
+      "practical",
+      "honest"
+     ],
+     "next": "favor"
+    },
+    {
+     "id": "scrounge_it",
+     "text": "I'll find it myself. (Scrounge and Barter: your downtime action)",
+     "condition": [
+      {
+       "phase": "downtime"
+      },
+      {
+       "downtime_left": true
+      }
+     ],
+     "tags": [
+      "practical",
+      "bold"
+     ],
+     "effects": [
+      {
+       "ui": "downtime",
+       "action": "dt_scrounge_and_barter",
+       "subject": "Supplies for crossing hostile ground"
+      }
+     ],
+     "next": "menu"
+    },
+    {
+     "id": "kit",
+     "text": "Show me what I can carry myself.",
+     "tags": [
+      "practical"
+     ],
+     "effects": [
+      {
+       "ui": "pilot_gear"
+      }
+     ],
+     "next": "gear_explain"
+    },
+    {
+     "id": "back",
+     "text": "Good to know.",
+     "tags": [
+      "leave"
+     ],
+     "pinned": true,
+     "next": "menu"
+    }
+   ]
   },
   "printing": {
    "speaker": "npc",

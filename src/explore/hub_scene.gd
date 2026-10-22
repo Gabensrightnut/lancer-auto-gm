@@ -41,6 +41,7 @@ var popup: StoryCheckPopup
 var downtime_panel: DowntimePanel
 var hud: HubHud
 var level_panel: LevelUpPanel
+var gear_panel: PilotGearPanel
 
 
 func setup(e: StoryEngine, s: StoryState, c: Campaign, content: ContentDB, seat: String = "p1") -> void:
@@ -312,7 +313,7 @@ func _physics_process(delta: float) -> void:
 	var me: PilotFigure = avatars.get(local_seat)
 	if me == null:
 		return
-	var busy := dialogue.visible or downtime_panel.visible or hud.board_open() or level_panel.visible
+	var busy := dialogue.visible or downtime_panel.visible or hud.board_open() or level_panel.visible or gear_panel.visible
 	var dir := Vector3.ZERO
 	if not busy:
 		var f := Vector3(-sin(_yaw), 0, -cos(_yaw))
@@ -486,6 +487,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 					hud.toggle_board()
 			KEY_ESCAPE:
 				downtime_panel.visible = false
+				gear_panel.visible = false
 				hud.close_board()
 				hud.set_busy(false)
 	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT and not dialogue.visible and not downtime_panel.visible:
@@ -521,6 +523,10 @@ func _build_ui() -> void:
 	ui.add_child(dialogue)
 	dialogue.bind(engine, story, campaign, local_seat)
 	dialogue.story_events.connect(_handle)
+	gear_panel = PilotGearPanel.new()
+	ui.add_child(gear_panel)
+	gear_panel.bind(engine, story, campaign, local_seat)
+	gear_panel.story_events.connect(_handle)
 	level_panel = LevelUpPanel.new()
 	ui.add_child(level_panel)
 	level_panel.bind(engine, story, campaign, local_seat)
@@ -561,6 +567,8 @@ func _handle(events: Array) -> void:
 				hud.toast("%s takes %d damage (HP %d)" % [who, int(e["amount"]), int(e["hp"])], StoryStyle.RED)
 			"down_and_out_roll":
 				hud.toast("%s hits 0 HP: rolled %d on 1d6: %s" % [who, int(e["roll"]), {"close_call": "a close call, back to 1 HP", "down_and_out": "DOWN AND OUT", "dead": "killed"}[e["result"]]], StoryStyle.RED)
+			"pilot_gear_set":
+				hud.toast("%s's kit: %s" % [who, ", ".join(PackedStringArray((e["gear"] as Array).map(func(g: Variant) -> String: return str(db.get_entry("pilot_gear", str(g)).get("name", g)))))], StoryStyle.DIM)
 			"pilot_rested":
 				hud.toast("%s rests: HP %d" % [who, int(e["hp"])], StoryStyle.GREEN)
 			"ai_chose":
@@ -571,12 +579,12 @@ func _handle(events: Array) -> void:
 			"ui_requested":
 				match str(e["ui"]):
 					"downtime":
-						downtime_panel.open(str(e["params"].get("action", "")), str(e.get("npc", "")))
+						downtime_panel.open(str(e["params"].get("action", "")), str(e.get("npc", "")), str(e["params"].get("subject", "")))
 						_center(downtime_panel)
 					"hooks":
 						hud.toggle_board()
 					"pilot_gear":
-						hud.toast("Pilot gear: armor, up to two weapons, up to three other items (the gear picker lives in the pilot builder).", StoryStyle.DIM)
+						gear_panel.open()
 			"boots_on_the_ground":
 				mission_requested.emit(e["hook"])
 	# A downtime action taken from a conversation: show its result, and its choice if it has one.
@@ -599,7 +607,7 @@ func _handle(events: Array) -> void:
 func screenshot_setup(_args: Array) -> Array:
 	var d := HubDemo.make()
 	setup(d["engine"], d["story"], d["campaign"], d["db"], "p1")
-	return ["walk", "talk", "choices", "check", "downtime", "board", "briefing", "levelup"]
+	return ["walk", "talk", "choices", "check", "downtime", "supplies", "gear", "board", "briefing", "levelup"]
 
 
 func screenshot_stage(tag: String) -> void:
@@ -635,7 +643,30 @@ func screenshot_stage(tag: String) -> void:
 			_center(downtime_panel)
 			downtime_panel._subject.text = "Collect gossip"
 			downtime_panel._go()
+		"supplies":
+			downtime_panel.visible = false
+			if Dialogue.is_open(story):
+				_handle(Dialogue.close(story))
+			var qm := ""
+			for id: String in npc_nodes:
+				if story.npcs[id]["role"] == "quartermaster":
+					qm = id
+			var qp := (npc_nodes[qm] as PilotFigure).position
+			me.position = qp.lerp(Vector3.ZERO, 2.0 / maxf(qp.length(), 2.0))
+			_yaw = atan2(me.position.x - qp.x, me.position.z - qp.z) + 0.9
+			talk_to(qm)
+			var guard := 0
+			while Dialogue.offered(story).is_empty() and Dialogue.is_open(story) and guard < 4:
+				dialogue.advance()
+				guard += 1
+			dialogue.choose("supplies")
+			dialogue.advance()
+		"gear":
+			if Dialogue.is_open(story):
+				_handle(Dialogue.close(story))
+			gear_panel.open()
 		"board":
+			gear_panel.visible = false
 			downtime_panel.visible = false
 			while not story.pending_choice.is_empty():
 				var o: Array = story.pending_choice["options"]

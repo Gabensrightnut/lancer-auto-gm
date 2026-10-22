@@ -98,6 +98,8 @@ static func values(story: StoryState, campaign: Campaign, ctx: Dictionary) -> Di
 		v["npc_role_lower"] = str(npc.get("role_name", "")).to_lower()
 		v["npc_want"] = npc.get("want", "")
 		v["npc_quirk"] = npc.get("quirk", "")
+		v["npc_secret"] = npc.get("secret", "")
+		v["npc_deal_reward"] = StoryEffects.reserve_name(str(npc.get("deal_reward", "reserve_backing")))
 	var p: Dictionary = campaign.pilots.get(str(ctx.get("speaker", "")), {}) if campaign != null else {}
 	if not p.is_empty():
 		v["pilot"] = p.get("name", "")
@@ -107,9 +109,18 @@ static func values(story: StoryState, campaign: Campaign, ctx: Dictionary) -> Di
 	v["hub_faction"] = story.hub.get("faction", "the locals")
 	v["planet"] = story.hub.get("planet", "this world")
 	var hook: Dictionary = story.current_hook if not story.current_hook.is_empty() else ctx.get("hook", {})
-	for k in ["operation", "patron", "objective", "target", "stakes", "place"]:
+	for k in ["operation", "patron", "objective", "target", "stakes", "place", "question", "enemy", "cargo", "rival"]:
 		if hook.has(k):
 			v[k] = hook[k]
+	if hook.get("arc") is Dictionary:
+		v["arc_beat"] = hook["arc"].get("beat", "")
+		v["arc_name"] = hook["arc"].get("name", "")
+	if hook.get("deal") is Dictionary:
+		v["deal_reward"] = StoryEffects.reserve_name(str(hook["deal"].get("reward", "")))
+	var twist: Dictionary = hook.get("twist", {})
+	if not twist.is_empty():
+		v["twist_reveal"] = twist.get("reveal", "")
+		v["twist_question"] = twist.get("question", "")
 	v.merge(ctx.get("vars", {}), true)
 	return v
 

@@ -39,7 +39,7 @@ func refresh() -> void:
 	if not visible:
 		return
 	_box.add_child(StoryStyle.label("LEVEL UP  ·  %s is now LL%d (Grit +%d)" % [p.get("callsign", ""), int(p.get("ll", 0)), UnitFactory.grit(int(p.get("ll", 0)))], 22, StoryStyle.GOLD))
-	_box.add_child(StoryStyle.label("Every pilot gains a License Level after a mission, whether it went well or not. Your License Level is your access to gear, favors and clout: there's no money in LANCER.", 14, StoryStyle.DIM, 620))
+	_box.add_child(StoryStyle.label("Every pilot gains a License Level after a mission, whether it went well or not. Your License Level is your access to gear, favors and clout. Manna can't buy a license.", 14, StoryStyle.DIM, 620))
 	var trig: OptionButton = null
 	var mech: OptionButton = null
 	if int(picks.get("trigger", 0)) > 0:

@@ -73,7 +73,7 @@ func _init() -> void:
 	bb.add_theme_constant_override("separation", 8)
 	_board.add_child(bb)
 	bb.add_child(StoryStyle.label("JOB BOARD", 22, StoryStyle.GOLD))
-	bb.add_child(StoryStyle.label("Lancers aren't paid in money. You take jobs for the people and factions you want on your side, and every mission you finish, win or lose, raises your License Level.", 14, StoryStyle.DIM, 560))
+	bb.add_child(StoryStyle.label("Jobs pay in favors, reserves and goodwill (and some manna, which the rules don't count). Every mission you finish, win or lose, raises your License Level.", 14, StoryStyle.DIM, 560))
 	_board_list = VBoxContainer.new()
 	_board_list.add_theme_constant_override("separation", 8)
 	bb.add_child(_board_list)
@@ -91,7 +91,14 @@ func refresh() -> void:
 		return
 	var vp := get_viewport_rect().size
 	var hub := story.hub
-	var t := "[b]%s[/b]\n[color=#9fb2c8]%s  ·  %s  ·  %s[/color]\n\n" % [hub.get("name", "?"), str(hub.get("kind", "")).capitalize(), hub.get("planet", ""), hub.get("faction", "")]
+	var t := "[b]%s[/b]\n[color=#9fb2c8]%s  ·  %s  ·  %s[/color]\n" % [hub.get("name", "?"), str(hub.get("kind", "")).capitalize(), hub.get("planet", ""), hub.get("faction", "")]
+	var conflict: Dictionary = hub.get("conflict", {})
+	if not conflict.is_empty():
+		t += "[color=#d0b98a][i]%s[/i][/color]\n" % conflict.get("summary", "")
+	if not story.arc.is_empty():
+		var n := (StoryArc.arc_def(str(story.arc["id"])).get("stages", []) as Array).size()
+		t += "[color=#ffd166]Situation: %s (%d of %d)[/color]\n" % [story.arc["name"], int(story.arc["stage"]) + 1, n]
+	t += "\n"
 	t += "[color=#ffd166]SQUAD[/color]\n"
 	var seats := story.seats.keys()
 	seats.sort()
@@ -110,6 +117,7 @@ func refresh() -> void:
 			StoryEffects.current_hp(story, campaign, pid), StoryEffects.max_hp(p), state, "  [color=#9fb2c8](AI)[/color]" if story.is_ai(s) else ""]
 		if story.phase == "downtime":
 			t += "   [color=#9fb2c8]downtime actions left: %d[/color]\n" % int(story.downtime.get("actions_left", {}).get(pid, 0))
+		t += _kit_line(p, res)
 		for r: Dictionary in res:
 			t += "   [color=#7fe0a0]+ %s[/color]\n" % r["name"]
 	var met := {}
@@ -126,6 +134,10 @@ func refresh() -> void:
 	var owed: Array = (story.downtime.get("obligations", []) as Array).filter(func(o: Dictionary) -> bool: return not bool(o.get("done", false)))
 	for o: Dictionary in owed:
 		t += "[color=#ff9b7b]Owed: %s[/color]\n" % o["what"]
+	for npc_id: String in story.deals:
+		var dl: Dictionary = story.deals[npc_id]
+		if str(dl.get("state", "")) == "accepted":
+			t += "[color=#9fd0ff]Deal: a job for %s -> %s[/color]\n" % [story.npcs.get(npc_id, {}).get("name", "?"), StoryEffects.reserve_name(str(dl["reward"]))]
 	_info.text = t
 	_phase.text = PHASE_HELP.get(story.phase, story.phase)
 	_phase.custom_minimum_size.x = minf(760, vp.x - 760)
@@ -149,6 +161,27 @@ func set_busy(busy: bool) -> void:
 	(get_node("Info") as Control).visible = not busy
 	_phase.visible = not busy
 	_next.visible = not busy and story != null and NEXT_STEP.has(story.phase)
+
+
+## Mech repairs (Repair Cap, +1 per 2 Hull, +2 with an Extra repairs reserve) and the pilot's
+## own kit: how supplies show up by the book (Core p.30, p.51, p.108).
+func _kit_line(p: Dictionary, res: Array) -> String:
+	if engine == null or engine.db == null:
+		return ""
+	var mech: Dictionary = {}
+	for m: Dictionary in p.get("mechs", []):
+		if m["id"] == p.get("active_mech", "") or mech.is_empty():
+			mech = m
+	var frame := engine.db.frame(str(mech.get("frame", "")))
+	var line := ""
+	if not frame.is_empty():
+		var rep := int(frame.get("stats", {}).get("repcap", 0)) + int(p.get("hull", 0)) / 2
+		var extra := 2 if res.any(func(r: Dictionary) -> bool: return str(r["id"]) == "reserve_extra_repairs") else 0
+		line += "   [color=#9fb2c8]%s · Repairs %d%s[/color]\n" % [frame.get("name", ""), rep + extra, " (+2 reserve)" if extra > 0 else ""]
+	var kit: Array = (p.get("pilot_gear", []) as Array).map(func(g: Variant) -> String: return str(engine.db.get_entry("pilot_gear", str(g)).get("name", g)))
+	if not kit.is_empty():
+		line += "   [color=#9fb2c8]Kit: %s[/color]\n" % ", ".join(PackedStringArray(kit))
+	return line
 
 
 func set_prompt(text: String) -> void:

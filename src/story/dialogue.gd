@@ -260,9 +260,9 @@ static func _roll_choice(story: StoryState, campaign: Campaign, chk: Dictionary,
 			if bool(e.get("risky_too", false)):
 				events.append_array(StoryEffects.apply(e, story, campaign, ctx))
 	# Harm from a failed check hits everyone who helped too (teamwork, Core p.45).
-	if consequence and sharing.size() > 1:
+	if consequence and sharing.size() > 1 and not bool(chk.get("challenge", false)):
 		for e: Dictionary in chk.get("fail_effects", []):
-			if e.has("harm") and (not success or bool(e.get("risky_too", false))):
+			if e.has("harm") and str(e.get("to", "speaker")) != "squad" and (not success or bool(e.get("risky_too", false))):
 				for pid: String in sharing:
 					if pid != speaker:
 						events.append_array(StoryEffects.harm(story, campaign, pid, int(e["harm"]), bool(e.get("ap", false))))

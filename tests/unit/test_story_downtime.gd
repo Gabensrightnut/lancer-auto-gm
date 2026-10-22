@@ -67,7 +67,7 @@ func test_result_bands_follow_the_roll() -> void:
 		expect_eq(res["band"], Downtime.band_of(total))
 		expect_eq(res["check"]["trigger"]["bonus"], 4, "the trigger counts (Core p.53)")
 		var s: StoryState = t["story"]
-		expect(s.has_reserve(t["a"], "custom"), "you always get the item as a reserve")
+		expect(s.has_reserve(t["a"], "reserve_vehicle"), "you always get the item as a reserve (a vehicle is the book's Vehicle reserve)")
 		if res["band"] == "high":
 			expect(s.pending_choice.is_empty(), "20+: no problem")
 		else:

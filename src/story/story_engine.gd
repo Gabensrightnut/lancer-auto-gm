@@ -352,6 +352,28 @@ func _finish_mission(story: StoryState, campaign: Campaign, p: Dictionary) -> Ar
 	if not story.reserves.is_empty():
 		events.append({"type": "reserves_expired", "rule_ref": "Core p.51: reserves last for the next mission only"})
 	story.reserves = {}
+	# After the old reserves expire: what this mission earned is for the next one.
+	# The twist the mission hid (Core p.43: goals change mid-mission) and its consequence.
+	var twist: Dictionary = hook.get("twist", {})
+	if not twist.is_empty():
+		events.append({"type": "twist_revealed", "twist": twist.duplicate(true), "rule_ref": "Core p.43: goals can change mid-mission"})
+		events.append_array(StoryEffects.apply_all(twist.get("effects", []), story, campaign, ctx))
+	# A side job done for someone pays out their reserve; a lost one withdraws the offer.
+	var deal: Dictionary = hook.get("deal", {})
+	if not deal.is_empty():
+		var npc_id := str(deal["npc"])
+		var rec: Dictionary = story.deals.get(npc_id, {})
+		rec["state"] = "won" if won else "lost"
+		story.deals[npc_id] = rec
+		if won:
+			var to := str(rec.get("by", ""))
+			if to == "" or not story.is_alive(to):
+				to = _first_alive(story, campaign)
+			var dctx := {"npc": npc_id, "speaker": to}
+			events.append_array(StoryEffects.apply({"reserve": str(deal["reward"]), "to": "speaker", "source": "$npc.name", "note": "For the job you did for {npc}"}, story, campaign, dctx))
+			events.append_array(StoryEffects.apply({"standing": "$npc.faction", "add": 1}, story, campaign, dctx))
+		events.append({"type": "deal_" + ("kept" if won else "off"), "npc": npc_id, "reward": deal["reward"], "rule_ref": "Core p.40-43: reserves"})
+	events.append_array(StoryArc.advance(story, campaign, hook, won))
 	story.last_mission = {"number": story.mission_number, "outcome": outcome, "reason": str(p.get("reason", "")), "hook": hook.get("title", "")}
 	story.current_hook = {}
 	story.mission_number += 1

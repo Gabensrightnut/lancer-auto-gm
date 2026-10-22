@@ -1,6 +1,15 @@
 {
-  "_note": "Our own tables for procedural NPCs (src/story/npc_gen.gd). Names come from COMP/CON's lists (data/compcon/generators). Each NPC gets one entry from each table; 'personality' picks the line pools a scene uses (e.g. greet_company_rep_gruff falls back to greet_company_rep).",
-  "personalities": ["warm", "gruff", "nervous", "sly", "formal", "weary", "cheerful", "zealous"],
+  "_note": "Our own tables for procedural NPCs (src/story/npc_gen.gd). Names come from COMP/CON's lists (data/compcon/generators). Each NPC gets one entry from each table; 'personality' picks the line pools a scene uses (e.g. greet_company_rep_gruff falls back to greet_company_rep). 'archetypes' = the part an NPC plays in a hub's story (patterns: docs/research/lancer_campaigns.md); each comes with secrets a pilot can uncover with a Read a Situation check.",
+  "personalities": [
+    "warm",
+    "gruff",
+    "nervous",
+    "sly",
+    "formal",
+    "weary",
+    "cheerful",
+    "zealous"
+  ],
   "quirks": [
     "keeps checking a battered wrist terminal",
     "talks with their hands, constantly",
@@ -24,32 +33,261 @@
     "dresses far too well for this place"
   ],
   "wants": [
-    {"id": "supplies", "text": "a shipment that never arrived", "hook": "recover_cargo"},
-    {"id": "safety", "text": "someone to deal with the raiders on the ridge road", "hook": "clear_raiders"},
-    {"id": "family", "text": "news of a sibling who went missing out past the perimeter", "hook": "rescue"},
-    {"id": "revenge", "text": "payback against the people who burned their workshop", "hook": "raid_depot"},
-    {"id": "escort", "text": "an escort for a convoy heading out next week", "hook": "escort_convoy"},
-    {"id": "defense", "text": "help holding the pumping station until reinforcements arrive", "hook": "hold_the_line"},
-    {"id": "evidence", "text": "proof that the local administrator is selling them out", "hook": "recover_cargo"},
-    {"id": "quiet", "text": "nothing more than a quiet week, for once", "hook": ""},
-    {"id": "debt", "text": "a way out of a debt they should never have taken on", "hook": "deal_gone_wrong"},
-    {"id": "salvage", "text": "salvage rights to a wreck in contested ground", "hook": "clear_raiders"}
+    {
+      "id": "supplies",
+      "text": "a shipment that never arrived",
+      "hook": "recover_cargo"
+    },
+    {
+      "id": "safety",
+      "text": "someone to deal with the raiders on the ridge road",
+      "hook": "clear_raiders"
+    },
+    {
+      "id": "family",
+      "text": "news of a sibling who went missing out past the perimeter",
+      "hook": "rescue"
+    },
+    {
+      "id": "revenge",
+      "text": "payback against the people who burned their workshop",
+      "hook": "raid_depot"
+    },
+    {
+      "id": "escort",
+      "text": "an escort for a convoy heading out next week",
+      "hook": "escort_convoy"
+    },
+    {
+      "id": "defense",
+      "text": "help holding the pumping station until reinforcements arrive",
+      "hook": "hold_the_line"
+    },
+    {
+      "id": "evidence",
+      "text": "proof that the local administrator is selling them out",
+      "hook": "recover_cargo"
+    },
+    {
+      "id": "quiet",
+      "text": "nothing more than a quiet week, for once",
+      "hook": ""
+    },
+    {
+      "id": "debt",
+      "text": "a way out of a debt they should never have taken on",
+      "hook": "deal_gone_wrong"
+    },
+    {
+      "id": "salvage",
+      "text": "salvage rights to a wreck in contested ground",
+      "hook": "clear_raiders"
+    }
   ],
   "looks": {
-    "skin": ["#f1d3b8", "#e0b493", "#c68d66", "#a16a45", "#7a4b2e", "#5a3420", "#3e2416", "#d9b9a0", "#b98a6e", "#8d5a3c"],
-    "hair": ["#1b1410", "#3a2518", "#6b4423", "#a5672f", "#d8b46a", "#e7e0cf", "#8a8a8a", "#b23a2c", "#2f3b6b", "#4f7a3a", "#c7c7c7", "#5b2a4a"],
-    "hair_style": ["short", "buzz", "long", "bun", "mohawk", "bald", "braids", "swept"],
-    "eyes": ["#3b2a1a", "#4a6b8a", "#4d7a4d", "#7a5a2a", "#2a2a2a", "#8a8a9a"],
-    "outfit": ["#4a5a6a", "#6a4a3a", "#3a4a3a", "#5a5a5a", "#7a6a4a", "#3a3a5a", "#6a2a2a", "#2a4a5a", "#8a7a5a", "#4a3a5a"],
-    "accent": ["#d8a23a", "#c83a2a", "#3a8ac8", "#5ac88a", "#e8e8e8", "#8a3ac8", "#e86a2a", "#2ac8c8"],
-    "extra": ["none", "none", "visor", "glasses", "scarf", "cap", "headset", "eyepatch", "beard", "none"]
+    "skin": [
+      "#f1d3b8",
+      "#e0b493",
+      "#c68d66",
+      "#a16a45",
+      "#7a4b2e",
+      "#5a3420",
+      "#3e2416",
+      "#d9b9a0",
+      "#b98a6e",
+      "#8d5a3c"
+    ],
+    "hair": [
+      "#1b1410",
+      "#3a2518",
+      "#6b4423",
+      "#a5672f",
+      "#d8b46a",
+      "#e7e0cf",
+      "#8a8a8a",
+      "#b23a2c",
+      "#2f3b6b",
+      "#4f7a3a",
+      "#c7c7c7",
+      "#5b2a4a"
+    ],
+    "hair_style": [
+      "short",
+      "buzz",
+      "long",
+      "bun",
+      "mohawk",
+      "bald",
+      "braids",
+      "swept"
+    ],
+    "eyes": [
+      "#3b2a1a",
+      "#4a6b8a",
+      "#4d7a4d",
+      "#7a5a2a",
+      "#2a2a2a",
+      "#8a8a9a"
+    ],
+    "outfit": [
+      "#4a5a6a",
+      "#6a4a3a",
+      "#3a4a3a",
+      "#5a5a5a",
+      "#7a6a4a",
+      "#3a3a5a",
+      "#6a2a2a",
+      "#2a4a5a",
+      "#8a7a5a",
+      "#4a3a5a"
+    ],
+    "accent": [
+      "#d8a23a",
+      "#c83a2a",
+      "#3a8ac8",
+      "#5ac88a",
+      "#e8e8e8",
+      "#8a3ac8",
+      "#e86a2a",
+      "#2ac8c8"
+    ],
+    "extra": [
+      "none",
+      "none",
+      "visor",
+      "glasses",
+      "scarf",
+      "cap",
+      "headset",
+      "eyepatch",
+      "beard",
+      "none"
+    ]
   },
   "hub_names": {
-    "town": ["{a} Crossing", "{a}'s Rest", "New {a}", "{a} Hollow", "Fort {a}", "{a} Landing", "{a} Wells", "Port {a}"],
-    "base": ["Firebase {a}", "Camp {a}", "Outpost {a}", "{a} Station", "Forward Base {a}", "{a} Depot"],
-    "station": ["{a} Ring", "{a} Spindle", "{a} Hab", "Dock {a}", "{a} Anchorage", "{a} Hub"],
-    "a": ["Meridian", "Kestrel", "Halcyon", "Ashfall", "Corrin", "Tallow", "Vesper", "Morrow", "Glasswater", "Ironvale",
-      "Saltmarsh", "Ember", "Juniper", "Calder", "Wren", "Quillon", "Harrow", "Lumen", "Basalt", "Sable", "Thistle", "Okoro",
-      "Marisol", "Dunmore", "Ysolde", "Cinder", "Pallas", "Kettle", "Brightwater", "Oduya"]
-  }
+    "town": [
+      "{a} Crossing",
+      "{a}'s Rest",
+      "New {a}",
+      "{a} Hollow",
+      "Fort {a}",
+      "{a} Landing",
+      "{a} Wells",
+      "Port {a}"
+    ],
+    "base": [
+      "Firebase {a}",
+      "Camp {a}",
+      "Outpost {a}",
+      "{a} Station",
+      "Forward Base {a}",
+      "{a} Depot"
+    ],
+    "station": [
+      "{a} Ring",
+      "{a} Spindle",
+      "{a} Hab",
+      "Dock {a}",
+      "{a} Anchorage",
+      "{a} Hub"
+    ],
+    "a": [
+      "Meridian",
+      "Kestrel",
+      "Halcyon",
+      "Ashfall",
+      "Corrin",
+      "Tallow",
+      "Vesper",
+      "Morrow",
+      "Glasswater",
+      "Ironvale",
+      "Saltmarsh",
+      "Ember",
+      "Juniper",
+      "Calder",
+      "Wren",
+      "Quillon",
+      "Harrow",
+      "Lumen",
+      "Basalt",
+      "Sable",
+      "Thistle",
+      "Okoro",
+      "Marisol",
+      "Dunmore",
+      "Ysolde",
+      "Cinder",
+      "Pallas",
+      "Kettle",
+      "Brightwater",
+      "Oduya"
+    ]
+  },
+  "archetypes": [
+    {
+      "id": "idealist",
+      "name": "the idealist",
+      "secrets": [
+        "They've been passing information to the other side, because they think it will end the fighting sooner.",
+        "They took this posting to find out what happened to their old unit."
+      ]
+    },
+    {
+      "id": "compromised",
+      "name": "the compromised official",
+      "secrets": [
+        "Someone has leverage on them, and they hate every order they pass on.",
+        "They're skimming from the relief shipments to pay off a debt."
+      ]
+    },
+    {
+      "id": "survivor",
+      "name": "the survivor",
+      "secrets": [
+        "They were there the night the old settlement burned, and they know who lit it.",
+        "They're planning to leave, and they're taking the kids with them."
+      ]
+    },
+    {
+      "id": "climber",
+      "name": "the climber",
+      "secrets": [
+        "They're reporting everything the squad does to their superiors, for a promotion.",
+        "They've already promised your next job to someone else."
+      ]
+    },
+    {
+      "id": "true_believer",
+      "name": "the true believer",
+      "secrets": [
+        "They're quietly recruiting for a cause the locals would never accept.",
+        "They'd die for their faction, and they expect you to as well."
+      ]
+    },
+    {
+      "id": "fixer_with_code",
+      "name": "the one with a code",
+      "secrets": [
+        "They never sell to raiders, and they'll cut off anyone who does.",
+        "They're protecting someone the authorities are hunting."
+      ]
+    },
+    {
+      "id": "old_soldier",
+      "name": "the old soldier",
+      "secrets": [
+        "They used to fly a mech, and they still dream about the last drop.",
+        "They deserted, years ago. Nobody here knows."
+      ]
+    },
+    {
+      "id": "nhp_voice",
+      "name": "the one who listens",
+      "secrets": [
+        "They talk to an NHP every night, and they think it's lonely.",
+        "They've seen what a cascading NHP does, and they're afraid it's starting again."
+      ]
+    }
+  ]
 }

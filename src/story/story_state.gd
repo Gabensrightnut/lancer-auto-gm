@@ -44,6 +44,11 @@ var downtime: Dictionary = {"actions_left": {}, "memory": {}, "projects": {}, "o
 ## Mission hooks on offer: [MissionHooks record]. current_hook = the one being played.
 var hooks: Array = []
 var current_hook: Dictionary = {}
+## npc id -> {"state": "accepted"/"won"/"lost", "hook": id, "reward": reserve id, "mission": n}.
+## A side job done for someone pays out a reserve (Core p.40-43); losing it withdraws the offer.
+var deals: Dictionary = {}
+## The arc running at this hub (StoryArc) or {}.
+var arc: Dictionary = {}
 var last_mission: Dictionary = {}
 ## pilot id -> {"trigger": n, "mech_skill": n, "talent": n, "license": n, "core_bonus": n}
 var pending_picks: Dictionary = {}
@@ -128,6 +133,7 @@ func to_dict() -> Dictionary:
 		"hub": hub.duplicate(true), "contacts": contacts.duplicate(), "reserves": reserves.duplicate(true),
 		"pilot_hp": pilot_hp.duplicate(), "down_and_out": down_and_out.duplicate(), "dead": dead.duplicate(true),
 		"downtime": downtime.duplicate(true), "hooks": hooks.duplicate(true), "current_hook": current_hook.duplicate(true),
+		"deals": deals.duplicate(true), "arc": arc.duplicate(true),
 		"last_mission": last_mission.duplicate(true), "pending_picks": pending_picks.duplicate(true),
 		"pending_choice": pending_choice.duplicate(true), "dialogue": dialogue.duplicate(true),
 		"failed_goals": failed_goals.duplicate(true), "line_memory": line_memory.duplicate(),
@@ -139,7 +145,7 @@ static func from_dict(d: Dictionary, story_flags: Dictionary = {}) -> StoryState
 	var s := StoryState.new(int(d.get("story_seed", 0)))
 	s.flags = story_flags
 	for key in ["standing", "seats", "npcs", "hub", "reserves", "pilot_hp", "down_and_out", "dead", "downtime",
-			"current_hook", "last_mission", "pending_picks", "pending_choice", "dialogue", "failed_goals", "line_memory"]:
+			"current_hook", "deals", "arc", "last_mission", "pending_picks", "pending_choice", "dialogue", "failed_goals", "line_memory"]:
 		if d.get(key) is Dictionary:
 			s.set(key, (d[key] as Dictionary).duplicate(true))
 	for key in ["contacts", "hooks", "log"]:

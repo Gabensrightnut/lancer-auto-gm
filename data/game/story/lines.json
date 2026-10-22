@@ -87,7 +87,7 @@
     ],
     "greet_fixer": [
       "Looking for something? Everything's for sale, if the price is right.",
-      "No money changes hands here, pilot. Favors do.",
+      "Manna, favors, who owes who: I deal in all of it. Mostly the last two.",
       "I don't ask where things come from. Don't ask where they go.",
       "You've got the look of someone who needs a thing they can't print.",
       "Talk quiet. The walls in {hub} have ears, and most of them are mine."
@@ -217,7 +217,7 @@
       "Half the farms on the north side haven't paid their water share. Something's coming to a head."
     ],
     "license_explain": [
-      "There's no money in this, pilot. Not the way you're thinking. Your License Level is what you've earned: every mission you finish, win or lose, it goes up by one. Each level gives you a license rank to spend on one of a manufacturer's frame licenses; rank I opens some of its gear, rank II the frame itself, rank III the best parts. Until then, it's GMS: the Everest and the standard gear, which every pilot is licensed for.",
+      "Manna won't buy you a frame, pilot. Your License Level is what you've earned: every mission you finish, win or lose, it goes up by one. Each level gives you a license rank to spend on one of a manufacturer's frame licenses; rank I opens some of its gear, rank II the frame itself, rank III the best parts. Until then, it's GMS: the Everest and the standard gear, which every pilot is licensed for.",
       "Licenses are the currency that matters. You don't buy a frame, you're licensed for it. Finish a mission and you go up a License Level; spend that level's license rank with a manufacturer and their gear opens up, rank by rank. Once you're licensed for something, you never lose it.",
       "You want a new mech? Fly missions. After each one your License Level goes up and you get a license rank to put toward a manufacturer: IPS-Northstar, Smith-Shimano, HORUS, Harrison Armory. Ranks are bought in order, I, II, III; at rank II of a frame's license you can fly that frame, and the gear from every rank you hold mixes freely between your mechs. Until then, GMS has you covered."
     ],
@@ -244,7 +244,7 @@
       "On the house tonight. Mostly."
     ],
     "barter_intro": [
-      "Name what you're after. I'll tell you what it'll cost, and it won't be money.",
+      "Name what you're after. I'll tell you what it'll cost. Sometimes manna, usually a favor.",
       "Everything's got a price. Even here. Especially here.",
       "You want it, I can find it. Maybe."
     ],
@@ -314,6 +314,60 @@
     "debrief_level": [
       "Whatever happened out there, you learned from it. Every pilot's License Level goes up after a mission, win or lose.",
       "You're all a License Level higher now. That means new triggers, talents and license ranks. Spend them well."
+    ],
+    "supplies_explain": [
+      "Everyday food, water and a bunk come with the job; nobody counts rations for you. What you plan for is the extra: kit for crossing hostile ground, spare repair materials for your mech, and what you carry yourself.",
+      "The printer covers the basics. For a mission you want more: Supplies for bad ground, repair stock for the mech (that's two more repairs in the field), and your own kit: rations, a survival kit, patches.",
+      "You carry what you can carry: armor, two weapons, three bits of kit. Rations and a survival kit count. Anything bigger, you bring as reserves: get it through a contact, or go scrounging."
+    ],
+    "supplies_how": [
+      "Two ways to get it before you deploy: I can put in a word if you're in good standing (that's calling in a favor), or you go dig it up yourself at the market. Either way it's your downtime.",
+      "Ask me nicely and I'll requisition it, if your standing holds up. Or hit the salvage yards and barter. Pick one: you've only got so much downtime."
+    ],
+    "deal_offer": [
+      "Tell you what. Help me with {npc_want}, and I'll see you get {npc_deal_reward} for your next drop.",
+      "There is something. {npc_want}. Do that, and {npc_deal_reward} is yours for the next mission.",
+      "A trade, then. You handle {npc_want}; I come through with {npc_deal_reward}."
+    ],
+    "deal_waiting": [
+      "The job's on the board. Do it, and we're square.",
+      "Still waiting on that job, pilot.",
+      "You know where to find the work. I'll keep my end ready."
+    ],
+    "deal_thanks": [
+      "You came through. Here's my end, as promised.",
+      "Job done, and I don't forget. Take it.",
+      "That's a debt paid. Good work."
+    ],
+    "deal_off": [
+      "The job went bad, so the deal's off. If you want something from me now, you'll have to find another way.",
+      "That didn't work out. No hard feelings, but the offer's gone. Come back when you've got something else."
+    ],
+    "secret_revealed": [
+      "You read it in the way they hold themselves: {npc_secret}",
+      "It's there between the lines: {npc_secret}",
+      "They don't say it, but you're sure of it now: {npc_secret}"
+    ],
+    "journey_start": [
+      "Getting to {place} means crossing hostile ground.",
+      "Between {hub} and {place} is a long stretch of country nobody would cross for fun.",
+      "The route to {place} is bad: broken ground, no cover, nothing friendly."
+    ],
+    "journey_supplied": [
+      "You brought the right kit. The crossing is long and dull, which is exactly what you wanted.",
+      "Your supplies get the squad across without trouble."
+    ],
+    "journey_ok": [
+      "You make it across, tired but in one piece.",
+      "A hard crossing, but nobody's hurt and nothing's lost."
+    ],
+    "journey_bad": [
+      "The crossing takes everything you had. You arrive spent, battered and late.",
+      "It goes badly: a rockslide, a wrong turn, a long cold night. You get there, barely."
+    ],
+    "debrief_twist": [
+      "Looking back, nothing was what the briefing said. {twist_reveal}",
+      "The part nobody planned for: {twist_reveal}"
     ]
   }
 }

@@ -7,12 +7,138 @@
    "speaker": "npc",
    "expression": "neutral",
    "line": "@briefing_open",
-   "next": "stakes"
+   "next": "stakes",
+   "branch": [
+    {
+     "if": [
+      {
+       "hook": "arc"
+      },
+      {
+       "not": {
+        "flag": "beat_told:{operation}"
+       }
+      }
+     ],
+     "next": "arc_beat"
+    }
+   ]
+  },
+  "arc_beat": {
+   "speaker": "narrator",
+   "line": "{arc_beat}",
+   "effects": [
+    {
+     "set_flag": "beat_told:{operation}"
+    }
+   ],
+   "next": "open"
   },
   "stakes": {
    "speaker": "npc",
    "expression": "worried",
    "line": "@briefing_stakes",
+   "next": "question"
+  },
+  "question": {
+   "speaker": "narrator",
+   "line": "{question}",
+   "next": "questions",
+   "branch": [
+    {
+     "if": [
+      {
+       "hook": "hazardous"
+      },
+      {
+       "squad_reserve": "reserve_supplies"
+      }
+     ],
+     "next": "journey_supplied"
+    },
+    {
+     "if": {
+      "hook": "hazardous"
+     },
+     "next": "journey"
+    },
+    {
+     "if": {
+      "not": {
+       "hook": "question"
+      }
+     },
+     "next": "questions"
+    }
+   ]
+  },
+  "journey_supplied": {
+   "speaker": "narrator",
+   "line": "@journey_supplied",
+   "next": "questions"
+  },
+  "journey": {
+   "speaker": "narrator",
+   "line": "@journey_start",
+   "choices": [
+    {
+     "id": "cross",
+     "text": "Cross it together. (Skill challenge: everyone rolls)",
+     "tags": [
+      "bold",
+      "practical"
+     ],
+     "check": {
+      "challenge": true,
+      "skills": [
+       "sk_survive",
+       "sk_get_somewhere_quickly",
+       "sk_spot"
+      ],
+      "tags": [
+       "wilderness",
+       "survival"
+      ],
+      "consequence": "A harrowing crossing: everyone takes 1 damage (minor harm, Core p.48).",
+      "success": "journey_ok",
+      "fail": "journey_bad",
+      "fail_effects": [
+       {
+        "harm": 1,
+        "to": "squad"
+       },
+       {
+        "set_flag": "arrived_spent:{operation}"
+       }
+      ]
+     }
+    },
+    {
+     "id": "long_way",
+     "text": "Take the long way round. (Safe, but you lose time)",
+     "tags": [
+      "cautious"
+     ],
+     "effects": [
+      {
+       "set_flag": "arrived_late:{operation}"
+      },
+      {
+       "log": "The squad took the long way to {place} and arrived late."
+      }
+     ],
+     "next": "questions"
+    }
+   ]
+  },
+  "journey_ok": {
+   "speaker": "narrator",
+   "line": "@journey_ok",
+   "next": "questions"
+  },
+  "journey_bad": {
+   "speaker": "narrator",
+   "line": "@journey_bad",
    "next": "questions"
   },
   "questions": {
@@ -173,7 +299,7 @@
    "line": [
     "What you always get: a License Level, and people who owe you.",
     "Favors, pilot. And the knowledge you did some good.",
-    "No credits. But {patron} won't forget it."
+    "The usual: manna for your trouble, and {patron} won't forget it."
    ],
    "next": "questions"
   },

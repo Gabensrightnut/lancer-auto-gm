@@ -23,6 +23,7 @@ static func make(seed_value: int = 12) -> Dictionary:
 		var p := c.new_pilot(row[0], row[1])
 		p["skills"] = row[2]
 		p["background"] = row[3]
+		p["pilot_gear"] = ["pg_light_hardsuit", "pg_patch", "pg_extra_rations"] if i % 2 == 0 else ["pg_assault_hardsuit", "pg_wilderness_survival_kit", "pg_corrective"]
 		i += 1
 		e.submit(s, c, {"type": "set_seat", "seat": "gm", "params": {"seat": "p%d" % i, "pilot": p["id"], "ai": i > 1, "persona": row[4]}})
 	e.submit(s, c, {"type": "enter_hub", "seat": "gm", "params": {"kind": "town", "seed": seed_value}})

@@ -58,6 +58,10 @@ static func build_mission(campaign: Campaign, story: StoryState, db: ContentDB, 
 	var mission: Mission = gen["mission"]
 	campaign.prepare_mission(state)
 	mission.flavor["hook"] = hook.duplicate(true)
+	# For the GM: the hidden twist to reveal mid-mission (Core p.43), and how the squad arrived.
+	mission.flavor["twist"] = hook.get("twist", {}).duplicate(true)
+	mission.flavor["arrived_late"] = bool(story.flags.get("arrived_late:%s" % hook.get("operation", ""), false))
+	mission.flavor["arrived_spent"] = bool(story.flags.get("arrived_spent:%s" % hook.get("operation", ""), false))
 	if hook.has("operation"):
 		mission.flavor["operation"] = hook["operation"]
 	var manual: Array = []

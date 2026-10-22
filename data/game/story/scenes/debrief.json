@@ -27,18 +27,33 @@
    "speaker": "npc",
    "expression": "smiling",
    "line": "@debrief_victory",
-   "next": "talk"
+   "next": "twist"
   },
   "lost": {
    "speaker": "npc",
    "expression": "worried",
    "line": "@debrief_defeat",
-   "next": "talk"
+   "next": "twist"
   },
   "draw": {
    "speaker": "npc",
    "expression": "neutral",
    "line": "@debrief_draw",
+   "next": "twist"
+  },
+  "twist": {
+   "speaker": "narrator",
+   "branch": [
+    {
+     "if": {
+      "not": {
+       "hook": "twist"
+      }
+     },
+     "next": "talk"
+    }
+   ],
+   "line": "@debrief_twist",
    "next": "talk"
   },
   "talk": {

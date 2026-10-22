@@ -5,9 +5,11 @@ and follows the core book. Page numbers are the free core book ("Core p.N").
 
 ## How LANCER handles life out of the mech (what this is built on)
 
-- **No money.** Gear comes from licenses: every pilot has GMS, and each License Level (one per
-  mission finished, win or lose) gives a license rank to spend on a frame license (rank II
-  unlocks the frame) (Core p.18, p.31). Mechs are printed: with 10 quiet hours somewhere secure
+- **Money exists, the rules don't count it.** Manna is the universal currency outside the Core
+  (Core p.10) and frontier worlds have local currencies (p.126), but the rules don't track
+  currency (p.18): it appears in dialogue only. Gear comes from licenses: every pilot has GMS,
+  and each License Level (one per mission finished, win or lose) gives a license rank to spend
+  on a frame license (rank II unlocks the frame) (p.18, p.31). Mechs are printed: with 10 quiet hours somewhere secure
   a FULL REPAIR fixes or reprints anything you're licensed for, one mech at a time (Core p.82).
 - **Pilot gear isn't licensed**: one armor, up to two weapons, up to three other items per
   mission (Core p.108).
@@ -38,8 +40,26 @@ and follows the core book. Page numbers are the free core book ("Core p.N").
 | `downtime.gd` | The nine downtime actions from `data/game/story/downtime.json` + lancer-data text: bands, "choose" lists, "next time treat it as..." memory, organizations, projects, contacts' help. |
 | `campaign_loop.gd` | Builds the battle for the chosen job (squad with pilot units, mechanical reserves applied) and feeds the result back (`finish_mission`). |
 | `mission_hooks.gd` / `npc_gen.gd` / `story_text.gd` | Procedural jobs, hubs and people from our tables + COMP/CON's name lists; line pools with variants, personality and standing flavors. |
+| `story_arc.gd` | `StoryArc`: a few-mission situation at a hub (`arcs.json`) whose next mission is always on the job board; every mission moves it on, win or lose. |
 | `story_data.gd` | `StoryData.lint()`: checks every scene, effect, condition, pool, trigger and reserve id (run by the tests). |
-| `ui/` | `DialogueView` (portrait cards, speech bubble, choices, votes, log), `Portrait` (drawn placeholder faces with expressions), `StoryCheckPopup` (instant roll, one big number, breakdown on hover), `DowntimePanel`, `LevelUpPanel`. |
+| `ui/` | `DialogueView` (portrait cards, speech bubble, choices, votes, log), `Portrait` (drawn placeholder faces with expressions), `StoryCheckPopup` (instant roll, one big number, breakdown on hover), `DowntimePanel`, `LevelUpPanel`, `PilotGearPanel` (the quartermaster's racks). |
+
+Story tables (all our own writing, patterns from `docs/research/lancer_campaigns.md`, canon checks
+in `docs/CANON.md`): `hooks.json` (22 job templates after the book's goal table, stakes as
+questions, `hazardous` crossings), `twists.json` (hidden, revealed at the debrief),
+`conflicts.json` (each hub's two sides), `arcs.json`, NPC archetypes and secrets in
+`data/game/npcs/tables.json`, and side-job **deals** (an NPC's job pays a named reserve; a lost
+deal is withdrawn, and Get Connected stays open as another way).
+
+## Supplies, the book's way
+
+No survival meter. Pilots carry their own supplies as pilot gear (Extra Rations, Wilderness
+Survival Kit, Patch, Corrective, Sleeping Bag; Core p.108), shown on the HUD with each mech's
+Repairs. Anything bigger is a one-mission reserve (Core p.51): **Supplies** (easy crossing of
+hostile ground), **Extra repairs** (+2 Repair Cap), **Ammo**, from a contact (Get Connected) or
+**Scrounge and Barter** (presets for each). The quartermaster explains it. A `hazardous` job
+makes the squad cross hostile ground at the briefing: a skill challenge (Core p.47) with
+1 harm each on a failure, or the long way round (time), skipped if anyone brought Supplies.
 
 The walkable hub is in `src/explore/` (`HubScene`, `scenes/explore/hub.tscn`).
 
@@ -67,6 +87,9 @@ The walkable hub is in `src/explore/` (`HubScene`, `scenes/explore/hub.tscn`).
   an outlandish one).
 - Mechanical reserves applied automatically in battle: Extra repairs, CORE battery. The rest
   are listed in `mission.flavor["reserves"]` for the table (and need engine support).
+- Hazardous crossings: 1 harm each on a failed challenge, or "the long way" sets a late flag
+  (mission.flavor.arrived_late) for the GM to use; standing changes from jobs, deals and
+  conflicts are our own amounts (+/-1).
 - Choosing to die instead of going Down and Out (Core p.49) isn't offered yet; cloning and
   coming back (Core p.83) isn't built.
 
@@ -78,6 +101,10 @@ The walkable hub is in `src/explore/` (`HubScene`, `scenes/explore/hub.tscn`).
 - **Rules engine**: reserves that change battles (Ammo, Redundant repair, Smart ammo, Boosted
   servos, Jump jets, Deployable shield, Bombardment, Reinforcements, Accuracy) as effects on a
   unit at mission setup; pilot armor/HP from pilot gear in `UnitFactory.build_pilot`.
+- **GM (src/gm)**: `mission.flavor["twist"]` holds the hidden twist ({id, reveal, question}):
+  reveal it mid-mission (a narration event, e.g. at round 2-3); `mission.flavor["arrived_late"]`
+  / `["arrived_spent"]` say how the squad got there. Side jobs and arc missions are ordinary
+  hooks with a `sitrep`, built by `CampaignLoop.build_mission` -> `MissionGenerator`.
 - **Net**: route story actions (`StoryEngine.submit`) through the host like battle actions, send
   story events to clients, and relay hub walking positions to `HubScene.set_avatar_position()`.
 - **Menus / builder**: talent, license and core bonus picks waiting in

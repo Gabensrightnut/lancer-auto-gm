@@ -75,11 +75,13 @@ func pilot_id() -> String:
 	return story.pilot_of_seat(seat)
 
 
-func open(action_id: String = "", npc: String = "") -> void:
+func open(action_id: String = "", npc: String = "", subject: String = "") -> void:
 	visible = true
 	refresh()
 	if action_id != "":
 		select(action_id, npc)
+		if subject != "" and _subject != null:
+			_subject.text = subject
 
 
 func refresh() -> void:

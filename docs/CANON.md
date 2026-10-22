@@ -35,6 +35,26 @@ book in a way that changes the setting; parked.
 | Paid passage vs free company rides | Not canon (not stated) | Parked. |
 | Fight-for-it deals paid in scrap/spare mechs/money | Not canon | Parked. Jobs paying out Reserves is canon. |
 | Food and water as a survival need | Not canon | Parked. |
+| **Story session additions** | | |
+| Narrative skill checks: one trigger, background +1, difficult/risky/heroic, push it, teamwork, skill challenges | Canon | Core p.20, p.25, p.45-47 |
+| No-mech fights resolved as skill checks; harm 1-2/3-5/6+, Armor, 0 HP 1d6 Down and Out, rest = half HP | Canon | Core p.48-49 |
+| All nine downtime actions with their 9-/10-19/20+ results, "choose" lists and "next time treat as" | Canon | Core p.53-55; lancer-data downtime_actions.json |
+| Reserves last one mission; the d20 reserve tables | Canon | Core p.51-52 |
+| Pilot gear limits: one armor, two weapons, three other items; pilot gear isn't licensed | Canon | Core p.108 |
+| Supplies = pilot gear (Extra Rations, Wilderness Survival Kit, Patch...) plus reserves (Supplies, Extra repairs +2 Repair Cap, Ammo), got by Get Connected or Scrounge and Barter | Canon | Core p.43, p.51, p.55, p.108 (Supplies: "gear allowing easy crossing of a hazardous or hostile area") |
+| Everyday food and water aren't tracked (rations exist only as pilot gear) | Consistent | No rule tracks them; Extra Rations is pilot gear (p.108). A survival need stays parked. |
+| Hazardous crossing: a skill challenge unless the squad brought Supplies; failure costs 1 harm each, or take the long way (time) | Consistent | Core p.46 (consequences: harm, time), p.47 (challenge example "traversing the wastes"), p.51 (Supplies) |
+| Manna and local money mentioned in dialogue only ("manna for your trouble", bribes as talk) | Canon | Core p.10, p.18, p.126 |
+| Briefing states the goal, then the stakes as a question | Canon | Core p.42-43 |
+| Mission hook templates (escort, SOS, retrieve, investigate, derelict, demolition, diversion, secure, smuggle, hunt rival pilots, evacuation, extraction, defend) | Canon | Core p.42 goal table (our wording) |
+| Hidden twists revealed at the debrief (patron lied, defector, third party, civilians...) | Consistent | Core p.43 ("a mission's goal can change mid-mission") |
+| Side-job deals: an NPC's job pays a named reserve if won; a lost deal is withdrawn, other routes (downtime) stay open | Consistent | Core p.40-43 (reserves from patrons), p.50 (GM grants reserves), p.55 (Get Connected) |
+| Faction standing (-3..+3) as GM bookkeeping that gates dialogue and offers, never rolls | Consistent | GM remembers relationships; Reputation/Backing reserves (p.51); no book number |
+| Hub conflicts between two sides (colonists vs charter company, corpro vs local government, raiders vs shippers, reconnection split, noble feud, insurgency, salvage rush) | Consistent | Core p.10-11 (rebellions, piracy, wars outside the Core), p.21 (frontier vs core), p.92 (Baronies), p.126 (IPS-N and piracy) |
+| Multi-mission arcs (escalation, investigation, rival squad, siege, two masters); every mission advances the arc, win or lose | Consistent | Core p.40 (missions can fail and the story goes on; LL rises either way) |
+| NPC archetypes with secrets, revealed by Read a Situation | Consistent | Skill triggers (p.26-27); NPCs don't roll in narrative play (p.47) |
+| Every pilot levels up after a mission; +2 trigger, +1 mech skill, talent, license; core bonus at 3/6/9/12 | Canon | Core p.18 |
+| Long Rim's optional manna advancement system | Official optional (supplement), not built | The Long Rim (Massif); core rules don't track currency (p.18). Parked with the wallet. |
 
 ## When canon allows more than one answer
 

@@ -33,6 +33,7 @@ static func make_hub(story: StoryState, campaign: Campaign, hub_seed: int, kind:
 		"planet": names.planet(), "faction": names.faction(), "seed": hub_seed, "npcs": [], "spots": [],
 	}
 	hub["spots"] = HubLayout.spots(kind, rng)
+	hub["conflict"] = _conflict(rng, names, hub)
 	var plan: Dictionary = _json(ROLES_FILE).get("hub_roles", {}).get(kind, {})
 	var role_list: Array = (plan.get("always", []) as Array).duplicate()
 	var pool: Array = (plan.get("pool", []) as Array).duplicate()
@@ -59,9 +60,15 @@ static func make_npc(rng: RandomNumberGenerator, names: NameGen, campaign: Campa
 		"manufacturer":
 			faction = manufacturer_for(campaign, rng)
 		"outside":
-			faction = names.faction()
-			if faction == hub.get("faction", ""):
+			# The first faction agent at a hub speaks for the other side of its conflict.
+			var b := str(hub.get("conflict", {}).get("b", ""))
+			if role == "faction_agent" and b != "" and not bool(hub.get("_b_taken", false)):
+				faction = b
+				hub["_b_taken"] = true
+			else:
 				faction = names.faction()
+				if faction == hub.get("faction", ""):
+					faction = names.faction()
 	var want: Dictionary = _pick_any(rng, t.get("wants", [{}]))
 	var npc := {
 		"id": id, "name": names.pilot_name(), "role": role, "role_name": r.get("name", role),
@@ -72,6 +79,11 @@ static func make_npc(rng: RandomNumberGenerator, names: NameGen, campaign: Campa
 		"scene": r.get("scene", "local"), "spot": r.get("spot", "plaza"), "tags": (r.get("tags", []) as Array).duplicate(),
 		"look": {}, "dead": false,
 	}
+	var arch: Dictionary = _pick_any(rng, t.get("archetypes", [{}]))
+	npc["archetype"] = arch.get("name", "")
+	npc["secret"] = _pick(rng, arch.get("secrets", [""]))
+	var offers: Array = npc["offers"]
+	npc["deal_reward"] = offers[rng.randi_range(0, offers.size() - 1)] if not offers.is_empty() else "reserve_backing"
 	for k: String in looks:
 		npc["look"][k] = _pick(rng, looks[k])
 	npc["look"]["seed"] = rng.randi()
@@ -93,6 +105,32 @@ static func manufacturer_for(campaign: Campaign, rng: RandomNumberGenerator) -> 
 	if held.is_empty() or rng.randf() < 0.35:
 		return MANUFACTURER_NAMES["GMS"]
 	return str(MANUFACTURER_NAMES.get(held[rng.randi_range(0, held.size() - 1)], "General Massive Systems"))
+
+
+## The hub's situation (data/game/story/conflicts.json): its own faction against an outside one.
+static func _conflict(rng: RandomNumberGenerator, names: NameGen, hub: Dictionary) -> Dictionary:
+	var list: Array = _json("res://data/game/story/conflicts.json").get("conflicts", [])
+	if list.is_empty():
+		return {}
+	var total := 0
+	for c: Dictionary in list:
+		total += int(c.get("weight", 1))
+	var roll := rng.randi_range(1, maxi(total, 1))
+	var pick: Dictionary = list[0]
+	for c: Dictionary in list:
+		roll -= int(c.get("weight", 1))
+		if roll <= 0:
+			pick = c
+			break
+	var b := names.faction()
+	for i in range(5):
+		if b != str(hub["faction"]):
+			break
+		b = names.faction()
+	var out := {"id": pick["id"], "a": hub["faction"], "b": b, "a_role": pick.get("a_role", ""), "b_role": pick.get("b_role", ""),
+		"a_hooks": pick.get("a_hooks", []), "b_hooks": pick.get("b_hooks", [])}
+	out["summary"] = _pick(rng, pick.get("summary", [""])).replace("{a}", str(out["a"])).replace("{b}", b).replace("{hub}", str(hub["name"])).replace("{planet}", str(hub["planet"])).replace("{hub_faction}", str(hub["faction"]))
+	return out
 
 
 ## A pilot-side contact made by downtime (Get a Damn Drink's "friend"), stored like hub NPCs.

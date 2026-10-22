@@ -38,8 +38,19 @@ func test_full_loop() -> void:
 	expect(r["ok"], str(r["reason"]))
 	expect_eq(s.phase, "reserves")
 	expect(r["events"].any(func(e: Dictionary) -> bool: return e["type"] == "dialogue_started" and e["scene"] == "briefing"))
-	var lines: Array = (r["events"] as Array).filter(func(e: Dictionary) -> bool: return e["type"] == "dialogue_line")
-	expect(not lines.is_empty() and str(hook["objective"]) in str(lines[0]["text"]), "briefing states the objective")
+	var said := ""
+	for e: Dictionary in r["events"]:
+		if e["type"] == "dialogue_line":
+			said += str(e["text"]) + "
+"
+	for i in range(3):
+		if Dialogue.offered(s).is_empty() and Dialogue.is_open(s):
+			for e: Dictionary in _submit(t, "dialogue_next", {}, "p1")["events"]:
+				if e["type"] == "dialogue_line":
+					said += str(e["text"]) + "
+"
+	expect(str(hook["objective"]) in said, "briefing states the objective: %s" % said)
+	expect(str(hook["question"]) in said or bool(hook.get("hazardous", false)), "and the stakes as a question")
 	_finish_dialogue(t)
 
 	# Reserves, then boots on the ground.
