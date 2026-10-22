@@ -121,6 +121,14 @@ static func can_activate(state: GameState, u: Unit, a: Dictionary) -> RuleResult
 	return RuleResult.allow()
 
 
+## Heat (Self) of the system an ability comes from (tags: Heat X (Self)).
+static func heat_self(u: Unit, a: Dictionary) -> int:
+	for s: Dictionary in u.loadout.get("systems", []):
+		if String(s.get("key", "")) == String(a.get("source_key", "")):
+			return Weapons.tag_value(s, "tg_heat_self")
+	return 0
+
+
 ## Hydra: the OROCHI drone that accompanies it (chosen at creation or a rest).
 static func orochi_choice(u: Unit) -> String:
 	if u.counters.has("orochi"):
@@ -302,11 +310,18 @@ static func deploy(state: GameState, owner: Unit, a: Dictionary, cell: Vector2i)
 	u.max_stress = 0
 	u.stress = 0
 	u.counters = {"owner": owner.id, "ability": a["key"], "deploy_type": d.get("type", "Deployable"),
+		"turret": d.get("turret", false), "trigger": d.get("trigger", ""),
 		"pattern": (d.get("range", []) as Array).duplicate(true), "damage": (d.get("damage", []) as Array).duplicate(true),
 		"text": d.get("detail", "")}
 	u.loadout = {"weapons": [], "systems": [], "effects": []}
 	var events: Array[Dictionary] = []
 	state.add_unit(u)
+	if d.has("zone_size"):
+		u.counters["zone_size"] = int(d["zone_size"])
+	if not u.counters["turret"]:
+		u.counters.erase("turret")
+	if u.counters["trigger"] == "":
+		u.counters.erase("trigger")
 	if u.counters["deploy_type"] == "Mine":
 		u.statuses["Hidden"] = {"source": owner.id}  # undetected mines are Hidden (tags: Mine)
 		u.counters["armed"] = false
@@ -344,6 +359,8 @@ static func check_mines(state: GameState, mover: Unit, path: Array) -> Array[Dic
 	for m: Unit in state.units.values():
 		if m.destroyed or m.counters.get("deploy_type", "") != "Mine" or not m.counters.get("armed", false):
 			continue
+		if m.counters.get("trigger", "") == "ally" and mover.side != m.side:
+			continue  # Smoke Mine: only allied characters set it off
 		var mb := Sight.body_of(state, m)
 		var was_adjacent := true
 		for i in range(path.size()):
@@ -368,6 +385,9 @@ static func detonate(state: GameState, m: Unit, trigger: Unit) -> Array[Dictiona
 			radius = int(r.get("val", 1))
 	var center := Sight.body_of(state, m)
 	m.destroyed = true
+	if m.counters.has("zone_size"):
+		events.append_array(GearSystems.smoke_mine(state, m, trigger))
+		return events
 	var damage: Array = m.counters.get("damage", [])
 	if damage.is_empty() or owner == null:
 		events.append({"type": "manual_effect", "source": m.name, "text": m.counters.get("text", "")})

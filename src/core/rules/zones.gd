@@ -106,8 +106,11 @@ static func hidden_by_smoke(state: GameState, target: Unit, attacker: Unit) -> b
 	return false
 
 
-## Soft cover from a cloud (the owner ignores it).
+## Soft cover from a cloud (the Genghis ignores its own) or smoke.
 static func soft_cover(state: GameState, target: Unit, attacker: Unit) -> bool:
+	for z: Dictionary in of_kind(state, "smoke"):
+		if contains(state, z, target):
+			return true
 	for z: Dictionary in of_kind(state, "smoke_cloud"):
 		if z.get("phase", "") == "cover" and (attacker == null or z.get("owner", "") != attacker.id) and contains(state, z, target):
 			return true

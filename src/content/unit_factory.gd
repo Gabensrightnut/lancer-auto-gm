@@ -385,7 +385,12 @@ static func _add_source(out: Array, src: Dictionary, key: String, name: String, 
 			"ops": ops if ops is Array else [], "automated": ops is Array})
 		n += 1
 	var m := 0
-	for d: Dictionary in src.get("deployables", []):
+	for raw: Dictionary in src.get("deployables", []):
+		# Our corrections and extras for a deployable (activation_effects "deploy:<id>:<name>").
+		var d := raw.duplicate(true)
+		var over: Variant = data.get("deploy:%s:%s" % [data_id, raw.get("name", "")])
+		if over is Dictionary:
+			d.merge(over, true)
 		var dkey := "%s/d%d" % [key, m]
 		out.append({"key": dkey, "name": "Deploy " + String(d.get("name", "")), "source_key": key, "source_name": name,
 			"kind": "deploy", "activation": String(d.get("activation", "Quick")) if String(d.get("activation", "Quick")) != "None" else "Quick",
@@ -420,6 +425,9 @@ static func _add_gear_effects(u: Unit, ids: Array, talents: Dictionary) -> void:
 			effects.append(copy)
 			if copy["kind"] == "size_step":
 				u.size = minf(3.0, 1.0 if u.size < 1.0 else u.size + 1.0)
+			if copy["kind"] == "hp_bonus":
+				u.max_hp += int(copy.get("value", 0))  # Personalizations
+				u.hp = u.max_hp
 	for id: String in ids:
 		if data.get(id) is Array:
 			add.call(data[id], id)

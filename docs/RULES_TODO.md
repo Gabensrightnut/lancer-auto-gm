@@ -66,7 +66,7 @@ keeps the choices. An AI GM answers with the suggested reading and logs it. Code
 | Pegasus average damage | The player asks for it per attack (`"average_damage": true`); dice are averaged up, (sides + 1) / 2 each, which matches the trait's table | `attacks.gd` |
 | Raleigh M35 Mjolnir | Its own rule (fire as a free action 1/round when you reload) isn't automated; with the core active and no rounds chambered it deals 0 | `attacks.gd`, `effects.gd` |
 | Trait reactions | Mag Parry is rolled after a hit (the attack "would deal" kinetic damage) and not when the target is Invisible; Warp Shield counts as the Saladin's reaction; Tactical Simulation protects allies, not the Swallowtail itself, and its teleport is optional (answer with `to`); Reactive Code resolves before the Invade's own heat and conditions; Defensive Pulse's reroll on a miss is left to the table | `trait_reactions.gd` |
-| Core system readings | Balor Hive Frenzy's soft cover counts for the Balor and adjacent allies against ranged attacks; Lancaster Supercharger lasts the scene as the book says (lancer-data says until the start of your next turn); Minotaur Maze's first save is at the end of the target's next turn, +1 Accuracy per earlier failed try; Iskander's extra mines each use a charge of the same system; the Apocalypse Die notices a move (even involuntary), Stunned or Jammed at the start of the Barbarossa's turn, which gives the same result as resetting at once; Napoleon's Aegis allows only the listed actions plus free actions and protocols | `frame_systems.gd` |
+| Core system readings | Iskander's Assault Launcher covers grenades (range 15) and mines, 1/round between them; Balor Hive Frenzy's soft cover counts for the Balor and adjacent allies against ranged attacks; Lancaster Supercharger lasts the scene as the book says (lancer-data says until the start of your next turn); Minotaur Maze's first save is at the end of the target's next turn, +1 Accuracy per earlier failed try; Iskander's extra mines each use a charge of the same system; the Apocalypse Die notices a move (even involuntary), Stunned or Jammed at the start of the Barbarossa's turn, which gives the same result as resetting at once; Napoleon's Aegis allows only the listed actions plus free actions and protocols | `frame_systems.gd` |
 | Zones | Mag Field: a ranged kinetic/explosive shot is stopped if exactly one of attacker and target is inside, or if its line crosses the field; all mechs and NPCs count as metal; the Immobilized lasts until the field ends; the Black Witch is affected by its own field; resumed attacks hit allies too, damage rolled once. Genghis cloud: Burst 3 from its own spaces; the 2 burn and 2 heat only during the smoke phase. Holograms: "move adjacent" counts any space on the path next to a hologram | `zones.gd` |
 | Rest (p.82) | The `rest` action works outside combat: heat, statuses and conditions clear, the pilot regains half HP (rounded up), and Repairs are spent as listed; only a wrecked mech takes Repairs from others. Hydra's drone choice and the Manticore's Castigation State are made at a rest; a Full Repair (between missions) is the campaign's job | `rest_actions.gd` |
 | Goblin Symbiosis | "Your Systems, E-Defense and Tech Attack" read as the Systems skill and the two stats; the host uses whichever is better. "Conditions" are the conditions (Core p.77), not other statuses. Using the Goblin's systems (gear) through the host isn't automated. On detaching the Goblin goes to the first free space next to the host | `frame_systems.gd` |
@@ -124,6 +124,14 @@ now Crack Shot's Steady Aim, Lancaster Combat Repair, Monarch's missile core, De
 Mark for Death, Tokugawa Overclock, the Pegasus omnigun. Everything
 else is handed to the table as text (`manual_effect`). Deployables, drones and mines deploy,
 take damage and are destroyed or recalled.
+
+## Gear automation status
+
+| Gear | Automated | Left to the table |
+|---|---|---|
+| GMS weapons (all 21) | every tag they use (Accurate, AP, Arcing, Inaccurate, Loading, Ordnance, Overkill, Reliable, Smart, Thrown, Heat Self, Knockback) | - |
+| GMS systems | HEX Charges (Frag Grenade, Explosive Mine), Smoke Charges (grenade and mine), Jericho Cover, Custom Paint Job, Personalizations (+2 HP), Stable Structure, Turret Drones, Type-3 Projected Shield, both flight systems, Manipulators (no rules effect) | COMP/CON (handing control to the mech's AI), Expanded Compartment (passengers), EVA Module (no zero-g or underwater maps yet), Personalizations' +1 on checks the GM agrees it helps |
+| Data corrections | Explosive Mine deals 2d6 as Core p.120 says (lancer-data has 3d6): `activation_effects.json` "deploy:" entries override deployable data | - |
 
 ## Not implemented yet
 

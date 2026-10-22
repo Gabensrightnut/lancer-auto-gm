@@ -120,6 +120,10 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 	if target.has_status("Braced"):
 		sources.append(_src("Target Braced", "difficulty", "actions: Brace"))
 		diff += 1
+	var shield := GearSystems.shield_difficulty(attacker, target)
+	if shield > 0:
+		sources.append(_src("Projected Shield", "difficulty", "systems: Type-3 Projected Shield", shield))
+		diff += shield
 	var roll_kinds := ["attack", "melee_attack" if kind == KIND_MELEE else "ranged_attack"]
 	for src: Dictionary in Effects.accuracy_sources(attacker, roll_kinds, "", opts.get("reaction", false), String(w.get("type", ""))):
 		sources.append(src)
@@ -297,6 +301,7 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		events.append_array(_hit(state, attacker, w, target, result == "crit", hit_opts))
 		if result == "crit" and kind == KIND_RANGED:
 			events.append_array(avenger_silos(state, attacker, target))
+		events.append_array(GearSystems.turret_attacks(state, attacker, target))
 	elif Weapons.tag_value(w, "tg_reliable") > 0:
 		var dtype := String((w.get("damage", [{}]) as Array)[0].get("type", "Kinetic")) if not (w.get("damage", []) as Array).is_empty() else "Kinetic"
 		var parts := [{"type": dtype, "amount": Weapons.tag_value(w, "tg_reliable")}]

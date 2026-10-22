@@ -61,14 +61,15 @@ func test_factory_lists_system_actions_and_deployables() -> void:
 func test_limited_charges_and_once_per_system_per_turn() -> void:
 	_everest(["ms_pattern_a_smoke_charges"])
 	var key: String = _ability(a, "Smoke Grenade")["key"]
-	var out := F.act(e, s, "activate", "a", {"ability": key})
+	expect(not F.ok(F.act(e, s, "activate", "a", {"ability": key})), "a grenade needs somewhere to land")
+	var out := F.act(e, s, "activate", "a", {"ability": key, "aim": [3, 0]})
 	expect(F.ok(out), F.reason(out))
-	expect_eq(F.events_of(out, "manual_effect").size(), 1, "not automated: the table applies the text")
+	expect_eq(F.events_of(out, "zone_created").size(), 1, "smoke: soft cover in a Blast 2")
 	expect_eq(_bar(a, "ability:" + key)["uses_left"], 2, "Limited 3")
-	expect(not F.ok(F.act(e, s, "activate", "a", {"ability": key})), "can't Activate the same system twice a turn (Core p.71)")
+	expect(not F.ok(F.act(e, s, "activate", "a", {"ability": key, "aim": [3, 0]})), "can't Activate the same system twice a turn (Core p.71)")
 	for i in range(2):
 		_next_turn(a)
-		expect(F.ok(F.act(e, s, "activate", "a", {"ability": key})))
+		expect(F.ok(F.act(e, s, "activate", "a", {"ability": key, "aim": [3, 0]})))
 	_next_turn(a)
 	var bar := _bar(a, "ability:" + key)
 	expect(not bar["available"], "out of charges")
@@ -112,11 +113,11 @@ func test_mines_arm_and_trigger() -> void:
 	s.acted = PackedStringArray()
 	s.turn_side = "enemies"
 	F.act(e, s, "start_turn", "t")
-	F.load_dice(s, [6, 6, 6, 2])  # 3d6 = 18, Agility save 2 fails
+	F.load_dice(s, [6, 6, 2])  # 2d6 = 12 (Core p.120; lancer-data says 3d6), Agility save 2 fails
 	out = F.act(e, s, "move", "t", {"to": [2, 0]})
 	expect_eq(F.events_of(out, "mine_triggered").size(), 1)
-	expect_eq(t.structure, 3, "18 explosive: one structure, the excess carried over")
-	expect_eq(t.hp, 2)
+	expect_eq(t.structure, 3, "12 explosive: one structure, the excess carried over")
+	expect_eq(t.hp, 8)
 	expect(m.destroyed)
 
 

@@ -65,6 +65,9 @@ class Activate:
 		var events: Array[Dictionary] = [{"type": "activated", "unit": u.id, "ability": a["key"], "name": a["name"],
 			"source": a.get("source_name", ""), "activation": a.get("activation", ""), "automated": a.get("automated", false),
 			"detail": a.get("detail", ""), "rule_ref": Abilities.REF}]
+		var self_heat := Abilities.heat_self(u, a)
+		if self_heat > 0:
+			events.append_array(Combat.apply_heat(state, u, self_heat, "Heat (Self): " + String(a.get("source_name", ""))))
 		match a.get("kind", "action"):
 			"deploy":
 				for c: Vector2i in AbilityActions.spots(params):
@@ -138,6 +141,12 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				events.append({"type": "effect_triggered", "unit": u.id, "effect": "Mark for Death", "target": target.id, "rule_ref": "frames: Death's Head core system"})
 			"unfocus":
 				events.append_array(AbilityActions._unfocus(u))
+			"blast_save":
+				events.append_array(GearSystems.blast_save(state, u, op, params))
+			"smoke":
+				events.append_array(GearSystems.smoke(state, u, op, params))
+			"project_shield":
+				events.append_array(GearSystems.project_shield(state, u, target))
 			"detach":
 				events.append_array(FrameSystems.detach(state, u, "detached"))
 			"hologram_teleport":
@@ -229,7 +238,12 @@ static func apply_target_ops(state: GameState, u: Unit, ops: Array, ids: Array) 
 				continue
 			var success := false
 			if not (t.kind == Unit.KIND_DEPLOYABLE and op.get("objects_hit", false)):  # objects are hit automatically
-				var save := Combat.skill_check(state, t, String(op.get("save", "agility")), "Save vs %s" % op.get("label", "core"), u.save_target, 0, 0, [], true)
+				var knock: bool = op.get("pull", false) or (op.get("on_fail", []) as Array).any(func(x: Dictionary) -> bool: return x.get("status", "") == "Prone")
+				var extra: Array = GearSystems.prone_save_sources(t) if knock else []
+				var acc := 0
+				for x: Dictionary in extra:
+					acc += int(x["value"])
+				var save := Combat.skill_check(state, t, String(op.get("save", "agility")), "Save vs %s" % op.get("label", "core"), u.save_target, acc, 0, extra, true)
 				events.append({"type": "skill_check", "unit": t.id, "check": save})
 				success = save["success"]
 			var amount := int(roll["total"])
@@ -268,6 +282,14 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 					(" but further than range %d" % int(op["min"])) if op.has("min") else ""], ref)
 			if op.get("los", false) and not Sight.unit_line_of_sight(state, u, t):
 				return RuleResult.deny("No line of sight to the target.", Sight.REF_LOS)
+		if op.get("op", "") in ["blast_save", "smoke"]:
+			var gr := GearSystems.check_aimed(state, u, op, params)
+			if not gr.ok:
+				return gr
+		if op.get("op", "") == "project_shield":
+			var pt := state.unit(String(params.get("target", "")))
+			if pt == null or pt == u or not Combat.is_present(pt) or not Sight.unit_line_of_sight(state, u, pt):
+				return RuleResult.deny("Nominate a character in line of sight (params.target).", "systems: Type-3 Projected Shield")
 		if op.get("op", "") == "detach" and not u.counters.has("symbiosis"):
 			return RuleResult.deny("You aren't attached to a host.", "frames: Goblin core system")
 		if op.get("op", "") == "hologram_teleport":

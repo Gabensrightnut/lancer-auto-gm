@@ -229,6 +229,10 @@ static func lose_hp(state: GameState, u: Unit, amount: int, source: String) -> A
 		events.append_array(frenzy)
 		if not frenzy.is_empty() and frenzy[0].get("saved", false):
 			break
+		var paint := GearSystems.paint_job(state, u)
+		events.append_array(paint)
+		if not paint.is_empty() and paint[0].get("saved", false):
+			break
 		u.structure -= 1
 		events.append({"type": "structure_lost", "unit": u.id, "structure": u.structure, "rule_ref": "Core p.80 Structure"})
 		events.append_array(_on_structure_or_stress(state, u, true))

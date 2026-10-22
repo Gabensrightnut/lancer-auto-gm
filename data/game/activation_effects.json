@@ -71,5 +71,50 @@
     {
       "op": "hologram_teleport"
     }
-  ]
+  ],
+  "ms_pattern_b_hex_charges:Frag Grenade": [
+    {
+      "op": "blast_save",
+      "range": 5,
+      "blast": 1,
+      "save": "agility",
+      "damage": "1d6",
+      "type": "Explosive",
+      "half": true,
+      "grenade": true,
+      "label": "Frag Grenade"
+    }
+  ],
+  "ms_pattern_a_smoke_charges:Smoke Grenade": [
+    {
+      "op": "smoke",
+      "range": 5,
+      "blast": 2,
+      "grenade": true
+    }
+  ],
+  "ms_type_3_projected_shield:Project Shield": [
+    {
+      "op": "project_shield"
+    }
+  ],
+  "deploy:ms_pattern_b_hex_charges:Explosive Mine": {
+    "damage": [
+      {
+        "type": "Explosive",
+        "val": "2d6",
+        "save": "agi",
+        "save_half": true,
+        "aoe": true
+      }
+    ],
+    "_note": "Core p.120 says 2d6; lancer-data has 3d6."
+  },
+  "deploy:ms_pattern_a_smoke_charges:Smoke Mine": {
+    "trigger": "ally",
+    "zone_size": 3
+  },
+  "deploy:ms_turret_drones:Turret Drone": {
+    "turret": true
+  }
 }
