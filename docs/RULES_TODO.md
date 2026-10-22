@@ -205,6 +205,7 @@ default except the two Lancer Tactics options the user picked. Each card names i
 | `hr_hide_hard_cover` | Community (lancer-rules.carrd.co) | hard cover from everyone who sees you is enough to Hide and stay Hidden |
 | `hr_npc_recharge_heat` | Community (Train Lightning) | NPC Recharge abilities cost 1 heat (4+/5+) or 2 (6+) |
 | `hr_overheated` | Community (Train Lightning) | Exposed from overheating also blocks Heat (Self) and Overkill until Stabilize |
+| `hr_origin_perks` | Your idea | former employer (`pilot.origin.former_employer`, a manufacturer id, or `employer` by name): +1 Accuracy on the first attack each scene against a frame from that manufacturer. NPC classes have no manufacturer, so it only meets player-built frames |
 
 ## Environments
 
@@ -228,6 +229,7 @@ core book's environments as lancer-data has it; readings it leaves open are belo
 | Low / high gravity | Mechs fly when they Boost and must land at the end of that move; no falling damage. High: no Boost, and Immobilized whenever they'd be Slowed | `effects_for`, `Combat.add_status`, `Combat.fall_unit` |
 | Sinking world | Counts the spaces a mech moved on its own turn. 1 or less: Slowed; already Slowed: Immobilized and sinking. PROVISIONAL: both last until `dig_out` (full action Hull save by it or an adjacent mech) | `turn_ending`, `EnvironmentActions.DigOut` |
 | Dangerous flora | `Environments.make_flora(id, cell, size)`: Size 1-2, 5 HP, Evasion 10, takes no turns. PROVISIONAL: a character whose own move passes or ends next to it makes the Hull save (involuntary movement doesn't). Immobilized until the flora is destroyed | `_flora_moved`, `release_flora` |
+| Zero gravity (`env_zero_g`, our id; glossary: Zero Gravity, Core p.63) | Mechs without a flight trait/system, count-as-flying gear or an EVA Module are Slowed; anyone can fly when moving; nothing falls | `effects_for`, `_zero_g_slowed` |
 | Narrative only | Tomb world, spire world, holy world, primordial world (its terrain comes from the map's difficult/dangerous tags) | `Environments.NARRATIVE` |
 
 ## Terrain and objects (Core p.58, p.68)

@@ -20,6 +20,10 @@ const FLORA_REF := "Core: Environments, Dangerous Flora and Fauna"
 const COLD_HOLD := "Extreme cold"
 const SINKING_HOLD := "Sinking"
 const NARRATIVE := ["env_tombworld", "env_spireworld", "env_holyworld", "env_primordealworld"]
+## Zero gravity (glossary: Zero Gravity, Core p.63): our id, set by a mission in space or on a
+## ship's hull. Not in environments.json.
+const ZERO_G := "env_zero_g"
+const ZERO_G_REF := "glossary: Zero Gravity"
 
 
 static func active(state: GameState, id: String) -> bool:
@@ -54,6 +58,31 @@ static func sync(state: GameState) -> void:
 			u.counters.erase("env_effects")
 		else:
 			u.counters["env_effects"] = list
+		_zero_g_slowed(state, u)
+
+
+## Zero gravity: mechs without a propulsion or flight system are Slowed.
+static func _zero_g_slowed(state: GameState, u: Unit) -> void:
+	var slowed_by_it := u.has_status("Slowed") and String(u.statuses["Slowed"].get("source", "")) == "Zero gravity"
+	var should := active(state, ZERO_G) and is_mech(u) and Combat.is_present(u) and not has_propulsion(u)
+	if should and not u.has_status("Slowed"):
+		u.statuses["Slowed"] = {"source": "Zero gravity"}
+	elif slowed_by_it and not should:
+		u.statuses.erase("Slowed")
+
+
+## A flight or propulsion system: a flight trait or system, count-as-flying gear, or an EVA
+## Module.
+static func has_propulsion(u: Unit) -> bool:
+	if u.flight != "":
+		return true
+	for e: Dictionary in u.loadout.get("effects", []):
+		if e.get("kind", "") in ["optional_flight", "boost_flight"]:
+			return true
+	for s: Dictionary in u.loadout.get("systems", []):
+		if s.get("id", "") == "ms_eva_module":
+			return true
+	return false
 
 
 static func effects_for(state: GameState, u: Unit) -> Array:
@@ -77,6 +106,14 @@ static func effects_for(state: GameState, u: Unit) -> Array:
 		out.append(_e({"kind": "boost_flight"}, "Low gravity"))
 	if mech and active(state, "env_highgravity"):
 		out.append(_e({"kind": "no_boost"}, "High gravity"))
+	if active(state, ZERO_G):
+		# Can fly when moving whatever the mech has, and can't fall.
+		var zg := _e({"kind": "optional_flight"}, "Zero gravity")
+		zg["rule_ref"] = ZERO_G_REF
+		out.append(zg)
+		var nf := _e({"kind": "no_fall"}, "Zero gravity")
+		nf["rule_ref"] = ZERO_G_REF
+		out.append(nf)
 	return out
 
 
