@@ -86,6 +86,11 @@ func ask(state: GameState, pending: Dictionary) -> Dictionary:
 			Icons.write(_text, "[color=#c8d2dc]%s[/color]\n" % _rule("act_brace", "Brace your mech for impact, reducing damage at the cost of your next turn's actions."), px)
 			Icons.write(_text, "[color=#8aa]HP %d/%d, Armor %d · Rule: actions: Brace[/color]" % [who.hp if who else 0, who.max_hp if who else 0, who.armor if who else 0], px)
 			_add("Brace", {"take": true}, bool(suggested.get("take", false)))
+			if who and Effects.has(who, "reactive_weave"):
+				# Reactive Weave: Brace and move (click the space to move to).
+				Icons.write(_text, "
+[color=#8aa]Reactive Weave: to Brace and move, click a space on the board.[/color]", px)
+				_picking = "cell_move"
 			_add("Take the hit", {"take": false}, not bool(suggested.get("take", false)))
 		"overwatch":
 			var mover := state.unit(String(ctx.get("mover", "")))
@@ -185,11 +190,11 @@ func _input(e: InputEvent) -> void:
 		if _pick_ids.has(id):
 			get_viewport().set_input_as_handled()
 			answered.emit({"take": true, "target": id})
-	elif _picking == "cell":
+	elif _picking == "cell" or _picking == "cell_move":
 		var c: Variant = picker.call("cell_at_screen", pos)
 		if c is Vector2i:
 			get_viewport().set_input_as_handled()
-			answered.emit({"take": true, "to": [(c as Vector2i).x, (c as Vector2i).y]})
+			answered.emit({"take": true, ("move_to" if _picking == "cell_move" else "to"): [(c as Vector2i).x, (c as Vector2i).y]})
 
 
 ## Lights up a candidate target on the board.

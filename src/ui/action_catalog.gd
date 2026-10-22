@@ -141,6 +141,9 @@ static func for_unit(state: GameState, engine: RulesEngine, db: ContentDB, unit_
 			warns.append({"text": "You're Engaged: ranged attacks take +1 Difficulty {icon:difficulty}."})
 		a["extras"] = extras
 		a["warnings"] = warns
+		var aopts := attack_options(u, w)
+		if not aopts.is_empty():
+			a["options"] = aopts
 		if not ActionInputs.is_simple_attack(ActionInputs.weapon_steps(u, w)):
 			a["kind"] = "pick"  # area, several targets or a fold-to space: the step-by-step picker
 		out.append(a)
@@ -158,6 +161,10 @@ static func for_unit(state: GameState, engine: RulesEngine, db: ContentDB, unit_
 		var bw: Array = barrage.get("warnings", [])
 		bw.append({"text": AVERAGE_NOTE})
 		barrage["warnings"] = bw
+	if Rulings.lancer_tactics(state, "lt_split_barrage"):
+		var sw: Array = barrage.get("warnings", [])
+		sw.append({"text": "Table option (Lancer Tactics): Barrage is split. Each weapon fires as its own Skirmish, so you can fire, move, then fire again; each mount fires once per turn."})
+		barrage["warnings"] = sw
 	out.append(barrage)
 	out.append(_from_data(db, "act_stabilize", {"group": "full", "cost": "full", "icon": "repair", "short": "Stabilize", "kind": "self", "type": "stabilize", "params": {"main": "cool", "extra": "reload"}, "preview": {"full": 1}}).merged(_spend(u, "full", "stabilize"), true))
 	# Tech.
@@ -175,7 +182,10 @@ static func for_unit(state: GameState, engine: RulesEngine, db: ContentDB, unit_
 	oca["warnings"] = heat_warnings(u, 1, OVERCHARGE_MAX[oc])
 	out.append(oca)
 	# Reactions (chosen ahead of time; they trigger on others' turns).
-	out.append(_from_data(db, "act_brace", {"group": "reactions", "cost": "reaction", "icon": "reaction", "short": "Brace", "kind": "policy", "preview": {"reaction": 1}, "enabled": true}))
+	var brace := _from_data(db, "act_brace", {"group": "reactions", "cost": "reaction", "icon": "reaction", "short": "Brace", "kind": "policy", "preview": {"reaction": 1}, "enabled": true})
+	if Rulings.lancer_tactics(state, "lt_brace_prompt"):
+		brace["warnings"] = [{"text": "Table option (Lancer Tactics): you're only asked to Brace when a hit would destroy you, take more than half your HP, or overheat you."}]
+	out.append(brace)
 	out.append(_from_data(db, "act_overwatch", {"group": "reactions", "cost": "reaction", "icon": "threat", "short": "Overwatch", "kind": "policy", "preview": {"reaction": 1}, "enabled": true}))
 	# Everything else the engine lists: other basic actions, systems, talents, traits, core.
 	var listing := RulesQueries.available_actions(state, u.id)
@@ -249,6 +259,25 @@ static func _from_listing(state: GameState, engine: RulesEngine, db: ContentDB, 
 				"params": (e.get("params", {}) as Dictionary).duplicate(), "kind": "pick", "icon": Icons.cost(cost)}, true)
 		a["enabled"] = bool(e.get("available", false))
 		a["reason"] = String(e.get("reason", ""))
+		if type == "duelist_strike":
+			# Two buttons: Grapple or Ram the target you just hit (Duelist 3).
+			var ram := a.duplicate(true)
+			a["params"] = {"what": "grapple"}
+			a["name"] = "Duelist: Grapple"
+			a["short"] = "D. Grapple"
+			ram["params"] = {"what": "ram"}
+			ram["id"] = id + ":ram"
+			ram["name"] = "Duelist: Ram"
+			ram["short"] = "D. Ram"
+			ram["enabled"] = a["enabled"]
+			ram["reason"] = a["reason"]
+			out.append(ram)
+		if type == "hunter_throw":
+			# The Auxiliary melee weapon that can be thrown (Hunter 3).
+			for hw: Dictionary in u.loadout.get("weapons", []):
+				if Weapons.is_melee(hw) and String(hw.get("size", hw.get("mount", ""))) == "Auxiliary" and Weapons.has_tag(hw, "tg_thrown"):
+					a["params"] = {"weapon": hw["key"]}
+					break
 		if type == "ai_control":
 			# One button: hand the controls over, or take them back (Core p.107).
 			var back := AISystems.controlled(u)
@@ -317,6 +346,22 @@ static func _short(name: String) -> String:
 		if name.begins_with(drop):
 			return drop.strip_edges() + " " + name.trim_prefix(drop).split(" ")[0]
 	return name.split(" ")[0] if name.length() > 12 else name
+
+
+## Choices made when attacking with `w` (shown in the confirm prompt), as
+## [{key, label, values: [[value, text]...], default}]: duel (Duelist), storm (Stormbringer,
+## Launchers), collateral (Cannons), delayed (Pinaka). Keys are the attack params.
+static func attack_options(u: Unit, w: Dictionary) -> Array:
+	var out: Array = []
+	if Weapons.is_melee(w) and Effects.has(u, "duel") and not u.counters.has("duel"):
+		out.append({"key": "duel", "label": "Duelist", "values": [[false, "No duel"], [true, "Start a duel with the target"]], "default": false})
+	if String(w.get("type", "")) == "Launcher" and Effects.has(u, "storm_effects"):
+		out.append({"key": "storm", "label": "Stormbringer", "values": [["", "No storm"], ["lightning", "Lightning: knock them 3 away"], ["thunder", "Thunder: burst 2 knockback"]], "default": ""})
+	if String(w.get("type", "")) == "Cannon" and Effects.has(u, "collateral"):
+		out.append({"key": "collateral", "label": "Collateral damage", "values": [[true, "On a crit: collateral damage"], [false, "No collateral"]], "default": true})
+	if String(w.get("id", "")) == "mw_pinaka_missiles":
+		out.append({"key": "delayed", "label": "Pinaka", "values": [[false, "Fire now"], [true, "Delayed strike (next turn)"]], "default": false})
+	return out
 
 
 ## "Out of range (12 > 10): move closer or Boost" when every enemy is just too far (the

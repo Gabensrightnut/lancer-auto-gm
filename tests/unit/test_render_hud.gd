@@ -239,3 +239,24 @@ func test_out_of_range_reason_and_turn_bar_names() -> void:
 	expect(not labels.is_empty() and (labels[0] as Label).text_overrun_behavior == TextServer.OVERRUN_TRIM_ELLIPSIS, "long names end in an ellipsis")
 	expect_eq((labels[0] as Label).tooltip_text, "Placeholder Controller", "full name on hover")
 	bar.free()
+
+
+func test_new_talent_actions_and_attack_options() -> void:
+	var g := _gear_state()
+	var u: Unit = g[3]
+	for t: Array in [["feint", "target"], ["trip", "target"], ["duelist_strike", "target"], ["hunter_throw", "target"]]:
+		var st := ActionInputs.steps(g[1], g[2], u, {"type": t[0], "params": {}})
+		expect_eq(st[0]["param"], t[1], "%s picks %s" % [t[0], t[1]])
+	var pinaka := {"id": "mw_pinaka_missiles", "type": "Launcher", "range": []}
+	var keys := ActionCatalog.attack_options(u, pinaka).map(func(o: Dictionary) -> String: return o["key"])
+	expect(keys.has("delayed"), "Pinaka offers a delayed strike")
+	var pt := PlayerTurn.new()
+	var ui := CanvasLayer.new()
+	pt.bar = ActionBar.new()
+	pt.setup(ui)
+	pt.selected = {"name": "Pinaka", "options": ActionCatalog.attack_options(u, pinaka)}
+	pt._ask("Fire?", {"type": "skirmish", "actor": "me", "params": {"weapon": "w"}})
+	expect_eq(pt.pending["params"].get("delayed"), false, "options start at their defaults")
+	pt.bar.free()
+	pt.free()
+	ui.free()
