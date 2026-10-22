@@ -8,8 +8,8 @@ extends RefCounted
 ## +1 Difficulty while Engaged), Critical Hits, Lock On, Invisible, Hidden, Prone, Impaired,
 ## Stunned, Brace, Jammed, and the tags Accurate, Inaccurate, AP, Reliable, Knockback, Loading,
 ## Limited, Ordnance, Smart, Seeking, Arcing, Thrown, Threat, Overkill, Heat (Self/Target), Burn.
-## PROVISIONAL (docs/RULES_TODO.md): cover doesn't apply to tech attacks or melee; Reliable
-## damage uses the weapon's first damage type; tech attacks can't crit.
+## Melee and tech attacks ignore cover; crits are for melee and ranged attacks (Core p.64).
+## Reliable damage on a miss uses the weapon's first damage type.
 
 const REF_SKIRMISH := "actions: Skirmish"
 const REF_BARRAGE := "actions: Barrage"
@@ -395,7 +395,7 @@ static func knock_back(state: GameState, target: Unit, origin: Vector2i, spaces:
 
 
 ## A tech attack: d20 + Tech Attack vs E-Defense. Range is SENSORS and needs line of sight
-## (actions: Invade). PROVISIONAL: no cover, no crits.
+## (Core p.64): tech attacks ignore cover and can't crit.
 static func tech_preview(state: GameState, attacker: Unit, target: Unit, opts: Dictionary = {}) -> Dictionary:
 	var out := {"ok": false, "reason": "", "rule_ref": "actions: Invade", "kind": KIND_TECH, "accuracy": 0,
 		"difficulty": 0, "sources": [], "bonus": attacker.tech_attack,

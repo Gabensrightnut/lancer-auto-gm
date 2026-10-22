@@ -82,7 +82,7 @@ static func _do_move(state: GameState, u: Unit, plan: Dictionary, mode: String, 
 
 class Move:
 	extends TurnAction
-	## Standard move: up to SPEED, may be split around other actions (PROVISIONAL).
+	## Standard move: up to SPEED, may be split around other actions (Core p.62).
 
 	func type() -> String:
 		return "move"

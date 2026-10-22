@@ -255,7 +255,7 @@ class CorePower:
 		if u.loadout.get("core", {}).is_empty():
 			return RuleResult.deny("This mech has no core system.", "frames: core_system")
 		if int(u.counters.get("core_power", 0)) <= 0:
-			return RuleResult.deny("Core Power already used this mission.", "PROVISIONAL Core: Core Power (docs/RULES_TODO.md)")
+			return RuleResult.deny("Core Power already used this mission (a Full Repair recovers it).", "Core p.32, 82 Core System")
 		var act := _activation(u)
 		if act == "Reaction" or act == "None":
 			return RuleResult.deny("This core system is a %s; it isn't automated yet, so the table applies it." % ("reaction" if act == "Reaction" else "passive effect"), "frames: core_system")

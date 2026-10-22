@@ -9,10 +9,10 @@ extends RefCounted
 ##
 ## Book rules used: base pilot stats (rules.json base_pilot_*), Down and Out (statuses),
 ## Mount, Dismount, Eject, Self Destruct (actions), Size 1/2.
-## PROVISIONAL (docs/RULES_TODO.md "Pilots"): pilots have no heat cap (heat becomes energy
-## damage, per glossary: Heat Capacity); a destroyed mech's pilot stays inside but takes
-## turns and may Dismount; the self-destruct/meltdown explosion's Agility save is against
-## the exploding mech's Save Target and "half damage" rounds up.
+## Pilots are Biological: no heat cap, heat becomes energy damage (Core p.74).
+## PROVISIONAL (docs/RULES_TODO.md "Pilot of a destroyed mech", "Reactor explosion save"):
+## the pilot of a destroyed mech climbs out next to it; the explosion's Agility save is
+## against the exploding mech's Save Target.
 
 ## rules.json base pilot numbers (copied so the core needs no ContentDB).
 const BASE := {"hp": 6, "evasion": 10, "edef": 10, "speed": 4, "sensors": 5, "save_target": 10}

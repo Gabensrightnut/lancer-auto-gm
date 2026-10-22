@@ -17,12 +17,11 @@ extends RefCounted
 const REF_MOUNTS := "rules.json: mount_fittings"
 const REF_SP := "glossary: System Points"
 const REF_LICENSE := "lancer-data: license / license_level"
-## PROVISIONAL (docs/RULES_TODO.md "License ranks"): one license rank per License Level,
-## ranks 1-3 per license.
-const REF_LICENSE_RANKS := "PROVISIONAL Core: License ranks (docs/RULES_TODO.md)"
+## One license rank per License Level, ranks I-III per license (Core p.31).
+const REF_LICENSE_RANKS := "Core p.31 License ranks"
 const MAX_LICENSE_RANK := 3
-## PROVISIONAL (docs/RULES_TODO.md "Mount capacities"): how many weapons each mount holds.
-## Fittings (which sizes fit) come from rules.json; "Flex" holds one Main or two Auxiliary.
+## How many weapons each mount holds (Core p.32); which sizes fit comes from rules.json.
+## "Flex" holds one Main or two Auxiliary; Main/Aux holds Main + Aux or two Aux.
 const MOUNT_SLOTS := {
 	"Main": ["Main"],
 	"Heavy": ["Heavy"],
@@ -98,10 +97,10 @@ static func check_loadout(db: ContentDB, frame_id: String, loadout: Dictionary, 
 					problems.append({"reason": "%s can't go on a %s." % [mod["name"], w0.get("type", "")], "rule_ref": "tags: Mod"})
 				elif (mod.get("restricted_sizes", []) as Array).has(w0.get("mount", "")):
 					problems.append({"reason": "%s can't go on a %s weapon." % [mod["name"], w0.get("mount", "")], "rule_ref": "tags: Mod"})
-	# PROVISIONAL (RULES_TODO "Superheavy mounting"): a Superheavy weapon also takes up one
+	# A Superheavy weapon needs a Heavy mount and one other mount (Core p.32): it takes up one
 	# other mount, which must be left empty.
 	if superheavy_mounts.size() > empty_mounts.size():
-		problems.append({"reason": "A Superheavy weapon needs a Heavy mount plus one other empty mount.", "rule_ref": "PROVISIONAL Core: Superheavy (docs/RULES_TODO.md)"})
+		problems.append({"reason": "A Superheavy weapon needs a Heavy mount plus one other empty mount.", "rule_ref": "Core p.32 Mounts"})
 	var seen_unique := {}
 	var ai_count := 0
 	for sid: String in loadout.get("systems", []):
@@ -213,10 +212,9 @@ static func _has_tag(entry: Dictionary, tag_id: String) -> bool:
 
 
 ## A player mech from a frame and loadout. Doesn't check legality (call check_loadout).
-## PROVISIONAL (docs/RULES_TODO.md "Pilot stat bonuses"): HASE and GRIT bonuses from the
-## core book's mech stats: HP + GRIT + 2/Hull, Repair Cap + 1 per 2 Hull, Evasion +1/Agility,
-## Speed +1 per 2 Agility, E-Defense and Tech Attack +1/Systems, Heat Cap +1/Engineering,
-## Save Target + GRIT. SP is from the glossary.
+## Mech skill and GRIT bonuses (Core p.34-35): HP + GRIT + 2/Hull, Repair Cap + 1 per 2 Hull,
+## Evasion +1/Agility, Speed +1 per 2 Agility, E-Defense and Tech Attack +1/Systems, Heat Cap
+## +1/Engineering, Save Target + GRIT, SP + GRIT + 1 per 2 Systems.
 static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dictionary, pilot: Dictionary = {}) -> Unit:
 	var frame := db.frame(frame_id)
 	var st: Dictionary = frame.get("stats", {})
@@ -319,7 +317,7 @@ static func _frame_effects(u: Unit, frame: Dictionary) -> void:
 	u.loadout["traits"] = traits
 	u.loadout["core"] = {"name": core_name, "power": core.get("active_name", ""), "activation": core.get("activation", "Quick"),
 		"text": core.get("active_effect", ""), "effects": core_effects, "automated": enc_core is Array}
-	# PROVISIONAL (RULES_TODO "Core power"): 1 Core Power per mission, used up on activation.
+	# One Core Power per mission, recovered by a Full Repair (Core p.32, 82).
 	u.counters["core_power"] = 1
 
 

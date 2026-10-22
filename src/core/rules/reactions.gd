@@ -12,9 +12,9 @@ extends RefCounted
 ## - "auto" (default for GM units, until the GM AI decides): the offering rule's default.
 ## - "never", or "on_structure" for Brace (only when the hit would take the last HP).
 ##
-## PROVISIONAL (docs/RULES_TODO.md "Reactions"): each reaction once per round, refreshed at
-## the start of the unit's turn; NPCs have no Brace (lancer-data has NPC versions of Overwatch
-## but not of Brace).
+## Each reaction can be used again from the start of your next turn, and only one reaction
+## per turn (Core p.73). PROVISIONAL (docs/RULES_TODO.md "NPCs and Brace", "Reaction
+## decisions"): NPCs have no Brace; GM/AI seats answer with suggested_answer().
 
 const REF_BRACE := "actions: Brace"
 const REF_OVERWATCH := "actions: Overwatch"

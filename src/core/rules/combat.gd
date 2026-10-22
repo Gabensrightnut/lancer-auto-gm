@@ -6,11 +6,11 @@ extends RefCounted
 ## Book rules used (lancer-data text): Harm/Calculating Damage order, Armor, Resistance,
 ## Exposed, Shredded, Overshield, Burn, Heat Capacity, HP, Structure, Stress, the Structure
 ## Damage and Overheating tables (tables.json), Falling, Flight, Engaged, Hidden, Stunned.
-## PROVISIONAL (docs/RULES_TODO.md): halving rounds up; Armor applies once per hit across its
-## damage types; excess damage past 0 HP is lost; checks and saves with no one forcing them
-## succeed on 10+; a whole fall happens at the end of the current turn; reactor meltdown
-## destroys the mech (the explosion isn't modelled yet); System Trauma picks the first valid
-## mount/system until the UI offers the choice.
+## Core p.12 (always round up), p.63 (falling), p.67 (damage order, Armor once per source),
+## p.80-81 (structure, overheating, meltdown), p.13 (checks succeed on 10+).
+## PROVISIONAL (docs/RULES_TODO.md): saves nobody forces need 10+; heat overflow reading;
+## dangerous terrain damage type. System Trauma picks the first valid mount/system until the
+## UI offers the choice (a UI gap, not a rule).
 
 const REF_HARM := "glossary: Harm/Calculating Damage"
 const REF_STRUCTURE := "tables: Structure Damage"
@@ -149,7 +149,7 @@ static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dict
 			armor_used = mini(armor_left, amount)
 			armor_left -= armor_used
 			amount -= armor_used
-		# 3) Resistance halves what's left. PROVISIONAL: rounds up.
+		# 3) Resistance halves what's left, rounding the damage taken up (Core p.12).
 		var resisted := 0
 		if not shredded and amount > 0 and (resist_here or _resists(target, dtype)):
 			resisted = amount / 2
