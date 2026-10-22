@@ -160,6 +160,12 @@ static func sources(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 				ok = w.get("type", "") == "CQB" and Sight.unit_distance(state, attacker, target) <= 3
 		if ok:
 			out.append({"label": String(e.get("label", "Talent")), "kind": "accuracy", "type": "accuracy", "value": int(e.get("accuracy", 1)), "rule_ref": REF, "talent": e})
+	var known := String(attacker.counters.get("origin_employer", ""))
+	if known != "" and known == String(target.loadout.get("manufacturer", "")) and not attacker.counters.get("origin_used", false) \
+			and HouseRuleSwitches.on(state, "hr_origin_perks"):
+		# House rule (your idea): you know their weak spots, +1 Accuracy on your first attack this
+		# scene against a frame from your former employer.
+		out.append({"label": "Knows %s frames" % known, "kind": "accuracy", "type": "accuracy", "value": 1, "rule_ref": "House rule: Origin perks", "origin": true})
 	var partner := String(attacker.counters.get("duel", ""))
 	if partner != "" and partner != target.id and not attacker.counters.get("duel_paused", false):
 		out.append({"label": "Duel to the death", "kind": "difficulty", "type": "difficulty", "value": 3, "rule_ref": REF})
@@ -351,6 +357,8 @@ static func after_roll(state: GameState, attacker: Unit, w: Dictionary, target: 
 ## Marks 1/round talent Accuracy that was used.
 static func used_sources(state: GameState, attacker: Unit, srcs: Array) -> void:
 	for s: Dictionary in srcs:
+		if s.get("origin", false):
+			attacker.counters["origin_used"] = true  # once per scene
 		var e: Dictionary = s.get("talent", {})
 		if e.get("per", "") == "round":
 			_use_round(state, attacker, String(e.get("label", "")))

@@ -323,7 +323,7 @@ static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dic
 		if not s.is_empty():
 			systems.append({"key": "s%d" % n, "id": sid, "name": s.get("name", sid), "tags": (s.get("tags", []) as Array).duplicate(true)})
 			n += 1
-	u.loadout = {"frame": frame_id, "mounts": mounts, "weapons": weapons, "systems": systems}
+	u.loadout = {"frame": frame_id, "mounts": mounts, "weapons": weapons, "systems": systems, "manufacturer": String(frame.get("source", ""))}
 	_frame_effects(u, frame)
 	# Passive effects of systems, core bonuses and talents (data/game/gear_effects.json).
 	var gear_ids: Array = []
@@ -332,6 +332,9 @@ static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dic
 	gear_ids.append_array(pilot.get("core_bonuses", []))
 	_add_gear_effects(u, gear_ids, pilot.get("talents", {}))
 	_core_bonus_choices(u, pilot)
+	var employer := origin_employer(pilot)
+	if employer != "":
+		u.counters["origin_employer"] = employer  # house rule "Origin perks"
 	if pilot.has("bondmate"):
 		u.counters["bondmate"] = String(pilot["bondmate"])  # Bonded: the bondmate's unit id
 	TalentRules.adjust_weapons(u)
@@ -704,6 +707,21 @@ static func weapon_effects_data() -> Dictionary:
 		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(WEAPON_EFFECTS))
 		_weapon_data = d if d is Dictionary else {}
 	return _weapon_data
+
+
+## The manufacturer a pilot's former employer builds for: pilot.origin.former_employer (a
+## manufacturer id such as "SSC") or pilot.origin.employer (a name; see
+## data/game/origin_perks.json), or "".
+static func origin_employer(pilot: Dictionary) -> String:
+	var origin: Variant = pilot.get("origin", {})
+	if not origin is Dictionary:
+		return ""
+	var name := String((origin as Dictionary).get("former_employer", (origin as Dictionary).get("employer", "")))
+	if name == "":
+		return ""
+	var d: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/game/origin_perks.json"))
+	var employers: Dictionary = (d as Dictionary).get("employers", {}) if d is Dictionary else {}
+	return String(employers.get(name, ""))
 
 
 ## Engineer's prototype weapon (talents: Engineer), an integrated Main weapon built from the
