@@ -308,15 +308,19 @@ static func _chain_axe(ctx: Dictionary) -> Vector3:
 	return Vector3(0.12, 0, -0.33)
 
 
-## Signature: IPS-N war pike as in the Blackbeard art: a very long, slightly tapering dark
-## red-brown blade-staff with a thin spike and a ragged pennant at the top, held mid-shaft.
+## Signature: IPS-N war pike as in the Nelson art: a long slate shaft with a red grip wrap,
+## a leaf-shaped blade with a crossguard below it, and red banners near the butt.
 static func _war_pike(ctx: Dictionary) -> Vector3:
-	_box(ctx, Vector3(0.012, 0.045, 0.74), Vector3(0, 0, 0.43), "rust", Vector3.ZERO, 0.85)
-	_box(ctx, Vector3(0.016, 0.016, 0.26), Vector3(0, 0, -0.07), "body")
-	_box(ctx, Vector3(0.03, 0.03, 0.07), Vector3(0, 0, 0.02), "wrap")
-	_box(ctx, Vector3(0.006, 0.028, 0.06), Vector3(0, 0, -0.22), "blade", Vector3.ZERO, 0.2)
-	_box(ctx, Vector3(0.004, 0.06, 0.07), Vector3(0, 0.035, -0.16), "body", Vector3(0, 0, 0), 0.6)
-	return Vector3(0, 0, -0.25)
+	_box(ctx, Vector3(0.014, 0.014, 1.0), Vector3(0, 0, 0.12), "body")
+	_box(ctx, Vector3(0.02, 0.02, 0.1), Vector3(0, 0, -0.18), "wrap")
+	_box(ctx, Vector3(0.12, 0.01, 0.01), Vector3(0, 0, -0.38), "body")
+	for s: float in [-1.0, 1.0]:
+		_box(ctx, Vector3(0.012, 0.03, 0.012), Vector3(s * 0.06, 0, -0.38), "body")
+	_box(ctx, Vector3(0.05, 0.008, 0.16), Vector3(0, 0, -0.47), "light", Vector3.ZERO, 0.3)
+	_box(ctx, Vector3(0.006, 0.01, 0.15), Vector3(0, 0, -0.47), "blade")
+	for k in range(2):
+		_box(ctx, Vector3(0.006, 0.06, 0.12 - k * 0.02), Vector3(0, -0.035, 0.45 + k * 0.08), "wrap", Vector3(-12, 0, 0), 0.7)
+	return Vector3(0, 0, -0.55)
 
 
 ## Signature: GMS shotgun as a long, boxy pump shotgun (Everest reference): a slab receiver,

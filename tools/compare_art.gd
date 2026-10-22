@@ -127,15 +127,25 @@ func _render(n: Node3D, w: int, yaw: float, pitch: float, match: Node3D) -> Imag
 		await process_frame
 		box = _bounds(n)
 	var body := _bounds(n, true) if not match else box
-	# Body spans [_top, _bottom] of the frame height, like the figure in the art.
-	var size := body.size.y / (_bottom - _top)
-	var center := body.get_center()
-	center.y = body.position.y + body.size.y * 0.5 + size * ((_bottom + _top) * 0.5 - 0.5)
+	# Fit the body's box as the camera sees it: its projected height spans [_top, _bottom] of
+	# the frame (like the figure in the art), and it never spills off the sides.
+	var dir := Basis.from_euler(Vector3(deg_to_rad(pitch), deg_to_rad(yaw), 0)) * Vector3(0, 0, -1)
+	var view := Transform3D(Basis.looking_at(-dir, Vector3.UP), Vector3.ZERO).inverse()
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for i in range(8):
+		var c := view * body.get_endpoint(i)
+		lo = Vector2(minf(lo.x, c.x), minf(lo.y, c.y))
+		hi = Vector2(maxf(hi.x, c.x), maxf(hi.y, c.y))
+	var aspect := float(w) / H
+	var size := maxf((hi.y - lo.y) / (_bottom - _top), (hi.x - lo.x) / aspect * 1.04)
+	# Screen-space centre: horizontally centred, vertically placed per _top/_bottom.
+	var mid := Vector2((lo.x + hi.x) * 0.5, (lo.y + hi.y) * 0.5 + size * ((_bottom + _top) * 0.5 - 0.5))
+	var center := view.affine_inverse() * Vector3(mid.x, mid.y, (view * body.get_center()).z)
 	var cam := Camera3D.new()
 	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
 	cam.size = size
 	world.add_child(cam)
-	var dir := Basis.from_euler(Vector3(deg_to_rad(pitch), deg_to_rad(yaw), 0)) * Vector3(0, 0, -1)
 	# The model faces -Z, so the camera sits on the -Z side looking back at it.
 	cam.position = center + dir * 10.0
 	cam.look_at(center)

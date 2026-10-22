@@ -11,6 +11,8 @@ const BUILDERS := {
 	"mf_drake": "_drake",
 	"mf_blackbeard": "_blackbeard",
 	"mf_goblin": "_goblin",
+	"mf_lancaster": "_lancaster",
+	"mf_nelson": "_nelson",
 	"mf_mourning_cloak": "_mourning_cloak",
 }
 const CLOTH_SHADER := preload("res://src/render/shaders/cloth.gdshader")
@@ -825,3 +827,287 @@ func _goblin() -> void:
 			_add(f, _limb(0.07, 0.008, 0.006), TL)
 			var tip := _p(f, "Tip", Vector3(0, -0.07, 0), Vector3(-35, 0, 0))
 			_add(tip, SmoothKit.loft([{"y": -0.04, "w": 0.002, "d": 0.002}, {"y": 0.0, "w": 0.008, "d": 0.007}], 6, false), DK)
+
+
+# --- Lancaster (IPS-N) --------------------------------------------------------------------
+# From the core book art: a four-legged olive utility walker. A tall boxy cab at the front
+# (window slit, name plate, round lamps) wrapped in a red pipe roll cage; a long body behind
+# it carrying dark cargo trunks with red handles and big barrel tanks, red pipes along the
+# flanks; four legs with olive armored thighs and long ribbed, cloth-wrapped lower legs on
+# round pads. Small manipulator claws hang under the cab.
+
+func _lancaster() -> void:
+	m.set_meta("custom_pose", true)
+	var OL := MeshKit.paint(Color(0.33, 0.37, 0.2), 0.25, 0.65, 0.2)
+	var OL2 := MeshKit.paint(Color(0.4, 0.44, 0.26), 0.25, 0.6, 0.12)
+	var DK := MeshKit.paint(Color(0.13, 0.13, 0.13), 0.6, 0.5, 0.0)
+	var WR := MeshKit.paint(Color(0.26, 0.21, 0.17), 0.1, 0.85, 0.0)
+	var RP := MeshKit.paint(Color(0.82, 0.3, 0.2), 0.3, 0.5, 0.0)
+	var TR := MeshKit.paint(Color(0.2, 0.15, 0.12), 0.2, 0.7, 0.0)
+	var RU := MeshKit.paint(Color(0.42, 0.3, 0.2), 0.4, 0.6, 0.0)
+	var LAMP := MeshKit.paint(Color(0.3, 0.25, 0.05), 0.2, 0.2, 0.0, Color(1.0, 0.85, 0.35))
+	var body_y := 0.66
+	m.pelvis = _p(body, "Pelvis", Vector3(0, body_y, 0))
+	m.pelvis.set_meta("rest_y", body_y)
+	m.torso = _p(m.pelvis, "Torso", Vector3.ZERO)
+	var t := m.torso
+	# Long body behind the cab.
+	_add(t, SmoothKit.rounded_box(Vector3(0.44, 0.3, 0.72), 0.05), OL, Vector3(0, 0.02, 0.22))
+	_add(t, SmoothKit.rounded_box(Vector3(0.36, 0.08, 0.66), 0.03), DK, Vector3(0, -0.15, 0.22))
+	# Cab: tall box at the front, slightly raked.
+	var cab := _p(t, "Cab", Vector3(0, 0.08, -0.25), Vector3(-4, 0, 0))
+	_add(cab, SmoothKit.rounded_box(Vector3(0.48, 0.44, 0.36), 0.06), OL)
+	_add(cab, SmoothKit.rounded_box(Vector3(0.3, 0.06, 0.02), 0.012), DK, Vector3(-0.02, 0.1, -0.18))
+	_add(cab, SmoothKit.rounded_box(Vector3(0.36, 0.1, 0.02), 0.02), OL2, Vector3(-0.02, 0.13, -0.183))
+	_add(cab, SmoothKit.rounded_box(Vector3(0.14, 0.05, 0.012), 0.008), DK, Vector3(-0.04, 0.02, -0.184))
+	var plate := Label3D.new()
+	plate.text = "BESS"
+	plate.font_size = 64
+	plate.pixel_size = 0.0008
+	plate.modulate = Color(0.85, 0.85, 0.8)
+	plate.position = Vector3(-0.04, 0.02, -0.192)
+	plate.rotation_degrees = Vector3(0, 180, 0)
+	cab.add_child(plate)
+	_add(cab, MeshKit.cylinder(0.018, 0.012, 14), LAMP, Vector3(-0.17, 0.12, -0.186), Vector3(90, 0, 0))
+	for k in range(2):
+		_add(cab, MeshKit.cylinder(0.011, 0.012, 12), LAMP, Vector3(0.12, 0.02 - k * 0.03, -0.186), Vector3(90, 0, 0))
+	_add(cab, SmoothKit.rounded_box(Vector3(0.12, 0.06, 0.03), 0.008), DK, Vector3(-0.02, -0.1, -0.18))
+	for k in range(4):
+		_add(cab, MeshKit.cylinder(0.008, 0.06, 8), DK, Vector3(-0.08 + k * 0.035, -0.17, -0.17), Vector3(0, 0, 90))
+	# Side door with a vent on the cab's flanks.
+	for s: float in [1.0, -1.0]:
+		_add(cab, SmoothKit.rounded_box(Vector3(0.012, 0.3, 0.22), 0.01), OL2, Vector3(s * 0.243, 0.0, 0.0))
+		_add(cab, SmoothKit.rounded_box(Vector3(0.01, 0.08, 0.1), 0.006), DK, Vector3(s * 0.25, 0.1, 0.03))
+		for k in range(4):
+			_add(cab, MeshKit.chamfer_box(Vector3(0.006, 0.006, 0.09), 0.001), RU, Vector3(s * 0.255, 0.075 + k * 0.016, 0.03))
+	m.head = _p(cab, "Head", Vector3(-0.02, 0.1, -0.19))
+	_eye(m.head, Vector3(0, 0, -0.01))
+	# Red pipe roll cage over the cab.
+	var cage := _p(cab, "Cage", Vector3.ZERO)
+	var cx := 0.29
+	var cy0 := -0.16
+	var cy1 := 0.3
+	var cz0 := -0.24
+	var cz1 := 0.2
+	var rails := [
+		[Vector3(-cx, cy1, cz0), Vector3(cx, cy1, cz0)], [Vector3(-cx, cy1, cz1), Vector3(cx, cy1, cz1)],
+		[Vector3(-cx, cy1, cz0), Vector3(-cx, cy1, cz1)], [Vector3(cx, cy1, cz0), Vector3(cx, cy1, cz1)],
+		[Vector3(-cx, cy1, cz0), Vector3(-cx, cy0, cz0)], [Vector3(cx, cy1, cz0), Vector3(cx, cy0, cz0)],
+		[Vector3(-cx, cy0, cz0), Vector3(cx, cy0, cz0)], [Vector3(-cx, 0.07, cz0), Vector3(cx, 0.07, cz0)],
+		[Vector3(0.0, cy1, cz0), Vector3(0.0, cy0, cz0)], [Vector3(0.0, cy1, cz0), Vector3(0.0, cy1, cz1)],
+		[Vector3(-cx, cy1, cz1), Vector3(-cx, 0.0, cz1)], [Vector3(cx, cy1, cz1), Vector3(cx, 0.0, cz1)],
+		[Vector3(-cx, 0.07, cz0), Vector3(-cx, 0.07, cz1)], [Vector3(cx, 0.07, cz0), Vector3(cx, 0.07, cz1)],
+	]
+	for r: Array in rails:
+		_add(cage, SmoothKit.tube([r[0], r[1]], 0.011, 8), RP)
+	for c: Vector3 in [Vector3(-cx, cy1, cz0), Vector3(cx, cy1, cz0), Vector3(-cx, cy1, cz1), Vector3(cx, cy1, cz1), Vector3(0, cy1, cz0), Vector3(-cx, 0.07, cz0), Vector3(cx, 0.07, cz0), Vector3(0, 0.07, cz0)]:
+		_add(cage, SmoothKit.rounded_box(Vector3(0.03, 0.03, 0.03), 0.008), RP, c)
+	# Cargo: dark trunks with red handles along the left flank, barrel tanks on top.
+	for k in range(2):
+		var z := 0.12 + k * 0.24
+		for s: float in [1.0, -1.0]:
+			_add(t, SmoothKit.rounded_box(Vector3(0.1, 0.2, 0.22), 0.02), TR, Vector3(s * 0.26, 0.0, z))
+			_add(t, SmoothKit.tube(SmoothKit.bezier(Vector3(s * 0.315, 0.03, z - 0.05), Vector3(s * 0.34, 0.03, z - 0.05), Vector3(s * 0.34, 0.03, z + 0.05), Vector3(s * 0.315, 0.03, z + 0.05), 6), 0.006, 6), RP)
+	for k in range(2):
+		_add(t, MeshKit.cylinder(0.07, 0.3, 18), RU, Vector3(-0.08 + k * 0.17, 0.24, 0.32), Vector3(90, 0, 0))
+		for b in range(3):
+			_add(t, MeshKit.cylinder(0.073, 0.012, 18), DK, Vector3(-0.08 + k * 0.17, 0.24, 0.2 + b * 0.12), Vector3(90, 0, 0))
+	# Red pipes along the flanks.
+	for s: float in [1.0, -1.0]:
+		_add(t, SmoothKit.tube([Vector3(s * 0.235, 0.17, -0.05), Vector3(s * 0.235, 0.17, 0.55)], 0.009, 8), RP)
+		_add(t, SmoothKit.tube([Vector3(s * 0.235, -0.12, -0.05), Vector3(s * 0.235, -0.12, 0.55)], 0.009, 8), RP)
+		for k in range(4):
+			_add(t, SmoothKit.tube([Vector3(s * 0.235, 0.17, k * 0.17), Vector3(s * 0.235, 0.24, k * 0.17), Vector3(s * 0.2, 0.24, k * 0.17)], 0.008, 8), RP)
+	# Manipulator claws under the cab.
+	for s: float in [1.0, -1.0]:
+		var arm := _p(cab, "Claw", Vector3(s * 0.08, -0.2, -0.12), Vector3(-20, 0, 0))
+		_add(arm, SmoothKit.rounded_box(Vector3(0.04, 0.12, 0.04), 0.01), OL2, Vector3(0, -0.06, 0))
+		for k: float in [-1.0, 1.0]:
+			_add(arm, SmoothKit.loft([{"y": -0.06, "w": 0.006, "d": 0.008}, {"y": 0.0, "w": 0.012, "d": 0.014}], 6), DK, Vector3(k * 0.012, -0.12, 0), Vector3(0, 0, k * 25))
+	# Weapon mounts: under the cab's front corners and on top.
+	m.slots["hand_r"] = _p(cab, "Slot_hand_r", Vector3(0.26, -0.06, -0.1), Vector3.ZERO)
+	m.slots["hand_l"] = _p(cab, "Slot_hand_l", Vector3(-0.26, -0.06, -0.1), Vector3.ZERO)
+	m.slots["forearm_r"] = m.slots["hand_r"]
+	m.slots["forearm_l"] = m.slots["hand_l"]
+	m.slots["shoulder_r"] = _p(t, "Slot_shoulder_r", Vector3(0.12, 0.17, 0.05))
+	m.slots["shoulder_l"] = _p(t, "Slot_shoulder_l", Vector3(-0.12, 0.17, 0.05))
+	m.slots["back_r"] = _p(t, "Slot_back_r", Vector3(0.12, 0.17, 0.5))
+	m.slots["back_l"] = _p(t, "Slot_back_l", Vector3(-0.12, 0.17, 0.5))
+	# Four legs: front pair reaching forward, rear pair trailing back.
+	# Order: front-right, front-left, rear-right, rear-left (diagonal pairs 0+3 and 1+2).
+	var corners := [[1.0, -0.3, true], [-1.0, -0.3, true], [1.0, 0.48, false], [-1.0, 0.48, false]]
+	for c: Array in corners:
+		var s: float = c[0]
+		var front: bool = c[2]
+		var leg := _rig_leg("r" if s > 0 else "l", Vector3(s * 0.25, -0.1, c[1]), 0.24, 0.5)
+		var hip: Node3D = leg["hip"]
+		var knee: Node3D = leg["knee"]
+		var ankle: Node3D = leg["ankle"]
+		var base := Vector3(70, -95, 25) if front else Vector3(-62, 80, -18)
+		hip.rotation_degrees = Vector3(base.x, 0, s * 28)
+		knee.rotation_degrees.z = s * -26
+		knee.rotation_degrees.x = base.y
+		ankle.rotation_degrees.x = base.z
+		leg["base"] = base
+		_add(hip, MeshKit.cylinder(0.05, 0.08, 16), DK, Vector3.ZERO, Vector3(0, 0, 90))
+		_add(hip, SmoothKit.rounded_box(Vector3(0.12, 0.28, 0.13), 0.025), OL, Vector3(0, -0.12, 0))
+		_add(hip, SmoothKit.rounded_box(Vector3(0.105, 0.05, 0.1), 0.012), OL2, Vector3(0, -0.24, 0.0))
+		_add(hip, MeshKit.cylinder(0.012, 0.02, 10), DK, Vector3(0, -0.15, -0.062), Vector3(90, 0, 0))
+		_add(knee, MeshKit.cylinder(0.045, 0.09, 16), DK, Vector3.ZERO, Vector3(0, 0, 90))
+		# Ribbed, wrapped lower leg.
+		var secs: Array = []
+		for k in range(18):
+			var y := -k * 0.0295
+			var r := (0.15 if k % 2 == 0 else 0.13) - k * 0.0025
+			secs.append({"y": y, "w": r, "d": r})
+		var rev: Array = secs.duplicate()
+		rev.reverse()
+		_add(knee, SmoothKit.loft(rev, 14), WR)
+		for k in range(4):
+			_add(knee, MeshKit.cylinder(0.064, 0.012, 14), DK, Vector3(0, -0.36 - k * 0.022, 0))
+		_add(ankle, MeshKit.cylinder(0.034, 0.05, 14), DK, Vector3(0, -0.02, 0))
+		_add(ankle, MeshKit.cylinder(0.055, 0.025, 18), DK, Vector3(0, -0.05, 0))
+
+
+# --- Nelson (IPS-N) ------------------------------------------------------------------------
+# From the core book art: a knightly brawler in worn brown armor. A rounded helm split red
+# and white with a dark T visor, set low and forward between the shoulders; a barrel chest
+# with a red/white heater shield and a round target badge; a red tabard with a gold crest
+# hanging to the knees and a long red cape; one huge boxy armored arm (left), one lighter arm
+# gripping the war pike; long legs with big knee guards and wrapped boots.
+
+func _nelson() -> void:
+	m.set_meta("custom_pose", true)
+	var BR := MeshKit.paint(Color(0.45, 0.32, 0.26), 0.3, 0.6, 0.2)
+	var BR2 := MeshKit.paint(Color(0.55, 0.4, 0.33), 0.3, 0.55, 0.12)
+	var SL := MeshKit.paint(Color(0.24, 0.3, 0.33), 0.6, 0.45, 0.1)
+	var DK := MeshKit.paint(Color(0.12, 0.11, 0.11), 0.6, 0.5, 0.0)
+	var RD := MeshKit.paint(Color(0.68, 0.15, 0.12), 0.15, 0.6, 0.0)
+	var WH := MeshKit.paint(Color(0.86, 0.82, 0.76), 0.2, 0.5, 0.0)
+	var GOLD := MeshKit.paint(Color(0.85, 0.65, 0.3), 0.8, 0.35, 0.0)
+	var EYE := MeshKit.paint(Color(0.3, 0.25, 0.05), 0.2, 0.2, 0.0, Color(1.0, 0.85, 0.3))
+	var cloth := ShaderMaterial.new()
+	cloth.shader = CLOTH_SHADER
+	cloth.set_shader_parameter("color", Color(0.62, 0.12, 0.1, 1.0))
+	cloth.set_shader_parameter("tip_color", Color(0.5, 0.1, 0.08, 1.0))
+	cloth.set_shader_parameter("wave", 0.03)
+	var hip_y := 0.4
+	var torso_origin := Vector3(0, hip_y + 0.04, 0)
+	var B := func(v: Vector3) -> Vector3: return Basis(Vector3.RIGHT, deg_to_rad(30.0)) * (v - torso_origin)
+	m.pelvis = _p(body, "Pelvis", Vector3(0, hip_y, 0))
+	m.pelvis.set_meta("rest_y", hip_y)
+	_add(m.pelvis, SmoothKit.rounded_box(Vector3(0.22, 0.08, 0.14), 0.025), SL)
+	for s: float in [1.0, -1.0]:
+		var side := "r" if s > 0 else "l"
+		var leg := _rig_leg(side, Vector3(s * 0.11, -0.01, 0), 0.21, 0.22)
+		var hip: Node3D = leg["hip"]
+		var knee: Node3D = leg["knee"]
+		var ankle: Node3D = leg["ankle"]
+		hip.rotation_degrees = Vector3(-22, 0, s * 18)
+		knee.rotation_degrees = Vector3(38, 0, s * -12)
+		ankle.rotation_degrees = Vector3(-16, 0, s * -6)
+		leg["base"] = Vector3(-22, 38, -16)
+		_add(hip, SmoothKit.blob(Vector3(0.08, 0.08, 0.08), 1.0, 1.0), DK)
+		_add(hip, _limb(0.2, 0.055, 0.047, 0.15), BR)
+		_add(hip, SmoothKit.rounded_box(Vector3(0.06, 0.12, 0.02), 0.008), SL, Vector3(s * 0.01, -0.09, -0.05))
+		# Big rounded knee guard.
+		_add(knee, SmoothKit.blob(Vector3(0.1, 0.09, 0.08), 0.6, 0.7), BR2, Vector3(0, 0.0, -0.035))
+		_add(knee, SmoothKit.blob(Vector3(0.08, 0.04, 0.05), 0.5, 0.6), WH, Vector3(0, 0.03, -0.065), Vector3(-30, 0, 0))
+		_add(knee, _limb(0.21, 0.045, 0.055, 0.1), BR)
+		for k in range(4):
+			_add(knee, MeshKit.cylinder(0.058 - k * 0.002, 0.014, 14), DK, Vector3(0, -0.11 - k * 0.025, 0))
+		_add(ankle, SmoothKit.rounded_box(Vector3(0.1, 0.06, 0.17), 0.025), BR, Vector3(0, -0.03, -0.035))
+		_add(ankle, SmoothKit.rounded_box(Vector3(0.11, 0.03, 0.18), 0.012), DK, Vector3(0, -0.058, -0.035))
+		_add(ankle, SmoothKit.rounded_box(Vector3(0.08, 0.05, 0.05), 0.012), BR2, Vector3(0, 0.0, 0.03))
+	# Torso: barrel chest leaning forward, with a backpack and a pole socket on top.
+	m.torso = _p(m.pelvis, "Torso", Vector3(0, 0.04, 0), Vector3(-30, 0, 0))
+	_add(m.torso, MeshKit.cylinder(0.06, 0.08, 14), DK, Vector3(0, 0.03, 0))
+	_add(m.torso, SmoothKit.loft([
+		{"y": 0.05, "w": 0.18, "d": 0.15, "n": 2.5},
+		{"y": 0.14, "w": 0.27, "d": 0.21, "n": 2.6},
+		{"y": 0.26, "w": 0.33, "d": 0.25, "n": 2.7},
+		{"y": 0.35, "w": 0.32, "d": 0.25, "n": 2.6},
+		{"y": 0.41, "w": 0.22, "d": 0.2, "n": 2.4},
+	], 28), BR)
+	_add(m.torso, SmoothKit.rounded_box(Vector3(0.24, 0.24, 0.13), 0.04), BR2, Vector3(0, 0.3, 0.12))
+	_add(m.torso, SmoothKit.rounded_box(Vector3(0.14, 0.02, 0.06), 0.006), SL, Vector3(0, 0.43, 0.12))
+	# Chest: heater shield (red/white quartered), round target, pouches, harness straps.
+	var shield := _p(m.torso, "Badge", Vector3(0.07, 0.27, -0.128), Vector3(-10, 10, 0))
+	_add(shield, SmoothKit.loft([{"y": -0.05, "w": 0.008, "d": 0.008}, {"y": -0.01, "w": 0.06, "d": 0.01}, {"y": 0.03, "w": 0.06, "d": 0.01}], 4), RD, Vector3.ZERO, Vector3(0, 45, 0))
+	_add(shield, SmoothKit.rounded_box(Vector3(0.025, 0.035, 0.012), 0.004), WH, Vector3(-0.012, 0.012, -0.004))
+	_add(m.torso, MeshKit.cylinder(0.03, 0.01, 18), RD, Vector3(-0.08, 0.26, -0.128), Vector3(-80, -10, 0))
+	_add(m.torso, MeshKit.cylinder(0.02, 0.012, 4), WH, Vector3(-0.08, 0.26, -0.13), Vector3(-80, -10, 0))
+	_add(m.torso, SmoothKit.rounded_box(Vector3(0.12, 0.06, 0.04), 0.01), SL, Vector3(0, 0.17, -0.12))
+	for s: float in [1.0, -1.0]:
+		_add(m.torso, SmoothKit.tube([Vector3(s * 0.04, 0.33, -0.11), Vector3(s * 0.05, 0.22, -0.13), Vector3(s * 0.06, 0.1, -0.11)], 0.006, 6), GOLD)
+	# Tabard: a red cloth panel hanging from the chest to the knees, with a gold crest.
+	var tabard := _p(m.torso, "Tabard", Vector3(0, 0.16, -0.12))
+	var tpts: Array = []
+	var tw: Array = []
+	for k in range(9):
+		var f := k / 8.0
+		tpts.append(Vector3(0, -f * 0.36, -0.01 - f * 0.08))
+		tw.append(0.16 + 0.02 * f)
+	var tab := _add(tabard, ribbon(tpts, tw), cloth)
+	tab.set_meta("no_height", true)
+	var crest := Label3D.new()
+	crest.text = "✠"
+	crest.font_size = 96
+	crest.pixel_size = 0.0007
+	crest.modulate = Color(0.9, 0.7, 0.35)
+	crest.position = Vector3(0, -0.2, -0.07)
+	crest.rotation_degrees = Vector3(-15, 180, 0)
+	tabard.add_child(crest)
+	# Helm: rounded, split red/white, dark T visor, set low and forward.
+	m.head = _p(m.torso, "Head", Vector3(0, 0.3, -0.14), Vector3(24, 0, 0))
+	_add(m.head, SmoothKit.blob(Vector3(0.05, 0.06, 0.05), 1.0, 1.0), DK)
+	var helm := SmoothKit.loft([
+		{"y": 0.0, "w": 0.1, "d": 0.11, "n": 2.2},
+		{"y": 0.06, "w": 0.12, "d": 0.13, "n": 2.3},
+		{"y": 0.12, "w": 0.11, "d": 0.12, "n": 2.2},
+		{"y": 0.16, "w": 0.06, "d": 0.08, "n": 2.0},
+	], 20)
+	_add(m.head, helm, RD, Vector3(0, 0.02, 0))
+	# White right half: a plate over that side of the helm.
+	_add(m.head, SmoothKit.blob(Vector3(0.062, 0.15, 0.125), 0.5, 0.9, 1.0, 16), WH, Vector3(0.03, 0.09, 0.0))
+	_add(m.head, SmoothKit.rounded_box(Vector3(0.06, 0.012, 0.01), 0.003), DK, Vector3(0, 0.1, -0.064))
+	_add(m.head, SmoothKit.rounded_box(Vector3(0.014, 0.06, 0.01), 0.003), DK, Vector3(0, 0.075, -0.064))
+	_add(m.head, MeshKit.sphere(0.006, 8), EYE, Vector3(0.016, 0.1, -0.07))
+	_eye(m.head, Vector3(0, 0.1, -0.07))
+	# Cape: red cloth from the shoulders streaming back and to the right.
+	for i in range(7):
+		var u := float(i) / 6.0 - 0.5
+		var pts: Array = []
+		var ws: Array = []
+		var start := Vector3(u * 0.34, 0.38, 0.06)
+		for k in range(10):
+			var f := k / 9.0
+			pts.append(start + Vector3(u * f * 0.2 - f * f * 0.22, -f * 0.55 + f * f * 0.12, 0.08 + f * 0.25))
+			ws.append(0.08 + 0.04 * sin(f * PI))
+		var cape := _add(m.torso, ribbon(pts, ws), cloth)
+		cape.set_meta("no_height", true)
+	# Arms: the left is huge and boxy, the right lighter and holding the pike.
+	var arm_r := _rig_arm("r", Vector3.ZERO, 0.2, 0.2, 0.0, 0.05)
+	var arm_l := _rig_arm("l", Vector3.ZERO, 0.18, 0.2, 0.0, 0.07)
+	_pose_arm(arm_r, B.call(Vector3(0.22, 0.74, -0.12)), B.call(Vector3(0.32, 0.56, -0.12)), B.call(Vector3(0.36, 0.38, -0.16)), Vector3(0.5, -0.7, -0.4))
+	_pose_arm(arm_l, B.call(Vector3(-0.23, 0.74, -0.12)), B.call(Vector3(-0.36, 0.6, -0.26)), B.call(Vector3(-0.31, 0.46, -0.33)), Vector3(0, -1, -0.2))
+	_add(arm_r["shoulder"], SmoothKit.blob(Vector3(0.11, 0.1, 0.11), 0.7, 0.7), BR2)
+	_add(arm_r["shoulder"], _limb(0.19, 0.035, 0.032), SL)
+	_add(arm_r["elbow"], SmoothKit.blob(Vector3(0.05, 0.05, 0.05), 1.0, 1.0), DK)
+	_add(arm_r["elbow"], _limb(0.19, 0.04, 0.042, 0.2), BR)
+	_add(arm_r["hand"], SmoothKit.rounded_box(Vector3(0.05, 0.06, 0.05), 0.012), BR2)
+	# Big left arm: a boxy pauldron and a heavy gauntlet with a cylinder bracer.
+	_add(arm_l["shoulder"], SmoothKit.rounded_box(Vector3(0.17, 0.15, 0.17), 0.03), BR, Vector3(-0.02, -0.02, 0))
+	_add(arm_l["shoulder"], SmoothKit.rounded_box(Vector3(0.12, 0.03, 0.18), 0.01), SL, Vector3(-0.03, 0.04, 0))
+	_add(arm_l["shoulder"], _limb(0.18, 0.05, 0.05), SL)
+	_add(arm_l["elbow"], SmoothKit.blob(Vector3(0.08, 0.08, 0.08), 1.0, 1.0), DK)
+	_add(arm_l["elbow"], SmoothKit.rounded_box(Vector3(0.12, 0.18, 0.12), 0.025), BR2, Vector3(0, -0.1, 0))
+	_add(arm_l["elbow"], MeshKit.cylinder(0.02, 0.08, 12), SL, Vector3(-0.07, -0.08, 0), Vector3(0, 0, 0))
+	_add(arm_l["elbow"], MeshKit.sphere(0.012, 8), RD, Vector3(-0.065, -0.14, -0.04))
+	_add(arm_l["hand"], SmoothKit.rounded_box(Vector3(0.1, 0.07, 0.09), 0.018), SL, Vector3(0, -0.02, 0))
+	for k in range(4):
+		_add(arm_l["hand"], SmoothKit.rounded_box(Vector3(0.022, 0.06, 0.022), 0.006), BR2, Vector3((k - 1.5) * 0.024, -0.08, -0.02), Vector3(-25, 0, 0))
+	for s: float in [1.0, -1.0]:
+		var side := "r" if s > 0 else "l"
+		m.slots["shoulder_" + side] = _p(m.torso, "Slot_shoulder_" + side, Vector3(s * 0.2, 0.42, 0.04))
+		m.slots["back_" + side] = _p(m.torso, "Slot_back_" + side, Vector3(s * 0.08, 0.44, 0.14))
