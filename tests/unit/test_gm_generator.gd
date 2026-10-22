@@ -388,3 +388,65 @@ func test_ship_interiors_have_hull_rooms_and_a_way_in() -> void:
 		expect(hull > 60, "hull down both sides: %d" % hull)
 		expect(way_in >= (2 if defend else 2), "%s: torpedo breaches or an airlock (%d)" % ["defend" if defend else "assault", way_in])
 		expect(breakable_walls > 0, "some inner bulkheads can be broken through")
+
+
+func test_exploring_areas_join_up() -> void:
+	var hrng := RandomNumberGenerator.new()
+	hrng.seed = 5
+	var hub := {"kind": "town", "culture": "old_west", "seed": 5, "spots": HubLayout.spots("town", hrng)}
+	var town := MissionGenerator.area(5, {"hub": hub, "shape": "square", "size": 50})
+	var map: BattleMap = town["map"]
+	var buildings := 0
+	for c in map.cells():
+		buildings += 1 if map.column(c).has_tag("building") else 0
+	expect(buildings > 10, "the town stands in its area: %d" % buildings)
+	# The next area down the road: same region, same look, its own ground.
+	var next := MissionGenerator.area(6, {"region": town["region"], "shape": "square", "size": 50})
+	expect_eq(next["kit"], town["kit"], "the same region looks the same")
+	for a: Dictionary in [town, next]:
+		var m: BattleMap = a["map"]
+		for edge: String in ["west", "east", "north", "south"]:
+			var e: Array = a["entries"][edge]
+			var col := m.column(Vector2i(e[0], e[1]))
+			expect(col.has_tag("road") and m.ground_height(Vector2i(e[0], e[1])) == 0, "%s: a road out at ground level" % edge)
+		var rough := 0
+		for c in m.cells():
+			if c.x < TerrainGen.AREA_EDGE or c.y < TerrainGen.AREA_EDGE or c.x >= 50 - TerrainGen.AREA_EDGE or c.y >= 50 - TerrainGen.AREA_EDGE:
+				rough += 1 if m.ground_height(c) != 0 or m.column(c).has_tag(BattleMap.TAG_IMPASSABLE) else 0
+		expect_eq(rough, 0, "the seam along the edges is level and open")
+
+
+func test_no_rock_against_buildings() -> void:
+	# User report: a rock ridge ran straight out of a house. Natural rock keeps two spaces from
+	# anything built, in every settled landscape, and town ground between buildings is lots.
+	var kits := [["salt_flats", "industrial"], ["desert_mesas", "old_west"], ["grassy_hills", "medieval"], ["tundra", "union"],
+		["autumn_forest", "east_asian"], ["jungle", "medieval"], ["city", "ruins"]]
+	for kit: Array in kits:
+		for s in range(1, 9):
+			var rng := RandomNumberGenerator.new()
+			rng.seed = s
+			var map := TerrainGen.generate(rng, 40, 40, GridLayout.Shape.SQUARE, {}, kit[0], kit[1])
+			var bad := 0
+			var lots := 0
+			for c in map.cells():
+				var col := map.column(c)
+				lots += 1 if col.has_tag("lot") else 0
+				if not col.has_tag("rock"):
+					continue
+				for n in map.grid.neighbors(c):
+					if map.has_cell(n) and (map.column(n).has_tag("building") or map.column(n).has_tag("house")):
+						bad += 1
+			expect_eq(bad, 0, "%s/%s seed %d: rock against a building" % [kit[0], kit[1], s])
+			if kit[0] != "city":
+				expect(lots > 0, "%s/%s seed %d: yards and lots between the houses" % [kit[0], kit[1], s])
+	# Whole missions too: the fairness repair adds cover after the terrain is made.
+	for kit: Array in [["salt_flats", "industrial"], ["desert_mesas", "old_west"], ["grassy_hills", "medieval"]]:
+		for s in range(1, 4):
+			var map: BattleMap = (_gen(s, {"landscape": kit[0], "culture": kit[1], "shape": "square"})["state"] as GameState).map
+			var bad := 0
+			for c in map.cells():
+				if map.column(c).has_tag("rock"):
+					for n in map.grid.neighbors(c):
+						if map.has_cell(n) and (map.column(n).has_tag("building") or map.column(n).has_tag("house")):
+							bad += 1
+			expect_eq(bad, 0, "mission %s/%s seed %d: rock against a building" % [kit[0], kit[1], s])

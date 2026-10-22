@@ -13,8 +13,8 @@ static func build(t: TerrainRenderer, root: Node3D) -> void:
 	var street: Dictionary = WorldStyle.value(t.style, "architecture.street", {}) if t.style.has("architecture") else {}
 	var roads: Array[Vector2i] = []
 	for c in t.map.cells():
-		if t.surface(c) == TerrainRenderer.KIND_ROAD:
-			roads.append(c)
+		if t.surface(c) == TerrainRenderer.KIND_ROAD and t.map.column(c).has_tag("road"):
+			roads.append(c)  # streets only: yards and lots stay clear of parked cars
 	if roads.is_empty():
 		return
 	var kinds: Array = street.get("vehicles", ["car"] if t.style.get("urban", false) else ["cart"])
