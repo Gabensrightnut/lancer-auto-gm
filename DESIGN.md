@@ -248,7 +248,7 @@ them, and they disappear when the turn moves on.
 
 ### Living, themed battlefields
 - **Bigger maps:** sized for real Lancer fights with room to maneuver and flank (roughly
-  20x20 to 40x40 spaces depending on mission type and squad size), not small test boards.
+  30x30 to 60x60 spaces (wider and longer, per the user), depending on mission type and squad size; starting distance is set by the fight length dial, so the extra space is flanking room), not small test boards.
 - **Biomes drive both look and terrain:** grassy hills, desert, snow/tundra, urban ruins,
   industrial yard, forest, swamp, volcanic, space station, moon base... Each biome has its own
   height shapes (rolling hills vs. mesas vs. city blocks) and its own materials.
