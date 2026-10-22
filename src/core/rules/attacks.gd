@@ -449,6 +449,10 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		hit_opts["momentum"] = momentum
 		hit_opts["chambers"] = chambers
 		hit_opts["resist_all"] = pre["resist_all"]
+		var bm := TalentRules.blademaster_defense(state, target, kind)
+		events.append_array(bm["events"])
+		if bm["resist"]:
+			hit_opts["resist_all"] = true  # Duelist Parry / Deflect
 		hit_opts["roland"] = roland
 		hit_opts["d20"] = int(check.get("d20", 0))
 		hit_opts["dz_heat"] = dz_first and Effects.has(attacker, "dz_heat")

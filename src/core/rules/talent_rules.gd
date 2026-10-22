@@ -77,6 +77,10 @@ extends RefCounted
 ##                           drones take 1d6 energy, once each (Drone Commander 2)
 ##   storm_effects           1/round, a Launcher hit with params.storm lightning|thunder
 ##                           (Stormbringer 2)
+##   blademaster             Blademaster Dice (counters.blademaster, max 3): 1/round from a Main
+##                           Melee hit; Parry and Deflect reactions, Feint and Trip actions
+##                           (Duelist 2); a free Grapple or Ram after a melee hit on its turn
+##                           (action "duelist_strike") (Duelist 3: blademaster_strike)
 ##   prowl                   on its own turn: Hidden isn't lost to line of sight or leaving cover,
 ##                           Hide in plain sight, pass through enemies (Infiltrator 1)
 
@@ -424,6 +428,15 @@ static func on_hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 	if lock_on and w.get("type", "") == "Launcher" and Effects.has(attacker, "seismic_deluge") and _round_ok(state, attacker, "seismic_deluge"):
 		_use_round(state, attacker, "seismic_deluge")
 		events.append_array(Combat.add_status(state, target, "Prone", attacker.id))
+	if kind == Attacks.KIND_MELEE and w.get("size", "") == "Main" and Effects.has(attacker, "blademaster") and _round_ok(state, attacker, "blademaster"):
+		_use_round(state, attacker, "blademaster")
+		attacker.counters["blademaster"] = mini(3, int(attacker.counters.get("blademaster", 0)) + 1)
+		events.append({"type": "effect_triggered", "unit": attacker.id, "effect": "Blademaster Die", "target": attacker.id, "dice": attacker.counters["blademaster"], "rule_ref": REF})
+	if kind == Attacks.KIND_MELEE and Effects.has(attacker, "blademaster_strike") and state.active_unit == attacker.id and _round_ok(state, attacker, "blademaster_strike") \
+			and int(attacker.counters.get("blademaster", 0)) > 0 and Combat.is_present(target):
+		attacker.turn["duelist_strike"] = target.id
+		events.append({"type": "follow_up_available", "unit": attacker.id, "action": "duelist_strike",
+			"text": "Duelist: spend a Blademaster Die to Grapple or Ram this target as a free action.", "rule_ref": REF})
 	if kind == Attacks.KIND_MELEE and Effects.has(attacker, "hunter_throw") and _round_ok(state, attacker, "hunter_throw") and state.active_unit == attacker.id \
 			and not opts.get("hunter_throw", false):
 		attacker.turn["hunter_throw"] = true
@@ -731,6 +744,38 @@ static func _drone_pulse(state: GameState, u: Unit) -> Array[Dictionary]:
 	return events
 
 
+## Duelist Parry (melee) / Deflect (ranged): when hit, spend Blademaster Dice for Resistance to
+## all damage, heat and burn from the attack. Deflect rolls the dice chosen (answer "dice",
+## suggested: all) and needs a 5+ on one.
+static func blademaster_defense(state: GameState, target: Unit, kind: String) -> Dictionary:
+	var out := {"events": [] as Array[Dictionary], "resist": false}
+	var n := int(target.counters.get("blademaster", 0))
+	if n <= 0 or not Effects.has(target, "blademaster") or kind == Attacks.KIND_TECH or not Reactions.can_react(target, "blademaster", state).ok:
+		return out
+	var parry := kind == Attacks.KIND_MELEE
+	var d := Reactions.offer(state, target, "parry" if parry else "deflect", {"dice": n, "suggested": {"take": true, "dice": n}}, {"take": true, "dice": n})
+	if not d.get("take", false):
+		return out
+	Reactions._mark_used(target, "parry" if parry else "deflect", state)
+	if parry:
+		target.counters["blademaster"] = n - 1
+		out["resist"] = true
+		out["events"].append({"type": "effect_triggered", "unit": target.id, "effect": "Blademaster: Parry", "target": target.id, "rule_ref": REF})
+		return out
+	var k := clampi(int(d.get("dice", n)), 1, n)
+	target.counters["blademaster"] = n - k
+	var best := 0
+	var rolls: Array = []
+	for i in range(k):
+		var r := state.dice.die(6)
+		rolls.append(r)
+		best = maxi(best, r)
+	out["resist"] = best >= 5
+	out["events"].append({"type": "effect_triggered", "unit": target.id, "effect": "Blademaster: Deflect", "target": target.id, "rolls": rolls,
+		"success": out["resist"], "rule_ref": REF})
+	return out
+
+
 ## Exemplar 2: the mark attacked a character within Range 3 of its Exemplar (not the
 ## Exemplar): Overwatch against it. PROVISIONAL: after that attack resolves.
 static func _exemplar_overwatch(state: GameState, attacker: Unit, target: Unit) -> Array[Dictionary]:
@@ -843,6 +888,7 @@ static func lunge(state: GameState, u: Unit, t: Unit) -> Array[Dictionary]:
 
 ## Start of a turn: chaff, ambush.
 static func turn_started(state: GameState, u: Unit) -> void:
+	u.counters.erase("feint")  # Duelist Feint lasts until the start of its next turn
 	for o: Unit in state.units.values():
 		if String(o.counters.get("exemplar_mark", "")) == u.id:
 			o.counters.erase("exemplar_mark")  # until the start of the Exemplar's next turn

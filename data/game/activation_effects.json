@@ -931,5 +931,9 @@
       "tech_attack": true,
       "label": "Last Argument of Kings"
     }
-  ]
+  ],
+  "t_duelist:Blademaster: Parry": [],
+  "t_duelist:Blademaster: Deflect": [],
+  "t_duelist:Blademaster: Feint": [],
+  "t_duelist:Blademaster: Trip": []
 }

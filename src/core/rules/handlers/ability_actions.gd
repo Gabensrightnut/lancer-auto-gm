@@ -597,7 +597,7 @@ const BASIC := [
 	["end_grapple", "Let Go", "other"], ["break_free", "Break Free", "other"], ["grapple_contest", "Grapple Contest", "other"],
 	["climb_on", "Climb On", "move"], ["board", "Board", "other"], ["disembark", "Climb Out", "other"], ["cut_cable", "Cut Cable", "attack"],
 	["pull_stake", "Pull Out Stake", "other"], ["use_object", "Use Object", "other"], ["ai_control", "Hand Over to AI", "other"],
-	["break_ice", "Break Free of the Ice", "other"], ["dig_out", "Dig Out of the Mud", "other"], ["backswing", "Backswing Cut", "attack"], ["hunter_throw", "Throw Knife (Hunter)", "attack"],
+	["break_ice", "Break Free of the Ice", "other"], ["dig_out", "Dig Out of the Mud", "other"], ["backswing", "Backswing Cut", "attack"], ["hunter_throw", "Throw Knife (Hunter)", "attack"], ["feint", "Blademaster: Feint", "other"], ["trip", "Blademaster: Trip", "attack"], ["duelist_strike", "Blademaster: Grapple or Ram", "attack"],
 ]
 ## Actions whose own check needs no target, so the bar can show exactly whether they work.
 const NO_TARGET := ["stand_up", "bonus_move", "disengage", "hide", "overcharge", "shut_down", "boot_up",

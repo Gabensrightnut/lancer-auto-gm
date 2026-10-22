@@ -304,6 +304,16 @@
         "when": "first_main_melee",
         "accuracy": 1
       }
+    ],
+    "2": [
+      {
+        "kind": "blademaster"
+      }
+    ],
+    "3": [
+      {
+        "kind": "blademaster_strike"
+      }
     ]
   },
   "t_drone_commander": {

@@ -276,3 +276,24 @@ func test_stormbringer_thunder() -> void:
 	var out := F.act(e, s, "skirmish", "a", {"weapon": "0:0", "target": "t", "storm": "thunder"})
 	expect(F.ok(out), F.reason(out))
 	expect(F.events_of(out, "skill_check").any(func(x: Dictionary) -> bool: return x["unit"] == "near"), "Thunder: Agility saves around the target")
+
+
+func test_duelist_blademaster() -> void:
+	_setup({"t_duelist": 3}, [{"weapons": ["mw_tactical_melee_weapon"]}], Vector2i(1, 0))
+	F.load_dice(s, [15, 3])
+	var out := F.act(e, s, "skirmish", "a", {"weapon": "0:0", "target": "t"})
+	expect_eq(int(a.counters.get("blademaster", 0)), 1, "a die from the Main Melee hit")
+	expect_eq(F.events_of(out, "follow_up_available").filter(func(x: Dictionary) -> bool: return x["action"] == "duelist_strike").size(), 1)
+	F.load_dice(s, [15])
+	out = F.act(e, s, "duelist_strike", "a", {"what": "ram"})
+	expect(F.ok(out), F.reason(out))
+	expect(t.has_status("Prone"), "a free Ram")
+	expect_eq(int(a.counters["blademaster"]), 0)
+	a.counters["blademaster"] = 1
+	F.act(e, s, "end_turn", "a")
+	F.act(e, s, "start_turn", "t")
+	t.statuses.erase("Prone")
+	F.load_dice(s, [15, 6])
+	var hp := a.hp
+	F.act(e, s, "skirmish", "t", {"weapon": "0:0", "target": "a"})
+	expect_eq(hp - a.hp, 3, "Deflect rolled a 6: Resistance")

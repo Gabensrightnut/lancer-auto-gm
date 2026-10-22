@@ -156,6 +156,8 @@ static func brace(state: GameState, u: Unit, attacker: String) -> Array[Dictiona
 static func overwatch_weapons(state: GameState, u: Unit, mover: Unit) -> Array[String]:
 	var out: Array[String] = []
 	var dist := Sight.unit_distance(state, u, mover)
+	if String(mover.counters.get("feint", "")) == u.id:
+		return out  # Duelist Feint: no reactions from the feinted character
 	for w: Dictionary in u.loadout.get("weapons", []):
 		if Weapons.threat_for(u, w) < dist or Weapons.has_tag(w, "tg_ordnance") or w.get("size", "") == "Superheavy" or Weapons.area(w) != "" or w.get("no_attack", false):
 			continue

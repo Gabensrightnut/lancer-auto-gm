@@ -51,6 +51,16 @@ static func _adjacent_target(state: GameState, u: Unit, params: Dictionary, ref:
 	return RuleResult.allow()
 
 
+## An adjacent character, with a Blademaster Die to spend.
+static func _blademaster_target(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+	if int(u.counters.get("blademaster", 0)) <= 0:
+		return RuleResult.deny("No Blademaster Dice left.", "talents: Duelist")
+	var t := state.unit(String(params.get("target", "")))
+	if t == null or t == u or not Combat.is_present(t) or t.kind == Unit.KIND_DEPLOYABLE or Sight.unit_distance(state, u, t) > 1:
+		return RuleResult.deny("Choose an adjacent character.", "talents: Duelist")
+	return RuleResult.allow()
+
+
 class Ram:
 	extends TurnAction
 	## Quick action: melee attack on an adjacent character of your Size or smaller; on a hit
@@ -93,6 +103,81 @@ class Ram:
 				events.append_array(Attacks.knock_back(state, t, u.cell, spaces, u))
 				events.append_array(TalentRules.kinetic_mass_transfer(state, u, t, u.cell, from, spaces))
 		return events
+
+
+class Feint:
+	extends TurnAction
+	## Duelist 2, Feint (free, 1 Blademaster Die): an adjacent character; until the start of your
+	## next turn you ignore engagement with it and it can't react to your moves. params: {"target"}
+
+	func type() -> String:
+		return "feint"
+
+	func cost() -> String:
+		return TurnRules.FREE
+
+	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		return CloseCombat._blademaster_target(state, u, params)
+
+	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+		u.counters["blademaster"] = int(u.counters["blademaster"]) - 1
+		u.counters["feint"] = String(params["target"])
+		var events: Array[Dictionary] = [{"type": "effect_triggered", "unit": u.id, "effect": "Blademaster: Feint", "target": params["target"], "rule_ref": "talents: Duelist"}]
+		events.append_array(Combat.refresh_engagement(state))
+		return events
+
+
+class Trip:
+	extends TurnAction
+	## Duelist 2, Trip (quick, 1 Blademaster Die): an adjacent character makes an Agility save or
+	## falls Prone; either way you may pass through its space this turn. params: {"target"}
+
+	func type() -> String:
+		return "trip"
+
+	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		return CloseCombat._blademaster_target(state, u, params)
+
+	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+		var t := state.unit(String(params["target"]))
+		u.counters["blademaster"] = int(u.counters["blademaster"]) - 1
+		u.turn["trip_through"] = t.id
+		var save := Combat.skill_check(state, t, "agility", "Save vs Trip", u.save_target, 0, 0, GearSystems.prone_save_sources(t), true)
+		var events: Array[Dictionary] = [{"type": "skill_check", "unit": t.id, "check": save, "rule_ref": "talents: Duelist"}]
+		if not save["success"]:
+			events.append_array(Combat.add_status(state, t, "Prone", u.id))
+		return events
+
+
+class DuelistStrike:
+	extends TurnAction
+	## Duelist 3: after a melee hit on your turn, spend a Blademaster Die to Grapple or Ram that
+	## target as a free action. params: {"what": "grapple" | "ram", plus that action's params}
+
+	func type() -> String:
+		return "duelist_strike"
+
+	func cost() -> String:
+		return TurnRules.FREE
+
+	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		var id := String(u.turn.get("duelist_strike", ""))
+		if id == "" or int(u.counters.get("blademaster", 0)) <= 0:
+			return RuleResult.deny("Only right after a melee hit, with a Blademaster Die.", "talents: Duelist")
+		var h: Variant = RulesEngine.registry.get(String(params.get("what", "")))
+		if not String(params.get("what", "")) in ["grapple", "ram"] or h == null:
+			return RuleResult.deny("Grapple or Ram (params.what).", "talents: Duelist")
+		var p := params.duplicate()
+		p["target"] = id
+		return (h as TurnAction).check(state, u, p)
+
+	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+		var p := params.duplicate()
+		p["target"] = String(u.turn["duelist_strike"])
+		u.turn.erase("duelist_strike")
+		u.counters["blademaster"] = int(u.counters["blademaster"]) - 1
+		TalentRules._use_round(state, u, "blademaster_strike")
+		return (RulesEngine.registry[String(params["what"])] as TurnAction).apply(state, u, p)
 
 
 class Grapple:
