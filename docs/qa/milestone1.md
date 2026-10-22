@@ -74,3 +74,62 @@ next mission → in-battle menu → Save and quit → Continue → the same batt
 - **Long first approach:** on 20-40 space maps the first two turns are mostly moving (weapons
   greyed out, out of range). Fine by the book; maybe shorter deployment distance or a hint
   ("Out of range: move closer or Boost").
+
+---
+
+# QA pass 2 (everything merged: story, world, rules, visuals)
+
+Real window, driven by `src/flow/dev/playtest_driver.gd` (new mode `qa:story`: main menu →
+new story campaign → session zero → hub (sector map, codex, a conversation, the hub menu) →
+builder (look creator, paint randomize, automation list) → job board → briefing → deploy →
+battle (GM environment announcement, "Call for terms", squad picks, moves, attacks, Overcharge,
+reactions) → debrief → level up → downtime → Save and quit → Continue). Screenshots:
+`side-session-notes/.../qa/qa2_story_f/` (final story run), `qa2_hotseat/`, earlier attempts
+`qa2_story` .. `qa2_story_e` show the bugs below.
+
+| Run | Mode | Result |
+|---|---|---|
+| qa2_story → _e | solo story | Found Q1-Q4 (and two driver gaps: scroll into view, click Continue on GM narration). |
+| qa2_story_f | solo story | Whole loop after fixes: session zero to Continue, 6 turns, **0 issues, 0 script errors**. Continue reopened the hub in downtime at LL1. |
+| qa2_hotseat | hot-seat (lobby, missions only) | 12 turns, two players at one screen, **0 issues, 0 script errors**. |
+| online | loopback (in-memory transport, headless) | `test_flow_story_online` (friend joins the hub, sends a build, follows into the battle, gets the debrief) and `test_flow_campaign` online battle: pass. A two-window internet run wasn't repeated this pass (done in pass 1). |
+
+Not exercised by the driver this pass (its turns are simple: move, attack, Lock On,
+Overcharge): terrain destruction, flyers, a pilot on foot, an actual parley dialogue (the early
+"Call for terms" was refused with the book's reason, as it should be), extraction/recon sitreps
+in the window (covered by `test_gm_sitreps`).
+
+## Fixed in pass 2 (my areas)
+
+| # | What happened | Fix |
+|---|---|---|
+| Q1 | Pressing Esc to close the hub's Codex also opened the hub Menu; its dim layer then swallowed clicks, so the conversation underneath couldn't be answered (qa2_story_c/story_09). | The hub menu ignores Esc while the Codex is open. |
+| Q2 | Space advances a conversation, but it also "pressed" the focused hub Menu button, opening the menu mid-conversation (qa2_story_d/story_09). | Menu (hub and battle) and "Call for terms" are mouse-only (no keyboard focus). |
+| Q3 | In story battles every pilot sitting in their mech appeared again in the turn-order bar with its own "I'll go" (8 squad portraits for 4 mechs; qa2_story_e/story_20). | The bar lists only units on the board. |
+| Q4 | Those mounted pilots also got a second nameplate ("HP 6/6 HEAT 0/0") on top of their mech's. | Pilots inside their mechs aren't drawn until they get out (or the mech is wrecked, Core p.74). |
+| Q5 | The hub's room code label shared the bottom-left row with the HUD's "Map (M)" button and would overlap it when hosting. | Moved above the Menu button. |
+
+## For other areas (pass 2)
+
+| # | Owner | Steps | Expected | Actual | Screenshot |
+|---|---|---|---|---|---|
+| C1 | story / visuals | New story campaign, walk the hub; camera close to NPCs. | Readable name labels. | NPC name and title labels are huge at close range ("Antonia Wiltsey-Bauswell / Commissioner") and cover a third of the screen. | qa2_story_b/story_14_job_board.png |
+| C2 | story | New story campaign with 4 pilots. | "Start the campaign" visible. | It's below the fold of the session zero page; nothing says to scroll. | qa2_story/story_09_talk_stuck.png |
+| C3 | visuals | Story battle with 6+ enemies. | Readable enemy names in the turn-order bar. | Still clipped at the start ("eholder Contr"): pass-1 B4 is open. | qa2_story_f/story_27_my_turn_2.png |
+| C4 | visuals | Any battle. | Bar stays centered. | Pass-1 B2 workaround still in the battle screen; please fix `TurnOrderBar._rebuild` so it can go. | — |
+| C5 | story | Talk to an NPC. | Clear way out. | Questions loop back to the same menu; the way out is the last option only (fine, but a "Leave" label or Esc to leave would help new players). | qa2_story_f/story_08_talk_choice.png |
+
+Pass-1 B1 (damage roll SCRIPT ERROR on every hit) no longer happens: 0 script errors in pass 2.
+
+## Top 10 by player impact (pass 2)
+
+1. Q1 Esc on the Codex opened the menu and blocked the conversation (soft-lock feel). **Fixed.**
+2. Q3 Mounted pilots in the turn-order bar: doubled squad, confusing "I'll go" choices. **Fixed.**
+3. Q2 Space opening the menu mid-conversation. **Fixed.**
+4. C1 Huge hub NPC labels covering the screen (story/visuals).
+5. Q4 Duplicate pilot nameplates over mechs. **Fixed.**
+6. C2 Session zero's Start button hidden below the fold with a full squad (story).
+7. C3 Clipped enemy names in the turn-order bar (visuals, still open from pass 1).
+8. C5 Conversations: leaving is only the last option (story).
+9. C4 Turn-order bar centering still needs the battle-screen workaround (visuals).
+10. Q5 Room code label overlapping the hub's Map button when hosting. **Fixed.**

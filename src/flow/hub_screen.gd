@@ -163,7 +163,7 @@ func _input(ev: InputEvent) -> void:
 	if menu_layer.visible:
 		menu_layer.visible = false
 		get_viewport().set_input_as_handled()
-	elif not (hub.dialogue.visible or hub.downtime_screen.visible or hub.gear_panel.visible or hub.hud.board_open() or hub.epilogue.visible or hub.level_panel.visible or hub.map.visible):
+	elif not (hub.dialogue.visible or hub.downtime_screen.visible or hub.gear_panel.visible or hub.hud.board_open() or hub.epilogue.visible or hub.level_panel.visible or hub.map.visible or hub.codex.visible):
 		_open_menu()
 		get_viewport().set_input_as_handled()
 
@@ -310,12 +310,15 @@ func _build_menu() -> void:
 	ui.add_child(row)
 	var menu := Button.new()
 	menu.text = "≡  Menu"
+	menu.focus_mode = Control.FOCUS_NONE  # Space/Enter advance conversations; never press this
 	menu.pressed.connect(_open_menu)
 	row.add_child(menu)
+	# The room code sits above the Menu button (the hub's own Map button is beside it).
 	room_label = MenuTheme.label("", 17, MenuTheme.TEXT)
 	room_label.add_theme_constant_override("outline_size", 6)
 	room_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	row.add_child(room_label)
+	room_label.position = Vector2(16, get_viewport().get_visible_rect().size.y - 100)
+	ui.add_child(room_label)
 	menu_layer = Control.new()
 	menu_layer.theme = MenuTheme.theme()
 	menu_layer.set_anchors_preset(Control.PRESET_FULL_RECT)

@@ -38,6 +38,8 @@ func _run() -> void:
 	match mode:
 		"solo", "hotseat":
 			await _campaign_loop()
+		"story":
+			await _story_loop()
 		"host":
 			await _host_online()
 		"join":
@@ -49,6 +51,149 @@ func _run() -> void:
 
 
 # --- The scripted playthroughs ----------------------------------------------------------------
+
+## A story campaign the way a new player would: session zero, the hub (sector map, codex,
+## talking, the builder), a job, the battle (call for terms, barks), debrief, level up,
+## downtime, save and quit, continue.
+func _story_loop() -> void:
+	await shot("main_menu")
+	if not await click_text("New campaign"):
+		return
+	await wait(0.6)
+	await shot("new_campaign_form")
+	if not await click_text("Create campaign"):
+		return
+	if not await wait_scene("HubScreen", 20.0):
+		return
+	await wait(2.5)
+	await shot("session_zero")
+	await click_text("Roll")
+	await wait(0.3)
+	if not await click_text("Start the campaign"):
+		return
+	await wait(2.0)
+	await shot("hub_first_look")
+	var hs: Node = current()
+	var hub: HubScene = hs.hub
+	# The sector map and the codex.
+	await key(KEY_M)
+	await wait(1.0)
+	await shot("sector_map")
+	if not hub.map.visible:
+		issue("story", "M didn't open the sector map", "sector_map")
+	await key(KEY_ESCAPE)
+	await wait(0.5)
+	await click_text("Codex")
+	await wait(0.8)
+	await shot("hub_codex")
+	await key(KEY_ESCAPE)
+	await wait(0.4)
+	# Talk to someone at the hub.
+	var npcs: Array = hub.story.hub.get("npcs", [])
+	if not npcs.is_empty():
+		hub.talk_to(str(npcs[0]))
+		await _dialogue_through(hub, "talk")
+	# The builder from the hub menu: look creator, paint, automation list.
+	await click_text("Menu")
+	await wait(0.6)
+	await shot("hub_menu")
+	if await click_text("Pilot builder"):
+		await wait_scene("BuilderScreen")
+		await wait(2.0)
+		await shot("builder")
+		if await click_text("Edit look"):
+			await wait(1.0)
+			await shot("creator")
+			await click_text("Randomize all")
+			await wait(0.5)
+			await click_text("Confirm")
+			await wait(0.8)
+		await click_text("Randomize")
+		await wait(1.0)
+		await shot("builder_painted")
+		await click_text("Done")
+		await wait_scene("HubScreen", 15.0)
+		await wait(2.0)
+		hs = current()
+		hub = hs.hub
+	# A job from the board, the briefing, deploy.
+	await key(KEY_J)
+	await wait(0.8)
+	await shot("job_board")
+	if not await click_text("Take this job"):
+		return
+	await _dialogue_through(hub, "briefing")
+	await shot("reserves")
+	if not await click_text("Deploy"):
+		return
+	if not await wait_scene("BattleScreen", 30.0):
+		return
+	var bs: Node = current()
+	await wait(3.0)
+	await shot("battle_objectives")
+	if bs.terms_button != null and bs.terms_button.visible:
+		await click(bs.terms_button)
+		await wait(0.8)
+		await shot("call_for_terms_early")
+	await _play_battle(-1)
+	if not await wait_scene("HubScreen", 40.0):
+		return
+	await wait(2.5)
+	hs = current()
+	hub = hs.hub
+	await shot("after_battle_hub")
+	await _dialogue_through(hub, "debrief")
+	await shot("debrief_done")
+	await click_text("Level up")
+	await wait(1.0)
+	await shot("level_up")
+	await click_text("Confirm")
+	await wait(0.5)
+	await click_text("On to downtime")
+	await wait(1.0)
+	await shot("downtime")
+	await click_text("Menu")
+	await wait(0.5)
+	await click_text("Save and quit")
+	if not await wait_scene("MainMenu", 15.0):
+		return
+	await wait(1.0)
+	await click_text("Continue")
+	await wait(0.5)
+	await shot("continue_list")
+	await click_text("Campaign 1")
+	if await wait_scene("HubScreen", 20.0):
+		await wait(2.5)
+		await shot("continued_hub")
+
+
+## Clicks through a conversation: the first reply when there's a choice, Space otherwise.
+func _dialogue_through(hub: HubScene, tag: String) -> void:
+	var shot_line := false
+	var shot_choice := false
+	for i in range(80):
+		await wait(0.35)
+		if not hub.dialogue.visible:
+			if i > 2:
+				return
+			continue
+		var options: Array = []
+		for b in find_all_type("BaseButton"):
+			var t := str(b.get("text"))
+			if t.length() > 2 and t[0].is_valid_int() and t.substr(1, 2) == ". " and b.is_visible_in_tree():
+				options.append(b)
+		if not options.is_empty():
+			if not shot_choice:
+				await shot("%s_choice" % tag)
+			# A player asks one thing, then picks the way out (the last reply) to move on.
+			await click(options[0] if not shot_choice else options[options.size() - 1])
+			shot_choice = true
+		else:
+			if not shot_line:
+				await shot("%s_line" % tag)
+				shot_line = true
+			await key(KEY_SPACE)
+	issue("story", "The %s conversation didn't end after 80 steps" % tag, await shot("%s_stuck" % tag))
 
 func _campaign_loop() -> void:
 	await shot("main_menu")
@@ -179,6 +324,23 @@ func _play_battle(max_turns: int) -> void:
 		elif Time.get_ticks_msec() - last_progress > 45000:
 			issue("battle", "Nothing happened for 45 s. Waiting on: %s" % s.waiting(), await shot("stuck"))
 			return
+		if bs.narration.visible:
+			await shot("gm_narration")
+			await click_text("Continue")
+			continue
+		if bs.dialogue != null and bs.dialogue.visible:
+			await shot("battle_dialogue")
+			var opts: Array = []
+			for b in find_all_type("BaseButton"):
+				var t := str(b.get("text"))
+				if t.length() > 2 and t[0].is_valid_int() and t.substr(1, 2) == ". " and b.is_visible_in_tree():
+					opts.append(b)
+			if opts.is_empty():
+				await key(KEY_SPACE)
+			else:
+				await click(opts[0])
+			await wait(0.4)
+			continue
 		var handoff: Control = bs.handoff_layer
 		if handoff.visible:
 			await shot("hotseat_pass_screen")
@@ -391,6 +553,15 @@ func click(c: Control) -> void:
 	if not is_instance_valid(c):
 		issue("driver", "Tried to click a control that was already gone", "")
 		return
+	# Like a player: scroll it into view first.
+	var p := c.get_parent()
+	while p != null:
+		if p is ScrollContainer:
+			(p as ScrollContainer).ensure_control_visible(c)
+			await get_tree().process_frame
+			await get_tree().process_frame
+			break
+		p = p.get_parent()
 	await click_at(c.get_global_rect().get_center())
 
 

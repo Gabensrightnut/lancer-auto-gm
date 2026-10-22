@@ -313,6 +313,7 @@ func _setup_story_battle() -> void:
 	terms_button = Button.new()
 	terms_button.theme = MenuTheme.theme()
 	terms_button.text = "Call for terms"
+	terms_button.focus_mode = Control.FOCUS_NONE
 	terms_button.tooltip_text = "Call on the enemy commander to stand down. Only once the fight's outcome is clear: the GM ends a fight early only then (Core p.60)."
 	terms_button.position = Vector2(150, 16)
 	terms_button.pressed.connect(_call_for_terms)
@@ -381,7 +382,7 @@ func _load(v: Dictionary) -> void:
 	view.clear_units()
 	for id: String in v.get("units", {}):
 		var u: Dictionary = v["units"][id]
-		if not u.get("hidden", false) and not u.get("destroyed", false):
+		if not u.get("hidden", false) and not u.get("destroyed", false) and _on_board(v, u):
 			view.add_unit(u)
 	var mine := _local_units()
 	var center := Vector3.ZERO
@@ -419,8 +420,8 @@ func _sync(v: Dictionary) -> void:
 	var units: Dictionary = v.get("units", {})
 	for id: String in units:
 		var u: Dictionary = units[id]
-		if u.get("hidden", false) or (u.get("counters", {}) as Dictionary).has("extracted"):
-			# Hidden from this seat, or extracted (off the battlefield for good).
+		if u.get("hidden", false) or not _on_board(v, u):
+			# Hidden from this seat, extracted, or a pilot inside their mech.
 			if view.units.has(id):
 				(view.units[id] as MechView).queue_free()
 				view.units.erase(id)
@@ -438,14 +439,26 @@ func _sync(v: Dictionary) -> void:
 	_refresh_hud()
 
 
+## Whether a unit stands on the board: not extracted, and a pilot only when out of their mech
+## (or their mech is a wreck: Core p.74).
+static func _on_board(v: Dictionary, u: Dictionary) -> bool:
+	var c: Dictionary = u.get("counters", {})
+	if c.has("extracted"):
+		return false
+	var inside := str(c.get("mounted_in", c.get("passenger_in", "")))
+	if inside == "":
+		return true
+	return bool(v.get("units", {}).get(inside, {}).get("destroyed", false))
+
+
 func _refresh_hud() -> void:
 	var v := session.view
 	var list: Array = []
 	var my_side := _my_side()
 	for id: String in v.get("units", {}):
 		var u: Dictionary = v["units"][id]
-		if u.get("hidden", false) or str(u.get("kind", "")) == Unit.KIND_DEPLOYABLE or (u.get("counters", {}) as Dictionary).has("extracted"):
-			continue  # objects (the Objective, deployables) take no turns; extracted mechs are gone
+		if u.get("hidden", false) or str(u.get("kind", "")) == Unit.KIND_DEPLOYABLE or not _on_board(v, u):
+			continue  # objects take no turns; pilots inside their mechs and extracted mechs aren't on the board
 		var e := {"id": id, "name": u.get("name", id), "side": u.get("side", ""), "frame": u.get("content_id", ""),
 			"acted": (v.get("acted", []) as Array).has(id) or u.get("destroyed", false), "active": v.get("active_unit", "") == id}
 		if u.has("hp"):
@@ -745,6 +758,7 @@ func _build_ui() -> void:
 	var menu := Button.new()
 	menu.theme = MenuTheme.theme()
 	menu.text = "≡  Menu"
+	menu.focus_mode = Control.FOCUS_NONE
 	menu.position = Vector2(16, 16)
 	menu.pressed.connect(_open_menu)
 	ui.add_child(menu)
