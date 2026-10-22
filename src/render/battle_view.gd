@@ -105,6 +105,9 @@ func set_camera_mode(mode: String, unit_id: String = "", target_id: String = "")
 func _process(delta: float) -> void:
 	if camera_mode == "cockpit":
 		_update_cockpit(false, delta)
+	elif sun:
+		# Shadows reach as far as the zoomed-out view does.
+		sun.directional_shadow_max_distance = clampf(tactical.distance * 2.4, 60.0, 200.0)
 
 
 func _update_cockpit(snap: bool, delta: float = 0.0) -> void:
@@ -136,6 +139,8 @@ func set_map(battle_map: BattleMap, kit: String = "urban_ruins") -> void:
 		var p := map.grid.to_world(cell)
 		lo = Vector3(minf(lo.x, p.x), 0, minf(lo.z, p.z))
 		hi = Vector3(maxf(hi.x, p.x), 0, maxf(hi.z, p.z))
+	# Big boards (up to ~60 spaces a side): zooming out must still fit the whole board.
+	tactical.max_distance = maxf(40.0, maxf(hi.x - lo.x, hi.z - lo.z) * 1.35)
 	tactical.look_at_point((lo + hi) * 0.5 + Vector3(0, 1, 0), maxf(hi.x - lo.x, hi.z - lo.z) * 0.95)
 	tactical.snap()
 

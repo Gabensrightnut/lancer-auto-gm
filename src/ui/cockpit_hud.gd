@@ -17,12 +17,62 @@ var _minimap: Minimap
 
 class Minimap extends Control:
 	var hud: CockpitHUD
+	## The board layer is drawn once into its own canvas item and only redone when the map
+	## or the box changes (a 60x60 board is 3600 polygons); units are drawn every time.
+	var _board: Control
+	var _board_key := ""
+	var _k := 1.0
 
 	func _draw() -> void:
 		var b := hud.battle
 		if b == null or b.map == null:
 			return
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.05, 0.06, 0.8))
+		if _board == null:
+			_board = Control.new()
+			_board.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_board.show_behind_parent = true
+			_board.draw.connect(_draw_board)
+			add_child(_board)
+		_board.size = size
+		var key := "%d|%s|%d" % [b.map.get_instance_id(), size, b.map.cells().size()]
+		if key != _board_key:
+			_board_key = key
+			_board.queue_redraw()
+		var lo := Vector2(INF, INF)
+		var hi := Vector2(-INF, -INF)
+		for c in b.map.cells():
+			var w := b.map.grid.to_world(c)
+			lo = Vector2(minf(lo.x, w.x), minf(lo.y, w.z))
+			hi = Vector2(maxf(hi.x, w.x), maxf(hi.y, w.z))
+		lo -= Vector2(1, 1)
+		hi += Vector2(1, 1)
+		var k := minf(size.x / (hi.x - lo.x), size.y / (hi.y - lo.y))
+		_k = k
+		var off := (size - (hi - lo) * k) / 2.0
+		var to_map := func(w: Vector3) -> Vector2: return off + (Vector2(w.x, w.z) - lo) * k
+		var me: MechView = b.units.get(hud.unit_id)
+		var tgt: MechView = b.units.get(hud.target_id)
+		if me and tgt:
+			draw_line(to_map.call(me.global_position), to_map.call(tgt.global_position), Color(1.0, 0.85, 0.3, 0.9), 2.0)
+		for id: String in b.units:
+			var mv: MechView = b.units[id]
+			if not mv.visible:
+				continue
+			var p: Vector2 = to_map.call(mv.global_position)
+			# Dots scale with the board: about a space and a half across, 2-6 px.
+			var r := clampf(k * 0.75 * maxf(1.0, mv.model.size), 2.0, 6.0)
+			var col := Color(0.5, 0.5, 0.5) if mv.destroyed else mv.side_color()
+			draw_circle(p, r, col)
+			if id == hud.unit_id:
+				draw_arc(p, r + 3.0, 0, TAU, 20, Color.WHITE, 2.0)
+				var fwd := Vector2(-sin(mv.model.rotation.y), -cos(mv.model.rotation.y))
+				draw_line(p, p + fwd * 14.0, Color.WHITE, 2.0)
+
+	func _draw_board() -> void:
+		var b := hud.battle
+		if b == null or b.map == null:
+			return
+		_board.draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.05, 0.06, 0.8))
 		var shape := MeshKit.cell_shape(b.map.grid)
 		var lo := Vector2(INF, INF)
 		var hi := Vector2(-INF, -INF)
@@ -42,21 +92,7 @@ class Minimap extends Control:
 				pts.append(center + p * k * 0.92)
 			var g := b.map.ground_height(c)
 			var col := Color(0.1, 0.25, 0.28).lerp(Color(0.45, 0.85, 0.9), clampf(g / 5.0, 0.0, 1.0))
-			draw_colored_polygon(pts, Color(col.r, col.g, col.b, 0.85))
-		var me: MechView = b.units.get(hud.unit_id)
-		var tgt: MechView = b.units.get(hud.target_id)
-		if me and tgt:
-			draw_line(to_map.call(me.global_position), to_map.call(tgt.global_position), Color(1.0, 0.85, 0.3, 0.9), 2.0)
-		for id: String in b.units:
-			var mv: MechView = b.units[id]
-			var p: Vector2 = to_map.call(mv.global_position)
-			var r := 3.0 + 2.0 * maxf(1.0, mv.model.size)
-			var col := Color(0.5, 0.5, 0.5) if mv.destroyed else mv.side_color()
-			draw_circle(p, r, col)
-			if id == hud.unit_id:
-				draw_arc(p, r + 3.0, 0, TAU, 20, Color.WHITE, 2.0)
-				var fwd := Vector2(-sin(mv.model.rotation.y), -cos(mv.model.rotation.y))
-				draw_line(p, p + fwd * 14.0, Color.WHITE, 2.0)
+			_board.draw_colored_polygon(pts, Color(col.r, col.g, col.b, 0.85))
 
 
 func _init() -> void:

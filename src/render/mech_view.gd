@@ -84,9 +84,10 @@ static func pilot_model(u: Dictionary) -> MechModel:
 	var look: Dictionary = u.get("portrait", {}) if u.get("portrait") is Dictionary else {}
 	if look.is_empty():
 		look = PortraitArt.look_for_pilot({"id": String(u.get("id", "pilot"))})
-	var token := PilotToken.new().build(look)
-	token.scale = Vector3.ONE * (PILOT_HEIGHT / 1.85)
+	var token := HumanFigure.new().build(look, {"gear": {"pack": true, "rifle": true}})
+	token.scale = Vector3.ONE * (PILOT_HEIGHT / HumanFigure.HEIGHT)
 	body.add_child(token)
+	m.set_meta("human", token)
 	m.pelvis = body
 	m.torso = body
 	var eye := Marker3D.new()
