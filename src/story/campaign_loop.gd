@@ -52,6 +52,11 @@ static func build_mission(campaign: Campaign, story: StoryState, db: ContentDB, 
 	var gen_opts := {"squad": squad(campaign, story), "db": db, "settings": GmSettings.from_dict(campaign.gm_settings) if not campaign.gm_settings.is_empty() else GmSettings.from_preset("Standard")}
 	if hook.has("sitrep"):
 		gen_opts["sitrep"] = hook["sitrep"]
+	# The map matches the hub: world/maps culture and landscape ids (cultures.json).
+	if str(hook.get("landscape", "")) != "":
+		gen_opts["landscape"] = hook["landscape"]
+	if hook.has("map_culture"):
+		gen_opts["culture"] = hook["map_culture"]
 	if bool(hook.get("tutorial", false)):
 		# The drill: a small map, gentle GM, training targets only.
 		var tm: Dictionary = Tutorial.data().get("mission", {})
