@@ -1,0 +1,285 @@
+class_name TerrainRenderer
+extends Node3D
+## Draws a BattleMap as terraced blocks in a terrain kit's style, with grid lines on every
+## surface a unit can stand on, some low props, and a city skyline beyond the board.
+## Works on any GridLayout: cell outlines come from MeshKit.cell_shape().
+## Call build() again whenever the map changes.
+
+const TERRAIN_SHADER := preload("res://src/render/shaders/terrain.gdshader")
+## How far the board slab extends below level 0.
+const BASE_DEPTH := 0.6
+## Surface kinds, stored in vertex color red for the terrain shader.
+const KIND_STREET := 0
+const KIND_CONCRETE := 1
+const KIND_BUILDING := 2
+const KIND_HAZARD := 3
+
+var map: BattleMap
+var kit := "urban_ruins"
+var material: ShaderMaterial
+var grid_lines: MeshInstance3D
+var _props: Node3D
+var _shape: Dictionary
+
+
+func build(battle_map: BattleMap, kit_name: String = "urban_ruins") -> void:
+	map = battle_map
+	kit = kit_name
+	for c in get_children():
+		c.queue_free()
+	_shape = MeshKit.cell_shape(map.grid)
+	material = ShaderMaterial.new()
+	material.shader = TERRAIN_SHADER
+	_build_blocks()
+	_build_grid_lines()
+	_props = Node3D.new()
+	_props.name = "Props"
+	add_child(_props)
+	_build_props()
+	_build_backdrop()
+
+
+func set_grid_visible(on: bool) -> void:
+	if grid_lines:
+		grid_lines.visible = on
+
+
+## World-space height of the top surface of a cell.
+func top_y(cell: Vector2i) -> float:
+	return map.ground_height(cell) * GridLayout.LEVEL_HEIGHT
+
+
+## Cell outline corners in world space at height y.
+func cell_corners(cell: Vector2i, y: float, inset: float = 0.0) -> PackedVector3Array:
+	var c := map.grid.to_world(cell)
+	var out := PackedVector3Array()
+	for p: Vector2 in _shape["corners"]:
+		var q := p * (1.0 - inset)
+		out.append(Vector3(c.x + q.x, y, c.z + q.y))
+	return out
+
+
+func _solid(cell: Vector2i, level: int) -> bool:
+	var col := map.column(cell)
+	if col == null:
+		return false
+	if level < 0:
+		return true
+	if level >= col.ground:
+		return false
+	return not (col.gap_top > 0 and level >= col.gap_bottom and level < col.gap_top)
+
+
+func _kind(cell: Vector2i) -> int:
+	var col := map.column(cell)
+	if col.has_tag(BattleMap.TAG_DANGEROUS):
+		return KIND_HAZARD
+	if col.ground >= 2:
+		return KIND_BUILDING
+	if col.ground == 1 or col.has_tag(BattleMap.TAG_DIFFICULT):
+		return KIND_CONCRETE
+	return KIND_STREET
+
+
+func _build_blocks() -> void:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var corners: PackedVector2Array = _shape["corners"]
+	var edge_n: Array[Vector2i] = _shape["edge_neighbors"]
+	for cell in map.cells():
+		var col := map.column(cell)
+		var center := map.grid.to_world(cell)
+		var kind := _kind(cell)
+		var variation := MeshKit.hash01(str(cell))
+		st.set_color(Color(kind / 4.0 + 0.01, variation, 0.0))
+		# Tops: the ground surface, plus the floor under an overhang.
+		var tops: Array[int] = [col.ground]
+		if col.gap_top > 0:
+			tops.append(col.gap_bottom)
+		for t in tops:
+			var y := t * GridLayout.LEVEL_HEIGHT
+			_fan(st, center, corners, y, Vector3.UP)
+		if col.gap_top > 0 and col.gap_top < col.ground:
+			_fan(st, center, corners, col.gap_top * GridLayout.LEVEL_HEIGHT, Vector3.DOWN)
+		# Sides: every run of levels that is solid here but open next door.
+		for i in range(corners.size()):
+			var other := cell + edge_n[i]
+			var a := center + Vector3(corners[i].x, 0, corners[i].y)
+			var b := center + Vector3(corners[(i + 1) % corners.size()].x, 0, corners[(i + 1) % corners.size()].y)
+			var outward := (a + b) * 0.5 - center
+			var run_start := -999
+			for level in range(-1, col.ground + 1):
+				var exposed := level < col.ground and _solid(cell, level) and not _solid(other, level)
+				if exposed and run_start == -999:
+					run_start = level
+				elif not exposed and run_start != -999:
+					var y0 := -BASE_DEPTH if run_start < 0 else run_start * GridLayout.LEVEL_HEIGHT
+					var y1 := level * GridLayout.LEVEL_HEIGHT
+					MeshKit.add_quad(st, a + Vector3(0, y0, 0), b + Vector3(0, y0, 0), b + Vector3(0, y1, 0), a + Vector3(0, y1, 0), outward)
+					run_start = -999
+	var mi := MeshInstance3D.new()
+	mi.name = "Blocks"
+	mi.mesh = st.commit()
+	mi.material_override = material
+	add_child(mi)
+
+
+func _fan(st: SurfaceTool, center: Vector3, corners: PackedVector2Array, y: float, facing: Vector3) -> void:
+	var c := Vector3(center.x, y, center.z)
+	for i in range(corners.size()):
+		var p := corners[i]
+		var q := corners[(i + 1) % corners.size()]
+		MeshKit.add_tri(st, c, c + Vector3(p.x, 0, p.y), c + Vector3(q.x, 0, q.y), facing)
+
+
+func _build_grid_lines() -> void:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_color(Color(1, 1, 1, 1))
+	for cell in map.cells():
+		var col := map.column(cell)
+		var ys: Array[float] = [col.ground * GridLayout.LEVEL_HEIGHT]
+		if col.gap_top > 0:
+			ys.append(col.gap_bottom * GridLayout.LEVEL_HEIGHT)
+		for y in ys:
+			add_outline(st, cell, y + 0.012, 0.04, 0.035)
+	grid_lines = MeshInstance3D.new()
+	grid_lines.name = "GridLines"
+	grid_lines.mesh = st.commit()
+	grid_lines.material_override = MeshKit.overlay_material(Color(0.85, 0.95, 1.0, 0.22))
+	grid_lines.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(grid_lines)
+
+
+## Adds a flat band just inside a cell's outline (used for grid lines and overlays).
+func add_outline(st: SurfaceTool, cell: Vector2i, y: float, inset: float, width: float) -> void:
+	var outer := cell_corners(cell, y, inset)
+	var inner := cell_corners(cell, y, inset + width * 1.8)
+	for i in range(outer.size()):
+		var j := (i + 1) % outer.size()
+		MeshKit.add_quad(st, outer[i], outer[j], inner[j], inner[i], Vector3.UP)
+
+
+## Adds a filled cell top (slightly inset) to a SurfaceTool.
+func add_cell_fill(st: SurfaceTool, cell: Vector2i, y: float, inset: float = 0.06) -> void:
+	var pts := cell_corners(cell, y, inset)
+	var c := map.grid.to_world(cell) + Vector3(0, y, 0)
+	for i in range(pts.size()):
+		MeshKit.add_tri(st, c, pts[i], pts[(i + 1) % pts.size()], Vector3.UP)
+
+
+# --- Props -------------------------------------------------------------------------------
+
+func _prop_mat(color: Color, metal: float = 0.1, rough: float = 0.85) -> ShaderMaterial:
+	return MeshKit.mech_material(color, metal, rough, Color.BLACK, false)
+
+
+func _build_props() -> void:
+	var concrete := _prop_mat(Color(0.46, 0.44, 0.41))
+	var dark := _prop_mat(Color(0.22, 0.21, 0.2))
+	var rust := _prop_mat(Color(0.36, 0.2, 0.12), 0.5, 0.7)
+	var steel := _prop_mat(Color(0.3, 0.31, 0.33), 0.8, 0.45)
+	var corners: PackedVector2Array = _shape["corners"]
+	var edge_n: Array[Vector2i] = _shape["edge_neighbors"]
+	for cell in map.cells():
+		var col := map.column(cell)
+		var key := str(cell)
+		var r := MeshKit.hash01(key, 1)
+		var base := map.grid.to_world(cell) + Vector3(0, top_y(cell), 0)
+		if col.has_tag(BattleMap.TAG_DIFFICULT):
+			# Rubble pile: rough ground, low enough not to look like cover.
+			for i in range(7):
+				var off := Vector3(MeshKit.hash01(key, 10 + i) - 0.5, 0, MeshKit.hash01(key, 20 + i) - 0.5) * 0.7
+				var s := 0.08 + 0.14 * MeshKit.hash01(key, 30 + i)
+				MeshKit.part(_props, MeshKit.chamfer_box(Vector3(s * 1.4, s, s), 0.02), concrete if i % 3 else dark,
+					base + off + Vector3(0, s * 0.35, 0), Vector3(MeshKit.hash01(key, 40 + i) * 40 - 20, MeshKit.hash01(key, 50 + i) * 180, 15))
+			if r < 0.5:
+				MeshKit.part(_props, MeshKit.cylinder(0.015, 0.5, 5), rust, base + Vector3(0.15, 0.15, -0.1), Vector3(60, r * 360, 20))
+		elif col.ground == 0 and not col.has_tag(BattleMap.TAG_DANGEROUS):
+			if r < 0.16:
+				for i in range(3):
+					var off := Vector3(MeshKit.hash01(key, 10 + i) - 0.5, 0, MeshKit.hash01(key, 20 + i) - 0.5) * 0.6
+					var s := 0.04 + 0.06 * MeshKit.hash01(key, 30 + i)
+					MeshKit.part(_props, MeshKit.chamfer_box(Vector3(s * 1.5, s, s), 0.01), concrete, base + off + Vector3(0, s * 0.4, 0), Vector3(0, MeshKit.hash01(key, 50 + i) * 180, 0))
+		elif col.ground >= 2:
+			# Rooftop clutter.
+			if r < 0.18:
+				MeshKit.part(_props, MeshKit.chamfer_box(Vector3(0.28, 0.16, 0.2), 0.015), steel, base + Vector3(0.1, 0.08, 0.05), Vector3(0, r * 900, 0))
+			elif r < 0.27:
+				MeshKit.part(_props, MeshKit.cylinder(0.13, 0.22, 10), rust, base + Vector3(-0.1, 0.11, 0.1))
+			elif r < 0.33:
+				MeshKit.part(_props, MeshKit.cylinder(0.008, 0.5, 4), steel, base + Vector3(0.2, 0.25, -0.15))
+			# Broken parapet and exposed rebar along roof edges that drop off.
+			for i in range(corners.size()):
+				var other := cell + edge_n[i]
+				if map.has_cell(other) and map.ground_height(other) >= col.ground:
+					continue
+				var a := corners[i]
+				var b := corners[(i + 1) % corners.size()]
+				var mid := (a + b) * 0.5 * 0.94
+				var len := a.distance_to(b)
+				var ang := -rad_to_deg(atan2(b.y - a.y, b.x - a.x))
+				var keep := MeshKit.hash01(key, 60 + i)
+				if keep < 0.65:
+					var seg := len * (0.4 + 0.55 * keep)
+					MeshKit.part(_props, MeshKit.chamfer_box(Vector3(seg, 0.07, 0.05), 0.01), concrete, base + Vector3(mid.x, 0.035, mid.y), Vector3(0, ang, 0))
+				elif keep < 0.85:
+					for k in range(3):
+						var t := 0.25 + 0.25 * k
+						var p := a.lerp(b, t) * 0.93
+						MeshKit.part(_props, MeshKit.cylinder(0.008, 0.14 + 0.1 * MeshKit.hash01(key, 70 + k), 4), rust,
+							base + Vector3(p.x, 0.07, p.y), Vector3(MeshKit.hash01(key, 80 + k) * 30 - 15, 0, 10))
+
+
+func _build_backdrop() -> void:
+	# Bounds of the board in world space.
+	var lo := Vector3(INF, 0, INF)
+	var hi := Vector3(-INF, 0, -INF)
+	for cell in map.cells():
+		var p := map.grid.to_world(cell)
+		lo = Vector3(minf(lo.x, p.x), 0, minf(lo.z, p.z))
+		hi = Vector3(maxf(hi.x, p.x), 0, maxf(hi.z, p.z))
+	var center := (lo + hi) * 0.5
+	# Ground around the board.
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_color(Color(0.01, 0.3, 0.45, 1))
+	var e := 60.0
+	var y := -BASE_DEPTH
+	MeshKit.add_quad(st, center + Vector3(-e, y, -e), center + Vector3(e, y, -e), center + Vector3(e, y, e), center + Vector3(-e, y, e), Vector3.UP)
+	# Ruined skyline: blocks of buildings outside the board on every side.
+	var half := (hi - lo) * 0.5 + Vector3(5.0, 0, 5.0)
+	st.set_color(Color(KIND_BUILDING / 4.0 + 0.01, 0.6, 0.55, 1))
+	var n := 0
+	for side in range(4):
+		for i in range(9):
+			n += 1
+			var t := (i + 0.5) / 9.0 * 2.0 - 1.0
+			var depth := 1.0 + 8.0 * MeshKit.hash01("sky", n)
+			var pos: Vector3
+			match side:
+				0: pos = Vector3(t * (half.x + 4), 0, -half.z - depth)
+				1: pos = Vector3(t * (half.x + 4), 0, half.z + depth)
+				2: pos = Vector3(-half.x - depth, 0, t * (half.z + 4))
+				_: pos = Vector3(half.x + depth, 0, t * (half.z + 4))
+			var w := 1.6 + 2.2 * MeshKit.hash01("sky", n + 100)
+			var hgt := 3.0 + 9.0 * pow(MeshKit.hash01("sky", n + 200), 1.5)
+			if side == 1 or MeshKit.hash01("sky", n + 300) < 0.25:
+				continue  # leave the near side open so the camera sees the board; gaps elsewhere
+			_box(st, center + pos + Vector3(0, y, 0), Vector3(w, hgt, w * 0.9))
+	var mi := MeshInstance3D.new()
+	mi.name = "Backdrop"
+	mi.mesh = st.commit()
+	mi.material_override = material
+	add_child(mi)
+
+
+func _box(st: SurfaceTool, base: Vector3, size: Vector3) -> void:
+	var h := size * 0.5
+	var c := base + Vector3(0, h.y, 0)
+	var p := func(x: float, yy: float, z: float) -> Vector3: return c + Vector3(x * h.x, yy * h.y, z * h.z)
+	MeshKit.add_quad(st, p.call(-1, 1, -1), p.call(1, 1, -1), p.call(1, 1, 1), p.call(-1, 1, 1), Vector3.UP)
+	MeshKit.add_quad(st, p.call(-1, -1, 1), p.call(1, -1, 1), p.call(1, 1, 1), p.call(-1, 1, 1), Vector3.BACK)
+	MeshKit.add_quad(st, p.call(-1, -1, -1), p.call(1, -1, -1), p.call(1, 1, -1), p.call(-1, 1, -1), Vector3.FORWARD)
+	MeshKit.add_quad(st, p.call(1, -1, -1), p.call(1, -1, 1), p.call(1, 1, 1), p.call(1, 1, -1), Vector3.RIGHT)
+	MeshKit.add_quad(st, p.call(-1, -1, -1), p.call(-1, -1, 1), p.call(-1, 1, 1), p.call(-1, 1, -1), Vector3.LEFT)
