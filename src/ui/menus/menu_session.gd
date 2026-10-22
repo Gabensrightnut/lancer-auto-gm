@@ -11,6 +11,7 @@ const SCREENS := {
 	"battle": "res://scenes/flow/battle.tscn",
 	"debrief": "res://scenes/flow/debrief.tscn",
 	"hub": "res://scenes/flow/hub.tscn",
+	"map_editor": "res://scenes/menus/map_editor_screen.tscn",
 }
 ## The battle screen (src/flow/battle_screen.gd: the 3D view and HUD on a BattleSession).
 const BATTLE_SCENE := "res://scenes/flow/battle.tscn"
@@ -24,6 +25,8 @@ static var builder_pilot := ""
 static var back_to := "main"
 ## Open the pilot look creator as soon as the builder opens (a new pilot).
 static var open_creator := false
+## A map from the map editor to play: the next host lobby uses it (LobbyModel.set_map_doc).
+static var map_doc: MapDoc
 static var _settings: GameSettings
 static var _db: ContentDB
 static var _db_key := "-"

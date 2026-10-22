@@ -101,6 +101,7 @@ func _ready() -> void:
 	tutorial.bind(campaign)
 	session.events_seen.connect(_on_events_seen)
 	_setup_story_battle()
+	_setup_gm_map_edit()
 	SitrepActions.register(session.engine)
 	var speed := MenuSession.settings().animation_speed
 	session.ai_interval = {"cinematic": 0.9, "normal": 0.45, "fast": 0.1}.get(speed, 0.45)
@@ -338,6 +339,54 @@ func _setup_story_battle() -> void:
 		gm_panel.story_events.connect(func(evs: Array) -> void:
 			if not session.is_host:
 				_story_events(evs))
+
+
+# --- A human GM edits the map live ---------------------------------------------------------
+
+## "Edit map" for a human GM at the host: the map editor (MapEditor.start_live) on this
+## battle's engine and state; every edit is a GM action, and each batch goes to every seat.
+func _setup_gm_map_edit() -> void:
+	if not session.is_host or not session.gm_here:
+		return
+	var b := Button.new()
+	b.theme = MenuTheme.theme()
+	b.text = "Edit map"
+	b.focus_mode = Control.FOCUS_NONE
+	b.tooltip_text = "GM: change the battlefield now (height, terrain, zones). Every player sees the changes."
+	b.position = Vector2(300, 16)
+	b.pressed.connect(_open_map_editor)
+	ui.add_child(b)
+
+
+var _map_editor: Node
+
+
+func _open_map_editor() -> void:
+	if _map_editor != null:
+		return
+	_map_editor = (load("res://scenes/editor/map_editor.tscn") as PackedScene).instantiate()
+	add_child(_map_editor)
+	_map_editor.start_live(session.host.engine, session.host.state, BIOME)
+	_map_editor.edited.connect(func(events: Array) -> void: session.host.send_updates(events))
+	ui.visible = false
+	var layer := CanvasLayer.new()
+	layer.layer = 30
+	_map_editor.add_child(layer)
+	var done := Button.new()
+	done.theme = MenuTheme.theme()
+	done.text = "Done editing: back to the battle"
+	done.position = Vector2(get_viewport().get_visible_rect().size.x - 340, 16)
+	done.pressed.connect(_close_map_editor)
+	layer.add_child(done)
+
+
+func _close_map_editor() -> void:
+	if _map_editor == null:
+		return
+	_map_editor.queue_free()
+	_map_editor = null
+	ui.visible = true
+	view.tactical.camera.make_current()
 
 
 ## The GM seat is played at this screen (campaign option "Human GM").
