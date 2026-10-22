@@ -16,6 +16,7 @@ const BUILDERS := {
 	"mf_raleigh": "_raleigh",
 	"mf_tortuga": "_tortuga",
 	"mf_vlad": "_vlad",
+	"mf_black_witch": "_black_witch",
 	"mf_mourning_cloak": "_mourning_cloak",
 }
 const CLOTH_SHADER := preload("res://src/render/shaders/cloth.gdshader")
@@ -1398,3 +1399,105 @@ func _vlad() -> void:
 			_add(f, _limb(0.07, 0.012, 0.009), KH)
 			_add(f, SmoothKit.loft([{"y": -0.1, "w": 0.003, "d": 0.003}, {"y": -0.07, "w": 0.014, "d": 0.012}], 6, false), BONE)
 	_slots(0.48, 0.27, 0.12)
+
+
+# --- Black Witch (SSC) ------------------------------------------------------------------------
+# From the core book art: a slender, elegant figure in dark slate armor over a red ribbed
+# body suit. A tall halo ring behind a smooth white egg faceplate; rounded shoulder caps with
+# hooked fins and red joint balls; a red domed chest emitter; long pale cloth streamers
+# falling from the shoulders; narrow waist, long legs with knee plates and slim clawed feet;
+# a red disc on the left forearm. Red magnetic ring weapons.
+
+func _black_witch() -> void:
+	m.set_meta("custom_pose", true)
+	var SL := MeshKit.paint(Color(0.17, 0.25, 0.3), 0.45, 0.4, 0.2)
+	var SL2 := MeshKit.paint(Color(0.22, 0.31, 0.36), 0.45, 0.4, 0.1)
+	var RD := MeshKit.paint(Color(0.55, 0.16, 0.14), 0.2, 0.5, 0.15)
+	var RD2 := MeshKit.paint(Color(0.72, 0.25, 0.2), 0.25, 0.45, 0.0)
+	var WH := MeshKit.paint(Color(0.85, 0.83, 0.76), 0.2, 0.3, 0.0)
+	var OR := MeshKit.paint(Color(0.4, 0.15, 0.02), 0.2, 0.3, 0.0, Color(1.0, 0.55, 0.2))
+	var cloth := ShaderMaterial.new()
+	cloth.shader = CLOTH_SHADER
+	cloth.set_shader_parameter("color", Color(0.78, 0.8, 0.78, 0.92))
+	cloth.set_shader_parameter("tip_color", Color(0.55, 0.6, 0.6, 0.75))
+	cloth.set_shader_parameter("wave", 0.025)
+	var legs := _biped(0.5, 0.075, 0.23, 0.25, [-4, 4, 8, -4], -2)
+	for leg: Dictionary in legs:
+		var s: float = leg["s"]
+		_add(leg["hip"], SmoothKit.blob(Vector3(0.07, 0.07, 0.07), 1.0, 1.0), RD)
+		_add(leg["hip"], _limb(0.22, 0.05, 0.038, 0.2), SL)
+		_add(leg["hip"], SmoothKit.rounded_box(Vector3(0.07, 0.03, 0.08), 0.01), SL2, Vector3(0, -0.04, 0))
+		for k in range(2):
+			_add(leg["hip"], MeshKit.sphere(0.008, 8), OR, Vector3(s * 0.03, -0.08 - k * 0.05, -0.04))
+		_add(leg["knee"], SmoothKit.blob(Vector3(0.07, 0.08, 0.07), 0.6, 0.7), SL2, Vector3(0, 0, -0.02))
+		_add(leg["knee"], _limb(0.24, 0.036, 0.026, 0.15), SL)
+		_add(leg["knee"], _limb(0.2, 0.015, 0.012), RD, Vector3(0, -0.02, 0.02))
+		_add(leg["ankle"], SmoothKit.blob(Vector3(0.05, 0.04, 0.05), 0.8, 0.8), SL2)
+		for k in range(3):
+			var toe := _p(leg["ankle"], "Toe", Vector3((k - 1) * 0.018, -0.02, -0.01), Vector3(-100, 0, (k - 1) * 14))
+			_add(toe, SmoothKit.loft([{"y": 0.0, "w": 0.018, "d": 0.015}, {"y": 0.05, "w": 0.014, "d": 0.012}, {"y": 0.07, "w": 0.005, "d": 0.005}], 8), SL)
+	var t := m.torso
+	# Narrow red ribbed body suit with straps; wider slate chest shell.
+	var secs: Array = []
+	for k in range(10):
+		var y := k * 0.03
+		# Hips flare, waist pinches, chest widens.
+		var w := 0.15 - 0.07 * sin(clampf(y / 0.2, 0.0, 1.0) * PI) + 0.06 * clampf((y - 0.12) / 0.15, 0.0, 1.0) + (0.006 if k % 2 == 0 else 0.0)
+		secs.append({"y": y, "w": w, "d": w * 0.85})
+	_add(t, SmoothKit.loft(secs, 20), RD)
+	for k in range(3):
+		_add(t, _torus(0.05 + k * 0.006, 0.005), SL2, Vector3(0, 0.1 + k * 0.045, 0), Vector3.ZERO, Vector3(1, 1, 0.85))
+	for s: float in [1.0, -1.0]:
+		_add(t, SmoothKit.blob(Vector3(0.06, 0.1, 0.11), 0.7, 0.7), SL, Vector3(s * 0.08, 0.0, 0.0))
+	_add(t, SmoothKit.loft([
+		{"y": 0.24, "w": 0.15, "d": 0.13, "n": 2.0},
+		{"y": 0.31, "w": 0.21, "d": 0.17, "n": 2.0},
+		{"y": 0.37, "w": 0.21, "d": 0.17, "n": 2.0},
+		{"y": 0.41, "w": 0.12, "d": 0.11, "n": 2.0},
+	], 24), SL)
+	_add(t, SmoothKit.blob(Vector3(0.08, 0.1, 0.05), 0.7, 0.7), RD2, Vector3(0, 0.3, -0.095))
+	for p: Vector3 in [Vector3(-0.015, 0.32, -0.12), Vector3(0.015, 0.31, -0.12), Vector3(0, 0.28, -0.118)]:
+		_add(t, MeshKit.sphere(0.006, 8), OR, p)
+	# Head: white egg faceplate, dark collar, halo ring behind.
+	m.head = _p(t, "Head", Vector3(0, 0.41, -0.02))
+	_add(m.head, SmoothKit.lathe([Vector2(0.05, 0.0), Vector2(0.06, 0.02)], 16, false), SL2)
+	_add(m.head, SmoothKit.blob(Vector3(0.075, 0.12, 0.08), 0.8, 0.8), WH, Vector3(0, 0.07, -0.01))
+	_add(m.head, SmoothKit.rounded_box(Vector3(0.012, 0.09, 0.03), 0.004), RD, Vector3(0.025, 0.08, -0.04))
+	_add(m.head, MeshKit.sphere(0.007, 8), OR, Vector3(0, 0.035, -0.045))
+	_eye(m.head, Vector3(0, 0.05, -0.05))
+	var halo := _p(t, "Halo", Vector3(0, 0.55, 0.04), Vector3(80, 0, 0))
+	_add(halo, _torus(0.1, 0.014), SL)
+	_add(halo, _torus(0.088, 0.004), RD2)
+	m.spinners.append({"node": halo, "axis": Vector3.UP, "speed": 0.0})
+	_add(t, MeshKit.cylinder(0.01, 0.12, 8), SL, Vector3(0, 0.47, 0.05), Vector3(10, 0, 0))
+	# Shoulder caps with hooked fins and red joint balls; streamers hanging from them.
+	for s: float in [1.0, -1.0]:
+		var cap := _p(t, "Pad_" + ("r" if s > 0 else "l"), Vector3(s * 0.135, 0.37, 0.0))
+		_add(cap, SmoothKit.blob(Vector3(0.1, 0.09, 0.11), 0.75, 0.75), SL)
+		_add(cap, SmoothKit.blob(Vector3(0.05, 0.05, 0.05), 1.0, 1.0), RD2, Vector3(s * 0.035, -0.05, -0.03))
+		var fin := _p(cap, "Fin", Vector3(s * 0.02, 0.05, 0.0))
+		_add(fin, SmoothKit.tube(SmoothKit.bezier(Vector3.ZERO, Vector3(0, 0.07, 0), Vector3(s * 0.05, 0.08, 0), Vector3(s * 0.05, 0.04, 0), 8), 0.009, 6), SL2)
+		var pts: Array = []
+		var ws: Array = []
+		for k in range(10):
+			var f := k / 9.0
+			pts.append(Vector3(s * (0.035 + f * 0.03), -0.06 - f * 0.62, -0.03 + f * 0.04))
+			ws.append(0.05 + 0.04 * f)
+		var str_ := _add(cap, ribbon(pts, ws), cloth)
+		str_.set_meta("no_height", true)
+	# Arms: left forearm with a red disc, both holding ring weapons low.
+	var arm_r := _rig_arm("r", Vector3.ZERO, 0.19, 0.2, 0.0, 0.03)
+	var arm_l := _rig_arm("l", Vector3.ZERO, 0.19, 0.2, 0.0, 0.03)
+	_pose_arm(arm_r, Vector3(0.19, 0.33, -0.01), Vector3(0.26, 0.15, -0.02), Vector3(0.3, -0.03, -0.08), Vector3(0.3, -0.5, -1))
+	_pose_arm(arm_l, Vector3(-0.19, 0.33, -0.01), Vector3(-0.29, 0.17, -0.03), Vector3(-0.27, -0.02, -0.06), Vector3(0, -1, -0.2))
+	for arm: Dictionary in [arm_r, arm_l]:
+		_add(arm["shoulder"], _limb(0.18, 0.032, 0.028, 0.15), RD)
+		_add(arm["shoulder"], SmoothKit.rounded_box(Vector3(0.05, 0.1, 0.05), 0.014), SL, Vector3(0, -0.07, 0))
+		_add(arm["elbow"], SmoothKit.blob(Vector3(0.05, 0.05, 0.05), 1.0, 1.0), SL2)
+		_add(arm["elbow"], _limb(0.19, 0.026, 0.022, 0.25), SL)
+		_add(arm["hand"], SmoothKit.rounded_box(Vector3(0.045, 0.055, 0.04), 0.012), SL2)
+	var disc := _p(arm_l["elbow"], "Disc", Vector3(-0.04, -0.1, -0.02), Vector3(0, 0, 90))
+	_add(disc, MeshKit.cylinder(0.075, 0.012, 24), RD2)
+	for k in range(3):
+		_add(disc, MeshKit.sphere(0.008, 8), OR, Vector3(-0.02 + k * 0.02, 0.008, (k % 2) * 0.02))
+	_slots(0.44, 0.15, 0.1)
