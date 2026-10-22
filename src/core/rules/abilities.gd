@@ -229,6 +229,8 @@ static func deploy_stats(owner: Unit, d: Dictionary) -> Dictionary:
 	var drone := type == "Drone"
 	var size := float(d.get("size", 0.5 if drone or type == "Mine" else 1.0))
 	var bonus := Effects.value(owner, "deployable_hp_bonus") if (drone or type == "Deployable") else 0  # Hydra System Link
+	if drone:
+		bonus += Effects.value(owner, "drone_hp_bonus")  # Drone Commander: Shepherd
 	return {
 		"size": size,
 		"hp": _stat(owner, d.get("hp"), 5 if drone else 10 * maxi(1, int(size))) + bonus,

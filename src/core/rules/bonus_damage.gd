@@ -42,7 +42,9 @@ static func roll(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 		var key := "bonus:%d:%s" % [i, "crit" if info.get("crit", false) else "base"]
 		i += 1
 		var r: Dictionary
-		if shared.has(key):
+		if info.get("max", false):
+			r = Attacks.max_roll(expr)  # Brutal: Predator
+		elif shared.has(key):
 			r = shared[key]
 		else:
 			r = Attacks.roll_damage(state, expr, bool(info.get("crit", false)), false)
@@ -104,6 +106,7 @@ static func sources(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 	var lock := {"value": 3, "label": "Hunter Lock", "per": "round"}
 	if String(attacker.counters.get("hunter_lock", "")) == target.id and not _used_this_round(state, attacker, lock):
 		out.append(lock)  # Hunter Lock: the first successful attack each round, +3
+	out.append_array(TalentRules.bonus_sources(state, attacker, w, target, info))
 	var crit_extra := WeaponRules.crit_bonus(w)
 	if crit_extra != "" and info.get("crit", false):
 		out.append({"value": crit_extra, "label": String(w.get("name", ""))})

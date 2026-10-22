@@ -88,6 +88,10 @@ static func check_spend(state: GameState, u: Unit, s: Dictionary, cost: Dictiona
 	match String(s.get("what", "")):
 		"hp":
 			add.call(u.id, 1)
+		"limited":
+			if not Effects.has(u, "unsanctioned_capacity"):
+				return RuleResult.deny("Only with Grease Monkey (Unsanctioned Capacity Upgrade).", "talents: Grease Monkey")
+			add.call(u.id, 2)
 		"structure":
 			if u.structure >= u.max_structure:
 				return RuleResult.deny("Structure is already full.", REF)
@@ -128,6 +132,22 @@ static func apply_spend(state: GameState, u: Unit, s: Dictionary) -> Array[Dicti
 			u.repairs -= 1
 			u.hp = u.max_hp
 			events.append({"type": "hp_changed", "unit": u.id, "hp": u.hp, "overshield": u.overshield, "source": "rest"})
+		"limited":
+			# Grease Monkey: 2 Repairs replenish 1 use of every Limited weapon and system.
+			u.repairs -= 2
+			for w: Dictionary in u.loadout.get("weapons", []):
+				if Weapons.has_tag(w, "tg_limited"):
+					Weapons.state_of(u, w)["uses"] = int(Weapons.state_of(u, w)["uses"]) + 1
+			var seen := {}
+			for ab: Dictionary in Abilities.all(u):
+				var key := String(ab["source_key"])
+				if seen.has(key):
+					continue
+				seen[key] = true
+				var st := Abilities.source_state(u, key)
+				if int(st.get("uses", -1)) >= 0:
+					st["uses"] = int(st["uses"]) + 1
+			events.append({"type": "repaired", "unit": u.id, "what": "limited", "rule_ref": "talents: Grease Monkey"})
 		"structure":
 			u.repairs -= structure_cost(u)
 			u.structure += 1

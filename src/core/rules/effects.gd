@@ -218,6 +218,8 @@ static func moved(state: GameState, u: Unit, mode: String) -> Array[Dictionary]:
 		events.append_array(_drop_still_status(u, e))
 	if has(u, "afterimage") and (mode == "walk" or mode == "boost"):
 		u.counters["afterimage"] = true
+	if mode == "boost" and has(u, "ram_momentum"):
+		u.counters["ram_momentum"] = true  # Juggernaut: the next Ram gains +1 Accuracy and 2 more knockback
 	if mode == "boost":
 		for e: Dictionary in of(u, "bonus_damage"):
 			if e.get("when", "") == "after_boost":
@@ -303,6 +305,7 @@ static func turn_started(state: GameState, u: Unit) -> Array[Dictionary]:
 			events.append_array(Combat.add_status(state, u, String(e["status"]), String(e.get("label", "trait"))))
 	events.append_array(FrameSystems.turn_started(state, u))
 	events.append_array(GearSystems.horus_turn_started(state, u))
+	TalentRules.turn_started(state, u)
 	events.append_array(GearSystems.ha_turn_started(state, u))
 	return events
 

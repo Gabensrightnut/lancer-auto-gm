@@ -283,7 +283,7 @@ class Improvised:
 		return TurnRules.FULL
 
 	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
-		var p := Attacks.preview(state, u, AttackActions.IMPROVISED, state.unit(String(params.get("target", ""))), {"improvised": true})
+		var p := Attacks.preview(state, u, TalentRules.improvised(u, AttackActions.IMPROVISED), state.unit(String(params.get("target", ""))), {"improvised": true})
 		if not p["ok"]:
 			return RuleResult.deny(p["reason"], p["rule_ref"])
 		return RuleResult.allow()
@@ -291,4 +291,4 @@ class Improvised:
 	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
 		var opts := params.duplicate()
 		opts["improvised"] = true
-		return Attacks.attack(state, u, AttackActions.IMPROVISED, state.unit(String(params["target"])), opts)
+		return Attacks.attack(state, u, TalentRules.improvised(u, AttackActions.IMPROVISED), state.unit(String(params["target"])), opts)

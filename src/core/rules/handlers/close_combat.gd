@@ -71,6 +71,7 @@ class Ram:
 
 	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
 		var t := state.unit(String(params["target"]))
+		var momentum: bool = u.counters.get("ram_momentum", false)
 		var events := Attacks.attack(state, u, CloseCombat.body_attack(u, "Ram"), t, {"improvised": true})
 		for e: Dictionary in Effects.of(u, "ram_damage"):
 			if CloseCombat._hit(events) and Combat.is_present(t):
@@ -83,8 +84,9 @@ class Ram:
 				events.append({"type": "no_effect", "target": t.id, "reason": "Heavy Frame: smaller characters can't knock it Prone or back.", "rule_ref": Effects.REF})
 				return events
 			events.append_array(Combat.add_status(state, t, "Prone", u.id))
-			if params.get("knockback", false):
-				events.append_array(Attacks.knock_back(state, t, u.cell, 1, u))
+			if params.get("knockback", false) or momentum:
+				# Juggernaut Momentum: knocked back 2 more spaces.
+				events.append_array(Attacks.knock_back(state, t, u.cell, (1 if params.get("knockback", false) else 0) + (2 if momentum else 0), u))
 		return events
 
 

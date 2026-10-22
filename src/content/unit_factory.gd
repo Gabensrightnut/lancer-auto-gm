@@ -291,6 +291,7 @@ static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dic
 		gear_ids.append(s["id"])
 	gear_ids.append_array(pilot.get("core_bonuses", []))
 	_add_gear_effects(u, gear_ids, pilot.get("talents", {}))
+	TalentRules.adjust_weapons(u)
 	u.loadout["abilities"] = _abilities(db, u, frame, loadout.get("systems", []), pilot.get("talents", {}))
 	if (frame_effects_data().get(frame_id, {}) as Dictionary).get("orochi_choice", false):
 		# Hydra: one OROCHI drone accompanies it; Full Deployment brings all four.

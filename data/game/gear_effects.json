@@ -101,6 +101,16 @@
         "spaces": 2,
         "after": "skirmish"
       }
+    ],
+    "1": [
+      {
+        "kind": "chaff"
+      }
+    ],
+    "3": [
+      {
+        "kind": "weave"
+      }
     ]
   },
   "pg_mobility_hardsuit": [
@@ -215,5 +225,215 @@
     {
       "kind": "deep_well"
     }
-  ]
+  ],
+  "t_brawler": {
+    "1": [
+      {
+        "kind": "attack_mod",
+        "on": "melee",
+        "when": "vs_grappled",
+        "accuracy": 1
+      }
+    ],
+    "2": [
+      {
+        "kind": "improvised_upgrade"
+      }
+    ]
+  },
+  "t_brutal": {
+    "1": [
+      {
+        "kind": "brutal_max"
+      }
+    ],
+    "2": [
+      {
+        "kind": "crit_knockback",
+        "value": 1
+      }
+    ],
+    "3": [
+      {
+        "kind": "relentless"
+      }
+    ]
+  },
+  "t_crack_shot": {
+    "2": [
+      {
+        "kind": "zero_in"
+      }
+    ]
+  },
+  "t_centimane": {
+    "1": [
+      {
+        "kind": "nexus_crit"
+      }
+    ],
+    "2": [
+      {
+        "kind": "expose_weakness"
+      }
+    ],
+    "3": []
+  },
+  "t_combined_arms": {
+    "1": [
+      {
+        "kind": "soft_cover_engaged"
+      }
+    ],
+    "2": [
+      {
+        "kind": "ignore_engaged"
+      }
+    ]
+  },
+  "t_duelist": {
+    "1": [
+      {
+        "kind": "attack_mod",
+        "on": "melee",
+        "when": "first_main_melee",
+        "accuracy": 1
+      }
+    ]
+  },
+  "t_drone_commander": {
+    "1": [
+      {
+        "kind": "drone_hp_bonus",
+        "value": 5
+      }
+    ]
+  },
+  "t_executioner": {
+    "2": [
+      {
+        "kind": "wide_arc"
+      }
+    ]
+  },
+  "t_gunslinger": {
+    "1": [
+      {
+        "kind": "attack_mod",
+        "on": "ranged",
+        "when": "first_aux_ranged",
+        "accuracy": 1
+      }
+    ]
+  },
+  "t_grease_monkey": {
+    "1": [
+      {
+        "kind": "unsanctioned_capacity"
+      }
+    ],
+    "2": [
+      {
+        "kind": "machine_bond"
+      }
+    ]
+  },
+  "t_hacker": {
+    "1": [
+      {
+        "kind": "snow_crash"
+      }
+    ]
+  },
+  "t_hunter": {
+    "2": [
+      {
+        "kind": "knife_juggler"
+      }
+    ]
+  },
+  "t_infiltrator": {
+    "2": [
+      {
+        "kind": "ambush"
+      }
+    ]
+  },
+  "t_juggernaut": {
+    "1": [
+      {
+        "kind": "ram_momentum"
+      }
+    ]
+  },
+  "t_nuclear_cavalier": {
+    "1": [
+      {
+        "kind": "dz_heat",
+        "value": 2
+      }
+    ],
+    "2": [
+      {
+        "kind": "dz_fusion"
+      }
+    ]
+  },
+  "t_siege_specialist": {
+    "2": [
+      {
+        "kind": "impact"
+      }
+    ]
+  },
+  "t_spotter": {
+    "1": [
+      {
+        "kind": "particularize"
+      }
+    ]
+  },
+  "t_stormbringer": {
+    "1": [
+      {
+        "kind": "seismic_deluge"
+      }
+    ]
+  },
+  "t_tactician": {
+    "1": [
+      {
+        "kind": "attack_mod",
+        "on": "melee",
+        "when": "ally_engaged_target",
+        "accuracy": 1,
+        "per": "round"
+      }
+    ],
+    "2": [
+      {
+        "kind": "attack_mod",
+        "on": "ranged",
+        "when": "higher_elevation",
+        "accuracy": 1,
+        "per": "round"
+      }
+    ]
+  },
+  "t_vanguard": {
+    "1": [
+      {
+        "kind": "attack_mod",
+        "on": "ranged",
+        "when": "cqb_within_3",
+        "accuracy": 1
+      }
+    ],
+    "2": [
+      {
+        "kind": "ignore_cover_cqb",
+        "range": 3
+      }
+    ]
+  }
 }
