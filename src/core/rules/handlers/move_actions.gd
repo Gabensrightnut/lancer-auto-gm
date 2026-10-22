@@ -20,6 +20,15 @@ static func _plan(state: GameState, u: Unit, params: Dictionary, mode: String) -
 			plan["ok"] = false
 			plan["reason"] = "The cable holds you within 5 spaces of the other end."
 			plan["rule_ref"] = Riders.REF_WINCH
+	var foe := state.unit(String(u.counters.get("duel", "")))
+	if plan["ok"] and foe != null and Combat.is_present(foe) and not (plan["path"] as Array).is_empty():
+		# Exemplar To The Death: can't voluntarily move away from the mark.
+		var last2: Array = (plan["path"] as Array).back()
+		var there := Sight.make_body(state, Vector2i(last2[0], last2[1]), int(last2[2]), u.size)
+		if Sight.distance(state, there, Sight.body_of(state, foe)) > Sight.unit_distance(state, u, foe):
+			plan["ok"] = false
+			plan["reason"] = "Duel to the death: you can't move away from your mark."
+			plan["rule_ref"] = "talents: Exemplar"
 	return plan
 
 

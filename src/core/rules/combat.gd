@@ -563,6 +563,7 @@ static func destroy(state: GameState, u: Unit, why: String) -> Array[Dictionary]
 		return [] as Array[Dictionary]
 	u.destroyed = true
 	u.hp = 0
+	TalentRules.end_duel(state, u)  # Exemplar To The Death
 	var events: Array[Dictionary] = [{"type": "unit_destroyed", "unit": u.id, "reason": why}]
 	if u.counters.get("snare", false):
 		events.append_array(GearSystems.snare_gone(state, u))

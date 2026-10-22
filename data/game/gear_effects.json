@@ -444,6 +444,11 @@
       {
         "kind": "impact"
       }
+    ],
+    "3": [
+      {
+        "kind": "collateral"
+      }
     ]
   },
   "t_spotter": {
@@ -727,6 +732,11 @@
     "2": [
       {
         "kind": "exemplar_overwatch"
+      }
+    ],
+    "3": [
+      {
+        "kind": "duel"
       }
     ]
   },

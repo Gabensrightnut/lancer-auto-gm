@@ -81,6 +81,12 @@ extends RefCounted
 ##                           Melee hit; Parry and Deflect reactions, Feint and Trip actions
 ##                           (Duelist 2); a free Grapple or Ram after a melee hit on its turn
 ##                           (action "duelist_strike") (Duelist 3: blademaster_strike)
+##   duel                    Duel To The Death (params.duel with the marking attack): +3 Difficulty
+##                           on both duelists' attacks on anyone else, no moving away, the mark
+##                           lasts the scene (Exemplar 3)
+##   collateral              1/round, a Cannon crit: Burst 2 around the target; characters there
+##                           drop Prone (reaction) or take 2 explosive and are knocked back 2
+##                           (Siege Specialist 3; params.collateral false to skip)
 ##   prowl                   on its own turn: Hidden isn't lost to line of sight or leaving cover,
 ##                           Hide in plain sight, pass through enemies (Infiltrator 1)
 
@@ -144,6 +150,9 @@ static func sources(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 				ok = w.get("type", "") == "CQB" and Sight.unit_distance(state, attacker, target) <= 3
 		if ok:
 			out.append({"label": String(e.get("label", "Talent")), "kind": "accuracy", "type": "accuracy", "value": int(e.get("accuracy", 1)), "rule_ref": REF, "talent": e})
+	var partner := String(attacker.counters.get("duel", ""))
+	if partner != "" and partner != target.id and not attacker.counters.get("duel_paused", false):
+		out.append({"label": "Duel to the death", "kind": "difficulty", "type": "difficulty", "value": 3, "rule_ref": REF})
 	var miss := int(attacker.counters.get("relentless", 0))
 	if miss > 0 and Effects.has(attacker, "relentless"):
 		out.append({"label": "Relentless", "kind": "accuracy", "type": "accuracy", "value": miss, "rule_ref": REF})
@@ -425,6 +434,22 @@ static func on_hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 				events.append({"type": "skill_check", "unit": o.id, "check": save, "rule_ref": REF})
 				if not save["success"]:
 					events.append_array(Attacks.knock_back(state, o, target.cell, 1, attacker))
+	if crit and w.get("type", "") == "Cannon" and Effects.has(attacker, "collateral") and opts.get("collateral", true) and _round_ok(state, attacker, "collateral"):
+		_use_round(state, attacker, "collateral")
+		events.append({"type": "effect_triggered", "unit": attacker.id, "effect": "Collateral Damage", "target": target.id, "rule_ref": REF})
+		var ids: Array = state.units.keys()
+		ids.sort()
+		for id: String in ids:
+			var o := state.unit(id)
+			if o == attacker or not Combat.is_present(o) or o.kind == Unit.KIND_DEPLOYABLE or Sight.unit_distance(state, o, target) > 2:
+				continue
+			var d := Reactions.offer(state, o, "drop_prone", {"source": attacker.id, "suggested": {"take": true}}, {"take": true})
+			if d.get("take", false):
+				events.append_array(Combat.add_status(state, o, "Prone", "Collateral Damage"))
+			else:
+				events.append_array(Combat.deal_damage(state, o, [{"type": "Explosive", "amount": 2}], {"source": attacker.id}))
+				if Combat.is_present(o):
+					events.append_array(Attacks.knock_back(state, o, target.cell, 2, attacker))
 	if lock_on and w.get("type", "") == "Launcher" and Effects.has(attacker, "seismic_deluge") and _round_ok(state, attacker, "seismic_deluge"):
 		_use_round(state, attacker, "seismic_deluge")
 		events.append_array(Combat.add_status(state, target, "Prone", attacker.id))
@@ -555,7 +580,13 @@ static func exemplar_mark(state: GameState, attacker: Unit, target: Unit, opts: 
 	attacker.turn["exemplar_attacked"] = true
 	if opts.get("no_mark", false) or Sight.unit_distance(state, attacker, target) > 3 or not Combat.is_present(target):
 		return events
+	if attacker.counters.has("duel"):
+		return events  # To The Death: no new marks
 	target.counters["exemplar_mark"] = attacker.id  # replaces any other mark
+	if opts.get("duel", false) and Effects.has(attacker, "duel"):
+		attacker.counters["duel"] = target.id
+		target.counters["duel"] = attacker.id
+		events.append({"type": "effect_triggered", "unit": attacker.id, "effect": "Duel To The Death", "target": target.id, "rule_ref": "talents: Exemplar"})
 	events.append({"type": "effect_triggered", "unit": attacker.id, "effect": "Exemplar's Mark", "target": target.id,
 		"text": "Marked until the start of its next turn: allies who miss it may reroll (Valiant Aid).", "rule_ref": "talents: Exemplar"})
 	return events
@@ -654,6 +685,16 @@ static func covered_moved(state: GameState, t: Unit, spaces: int) -> Array[Dicti
 	return events
 
 
+## To The Death ends when either duelist is destroyed (scene end is the table's for now).
+static func end_duel(state: GameState, u: Unit) -> void:
+	var other := state.unit(String(u.counters.get("duel", "")))
+	u.counters.erase("duel")
+	u.counters.erase("duel_paused")
+	if other != null:
+		other.counters.erase("duel")
+		other.counters.erase("duel_paused")
+
+
 ## Covering Fire ends at once if its target damages the gunner.
 static func damaged_by(target: Unit, source: Unit) -> void:
 	if source != null and String(source.counters.get("covering_fire", "")) == target.id:
@@ -686,6 +727,8 @@ static func after_attack(state: GameState, attacker: Unit, w: Dictionary, target
 			events.append({"type": "attack_rerolled", "attacker": attacker.id, "target": other.id, "source": "Executioner", "rule_ref": REF})
 			events.append_array(Attacks.attack(state, attacker, w, other, {"fired_by_rule": true, "skip_spend": true, "reroll": true}))
 	events.append_array(_exemplar_overwatch(state, attacker, target))
+	if String(attacker.counters.get("duel", "")) == target.id and not Effects.has(attacker, "duel"):
+		attacker.counters["duel_paused"] = true  # the mark attacked the Exemplar: its Difficulty lifts for now
 	if opts.get("lock_on_consumed", false) and Effects.has(attacker, "drone_pulse") and _round_ok(state, attacker, "drone_pulse"):
 		events.append_array(_drone_pulse(state, attacker))
 	if result == "miss" or not Combat.is_present(target):
@@ -890,8 +933,10 @@ static func lunge(state: GameState, u: Unit, t: Unit) -> Array[Dictionary]:
 static func turn_started(state: GameState, u: Unit) -> void:
 	u.counters.erase("feint")  # Duelist Feint lasts until the start of its next turn
 	for o: Unit in state.units.values():
-		if String(o.counters.get("exemplar_mark", "")) == u.id:
+		if String(o.counters.get("exemplar_mark", "")) == u.id and String(u.counters.get("duel", "")) != o.id:
 			o.counters.erase("exemplar_mark")  # until the start of the Exemplar's next turn
+		if String(o.counters.get("duel", "")) == u.id:
+			o.counters.erase("duel_paused")
 		if String(o.counters.get("covering_fire", "")) == u.id:
 			o.counters.erase("covering_fire")
 			o.counters.erase("cf_moved")

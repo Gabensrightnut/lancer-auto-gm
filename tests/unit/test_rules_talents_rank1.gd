@@ -297,3 +297,25 @@ func test_duelist_blademaster() -> void:
 	var hp := a.hp
 	F.act(e, s, "skirmish", "t", {"weapon": "0:0", "target": "a"})
 	expect_eq(hp - a.hp, 3, "Deflect rolled a 6: Resistance")
+
+
+func test_exemplar_duel() -> void:
+	_setup({"t_exemplar": 3}, [{"weapons": ["mw_assault_rifle"]}], Vector2i(3, 0))
+	var other := F.mech(s, "o", "enemies", Vector2i(3, 3))
+	F.load_dice(s, [15, 2])
+	F.act(e, s, "skirmish", "a", {"weapon": "0:0", "target": "t", "duel": true})
+	expect_eq(String(a.counters.get("duel", "")), "t")
+	expect_eq(RulesQueries.attack_preview(s, "a", "0:0", "o")["difficulty"], 3, "+3 Difficulty on anyone else")
+	a.cell = Vector2i(2, 2)
+	expect(not F.ok(F.act(e, s, "move", "a", {"to": [0, 2]})), "can't move away from the mark")
+	expect(F.ok(F.act(e, s, "move", "a", {"to": [2, 1]})), "closer is fine")
+
+
+func test_collateral_damage() -> void:
+	_setup({"t_siege_specialist": 3}, [{"weapons": ["mw_mortar"]}], Vector2i(6, 0))
+	a.loadout["weapons"] = [F.weapon("0:0", "Cannon", "Main", "Cannon", "1d6", 10)]
+	var near := F.mech(s, "near", "enemies", Vector2i(7, 1))
+	F.load_dice(s, [20, 3, 3])
+	var out := F.act(e, s, "skirmish", "a", {"weapon": "0:0", "target": "t"})
+	expect(F.ok(out), F.reason(out))
+	expect(near.has_status("Prone"), "dropped Prone to avoid the blast")
