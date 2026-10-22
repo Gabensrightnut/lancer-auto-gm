@@ -23,7 +23,7 @@
 			"window_light": "#ffb86a",
 			"lit_windows": 0.02,
 			"roof": "#6e695f",
-			"floors": 3,
+			"floors": 2,
 			"bay": 0.3,
 			"window_w": 0.55,
 			"window_h": 0.55,
@@ -53,6 +53,17 @@
 				"vents": 0.12,
 				"wires": 0.2,
 				"lanterns_on_wires": false
+			},
+			"skyline": {
+				"near": [
+					0.8,
+					2.5
+				],
+				"far": [
+					2.0,
+					14.0
+				],
+				"density": 0.45
 			}
 		},
 		"flora": {
@@ -276,7 +287,7 @@
 			"window_light": "#ff9a4a",
 			"lit_windows": 0.0,
 			"roof": "#3e3a36",
-			"floors": 3,
+			"floors": 2,
 			"bay": 0.3,
 			"window_w": 0.55,
 			"window_h": 0.55,
@@ -292,14 +303,14 @@
 			],
 			"skyline": {
 				"near": [
-					1.0,
-					4.0
+					0.8,
+					3.0
 				],
 				"far": [
-					6.0,
-					35.0
+					3.0,
+					18.0
 				],
-				"density": 0.6,
+				"density": 0.5,
 				"fires": 9,
 				"look": {
 					"burning": 0.06
@@ -437,7 +448,7 @@
 					1.0,
 					3.0
 				],
-				"density": 0.35
+				"density": 0.3
 			}
 		},
 		"horizon": {
@@ -616,7 +627,7 @@
 			"roof_surface": "panels",
 			"roof_edge": "chrome",
 			"roof_props": "modern",
-			"floors": 3,
+			"floors": 2,
 			"bay": 0.45,
 			"window_w": 0.75,
 			"window_h": 0.45,
@@ -661,14 +672,14 @@
 			},
 			"skyline": {
 				"near": [
-					1.0,
-					3.0
+					0.8,
+					2.5
 				],
 				"far": [
 					2.0,
-					10.0
+					7.0
 				],
-				"density": 0.45
+				"density": 0.4
 			}
 		},
 		"horizon": {
@@ -776,13 +787,13 @@
 			"skyline": {
 				"near": [
 					0.8,
-					2.5
+					2.0
 				],
 				"far": [
-					2.0,
-					12.0
+					1.5,
+					8.0
 				],
-				"density": 0.5
+				"density": 0.4
 			}
 		},
 		"flora": {
@@ -1020,14 +1031,14 @@
 			},
 			"skyline": {
 				"near": [
-					1.0,
-					3.0
+					0.8,
+					2.5
 				],
 				"far": [
-					2.0,
-					8.0
+					1.5,
+					6.0
 				],
-				"density": 0.5
+				"density": 0.4
 			}
 		},
 		"horizon": {
@@ -1136,14 +1147,14 @@
 			},
 			"skyline": {
 				"near": [
-					1.0,
-					3.0
+					0.8,
+					2.5
 				],
 				"far": [
-					2.0,
-					9.0
+					1.5,
+					6.0
 				],
-				"density": 0.45
+				"density": 0.38
 			}
 		},
 		"horizon": {
