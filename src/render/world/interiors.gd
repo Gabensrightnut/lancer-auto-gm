@@ -73,7 +73,21 @@ static func layout(kind: String, culture: String = "", seed_value: int = 0) -> D
 		_piece(out, str(c["kind"]), str(c["room"]), at, Vector3(0.7, 0.9 if c["kind"] != "safe" else 1.0, 0.6), _wall_yaw(room, at))
 		out["containers"].append({"id": str(c["id"]), "room": str(c["room"]), "kind": str(c["kind"]), "pos": _pos3(out, str(c["room"]), at),
 			"lock": int(c.get("lock", 1)), "contents": []})
+	_clear_doorways(out)
 	return out
+
+
+## Last pass: nothing stands in a doorway (chairs pulled out from tables and desks are placed
+## without a check of their own), and no NPC point is left there.
+static func _clear_doorways(out: Dictionary) -> void:
+	var near := func(pos: Array) -> bool:
+		for d: Dictionary in out["doors"]:
+			var dp: Array = d["pos"]
+			if absf(float(pos[1]) - float(dp[1])) < 0.1 and Vector2(float(pos[0]) - float(dp[0]), float(pos[2]) - float(dp[2])).length() < 0.95:
+				return true
+		return false
+	out["furniture"] = (out["furniture"] as Array).filter(func(f: Dictionary) -> bool: return not near.call(f["pos"]))
+	out["points"] = (out["points"] as Array).filter(func(p: Dictionary) -> bool: return not near.call(p["pos"]))
 
 
 ## Which way a door's wall runs: "x" if the doorway lies on a wall along x (z fixed).
@@ -315,6 +329,78 @@ static func _furnish(out: Dictionary, id: String, rng: RandomNumberGenerator) ->
 					_piece(out, "console", id, p, Vector3(1.2, 1.0, 0.5))
 					_point(out, "work", id, p + Vector2(0.0, 0.7), PI)
 				x += 3.0
+		"kitchen":
+			var stove := _free_spot(out, id, Vector2(0.5, 0.4), rng, true)
+			var sy := _wall_yaw(room, stove)
+			_piece(out, "stove", id, stove, Vector3(1.0, 0.9, 0.8), sy)
+			_point(out, "work", id, stove + Vector2(sin(sy), cos(sy)) * 0.7, sy + PI)
+			_table(out, id, _free_spot(out, id, Vector2(1.0, 1.0), rng, false))
+			for k in range(2):
+				_piece(out, "barrel", id, _free_spot(out, id, Vector2(0.4, 0.4), rng, true), Vector3(0.6, 0.9, 0.6))
+		"shop":
+			# A counter across the back with the keeper behind it, shelves along the walls.
+			var counter := Vector2(c.x, r.position.y + 1.2)
+			_piece(out, "counter", id, counter, Vector3(0.6, 1.0, minf(r.size.x - 4.0, 5.0)), 0.0)
+			_point(out, "work", id, counter - Vector2(0.0, 0.7), 0.0)
+			_point(out, "hide", id, counter - Vector2(1.2, 0.5), 0.0)
+			_point(out, "stand", id, counter + Vector2(0.0, 1.0), PI)
+			for k in range(5):
+				var p := _free_spot(out, id, Vector2(0.9, 0.25), rng, true)
+				_piece(out, "shelf_unit", id, p, Vector3(1.8, 2.0, 0.5), _wall_yaw(room, p))
+		"workshop":
+			# A mech gantry in the middle, workbenches and tool racks round the walls.
+			_piece(out, "gantry", id, Vector2(c.x + 2.0, c.y + 0.5), Vector3(5.0, 3.8, 4.0))
+			_point(out, "work", id, Vector2(c.x + 2.0, c.y + 3.0), PI)
+			for k in range(4):
+				var p := _free_spot(out, id, Vector2(1.0, 0.4), rng, true)
+				var kind := "workbench" if k % 2 == 0 else "tool_rack"
+				var py := _wall_yaw(room, p)
+				_piece(out, kind, id, p, Vector3(2.0, 0.9 if kind == "workbench" else 2.0, 0.8), py)
+				if kind == "workbench":
+					_point(out, "work", id, p + Vector2(sin(py), cos(py)) * 0.8, py + PI)
+			for k in range(3):
+				_piece(out, "crate", id, _free_spot(out, id, Vector2(0.4, 0.4), rng, true), Vector3(0.8, 0.8, 0.8), rng.randf() * TAU)
+			_point(out, "hide", id, Vector2(r.position.x + 1.0, r.end.y - 1.0), 0.0)
+		"printer":
+			# The fabricator bed for mech parts under its gantry, material hoppers either side.
+			_piece(out, "fabricator", id, Vector2(c.x, c.y - 0.5), Vector3(6.0, 4.5, 4.0))
+			for sx: float in [-1.0, 1.0]:
+				_piece(out, "hopper", id, Vector2(c.x + sx * 5.5, c.y), Vector3(1.4, 3.0, 1.4))
+			_point(out, "work", id, Vector2(c.x, c.y + 2.6), PI)
+			_point(out, "hide", id, Vector2(c.x + 5.5, c.y + 1.6), 0.0)
+		"living":
+			_piece(out, "hearth", id, Vector2(c.x, r.position.y + 0.4), Vector3(1.6, 1.4, 0.6))
+			_table(out, id, _free_spot(out, id, Vector2(1.0, 1.0), rng, false))
+			var shelf := _free_spot(out, id, Vector2(0.9, 0.25), rng, true)
+			_piece(out, "shelf_unit", id, shelf, Vector3(1.8, 2.0, 0.5), _wall_yaw(room, shelf))
+			var arm := _free_spot(out, id, Vector2(0.45, 0.45), rng, false)
+			_piece(out, "armchair", id, arm, Vector3(0.9, 1.0, 0.9), PI)
+			_point(out, "sit", id, arm, PI)
+		"chapel":
+			# Rows of pews facing the altar at the far end, candles beside it.
+			var z := r.position.y + 2.6
+			while z < r.end.y - 1.8:
+				for sx: float in [-1.0, 1.0]:
+					var p := Vector2(c.x + sx * (r.size.x * 0.25 + 0.2), z)
+					_piece(out, "pew", id, p, Vector3(r.size.x * 0.36, 0.9, 0.6), PI)
+					_point(out, "sit", id, p, PI)
+				z += 1.4
+			_piece(out, "altar", id, Vector2(c.x, r.position.y + 0.9), Vector3(2.2, 1.0, 0.9))
+			_point(out, "stand", id, Vector2(c.x, r.position.y + 1.8), 0.0)
+			for sx: float in [-1.0, 1.0]:
+				_piece(out, "candles", id, Vector2(c.x + sx * 1.8, r.position.y + 0.8), Vector3(0.4, 1.4, 0.4))
+			_point(out, "hide", id, Vector2(c.x + 1.6, r.position.y + 0.6), 0.0)
+		"clinic":
+			var x := r.position.x + 1.0
+			while x < r.end.x - 0.8:
+				var p := Vector2(x, r.position.y + 1.2)
+				if _clear(out, id, p, Vector2(0.5, 1.0)):
+					_piece(out, "med_bed", id, p, Vector3(0.95, 0.8, 2.0))
+					out["sleep"].append({"room": id, "pos": _pos3(out, id, p), "kind": "bed"})
+				x += 1.8
+			var cab := _free_spot(out, id, Vector2(0.4, 0.3), rng, true)
+			_piece(out, "cabinet", id, cab, Vector3(0.8, 1.8, 0.5), _wall_yaw(room, cab))
+			_point(out, "work", id, c + Vector2(0.0, 0.6), 0.0)
 		"stairs", "landing", "corridor":
 			pass
 
@@ -390,15 +476,15 @@ static func build(lay: Dictionary) -> Node3D:
 				holes.append(_stair_rect(s))
 		for piece: Rect2 in _subtract(rect, holes):
 			MeshKit.part(root, MeshKit.chamfer_box(Vector3(piece.size.x, 0.12, piece.size.y), 0.0), floor_m, Vector3(piece.get_center().x, y - 0.06, piece.get_center().y))
+		# Ceiling wherever no room stands on top (a loft covers only part of a workshop).
 		var top := y + fh - 0.06
-		var is_top := true
+		var above: Array[Rect2] = []
 		for other: Dictionary in rooms.values():
 			if int(other["floor"]) == int(r["floor"]) + 1:
 				var oc: Array = other["rect"]
-				if Rect2(float(oc[0]), float(oc[1]), float(oc[2]), float(oc[3])).intersects(rect.grow(-0.1)):
-					is_top = false
-		if is_top:
-			MeshKit.part(ceilings, MeshKit.chamfer_box(Vector3(rect.size.x, 0.12, rect.size.y), 0.0), wall_m, Vector3(rect.get_center().x, top, rect.get_center().y))
+				above.append(Rect2(float(oc[0]), float(oc[1]), float(oc[2]), float(oc[3])))
+		for piece: Rect2 in _subtract(rect, above):
+			MeshKit.part(ceilings, MeshKit.chamfer_box(Vector3(piece.size.x, 0.12, piece.size.y), 0.0), wall_m, Vector3(piece.get_center().x, top, piece.get_center().y))
 		# A light per room: lamps in towns, strip lights aboard ship.
 		var l := OmniLight3D.new()
 		l.light_color = look["light"]
@@ -642,6 +728,64 @@ static func _furniture(root: Node3D, f: Dictionary, look: Dictionary) -> void:
 			for k in range(3):
 				var p := MeshKit.part(node, MeshKit.cylinder(0.08, s.x, 10), steel, Vector3(0, 0.3 + k * 0.6, 0))
 				p.rotation_degrees.z = 90
+		"stove", "hearth":
+			MeshKit.part(node, MeshKit.chamfer_box(s, 0.03), dark if f["kind"] == "stove" else MeshKit.paint(Color(0.5, 0.48, 0.45), 0.0, 0.95, 0.0), Vector3(0, s.y * 0.5, 0))
+			MeshKit.part(node, MeshKit.chamfer_box(Vector3(s.x * 0.5, s.y * 0.35, 0.05), 0.0), glow.call(Color(1.0, 0.45, 0.15)), Vector3(0, s.y * 0.3, s.z * 0.5 + 0.01))
+			if f["kind"] == "stove":
+				MeshKit.part(node, MeshKit.cylinder(0.1, 2.4, 8), dark, Vector3(0, s.y + 1.2, -s.z * 0.25))
+		"shelf_unit", "tool_rack":
+			MeshKit.part(node, MeshKit.chamfer_box(Vector3(s.x, s.y, 0.04), 0.0), wood, Vector3(0, s.y * 0.5, -s.z * 0.45))
+			for k in range(4):
+				MeshKit.part(node, MeshKit.chamfer_box(Vector3(s.x, 0.04, s.z), 0.0), wood, Vector3(0, 0.3 + k * 0.5, 0))
+				for b in range(int(s.x / 0.3)):
+					var goods := Color(0.55, 0.45, 0.3).lerp(Color(0.3, 0.4, 0.5), fposmod(b * 0.37 + k * 0.21, 1.0))
+					MeshKit.part(node, MeshKit.chamfer_box(Vector3(0.22, 0.24, 0.3), 0.01), MeshKit.paint(goods, 0.3 if f["kind"] == "tool_rack" else 0.0, 0.7, 0.0), Vector3(-s.x * 0.5 + 0.18 + b * 0.3, 0.44 + k * 0.5, 0))
+		"workbench":
+			MeshKit.part(node, MeshKit.chamfer_box(Vector3(s.x, 0.08, s.z), 0.01), wood, Vector3(0, s.y, 0))
+			for k in range(4):
+				MeshKit.part(node, MeshKit.chamfer_box(Vector3(0.08, s.y, 0.08), 0.0), steel, Vector3((k % 2 - 0.5) * (s.x - 0.1), s.y * 0.5, (k / 2 - 0.5) * (s.z - 0.1)))
+			MeshKit.part(node, MeshKit.chamfer_box(Vector3(0.3, 0.2, 0.2), 0.02), steel, Vector3(s.x * 0.3, s.y + 0.14, 0))
+		"gantry", "fabricator":
+			var yel := MeshKit.paint(Color(0.85, 0.65, 0.12), 0.4, 0.5, 0.0)
+			for k in range(4):
+				MeshKit.part(node, MeshKit.chamfer_box(Vector3(0.25, s.y, 0.25), 0.02), yel, Vector3((k % 2 - 0.5) * s.x, s.y * 0.5, (k / 2 - 0.5) * s.z))
+			for sz: float in [-0.5, 0.5]:
+				MeshKit.part(node, MeshKit.chamfer_box(Vector3(s.x + 0.25, 0.3, 0.25), 0.02), yel, Vector3(0, s.y, sz * s.z))
+			if f["kind"] == "fabricator":
+				MeshKit.part(node, MeshKit.chamfer_box(Vector3(s.x * 0.8, 0.5, s.z * 0.8), 0.04), steel, Vector3(0, 0.25, 0))
+				MeshKit.part(node, MeshKit.chamfer_box(Vector3(s.x * 0.7, 0.03, s.z * 0.7), 0.0), glow.call(Color(1.0, 0.55, 0.2)), Vector3(0, 0.52, 0))
+				MeshKit.part(node, MeshKit.chamfer_box(Vector3(0.5, 0.6, 0.5), 0.04), steel, Vector3(0.6, s.y - 0.6, 0))
+			else:
+				MeshKit.part(node, MeshKit.chamfer_box(Vector3(0.6, 0.6, s.z), 0.04), steel, Vector3(0, s.y - 0.5, 0))
+		"hopper":
+			MeshKit.part(node, MeshKit.cylinder(s.x * 0.5, s.y * 0.6, 12, s.x * 0.2), steel, Vector3(0, s.y * 0.7, 0))
+			for k in range(3):
+				var a := k * TAU / 3.0
+				MeshKit.part(node, MeshKit.chamfer_box(Vector3(0.1, s.y * 0.45, 0.1), 0.0), steel, Vector3(cos(a) * s.x * 0.4, s.y * 0.22, sin(a) * s.x * 0.4))
+		"armchair":
+			MeshKit.part(node, MeshKit.chamfer_box(Vector3(s.x, 0.45, s.z), 0.08), cloth, Vector3(0, 0.22, 0))
+			MeshKit.part(node, MeshKit.chamfer_box(Vector3(s.x, 0.6, 0.2), 0.08), cloth, Vector3(0, 0.7, -s.z * 0.4))
+			for sx: float in [-1.0, 1.0]:
+				MeshKit.part(node, MeshKit.chamfer_box(Vector3(0.18, 0.3, s.z), 0.06), cloth, Vector3(sx * s.x * 0.42, 0.55, 0))
+		"pew":
+			MeshKit.part(node, MeshKit.chamfer_box(Vector3(s.x, 0.06, 0.45), 0.01), wood, Vector3(0, 0.45, 0))
+			MeshKit.part(node, MeshKit.chamfer_box(Vector3(s.x, 0.5, 0.06), 0.01), wood, Vector3(0, 0.75, -0.22))
+			for sx: float in [-0.5, 0.5]:
+				MeshKit.part(node, MeshKit.chamfer_box(Vector3(0.06, 0.9, 0.5), 0.01), wood, Vector3(sx * s.x, 0.45, 0))
+		"altar":
+			MeshKit.part(node, MeshKit.chamfer_box(s, 0.03), MeshKit.paint(Color(0.82, 0.8, 0.74), 0.0, 0.8, 0.0), Vector3(0, s.y * 0.5, 0))
+			MeshKit.part(node, MeshKit.chamfer_box(Vector3(s.x * 0.9, 0.02, s.z + 0.02), 0.0), cloth, Vector3(0, s.y + 0.01, 0))
+		"candles":
+			MeshKit.part(node, MeshKit.cylinder(0.04, s.y, 6), steel, Vector3(0, s.y * 0.5, 0))
+			for k in range(3):
+				MeshKit.part(node, MeshKit.cylinder(0.025, 0.2, 6), MeshKit.paint(Color(0.95, 0.92, 0.8), 0.0, 0.9, 0.0), Vector3((k - 1) * 0.1, s.y + 0.1, 0))
+				MeshKit.part(node, MeshKit.sphere(0.02, 6), glow.call(Color(1.0, 0.7, 0.3)), Vector3((k - 1) * 0.1, s.y + 0.23, 0))
+		"med_bed":
+			MeshKit.part(node, MeshKit.chamfer_box(Vector3(s.x, 0.12, s.z), 0.02), steel, Vector3(0, 0.62, 0))
+			MeshKit.part(node, MeshKit.chamfer_box(Vector3(s.x - 0.06, 0.1, s.z - 0.06), 0.03), MeshKit.paint(Color(0.9, 0.92, 0.92), 0.0, 0.9, 0.0), Vector3(0, 0.72, 0))
+			for k in range(4):
+				MeshKit.part(node, MeshKit.cylinder(0.025, 0.6, 6), steel, Vector3((k % 2 - 0.5) * (s.x - 0.1), 0.3, (k / 2 - 0.5) * (s.z - 0.1)))
+			MeshKit.part(node, MeshKit.cylinder(0.02, 1.8, 6), steel, Vector3(s.x * 0.5 + 0.1, 0.9, -s.z * 0.4))
 		"cryo_pod":
 			MeshKit.part(node, MeshKit.chamfer_box(Vector3(s.x, 0.5, s.z), 0.06), steel, Vector3(0, 0.25, 0))
 			MeshKit.part(node, SmoothKit.rounded_box(Vector3(s.x - 0.1, 0.55, s.z - 0.15), 0.2), MeshKit.paint(Color(0.16, 0.26, 0.32), 0.3, 0.04, 0.0, Color(0.1, 0.3, 0.4) * 0.6), Vector3(0, 0.72, 0))

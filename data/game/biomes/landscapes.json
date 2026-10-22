@@ -26,32 +26,10 @@
 		"flora": {
 			"grass": 18,
 			"grass_height": 1.0,
-			"grass_colors": [
-				"#4a7a22",
-				"#5c8c2a",
-				"#76913a",
-				"#3e6a1e",
-				"#8a9a45"
-			],
-			"flowers": [
-				"#f2d84a",
-				"#f0f0f5",
-				"#b07ad8",
-				"#e8664a"
-			],
-			"woods": [
-				"broadleaf",
-				"broadleaf",
-				"conifer",
-				"bush"
-			],
-			"leaf_colors": [
-				"#2f5418",
-				"#3d6620",
-				"#47702a",
-				"#2a4a1a",
-				"#5a7a2a"
-			],
+			"grass_colors": ["#4a7a22", "#5c8c2a", "#76913a", "#3e6a1e", "#8a9a45"],
+			"flowers": ["#f2d84a", "#f0f0f5", "#b07ad8", "#e8664a"],
+			"woods": ["broadleaf", "broadleaf", "conifer", "bush"],
+			"leaf_colors": ["#2f5418", "#3d6620", "#47702a", "#2a4a1a", "#5a7a2a"],
 			"bark": "#4a3828",
 			"stones": "#8a857c"
 		},
@@ -95,18 +73,8 @@
 			"contrast": 1.06,
 			"exposure": 1.0
 		},
-		"grid_color": [
-			0.95,
-			0.98,
-			0.9,
-			0.4
-		],
-		"grid_shade": [
-			0.05,
-			0.1,
-			0.0,
-			0.3
-		]
+		"grid_color": [0.95, 0.98, 0.9, 0.4],
+		"grid_shade": [0.05, 0.1, 0.0, 0.3]
 	},
 	"desert_mesas": {
 		"name": "desert mesas",
@@ -137,25 +105,10 @@
 		"flora": {
 			"grass": 3,
 			"grass_height": 0.8,
-			"grass_colors": [
-				"#8a8a4a",
-				"#9a8c50",
-				"#7a7a42"
-			],
-			"flowers": [
-				"#e86a4a",
-				"#f2c84a"
-			],
-			"woods": [
-				"cactus",
-				"shrub",
-				"shrub"
-			],
-			"leaf_colors": [
-				"#5a7a3a",
-				"#6a8040",
-				"#7a7a48"
-			],
+			"grass_colors": ["#8a8a4a", "#9a8c50", "#7a7a42"],
+			"flowers": ["#e86a4a", "#f2c84a"],
+			"woods": ["cactus", "shrub", "shrub"],
+			"leaf_colors": ["#5a7a3a", "#6a8040", "#7a7a48"],
 			"bark": "#5a4430",
 			"stones": "#b07a50"
 		},
@@ -197,18 +150,8 @@
 			"contrast": 1.08,
 			"exposure": 1.0
 		},
-		"grid_color": [
-			0.22,
-			0.08,
-			0.0,
-			0.62
-		],
-		"grid_shade": [
-			1.0,
-			0.95,
-			0.85,
-			0.3
-		]
+		"grid_color": [0.22, 0.08, 0.0, 0.62],
+		"grid_shade": [1.0, 0.95, 0.85, 0.3]
 	},
 	"tundra": {
 		"name": "frozen tundra",
@@ -239,22 +182,10 @@
 		"flora": {
 			"grass": 2,
 			"grass_height": 0.7,
-			"grass_colors": [
-				"#8a8a6a",
-				"#9a9478",
-				"#7a7a62"
-			],
+			"grass_colors": ["#8a8a6a", "#9a9478", "#7a7a62"],
 			"flowers": [],
-			"woods": [
-				"snow_conifer",
-				"snow_conifer",
-				"conifer"
-			],
-			"leaf_colors": [
-				"#24402e",
-				"#2a4834",
-				"#1e3828"
-			],
+			"woods": ["snow_conifer", "snow_conifer", "conifer"],
+			"leaf_colors": ["#24402e", "#2a4834", "#1e3828"],
 			"bark": "#3e3028",
 			"stones": "#6e7480"
 		},
@@ -297,18 +228,8 @@
 			"contrast": 1.05,
 			"exposure": 0.95
 		},
-		"grid_color": [
-			0.04,
-			0.12,
-			0.26,
-			0.62
-		],
-		"grid_shade": [
-			1.0,
-			1.0,
-			1.0,
-			0.3
-		]
+		"grid_color": [0.04, 0.12, 0.26, 0.62],
+		"grid_shade": [1.0, 1.0, 1.0, 0.3]
 	},
 	"volcanic": {
 		"name": "volcanic badlands",
@@ -341,20 +262,10 @@
 		"flora": {
 			"grass": 1,
 			"grass_height": 0.6,
-			"grass_colors": [
-				"#3a3a2a",
-				"#4a4232"
-			],
+			"grass_colors": ["#3a3a2a", "#4a4232"],
 			"flowers": [],
-			"woods": [
-				"dead_tree",
-				"dead_tree",
-				"shrub"
-			],
-			"leaf_colors": [
-				"#2a2a22",
-				"#3a3226"
-			],
+			"woods": ["dead_tree", "dead_tree", "shrub"],
+			"leaf_colors": ["#2a2a22", "#3a3226"],
 			"bark": "#1e1a18",
 			"stones": "#2e2a28"
 		},
@@ -434,27 +345,11 @@
 		"flora": {
 			"grass": 4,
 			"grass_height": 0.8,
-			"grass_colors": [
-				"#4a2a6a",
-				"#3a2a5a",
-				"#5a3a7a"
-			],
+			"grass_colors": ["#4a2a6a", "#3a2a5a", "#5a3a7a"],
 			"flowers": [],
-			"glow_plants": [
-				"#4df2e6",
-				"#d95af2",
-				"#80bfff"
-			],
-			"woods": [
-				"alien_tree",
-				"alien_tree",
-				"glow_fungus"
-			],
-			"leaf_colors": [
-				"#4df2e6",
-				"#d95af2",
-				"#80bfff"
-			],
+			"glow_plants": ["#4df2e6", "#d95af2", "#80bfff"],
+			"woods": ["alien_tree", "alien_tree", "glow_fungus"],
+			"leaf_colors": ["#4df2e6", "#d95af2", "#80bfff"],
 			"bark": "#2a1e30",
 			"stones": "#2a2830"
 		},
@@ -483,19 +378,11 @@
 			"stars": 1.0,
 			"nebula": 1.0,
 			"planet": 1.0,
-			"planet_dir": [
-				-0.55,
-				0.42,
-				-0.72
-			],
+			"planet_dir": [-0.55, 0.42, -0.72],
 			"planet_size": 0.32,
 			"planet_color": "#8c9ec7",
 			"moon_a": 1.0,
-			"moon_a_dir": [
-				0.6,
-				0.55,
-				-0.55
-			],
+			"moon_a_dir": [0.6, 0.55, -0.55],
 			"moon_a_size": 0.045
 		},
 		"light": {
@@ -547,19 +434,10 @@
 		"flora": {
 			"grass": 0,
 			"grass_height": 0.6,
-			"grass_colors": [
-				"#4a5a2a",
-				"#5a6430"
-			],
+			"grass_colors": ["#4a5a2a", "#5a6430"],
 			"flowers": [],
-			"woods": [
-				"broadleaf",
-				"bush"
-			],
-			"leaf_colors": [
-				"#3a5a22",
-				"#2e4a1c"
-			],
+			"woods": ["broadleaf", "bush"],
+			"leaf_colors": ["#3a5a22", "#2e4a1c"],
 			"bark": "#3a2e24",
 			"stones": "#6a6662"
 		},
@@ -630,22 +508,10 @@
 		},
 		"flora": {
 			"grass": 2,
-			"grass_colors": [
-				"#8a90b0",
-				"#a0a8c8"
-			],
-			"glow_plants": [
-				"#8ad8ff",
-				"#c8a0ff"
-			],
-			"woods": [
-				"glow_fungus",
-				"alien_tree"
-			],
-			"leaf_colors": [
-				"#8ad8ff",
-				"#c8a0ff"
-			],
+			"grass_colors": ["#8a90b0", "#a0a8c8"],
+			"glow_plants": ["#8ad8ff", "#c8a0ff"],
+			"woods": ["glow_fungus", "alien_tree"],
+			"leaf_colors": ["#8ad8ff", "#c8a0ff"],
 			"bark": "#3a3a50",
 			"stones": "#8a8ca0"
 		},
@@ -673,27 +539,15 @@
 			"stars": 0.3,
 			"nebula": 0.0,
 			"planet": 1.0,
-			"planet_dir": [
-				0.35,
-				0.3,
-				-0.88
-			],
+			"planet_dir": [0.35, 0.3, -0.88],
 			"planet_size": 0.45,
 			"planet_color": "#d8b088",
 			"planet_rings": 1.0,
 			"moon_a": 1.0,
-			"moon_a_dir": [
-				-0.6,
-				0.55,
-				-0.6
-			],
+			"moon_a_dir": [-0.6, 0.55, -0.6],
 			"moon_a_size": 0.06,
 			"moon_b": 1.0,
-			"moon_b_dir": [
-				-0.25,
-				0.7,
-				-0.65
-			],
+			"moon_b_dir": [-0.25, 0.7, -0.65],
 			"moon_b_size": 0.02
 		},
 		"light": {
@@ -714,18 +568,8 @@
 			"contrast": 1.05,
 			"exposure": 1.0
 		},
-		"grid_color": [
-			0.12,
-			0.08,
-			0.3,
-			0.6
-		],
-		"grid_shade": [
-			1.0,
-			1.0,
-			1.0,
-			0.3
-		]
+		"grid_color": [0.12, 0.08, 0.3, 0.6],
+		"grid_shade": [1.0, 1.0, 1.0, 0.3]
 	},
 	"toxic_marsh": {
 		"base": "alien_wilds",
@@ -754,25 +598,10 @@
 		},
 		"flora": {
 			"grass": 6,
-			"grass_colors": [
-				"#4a5a1e",
-				"#5a6a24",
-				"#3a4a18"
-			],
-			"glow_plants": [
-				"#c8ff40",
-				"#ff8a30",
-				"#60ffb0"
-			],
-			"woods": [
-				"alien_tree",
-				"glow_fungus",
-				"dead_tree"
-			],
-			"leaf_colors": [
-				"#c8ff40",
-				"#ff8a30"
-			],
+			"grass_colors": ["#4a5a1e", "#5a6a24", "#3a4a18"],
+			"glow_plants": ["#c8ff40", "#ff8a30", "#60ffb0"],
+			"woods": ["alien_tree", "glow_fungus", "dead_tree"],
+			"leaf_colors": ["#c8ff40", "#ff8a30"],
 			"bark": "#2a2418",
 			"stones": "#3a3a2a"
 		},
@@ -801,11 +630,7 @@
 			"stars": 0.0,
 			"nebula": 0.0,
 			"planet": 1.0,
-			"planet_dir": [
-				-0.7,
-				0.25,
-				-0.65
-			],
+			"planet_dir": [-0.7, 0.25, -0.65],
 			"planet_size": 0.55,
 			"planet_color": "#a89060",
 			"planet_rings": 0.0,
@@ -870,16 +695,10 @@
 		},
 		"flora": {
 			"grass": 0,
-			"grass_colors": [
-				"#3a3c40"
-			],
+			"grass_colors": ["#3a3c40"],
 			"flowers": [],
-			"woods": [
-				"bush"
-			],
-			"leaf_colors": [
-				"#3a6a2a"
-			],
+			"woods": ["bush"],
+			"leaf_colors": ["#3a6a2a"],
 			"bark": "#3a2e24",
 			"stones": "#5a5e64",
 			"rough": "rubble"
@@ -893,12 +712,7 @@
 			"haze_color": "#101828"
 		},
 		"particles": "motes",
-		"grid_color": [
-			0.75,
-			0.9,
-			1.0,
-			0.35
-		],
+		"grid_color": [0.75, 0.9, 1.0, 0.35],
 		"sky": {
 			"top": "#020308",
 			"horizon": "#0a1020",
@@ -911,20 +725,12 @@
 			"nebula": 0.5,
 			"nebula_color": "#203a70",
 			"planet": 1.0,
-			"planet_dir": [
-				0.5,
-				-0.08,
-				-0.86
-			],
+			"planet_dir": [0.5, -0.08, -0.86],
 			"planet_size": 0.9,
 			"planet_color": "#4a7ab0",
 			"planet_rings": 0.0,
 			"moon_a": 1.0,
-			"moon_a_dir": [
-				-0.6,
-				0.45,
-				-0.66
-			],
+			"moon_a_dir": [-0.6, 0.45, -0.66],
 			"moon_a_size": 0.03,
 			"moon_a_color": "#c8c0b0"
 		},
@@ -1004,16 +810,10 @@
 		},
 		"flora": {
 			"grass": 0,
-			"grass_colors": [
-				"#6a6864"
-			],
+			"grass_colors": ["#6a6864"],
 			"flowers": [],
-			"woods": [
-				"shrub"
-			],
-			"leaf_colors": [
-				"#5a5854"
-			],
+			"woods": ["shrub"],
+			"leaf_colors": ["#5a5854"],
 			"bark": "#3a3836",
 			"stones": "#7a7874",
 			"rough": "scree"
@@ -1026,23 +826,12 @@
 			"far_color": "#4a4a4c",
 			"far_height": 40.0,
 			"haze_color": "#3a3a40",
-			"haze_mountains": [
-				0.05,
-				0.2
-			],
-			"haze_foothills": [
-				0.02,
-				0.1
-			],
+			"haze_mountains": [0.05, 0.2],
+			"haze_foothills": [0.02, 0.1],
 			"landmarks": []
 		},
 		"particles": "lowg_dust",
-		"grid_color": [
-			0.95,
-			0.97,
-			1.0,
-			0.4
-		],
+		"grid_color": [0.95, 0.97, 1.0, 0.4],
 		"sky": {
 			"top": "#020308",
 			"horizon": "#0a1020",
@@ -1055,20 +844,12 @@
 			"nebula": 0.5,
 			"nebula_color": "#203a70",
 			"planet": 1.0,
-			"planet_dir": [
-				0.35,
-				0.28,
-				-0.89
-			],
+			"planet_dir": [0.35, 0.28, -0.89],
 			"planet_size": 0.5,
 			"planet_color": "#5a8ac0",
 			"planet_rings": 0.0,
 			"moon_a": 1.0,
-			"moon_a_dir": [
-				-0.6,
-				0.45,
-				-0.66
-			],
+			"moon_a_dir": [-0.6, 0.45, -0.66],
 			"moon_a_size": 0.03,
 			"moon_a_color": "#c8c0b0"
 		},
@@ -1112,11 +893,7 @@
 			"far_color": "#3a3430"
 		},
 		"sky": {
-			"planet_dir": [
-				-0.4,
-				0.2,
-				-0.9
-			],
+			"planet_dir": [-0.4, 0.2, -0.9],
 			"planet_size": 0.7,
 			"planet_color": "#c89a6a",
 			"planet_rings": 1.0,
@@ -1159,24 +936,10 @@
 		"flora": {
 			"grass": 6,
 			"grass_height": 1.0,
-			"grass_colors": [
-				"#6a8a3a",
-				"#7a9a40",
-				"#8a9a4a"
-			],
-			"flowers": [
-				"#f0d040"
-			],
-			"woods": [
-				"palm",
-				"palm",
-				"bush"
-			],
-			"leaf_colors": [
-				"#3a7a2a",
-				"#4a8a30",
-				"#2a6a24"
-			],
+			"grass_colors": ["#6a8a3a", "#7a9a40", "#8a9a4a"],
+			"flowers": ["#f0d040"],
+			"woods": ["palm", "palm", "bush"],
+			"leaf_colors": ["#3a7a2a", "#4a8a30", "#2a6a24"],
 			"bark": "#6a5038",
 			"stones": "#8a8478"
 		},
@@ -1187,10 +950,7 @@
 			"far": "islands",
 			"far_color": "#3a6a5a",
 			"far_height": 14.0,
-			"landmarks": [
-				"rig",
-				"rig"
-			],
+			"landmarks": ["rig", "rig"],
 			"haze_color": "#bcd8e8"
 		},
 		"particles": "spray",
@@ -1247,29 +1007,10 @@
 		"flora": {
 			"grass": 22,
 			"grass_height": 1.1,
-			"grass_colors": [
-				"#2e5a18",
-				"#3a6a20",
-				"#24481a",
-				"#4a7a24"
-			],
-			"flowers": [
-				"#e84a6a",
-				"#f0a030",
-				"#c84ad8"
-			],
-			"woods": [
-				"jungle_tree",
-				"jungle_tree",
-				"palm",
-				"bush"
-			],
-			"leaf_colors": [
-				"#1e4a14",
-				"#2a5a18",
-				"#244a1c",
-				"#346a20"
-			],
+			"grass_colors": ["#2e5a18", "#3a6a20", "#24481a", "#4a7a24"],
+			"flowers": ["#e84a6a", "#f0a030", "#c84ad8"],
+			"woods": ["jungle_tree", "jungle_tree", "palm", "bush"],
+			"leaf_colors": ["#1e4a14", "#2a5a18", "#244a1c", "#346a20"],
 			"bark": "#4a3a28",
 			"stones": "#5a6050"
 		},
@@ -1283,10 +1024,7 @@
 			"snowcaps": false,
 			"haze_color": "#a8c0a0"
 		},
-		"particles": [
-			"pollen",
-			"mist"
-		],
+		"particles": ["pollen", "mist"],
 		"sky": {
 			"top": "#4a7ab0",
 			"horizon": "#d8e4d0",
@@ -1348,10 +1086,7 @@
 			"far_height": 80.0,
 			"haze_color": "#5a2418"
 		},
-		"particles": [
-			"embers",
-			"ash"
-		],
+		"particles": ["embers", "ash"],
 		"sky": {
 			"top": "#1a0a0a",
 			"horizon": "#c8401a",
@@ -1418,27 +1153,11 @@
 		"flora": {
 			"grass": 10,
 			"grass_height": 1.2,
-			"grass_colors": [
-				"#4a4a20",
-				"#5a5a24",
-				"#3a4018"
-			],
+			"grass_colors": ["#4a4a20", "#5a5a24", "#3a4018"],
 			"flowers": [],
-			"glow_plants": [
-				"#c8ff40",
-				"#e0a030"
-			],
-			"woods": [
-				"dead_tree",
-				"dead_tree",
-				"jungle_tree",
-				"bush"
-			],
-			"leaf_colors": [
-				"#3a4a1e",
-				"#4a5024",
-				"#2e3a18"
-			],
+			"glow_plants": ["#c8ff40", "#e0a030"],
+			"woods": ["dead_tree", "dead_tree", "jungle_tree", "bush"],
+			"leaf_colors": ["#3a4a1e", "#4a5024", "#2e3a18"],
 			"bark": "#2a2418",
 			"stones": "#4a4a3a",
 			"rough": "stones"
@@ -1454,10 +1173,7 @@
 			"haze_color": "#6a7040",
 			"storm": false
 		},
-		"particles": [
-			"spores",
-			"mist"
-		],
+		"particles": ["spores", "mist"],
 		"sky": {
 			"top": "#3a4228",
 			"horizon": "#a0a060",
@@ -1529,5 +1245,91 @@
 			"fill_energy": 0.3,
 			"saturation": 0.9
 		}
+	},
+	"autumn_forest": {
+		"base": "grassy_hills",
+		"name": "autumn forest",
+		"ground": {
+			"top_a": "#7a6a3a",
+			"top_b": "#8a7440",
+			"top_dry": "#6a5a32",
+			"soil": "#5a4028",
+			"rough": "#6a5434"
+		},
+		"flora": {
+			"grass": 3,
+			"grass_colors": ["#8a7a40", "#9a8442", "#7a6a3a"],
+			"flowers": ["#c8a040"],
+			"woods": ["broadleaf", "broadleaf", "conifer"],
+			"leaf_colors": ["#c8641e", "#d88a28", "#a83a1a", "#e0b040", "#5a6a2a"],
+			"bark": "#3a2a1e"
+		},
+		"horizon": {
+			"forest": 0.9
+		},
+		"sky": {
+			"top": "#5a7aa8",
+			"horizon": "#f0d8b8",
+			"haze_color": "#f0b880",
+			"haze": 0.75,
+			"clouds": 0.5
+		},
+		"light": {
+			"sun_color": "#ffd8a8",
+			"sun_energy": 2.2,
+			"sun_pitch": -26.0,
+			"fog_color": "#d8c0a0",
+			"fog_density": 0.006,
+			"saturation": 1.1
+		},
+		"particles": "leaves"
+	},
+	"salt_flats": {
+		"base": "desert_mesas",
+		"name": "salt flats",
+		"ground": {
+			"style": "sand",
+			"top_a": "#cfcac0",
+			"top_b": "#dad5cb",
+			"top_dry": "#bdb6aa",
+			"soil": "#b8b0a2",
+			"rough": "#cfc8bc",
+			"rock_a": "#a89a8a",
+			"rock_b": "#6a5e54",
+			"wall": "#c8bcae",
+			"wetness": 0.15
+		},
+		"flora": {
+			"grass": 0,
+			"flowers": [],
+			"woods": ["shrub"],
+			"leaf_colors": ["#7a7a5a"],
+			"stones": "#b8aea0"
+		},
+		"horizon": {
+			"land": "flat",
+			"land_height": 1.0,
+			"far": "mountains",
+			"far_color": "#9aa0b0",
+			"far_height": 30.0
+		},
+		"sky": {
+			"top": "#3a70c0",
+			"horizon": "#f4f0ea",
+			"haze_color": "#fff4e4",
+			"haze": 0.9,
+			"clouds": 0.1
+		},
+		"light": {
+			"sun_color": "#fff6e8",
+			"sun_energy": 2.8,
+			"sun_pitch": -55.0,
+			"ambient": 0.5,
+			"fog_color": "#f0ece4",
+			"fog_density": 0.004,
+			"exposure": 0.78,
+			"contrast": 1.14
+		},
+		"grid_color": [0.05, 0.05, 0.09, 0.75]
 	}
 }

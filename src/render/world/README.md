@@ -323,9 +323,33 @@ spots, and stand/sit/work/hide points. `Interiors.build(layout)` builds it: wall
 with doorways and frames, floors with stair openings, a "Ceiling" node a camera can hide, one
 light per room, doors that `set_door()` swings or slides. Culture picks materials (planks,
 stone, plaster, neon-dark, white); ship kinds are metal with strip lights.
-Kinds now: `bar` (saloon: bar room, back room with the safe, stairs, upstairs corridor, three
+Story's own spot kinds and more: `office` (front office, back office with the safe, records),
+`inn` (common room, kitchen, five guest rooms upstairs), `market` (store floor with counter and
+shelves, storeroom), `warehouse`, `workshop` (mech gantry, benches, a loft up the stairs),
+`printer` (fabricator bed, hoppers, control room with the license vault), `house` (front room
+with a hearth, bedroom, pantry), `chapel` (pews, altar, vestry), `clinic` (waiting room, ward,
+surgery). Kinds also: `bar` (saloon: bar room, back room with the safe, stairs, upstairs corridor, three
 rooms and the owner's), `marshal` (front office, three barred cells, the marshal's office with
 a safe), `ship_deck` (bridge, captain's quarters, crew bunks, commons with stalls, engineering
 with the reactor and the NHP casing, cargo bay), `sleeper_vault` (rows of cryo pods, control
-gallery). Inn, office, warehouse, workshop, house, chapel and clinic are only data to add.
-Preview: `in-<kind>[~culture]@eye|top|up|<room id>`.
+gallery). Preview: `in-<kind>[~culture]@eye|top|up|<room id>`.
+
+## Exploring areas (mech scale, real time)
+
+`MissionGenerator.area(seed, {hub, region, landscape, culture, weather, size, shape})` makes the
+ground for a WorldSession / NetRoom area: the hub's town at mech scale in the middle (or the
+landscape's own settlement), countryside around it, roads along the middle row and column out
+to all four edges, and a level band `TerrainGen.AREA_EDGE` wide along every edge. Areas of one
+region (same `region`) look the same and meet on the same roads, so walking off one edge comes
+in on the next area's opposite edge. Fights start right there on the area's map. Returns {map,
+kit, region, name, center, entries {west, east, north, south}}. Preview: `area<seed>+town+<culture>`
+or `area<seed>+<landscape>[+<culture>]`.
+
+## Autumn forest and salt flats
+
+`autumn_forest` (base grassy_hills): rolling hills and denser woods in red, orange and gold,
+falling leaves (`particles: "leaves"`), soft gold light; medieval, East Asian, Old West or Union
+settlements. `salt_flats` (base desert_mesas; `TerrainGen._flats`): dead level white crust,
+cracked soft patches (difficult), low pressure ridges in straight runs (one level), rare rock
+islands, old mine spoil heaps; little cover, so the open ground is the danger. Old West, retro
+or industrial mining towns.
