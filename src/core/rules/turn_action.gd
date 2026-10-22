@@ -45,8 +45,11 @@ func validate(state: GameState, action: Dictionary) -> RuleResult:
 		var who := "Pilots on foot" if u.kind == Unit.KIND_PILOT else ("Mechs" if u.kind == Unit.KIND_MECH else "This unit")
 		return RuleResult.deny("%s can't take this action (%s)." % [who, type()], "actions.json")
 	var params: Dictionary = action.get("params", {})
-	if cost_for(params) != "move":
-		r = TurnRules.can_spend(u, cost_for(params), economy_name())
+	if params.has("free_via") and Effects.grant(u, String(params["free_via"]), type(), cost() == TurnRules.QUICK).is_empty():
+		return RuleResult.deny("That free action isn't available (used up, or doesn't cover %s)." % type(), Effects.REF)
+	var c := _cost(params)
+	if c != "move":
+		r = TurnRules.can_spend(u, c, economy_name())
 		if not r.ok:
 			return r
 	return check(state, u, params)
@@ -56,9 +59,17 @@ func resolve(state: GameState, action: Dictionary) -> Array[Dictionary]:
 	var u := state.unit(action["actor"])
 	var params: Dictionary = action.get("params", {})
 	var events := apply(state, u, params)
-	if cost_for(params) != "move":
-		TurnRules.spend(u, cost_for(params), economy_name())
+	if params.has("free_via"):
+		Effects.use_grant(u, Effects.grant(u, String(params["free_via"]), type(), cost() == TurnRules.QUICK))
+	var c := _cost(params)
+	if c != "move":
+		TurnRules.spend(u, c, economy_name())
 	return events
+
+
+## A free-action grant (params.free_via, e.g. the Everest's Initiative) makes it free.
+func _cost(params: Dictionary) -> String:
+	return TurnRules.FREE if params.has("free_via") else cost_for(params)
 
 
 static func cell_param(params: Dictionary, key: String) -> Variant:

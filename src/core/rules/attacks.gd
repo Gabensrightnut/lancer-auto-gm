@@ -74,7 +74,7 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 		return fail.call("Out of %s: %d spaces away, %s reaches %d." % ["Threat" if kind == KIND_MELEE and not out.has("thrown") else "Range", dist, w.get("name", "the weapon"), reach], "glossary: Range" if kind == KIND_RANGED else "glossary: Threat")
 	var ignores_los := Weapons.has_tag(w, "tg_arcing") or Weapons.has_tag(w, "tg_seeking")
 	# Area attacks take cover and line of sight from the area's origin (glossary: Blast, Burst).
-	var cover := Sight.cover(state, area_origin if area_origin != null else a_body, t_body)
+	var cover := Sight.cover(state, area_origin if area_origin != null else a_body, t_body, Effects.guardians(state, target))
 	out["los"] = cover["los"]
 	if not cover["los"] and not ignores_los:
 		return fail.call("No line of sight to the target.", Sight.REF_LOS)
@@ -110,6 +110,13 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 	if target.has_status("Braced"):
 		sources.append(_src("Target Braced", "difficulty", "actions: Brace"))
 		diff += 1
+	var roll_kinds := ["attack", "melee_attack" if kind == KIND_MELEE else "ranged_attack"]
+	for src: Dictionary in Effects.accuracy_sources(attacker, roll_kinds, "", opts.get("reaction", false)):
+		sources.append(src)
+		if src["kind"] == "accuracy":
+			acc += int(src["value"])
+		else:
+			diff += int(src["value"])
 	var ranged_like := kind == KIND_RANGED or out.has("thrown")
 	if kind == KIND_RANGED and attacker.has_status("Engaged"):
 		sources.append(_src("Engaged", "difficulty", "statuses: Engaged"))
@@ -117,6 +124,10 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 	if ranged_like and not Weapons.has_tag(w, "tg_seeking") and int(cover["difficulty"]) > 0:
 		sources.append(_src("Hard cover" if cover["cover"] == "hard" else "Soft cover", "difficulty", Sight.REF_COVER, cover["difficulty"]))
 		diff += int(cover["difficulty"])
+		var plus := Effects.value(target, "soft_cover_plus")
+		if cover["cover"] == "soft" and plus > 0:
+			sources.append(_src(String(Effects.of(target, "soft_cover_plus")[0].get("label", "Soft cover")), "difficulty", Effects.REF, plus))
+			diff += plus
 		out["cover"] = cover
 	elif ranged_like:
 		out["cover"] = cover
@@ -130,6 +141,9 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 	else:
 		out["bonus"] = attacker.grit
 		out["bonus_sources"] = [{"label": "Grit", "value": attacker.grit}]
+	for b: Dictionary in Effects.attack_bonus(attacker, roll_kinds):
+		(out["bonus_sources"] as Array).append(b)
+		out["bonus"] = int(out["bonus"]) + int(b["value"])
 	if area_origin != null:
 		out["kind"] = KIND_RANGED if not Weapons.is_melee(w) else KIND_MELEE
 	_defense(out, target, Weapons.has_tag(w, "tg_smart"))
@@ -140,7 +154,7 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 
 ## Can this weapon be fired at all right now (Jammed, destroyed, Loading, Limited)?
 static func weapon_ready(attacker: Unit, w: Dictionary, improvised: bool = false) -> RuleResult:
-	if attacker.has_status("Jammed") and not improvised:
+	if attacker.has_status("Jammed") and not improvised and not (Effects.has(attacker, "jammed_ranged") and not Weapons.is_melee(w)):
 		return RuleResult.deny("Jammed: you can only make Improvised Attacks, Grapple or Ram.", "statuses: Jammed")
 	var ws := Weapons.state_of(attacker, w)
 	if ws["destroyed"]:
@@ -179,6 +193,13 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		var coin := state.dice.die(2)
 		invisible_miss = coin == 1
 		events.append({"type": "invisible_roll", "attacker": attacker.id, "target": target.id, "roll": coin, "missed": invisible_miss, "rule_ref": "statuses: Invisible"})
+	attacker.turn["attacked"] = true
+	var thorns := Effects.value(target, "thorns")
+	if thorns > 0 and Sight.unit_distance(state, attacker, target) <= Effects.value(target, "thorns", "range"):
+		events.append({"type": "effect_triggered", "unit": target.id, "effect": Effects.of(target, "thorns")[0].get("label", ""), "target": attacker.id})
+		events.append_array(Combat.deal_damage(state, attacker, [{"type": "Kinetic", "amount": thorns}], {"ap": true, "source": target.id}))
+		if not Combat.is_present(attacker):
+			return events
 	var check := {}
 	var result := "miss"
 	if not invisible_miss:
@@ -202,7 +223,7 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		var dtype := String((w.get("damage", [{}]) as Array)[0].get("type", "Kinetic")) if not (w.get("damage", []) as Array).is_empty() else "Kinetic"
 		var parts := [{"type": dtype, "amount": Weapons.tag_value(w, "tg_reliable")}]
 		events.append({"type": "reliable_damage", "attacker": attacker.id, "target": target.id, "amount": Weapons.tag_value(w, "tg_reliable"), "rule_ref": "tags: Reliable"})
-		events.append_array(_apply(state, attacker, target, parts, Weapons.has_tag(w, "tg_ap")))
+		events.append_array(_apply(state, attacker, target, parts, Weapons.has_tag(w, "tg_ap"), opts.has("area_origin")))
 	if p["lock_on"]:
 		events.append_array(Combat.remove_status(target, "Lock On", "consumed by " + attacker.id))
 	if attacker.has_status("Hidden"):
@@ -254,17 +275,17 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 	if overkill_heat > 0 and not shared.get("overkill_paid", false):
 		shared["overkill_paid"] = true
 		events.append_array(Combat.apply_heat(state, attacker, overkill_heat, "Overkill"))
-	events.append_array(_apply(state, attacker, target, parts, Weapons.has_tag(w, "tg_ap")))
+	events.append_array(_apply(state, attacker, target, parts, Weapons.has_tag(w, "tg_ap"), opts.has("area_origin")))
 	var kb := Weapons.tag_value(w, "tg_knockback")
 	var want: Variant = opts.get("knockback", false)
 	if kb > 0 and not target.destroyed and want != null and (want is int or bool(want)):
 		var spaces: int = mini(kb, int(want)) if want is int else kb
-		events.append_array(knock_back(state, target, opts.get("knockback_from", attacker.cell), spaces))
+		events.append_array(knock_back(state, target, opts.get("knockback_from", attacker.cell), spaces, attacker))
 	return events
 
 
 ## Applies a hit's damage parts, letting the target Brace if its reaction policy says so.
-static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array, ap: bool) -> Array[Dictionary]:
+static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array, ap: bool, area: bool = false) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	var brace := false
 	if Reactions.can_react(target, "brace").ok and not parts.is_empty():
@@ -273,7 +294,8 @@ static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array,
 		brace = d.get("take", false)
 	if brace:
 		events.append_array(Reactions.brace(state, target, attacker.id))
-	events.append_array(Combat.deal_damage(state, target, parts, {"source": attacker.id, "ap": ap, "resist_all": brace}))
+	events.append_array(Combat.deal_damage(state, target, parts, {"source": attacker.id, "ap": ap, "resist_all": brace,
+		"area": area, "distance": Sight.unit_distance(state, attacker, target)}))
 	return events
 
 
@@ -357,7 +379,9 @@ static func roll_damage(state: GameState, expr: String, crit: bool, overkill: bo
 
 
 ## Knockback / pushes: involuntary straight-line movement (glossary: Involuntary Movement).
-static func knock_back(state: GameState, target: Unit, origin: Vector2i, spaces: int) -> Array[Dictionary]:
+static func knock_back(state: GameState, target: Unit, origin: Vector2i, spaces: int, by: Unit = null) -> Array[Dictionary]:
+	if by != null and by.size < target.size and Effects.has(target, "heavy_frame"):
+		return [{"type": "knockback_blocked", "unit": target.id, "reason": "Heavy Frame: smaller characters can't knock it back.", "rule_ref": Effects.REF}] as Array[Dictionary]
 	var path := Movement.push_path(state, target, origin, spaces)
 	if path.size() < 2:
 		return [{"type": "knockback_blocked", "unit": target.id, "rule_ref": "tags: Knockback"}] as Array[Dictionary]
@@ -396,6 +420,10 @@ static func tech_preview(state: GameState, attacker: Unit, target: Unit, opts: D
 	if target.has_status("Braced"):
 		sources.append(_src("Target Braced", "difficulty", "actions: Brace"))
 		out["difficulty"] = int(out["difficulty"]) + 1
+	for src: Dictionary in Effects.accuracy_sources(attacker, ["attack", "tech_attack"]):
+		sources.append(src)
+		var key := "accuracy" if src["kind"] == "accuracy" else "difficulty"
+		out[key] = int(out[key]) + int(src["value"])
 	out["sources"] = sources
 	out["ok"] = true
 	return out

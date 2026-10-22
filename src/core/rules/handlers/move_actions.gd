@@ -132,7 +132,7 @@ class Boost:
 			return r
 		if u.has_status("Slowed") or u.has_status("Prone"):
 			return RuleResult.deny("Slowed (Prone characters are Slowed too): your only movement is your standard move, so no Boost.", "statuses: Slowed, Prone")
-		if u.counters.has("grapple"):
+		if u.counters.has("grapple") and not Effects.has(u, "grapple_free"):
 			return RuleResult.deny("Grappling characters can't Boost.", "actions: Grapple")
 		return MoveActions._plan_result(MoveActions._plan(state, u, params, Movement.MODE_BOOST))
 

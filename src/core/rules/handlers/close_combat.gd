@@ -65,9 +65,12 @@ class Ram:
 		var t := state.unit(String(params["target"]))
 		var events := Attacks.attack(state, u, CloseCombat.body_attack(u, "Ram"), t, {"improvised": true})
 		if CloseCombat._hit(events) and Combat.is_present(t):
+			if Effects.has(t, "heavy_frame") and u.size < t.size:
+				events.append({"type": "no_effect", "target": t.id, "reason": "Heavy Frame: smaller characters can't knock it Prone or back.", "rule_ref": Effects.REF})
+				return events
 			events.append_array(Combat.add_status(state, t, "Prone", u.id))
 			if params.get("knockback", false):
-				events.append_array(Attacks.knock_back(state, t, u.cell, 1))
+				events.append_array(Attacks.knock_back(state, t, u.cell, 1, u))
 		return events
 
 

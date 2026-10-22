@@ -31,6 +31,8 @@ static func add_status(state: GameState, u: Unit, status: String, source: String
 	var events: Array[Dictionary] = []
 	if status == "Prone" and u.flying:
 		return events  # Flying characters have IMMUNITY to PRONE (glossary: Flight/Hover).
+	if Effects.immune_to_status(u, status):
+		return [{"type": "status_blocked", "unit": u.id, "status": status, "reason": "Immune.", "rule_ref": "glossary: Immunity"}] as Array[Dictionary]
 	var entry := {"source": source}
 	if next_turn_end_of != "":
 		entry["turn_of"] = next_turn_end_of
@@ -44,6 +46,10 @@ static func add_status(state: GameState, u: Unit, status: String, source: String
 	u.statuses[status] = entry
 	if not had:
 		events.append({"type": "status_added", "unit": u.id, "status": status, "source": source})
+	if status == "Immobilized" and Effects.has(state.unit(source), "immobilize_shreds"):
+		var shred := entry.duplicate()
+		u.statuses["Shredded"] = shred
+		events.append({"type": "status_added", "unit": u.id, "status": "Shredded", "source": source})
 	if u.flying and (status == "Immobilized" or status == "Stunned"):
 		events.append_array(begin_falling(u, "Flying characters begin falling if Immobilized or Stunned."))
 	return events
@@ -74,13 +80,20 @@ static func expire_statuses(state: GameState, ended: Unit) -> Array[Dictionary]:
 
 ## A mech skill check or save: d20 + skill vs `target`, with Impaired as +1 Difficulty.
 ## STUNNED mechs automatically fail HULL and AGILITY checks and saves (statuses: Stunned).
-static func skill_check(state: GameState, u: Unit, skill: String, label: String, target: int = CHECK_TARGET, accuracy: int = 0, difficulty: int = 0, sources: Array = []) -> Dictionary:
+static func skill_check(state: GameState, u: Unit, skill: String, label: String, target: int = CHECK_TARGET, accuracy: int = 0, difficulty: int = 0, sources: Array = [], is_save: bool = false) -> Dictionary:
 	var all_sources := sources.duplicate()
 	var diff := difficulty
+	var bonus_acc := 0
+	for src: Dictionary in Effects.accuracy_sources(u, ["save" if is_save else "check"], skill):
+		all_sources.append(src)
+		if src["kind"] == "accuracy":
+			bonus_acc += int(src["value"])
+		else:
+			diff += int(src["value"])
 	if u.has_status("Impaired"):
 		diff += 1
 		all_sources.append({"label": "Impaired", "kind": "difficulty", "type": "difficulty", "value": 1, "rule_ref": "statuses: Impaired"})
-	var acc := accuracy
+	var acc := accuracy + bonus_acc
 	if u.has_status("Bolstered"):
 		# +2 Accuracy on the next skill check or save (actions: Bolster), then it's used up.
 		acc += 2
@@ -115,8 +128,13 @@ static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dict
 		var amount: int = part.get("amount", 0)
 		if dtype == "Variable":
 			dtype = "Kinetic"  # PROVISIONAL: weapons with a chosen damage type default to Kinetic.
+		if Effects.immune_to_damage(target, dtype):
+			events.append({"type": "damage_dealt", "target": target.id, "source": source, "amount": 0, "damage_type": dtype,
+				"roll": amount, "immune": true, "hp": target.hp, "rule_ref": "glossary: Immunity"})
+			continue
+		var resist_here: bool = opts.get("resist_all", false) or Effects.resists(target, dtype, opts.get("area", false), int(opts.get("distance", -1)))
 		if dtype == "Heat":
-			events.append_array(apply_heat(state, target, amount, source, opts.get("resist_all", false)))
+			events.append_array(apply_heat(state, target, amount, source, resist_here))
 			continue
 		var rolled := amount
 		# 1) Increases: Exposed doubles kinetic, explosive and energy damage.
@@ -131,7 +149,7 @@ static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dict
 			amount -= armor_used
 		# 3) Resistance halves what's left. PROVISIONAL: rounds up.
 		var resisted := 0
-		if not shredded and amount > 0 and (opts.get("resist_all", false) or _resists(target, dtype)):
+		if not shredded and amount > 0 and (resist_here or _resists(target, dtype)):
 			resisted = amount / 2
 			amount -= resisted
 		var ev := {"type": "damage_dealt", "target": target.id, "source": source, "amount": amount,
@@ -175,12 +193,23 @@ static func lose_hp(state: GameState, u: Unit, amount: int, source: String) -> A
 	u.structure -= 1
 	u.hp = u.max_hp
 	events.append({"type": "structure_lost", "unit": u.id, "structure": u.structure, "rule_ref": "glossary: HP"})
+	events.append_array(_on_structure_or_stress(state, u, true))
 	if u.structure <= 0:
 		events.append_array(destroy(state, u, "Reached 0 Structure."))
 		return events
 	events.append_array(structure_check(state, u))
 	if not u.destroyed:
 		events.append_array(_flyer_save(state, u, "structure damage"))
+	return events
+
+
+## Trait hooks: Emergency Vent (clear heat on structure damage), Regeneration stops.
+static func _on_structure_or_stress(state: GameState, u: Unit, structure: bool) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if structure and Effects.has(u, "vent_on_structure"):
+		events.append_array(clear_heat(u, String(Effects.of(u, "vent_on_structure")[0].get("label", ""))))
+	if Effects.has(u, "regenerate"):
+		events.append_array(add_status(state, u, "Regeneration Suppressed", String(Effects.of(u, "regenerate")[0].get("label", "")), u.id))
 	return events
 
 
@@ -310,6 +339,7 @@ static func apply_heat(state: GameState, u: Unit, amount: int, source: String, r
 		u.heat = 0
 		u.stress -= 1
 		events.append({"type": "stress_lost", "unit": u.id, "stress": u.stress, "rule_ref": REF_HEAT})
+		events.append_array(_on_structure_or_stress(state, u, false))
 		events.append({"type": "heat_changed", "unit": u.id, "amount": 0, "total": 0, "source": "overheat"})
 		if u.stress <= 0:
 			events.append_array(destroy(state, u, "Reached 0 Stress: reactor meltdown."))
@@ -434,7 +464,7 @@ static func begin_falling(u: Unit, why: String) -> Array[Dictionary]:
 static func _flyer_save(state: GameState, u: Unit, what: String) -> Array[Dictionary]:
 	if not u.flying:
 		return [] as Array[Dictionary]
-	var check := skill_check(state, u, "agility", "Agility save after %s while flying" % what)
+	var check := skill_check(state, u, "agility", "Agility save after %s while flying" % what, CHECK_TARGET, 0, 0, [], true)
 	var events: Array[Dictionary] = [{"type": "skill_check", "unit": u.id, "check": check, "rule_ref": "glossary: Flight/Hover"}]
 	if not check["success"]:
 		events.append_array(begin_falling(u, "Failed the Agility save after %s." % what))

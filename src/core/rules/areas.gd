@@ -175,5 +175,6 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, params: Dict
 		opts["skip_spend"] = true
 		opts["shared_damage"] = shared
 		opts["knockback_from"] = Vector2i(origin[0], origin[1])
+		opts["area"] = true
 		events.append_array(Attacks.attack(state, attacker, w, target, opts))
 	return events

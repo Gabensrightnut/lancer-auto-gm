@@ -127,7 +127,7 @@ static func _stopper(state: GameState, u: Unit, body: Sight.Body, others: Array[
 	if u.turn.get("disengaged", false):
 		return null
 	for e in _engagers(state, u, body, others):
-		if not engaged_at_start.has(e) and e.size >= u.size:
+		if not engaged_at_start.has(e) and (e.size >= u.size or Effects.has(e, "maze")):
 			return e
 	return null
 

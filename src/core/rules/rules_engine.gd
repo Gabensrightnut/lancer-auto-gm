@@ -27,7 +27,7 @@ func _init() -> void:
 		TechActions.Bolster.new(), TechActions.FullTech.new(),
 		PilotActions.Eject.new(), PilotActions.Dismount.new(), PilotActions.Mount.new(),
 		PilotActions.Fight.new(), PilotActions.SelfDestruct.new(), PilotActions.Prepare.new(),
-		PilotActions.DropPrepared.new(),
+		PilotActions.DropPrepared.new(), SystemActions.CorePower.new(),
 	]:
 		register(h)
 

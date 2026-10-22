@@ -69,6 +69,7 @@ static func _start_round(state: GameState) -> Array[Dictionary]:
 	for u: Unit in state.units.values():
 		# "Each character only needs to make one such check per round" (glossary: Dangerous Terrain).
 		u.counters.erase("dangerous_checked")
+		u.counters.erase("round_grants_used")
 	return [{"type": "round_started", "round": state.round_number, "side": state.turn_side}] as Array[Dictionary]
 
 
@@ -100,6 +101,7 @@ static func begin_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 		u.counters.erase("prepared")
 		events.append({"type": "prepared_lost", "unit": u.id, "rule_ref": "actions: Prepare"})
 	events.append({"type": "turn_started", "unit": u.id, "round": state.round_number})
+	events.append_array(Effects.turn_started(state, u))
 	return events
 
 
@@ -107,6 +109,7 @@ static func begin_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 static func finish_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if not u.destroyed:
+		events.append_array(Effects.turn_ending(state, u))
 		events.append_array(Combat.end_of_turn_checks(state, u))
 	events.append_array(Combat.fall_all(state))
 	events.append_array(Combat.expire_statuses(state, u))

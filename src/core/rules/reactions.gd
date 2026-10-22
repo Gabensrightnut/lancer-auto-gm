@@ -61,7 +61,7 @@ static func can_react(u: Unit, reaction: String) -> RuleResult:
 		return RuleResult.deny("Jammed characters can't take reactions.", "statuses: Jammed")
 	if u.has_status("Braced"):
 		return RuleResult.deny("After Bracing you can't take reactions until the end of your next turn.", REF_BRACE)
-	if u.counters.has("grapple"):
+	if u.counters.has("grapple") and not Effects.has(u, "grapple_free"):
 		return RuleResult.deny("Grappling characters can't take reactions.", "actions: Grapple")
 	if u.counters.has("prepared"):
 		return RuleResult.deny("Holding a prepared action: no other reactions until it triggers.", "actions: Prepare")
@@ -126,7 +126,7 @@ static func overwatch(state: GameState, mover: Unit) -> Array[Dictionary]:
 			key = weapons[0]
 		_mark_used(h, "overwatch")
 		events.append({"type": "reaction", "unit": h.id, "reaction": "overwatch", "trigger": mover.id, "weapon": key, "rule_ref": REF_OVERWATCH})
-		events.append_array(Attacks.attack(state, h, Weapons.find(h, key), mover, {}))
+		events.append_array(Attacks.attack(state, h, Weapons.find(h, key), mover, {"reaction": true}))
 	return events
 
 
