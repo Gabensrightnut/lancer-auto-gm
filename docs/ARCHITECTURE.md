@@ -135,7 +135,7 @@ cover, line of sight, attack/area/tech previews with hit chance).
 | `recalled` | `unit` (owner), `object` (id) |
 | `mine_triggered` | `mine`, `unit` (who set it off), `text` |
 | `activated` | `unit`, `ability`, `name`, `source`, `activation`, `automated`, `detail` |
-| `manual_effect` | `unit`, `source`, `text`: not automated, the table applies it |
+| `manual_effect` | `unit`, `source`, `text`, `guidance` (plain words: resolve it at the table, the GM can adjust by hand): not automated |
 | `recharge_roll` | `unit`, `roll`, `ready` (sources ready again) |
 | `effect_ended` | `unit`, `effect` (a timed effect ran out) |
 | `revived` | `unit`, `by` |
@@ -150,6 +150,15 @@ cover, line of sight, attack/area/tech previews with hit chance).
 | New actions | `pull_stake` (full: an impaled character's Hull save), `shake_off` {`what`: chains/excommunicate} (full: a Systems save), `use_object` {`object`, `condition`, `weapon`} (an adjacent ally's Restock Drone) |
 | `ruling_needed` | `id`, `question`, `options` {id: text}, `rule_ref`, `trigger_action`: the engine is paused; the host answers `{"type": "set_ruling", "params": {"id", "choice"}}` |
 | `ruling_made` | `id`, `choice`, `text` |
+
+## What's automated (for the builder and action bar)
+
+`RulesQueries.automation_for_build(db, frame, loadout, pilot)` (builder) and
+`RulesQueries.automation(state, unit, db)` + `Automation.for_talents(db, talents)` (battle)
+list every trait, core system, system, weapon and talent rank with `status`
+(`automated` / `partial` / `manual`), `note` (what the table handles), `guidance` (plain words
+for the player) and `text` (the rule). `available_actions` entries carry `automation` and
+`table_note`. Notes for partly automated gear: `data/game/automation_notes.json`.
 
 ## Commands
 
