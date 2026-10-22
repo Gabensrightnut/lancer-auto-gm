@@ -54,6 +54,7 @@ var epilogue: EpilogueScreen
 var codex: CodexPanel
 var map: CampaignMap
 var gm_panel: GmPanel
+var market: MarketPanel
 
 
 func setup(e: StoryEngine, s: StoryState, c: Campaign, content: ContentDB, seat: String = "p1") -> void:
@@ -558,6 +559,12 @@ func _unhandled_input(ev: InputEvent) -> void:
 			KEY_M:
 				if not dialogue.visible and not map.visible:
 					open_map()
+			KEY_B:
+				if MarketPanel.available(campaign) and not dialogue.visible:
+					market.visible = not market.visible
+					if market.visible:
+						market.open()
+					hud.set_busy(market.visible)
 			KEY_G:
 				if gm_enabled():
 					gm_panel.visible = not gm_panel.visible
@@ -630,6 +637,13 @@ func _build_ui() -> void:
 	map.travelled.connect(_travelled)
 	map.closed.connect(func() -> void: hud.set_busy(false))
 	hud.map_requested.connect(open_map)
+	market = MarketPanel.new()
+	ui.add_child(market)
+	market.bind(engine, story, campaign, local_seat)
+	market.story_events.connect(func(evs: Array) -> void: _handle(evs))
+	hud.market_requested.connect(func() -> void:
+		market.open()
+		hud.set_busy(true))
 	gm_panel = GmPanel.new()
 	ui.add_child(gm_panel)
 	gm_panel.bind(engine, story, campaign)
@@ -703,6 +717,8 @@ func _handle(events: Array) -> void:
 				hud.toast(str(e["text"]), StoryStyle.BLUE)
 			"story_hint":
 				hud.toast(str(e["text"]), StoryStyle.GOLD)
+			"house_rule_changed", "paid", "earned", "salvage", "rations", "hungry", "mech_wrecked", "mech_reprinted", "wallet_started", "rations_started", "deal_off", "bought":
+				hud.toast(str(e["text"]), StoryStyle.GOLD if str(e["type"]) in ["house_rule_changed", "earned", "bought", "mech_reprinted"] else StoryStyle.TEXT)
 			"campaign_ended":
 				epilogue.show_ending(e["ending"])
 			"pilot_rested":
@@ -766,6 +782,14 @@ func screenshot_setup(args: Array) -> Array:
 		return ["codex"]
 	if args.has("map"):
 		return ["map"]
+	if args.has("house"):
+		StorySettings.persist = false
+		for id: String in ["hr_wallet", "hr_printers", "hr_paid_travel", "hr_fight_for_it", "hr_survival"]:
+			engine.submit(story, campaign, {"type": "house_rule", "seat": "gm", "params": {"id": id, "on": true}})
+		Economy.wallet(story)["manna"] = 40
+		story.flags[Economy.WRECKED] = [story.pilot_of_seat("p2")]
+		hud.refresh()
+		return ["house_hud", "house_market"]
 	if args.has("gm"):
 		campaign.options["human_gm"] = true
 		return ["gm_scene", "gm_played", "gm_jobs"]
@@ -811,6 +835,10 @@ func screenshot_stage(tag: String) -> void:
 			codex.open("engaged")
 		"map":
 			open_map()
+		"house_hud":
+			pass
+		"house_market":
+			market.open()
 		"gm_scene":
 			gm_panel.open()
 			gm_panel._scene_lines.text = "You're the lancers who blew the dam.

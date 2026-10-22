@@ -52,6 +52,9 @@ static func entries() -> Array:
 	var own: Variant = JSON.parse_string(FileAccess.get_file_as_string(OWN)) if FileAccess.file_exists(OWN) else null
 	for o: Dictionary in (own.get("entries", []) if own is Dictionary else []):
 		out.append(_e("game:" + str(o["title"]), "This game", str(o["title"]), str(o["text"]), "Game feature (not a book rule)"))
+	# House rules: the user's own ideas, off unless switched on.
+	for r: Dictionary in StoryHouseRules.definitions():
+		out.append(_e("house:" + str(r["id"]), "House rules", str(r["name"]), str(r["text"]), str(r.get("label", "Your idea, not a book rule"))))
 	_entries = out
 	return out
 
