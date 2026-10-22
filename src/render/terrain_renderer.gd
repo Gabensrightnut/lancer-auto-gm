@@ -231,7 +231,7 @@ func is_chasm(cell: Vector2i) -> bool:
 
 func is_woods(cell: Vector2i) -> bool:
 	var col := map.column(cell)
-	return col.has_tag(Sight.TAG_SOFT_COVER) and not col.has_tag("smoke")
+	return col.has_tag(Sight.TAG_SOFT_COVER) and not col.has_tag("smoke") and not col.has_tag("vehicle")
 
 
 ## Surface kind of a cell from its rules tags and look tags.

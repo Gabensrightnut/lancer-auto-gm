@@ -185,6 +185,7 @@ static func generate(rng: RandomNumberGenerator, w: int, h: int, shape: GridLayo
 	if area:
 		g._area_edges()
 	g._lane_tags()
+	g._parked_vehicles(landscape, culture)
 	g._materials(landscape, culture)
 	return g.map
 
@@ -1604,6 +1605,32 @@ func _clear_rock_near_built() -> void:
 				low = mini(low, map.ground_height(n))
 		col.ground = 0 if low == 99 else low
 		col.tags = PackedStringArray()
+
+
+## Parked vehicles along the curbs of streets two lanes or wider (outer lanes only, never at
+## crossings, crosswalks or on the highway): objects on the board, soft cover and breakable.
+## PROVISIONAL (docs/RULES_TODO.md "Parked vehicles"): the book gives objects Evasion 5 and
+## 10 HP per Size (Core p.68) but doesn't say whether something this much smaller than a mech
+## covers it; read as soft cover until the rules session confirms.
+func _parked_vehicles(landscape: String, culture: String) -> void:
+	if landscape in ["station", "starship", "boarding", "boarding_defend", "boarding_assault"]:
+		return
+	if culture in ["medieval"]:
+		return  # carts on cobbles stay scenery-sized; no motor traffic
+	var rate := 0.1 if landscape == "city" else 0.07
+	for cell in cells:
+		var col := map.column(cell)
+		if not col.has_tag("road") or col.gap_top > 0 or blocked.has(cell):
+			continue
+		if col.has_tag("crossing") or col.has_tag("crosswalk") or col.has_tag("highway") or col.has_tag("rail"):
+			continue
+		var outer := false
+		for t in col.tags:
+			if t.begins_with("lane"):
+				var p := t.trim_prefix("lane").split("_")
+				outer = int(p[1]) >= 2 and (int(p[0]) == 0 or int(p[0]) == int(p[1]) - 1)
+		if outer and rng.randf() < rate:
+			col.tags.append_array(["vehicle", Sight.TAG_SOFT_COVER, BattleMap.TAG_DESTRUCTIBLE])
 
 
 ## Towns that get a railway past them.

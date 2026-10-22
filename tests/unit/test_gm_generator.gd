@@ -313,13 +313,17 @@ func test_maps_are_built_on_purpose() -> void:
 	var city := TerrainGen.generate(rng2, 40, 40, GridLayout.Shape.SQUARE, {}, "city", "cyberpunk")
 	var lanes := 0
 	var crossings := 0
+	var vehicles := 0
 	for c in city.cells():
 		var col := city.column(c)
 		if col.has_tag("road") and col.gap_top == 0:
-			expect(not col.has_tag(BattleMap.TAG_DIFFICULT) and not col.has_tag(Sight.TAG_SOFT_COVER), "roads are open ground")
+			# The road itself is open ground; a parked vehicle on it is an object (soft cover).
+			expect(not col.has_tag(BattleMap.TAG_DIFFICULT) and (col.has_tag("vehicle") or not col.has_tag(Sight.TAG_SOFT_COVER)), "roads are open ground")
+			vehicles += 1 if col.has_tag("vehicle") else 0
 			lanes += 1 if not col.has_tag("crossing") else 0
 			crossings += 1 if col.has_tag("crossing") else 0
 	expect(lanes > 40 and crossings > 0 and crossings < lanes, "streets %d, crossings %d" % [lanes, crossings])
+	expect(vehicles > 3, "parked vehicles along the curbs: %d" % vehicles)
 
 
 func test_boarding_maps_dock_two_ships() -> void:
