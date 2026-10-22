@@ -56,7 +56,7 @@ keeps the choices. An AI GM answers with the suggested reading and logs it. Code
 | Prepare triggers | "When X, then Y" (p.72): X = a character moves adjacent / within a range, takes an action (optionally of listed types), or attacks (anyone, me, or an ally). PROVISIONAL: action triggers go off after that action resolves; reactions as triggers aren't offered | `pilot_actions.gd`, `reactions.gd` |
 | After-attack moves | Taken right away, on your own turn only; the Skirmisher talent's "before" option and its use after Overwatch aren't supported yet | `move_actions.gd`, `effects.gd` |
 | Multi-character grapples | Sizes add up on each side (p.69): not supported, only two-character grapples | `close_combat.gd` |
-| Mines | A mine goes off after the triggering move resolves (the mover isn't stopped); detecting and disarming mines (Systems checks) aren't automated yet | `abilities.gd` |
+| Mines | A mine goes off after the triggering move resolves (the mover isn't stopped); `detect_mines` (quick, Systems check: every hostile mine within Sensors is detected; PROVISIONAL: one check for all) and `disarm_mine` (quick, adjacent, Systems check; a failure sets it off) | `abilities.gd` |
 | Deployables as cover | Solid deployed objects (type Deployable/Object) are hard cover like terrain; drones and mines aren't | `sight.gd` |
 | Drones and engagement | Drones don't engage or get Engaged | `combat.gd`, `movement.gd` |
 | Manticore Unstable System | "At the end of its next turn" counted on the pilot's turns inside the wreck | `combat.gd`, `turn_rules.gd` |
