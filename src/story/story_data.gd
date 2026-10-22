@@ -65,6 +65,26 @@ static func lint() -> Array:
 			_effects(problems, "downtime %s/%s" % [aid, band], b.get("effects", []), reserves)
 			for o: Dictionary in b.get("options", []):
 				_effects(problems, "downtime %s/%s/%s" % [aid, band, o.get("id", "")], o.get("effects", []), reserves)
+	for bg: String in BackgroundStory.data().get("backgrounds", {}):
+		var entry: Dictionary = BackgroundStory.data()["backgrounds"][bg]
+		for o: Dictionary in entry.get("options", []):
+			var w := "background %s/%s" % [bg, o.get("id", "")]
+			_cond(problems, w, o.get("condition"))
+			_effects(problems, w, o.get("effects", []), reserves)
+			if o.has("check"):
+				_effects(problems, w, o["check"].get("success_effects", []), reserves)
+				_effects(problems, w, o["check"].get("fail_effects", []), reserves)
+			for r: Variant in o.get("roles", []):
+				if not NpcGen.roles().has(str(r)):
+					problems.append("%s: unknown role %s" % [w, r])
+		for tid: Variant in entry.get("personal", {}).get("templates", []):
+			if not MissionHooks.data().get("templates", {}).has(str(tid)):
+				problems.append("background %s: unknown hook %s" % [bg, tid])
+	for a: Dictionary in StoryArc.data().get("arcs", []):
+		for st: Dictionary in a.get("stages", []):
+			var h := str(st.get("hook", ""))
+			if not h in ["side_a", "side_b", "side_b_strike"] and not MissionHooks.data().get("templates", {}).has(h):
+				problems.append("arc %s: unknown hook %s" % [a["id"], h])
 	for role: String in NpcGen.roles():
 		var r: Dictionary = NpcGen.roles()[role]
 		if Dialogue.scene(str(r.get("scene", ""))).is_empty():

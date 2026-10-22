@@ -45,6 +45,8 @@ and follows the core book. Page numbers are the free core book ("Core p.N").
 | `portrait_spec.gd` | `PortraitSpec`: portrait builder data hooks (`portraits.json`): parts with options and color slots, palettes, randomize with locks, old-look upgrade, the expression set (10 ids, placeholder faces via `draw_as`) and automatic expressions (NPC standing/personality, pilot reply tags, check results). Pilots: `pilot["portrait"]`. |
 | `story_session.gd` / `story_client.gd` / `story_view.gd` | Multiplayer story. The host's `StorySession` runs every action as the sending seat (remote players can never act as the GM), broadcasts `StoryView` views (no NPC secrets, hidden twists or story dice) over the lobby channel (`attach_net_host`); a remote player's `StoryClient` is a drop-in `StoryEngine` for the UI that forwards actions and mirrors the view (`attach_net_client`). Downtime choices wait per pilot, so one player never blocks another; teamwork helpers opt in or out (`dialogue_help`). |
 | `ui/downtime_screen.gd` | Downtime as its own scene: the squad's cards with every narrated result (AI too), the action picker, back to the hub or on to the briefing. |
+| `squadmate.gd` | `Squadmate`: AI squadmates as characters. `suggest(pilot)` picks a persona from triggers and background; `role()` / `orders()` give the team role (frame mechtype, or the persona for the Everest) and AiDirector stance; a memory per pilot (wounds, wrecks, fallen friends, choices) shifts their likes and downtime picks, and drives `banter()` between missions (banter.json) and `barks_for(event)` in battle (barks.json, cosmetic, own RNG). |
+| `background_story.gd` | `BackgroundStory`: background-only dialogue options per NPC role and personal stakes on jobs (background_story.json). |
 | `story_data.gd` | `StoryData.lint()`: checks every scene, effect, condition, pool, trigger and reserve id (run by the tests). |
 | `ui/` | `DialogueView` (portrait cards, speech bubble, choices, votes, log), `Portrait` (drawn placeholder faces with expressions), `StoryCheckPopup` (instant roll, one big number, breakdown on hover), `DowntimePanel`, `LevelUpPanel`, `PilotGearPanel` (the quartermaster's racks). |
 
@@ -118,6 +120,7 @@ The walkable hub is in `src/explore/` (`HubScene`, `scenes/explore/hub.tscn`).
   3D town could use the same kit's props.
 - **Visuals**: draw the parts and 10 expressions in `portraits.json`; `Portrait.set_look()` already
   takes a v2 portrait and any expression id.
+- **Flow / battle screen**: `Squadmate.orders(story, campaign, db)` -> `AiDirector.set_orders(seat, ...)` when a mission starts; after each batch of events, `Squadmate.barks_for(story, campaign, event, unit->pilot, unit->seat)` gives speech-bubble lines for AI squadmates.
 - **Net**: route story actions (`StoryEngine.submit`) through the host like battle actions, send
   story events to clients, and relay hub walking positions to `HubScene.set_avatar_position()`.
 - **Menus / builder**: talent, license and core bonus picks waiting in

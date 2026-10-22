@@ -1,0 +1,345 @@
+{
+  "_note": "Our own writing. Squadmate banter between missions (src/story/squadmate.gd): one pool per persona and topic, picked by what the squadmate remembers (a friend lost > their mech wrecked > wounds > being the squad's best > the result > the situation at the hub > small talk). Placeholders: {callsign} the speaker, {other} another squadmate, {friend} the fallen, {last_place}, {hub}. 'reply_<persona>' = a squadmate answering.",
+  "personas": {
+    "steady": {
+      "lost_friend": [
+        "We do this right for {friend}. No mistakes.",
+        "{friend} would want us to keep the formation tight. So we do."
+      ],
+      "wrecked": [
+        "My mech went down at {last_place}. Printer's got it. I'm more worried about what I did wrong.",
+        "Lost the frame. Kept the lesson."
+      ],
+      "wounded": [
+        "Still sore from {last_place}. I'll manage.",
+        "Patched up. Ready when you are."
+      ],
+      "mvp": [
+        "Good shooting out there, {other}. Keep it up.",
+        "We worked well together. Let's not get cocky."
+      ],
+      "won": [
+        "Clean work. Let's keep it that way.",
+        "One job done. Rest, then the next."
+      ],
+      "lost": [
+        "We'll learn from it. We have to.",
+        "Bad day. Not the last one. Regroup."
+      ],
+      "arc": [
+        "Whatever's going on in {hub}, it isn't over.",
+        "Somebody here is pulling strings. I want to know who.",
+        "Keep your eyes open around {hub}. Not everyone smiling at us means it.",
+        "We pick a side here sooner or later. I'd rather choose than be chosen."
+      ],
+      "idle": [
+        "Check your kit before the next drop.",
+        "Quiet days are for maintenance.",
+        "Get some sleep, {other}. You look like you need it.",
+        "Who's on watch tonight? I'll take second.",
+        "Hydrate. Seriously."
+      ]
+    },
+    "bold": {
+      "lost_friend": [
+        "They took {friend}. Next time, I'm going in first.",
+        "For {friend}. I'm not holding back anymore."
+      ],
+      "wrecked": [
+        "They scrapped my mech at {last_place}! Print me a meaner one.",
+        "Got knocked down. I'm getting back up louder."
+      ],
+      "wounded": [
+        "Hurts. Means I'm alive. Let's go again.",
+        "A few bruises. Nothing that stops me."
+      ],
+      "mvp": [
+        "Did you see that? Did everyone see that?",
+        "Put me up front every time."
+      ],
+      "won": [
+        "That's how it's done!",
+        "Who's buying? We won!"
+      ],
+      "lost": [
+        "We'll hit them twice as hard next time.",
+        "I hate losing. I'm not doing it again."
+      ],
+      "arc": [
+        "Let's stop circling and go straight at whoever's behind this.",
+        "{hub} wants a fight. We'll give it one.",
+        "Whoever's pulling the strings in {hub}, I want five minutes with them.",
+        "Every job here makes the next one bigger. Good."
+      ],
+      "idle": [
+        "Too quiet. I'm going to go break something on the range.",
+        "Somebody spar with me. {other}?",
+        "I'm going to win the next sparring round. Bet on it.",
+        "I could go another mission right now."
+      ]
+    },
+    "kind": {
+      "lost_friend": [
+        "I keep thinking about {friend}. Let's look after each other.",
+        "We should do something for {friend}'s people. A message, anything."
+      ],
+      "wrecked": [
+        "Losing the mech's nothing. Everyone walked away, that's what matters.",
+        "I'm glad it was just the frame."
+      ],
+      "wounded": [
+        "Let me look at that, {other}. Sit down.",
+        "I'm fine, really. Check on the others first."
+      ],
+      "mvp": [
+        "You were amazing out there, {other}.",
+        "Proud of this squad today."
+      ],
+      "won": [
+        "People here will sleep better tonight.",
+        "We did good. Let's remember that."
+      ],
+      "lost": [
+        "It's not on you. It's on all of us. We'll fix it together.",
+        "Let's check on the locals. They'll have it worse than us."
+      ],
+      "arc": [
+        "The people in {hub} are caught in the middle. We have to think of them.",
+        "Whatever we choose next, someone here gets hurt by it.",
+        "Did you see the kids by the well? This is about them, in the end.",
+        "I talked to a few people in {hub}. They're scared, {other}."
+      ],
+      "idle": [
+        "Anyone want tea? I made too much.",
+        "Have you called home lately, {other}?",
+        "I saved you some of the good rations, {other}.",
+        "Get some rest. We all need it."
+      ]
+    },
+    "mercenary": {
+      "lost_friend": [
+        "{friend} died for this contract. It had better have been worth it.",
+        "We should have asked for more. For {friend}'s sake."
+      ],
+      "wrecked": [
+        "Printer bill's the company's problem, not mine.",
+        "They wrecked my rig. I want hazard pay."
+      ],
+      "wounded": [
+        "Wounds heal. Debts don't. Who owes us for this one?",
+        "Remind me to charge extra for getting shot."
+      ],
+      "mvp": [
+        "Good work, {other}. Make sure the client saw it.",
+        "That's the kind of result that gets better jobs."
+      ],
+      "won": [
+        "Job done. Now let's see what it's worth.",
+        "Every win's a bargaining chip."
+      ],
+      "lost": [
+        "Losses cost. Next client pays upfront.",
+        "Our name took a hit. We fix that fast."
+      ],
+      "arc": [
+        "Both sides in {hub} want us. That makes us valuable.",
+        "There's money in this mess, if we're smart.",
+        "Keep a list of who owes us in {hub}. It's getting long.",
+        "Smart money says this ends badly for someone. Let's not be someone."
+      ],
+      "idle": [
+        "Read the job board yet? Some of these pay in favors worth having.",
+        "Never work for free, {other}.",
+        "Our rates are going up after this one.",
+        "I'm keeping track of every favor. Every one."
+      ]
+    },
+    "curious": {
+      "lost_friend": [
+        "I keep going over what happened to {friend}. There was something we missed.",
+        "I want to understand why. For {friend}."
+      ],
+      "wrecked": [
+        "I learned more from how my mech failed than from a dozen drills.",
+        "Did you see how the hit cascaded through the frame? Fascinating. Terrible, but fascinating."
+      ],
+      "wounded": [
+        "Interesting how adrenaline masks pain. Less interesting now.",
+        "I'll be fine. I want to look at the enemy's targeting logs."
+      ],
+      "mvp": [
+        "{other}, how did you call that shot? Walk me through it.",
+        "We should write that maneuver down."
+      ],
+      "won": [
+        "We won, but I still don't know who was really behind it.",
+        "What did we actually find out there?"
+      ],
+      "lost": [
+        "Let's figure out exactly where it went wrong.",
+        "I have theories. Lots of them."
+      ],
+      "arc": [
+        "Something about {hub} doesn't add up. I'm going to keep digging.",
+        "Every job here leads to another question.",
+        "I made a chart of who's talking to whom in {hub}. It's a mess. A fascinating mess.",
+        "There's a pattern in the jobs we keep getting. I just can't see it yet."
+      ],
+      "idle": [
+        "Found something odd in the old records here.",
+        "{other}, have you ever wondered how the blink gates actually work?",
+        "Did anyone else notice the printer hums in a minor key?",
+        "I'm reading up on the local history. It's wild."
+      ]
+    },
+    "sly": {
+      "lost_friend": [
+        "Someone sold us out. {friend} paid for it. I'll find out who.",
+        "I'll remember the faces at {last_place}. Every one."
+      ],
+      "wrecked": [
+        "Losing the frame was a small price. Nobody saw what we were really after.",
+        "Let them think they hurt us."
+      ],
+      "wounded": [
+        "A scratch. Useful, even. People underestimate the wounded.",
+        "Don't tell anyone how bad it is."
+      ],
+      "mvp": [
+        "Nice work, {other}. Quietly nice.",
+        "Let's keep how good we are to ourselves."
+      ],
+      "won": [
+        "Now everyone in {hub} owes us a little.",
+        "Wins buy friends. Friends buy information."
+      ],
+      "lost": [
+        "Losing in public can be useful, if you plan the next move.",
+        "They'll get careless now. Good."
+      ],
+      "arc": [
+        "Everyone in {hub} is lying about something.",
+        "I've got a feeling about who's really paying for this.",
+        "Someone in {hub} is playing both sides. I'd like to know who first.",
+        "I've started keeping notes on who lies to us. Short list, growing fast."
+      ],
+      "idle": [
+        "I heard something at the bar you'll want to hear.",
+        "{other}, never say anything important near the windows.",
+        "Smile at the quartermaster. Trust me.",
+        "Don't leave your terminal unlocked, {other}."
+      ]
+    },
+    "grim": {
+      "lost_friend": [
+        "{friend}. Another name.",
+        "We bury {friend} and we keep going. That's the job."
+      ],
+      "wrecked": [
+        "Mechs break. Pilots break. Print it and move on.",
+        "It could have been worse."
+      ],
+      "wounded": [
+        "Still standing.",
+        "I've had worse. I'll have worse again."
+      ],
+      "mvp": [
+        "Good shot, {other}. Do it again.",
+        "Fine work. Don't celebrate yet."
+      ],
+      "won": [
+        "We lived. Today, that's enough.",
+        "Don't get used to it."
+      ],
+      "lost": [
+        "It happens. Learn, or die next time.",
+        "We'll pay for this one later."
+      ],
+      "arc": [
+        "This is going to get worse before it gets better.",
+        "{hub} is a fuse. Somebody's lighting it.",
+        "I've seen towns like {hub} before. They don't end well.",
+        "Keep your gear packed. We may leave in a hurry."
+      ],
+      "idle": [
+        "Sleep while you can.",
+        "Clean your weapons, {other}. Then do it again.",
+        "Write your letters. Just in case.",
+        "Quiet. Enjoy it."
+      ]
+    },
+    "joker": {
+      "lost_friend": [
+        "Still saving {friend} a seat at the bar. Old habits.",
+        "Not funny. None of it. For {friend}, let's win the next one."
+      ],
+      "wrecked": [
+        "Good news: the printer makes a new one. Bad news: it's still an Everest.",
+        "My mech's in more pieces than my love life."
+      ],
+      "wounded": [
+        "It's a flesh wound. Mostly flesh. Some wound.",
+        "I'm taking up a new hobby: not getting shot."
+      ],
+      "mvp": [
+        "Did someone order a hero? No? Too bad, {other} delivered one.",
+        "{other}, sign my helmet."
+      ],
+      "won": [
+        "Nailed it. Mostly. Some of it nailed us.",
+        "Drinks! Somebody else is paying."
+      ],
+      "lost": [
+        "Well, that could have gone better. Or worse! Probably better.",
+        "Tactical retreat. Very tactical. Extremely retreat."
+      ],
+      "arc": [
+        "Everyone in {hub} wants something. I just want breakfast.",
+        "This town has more plot twists than a holo-drama.",
+        "If {hub} were a holo-drama, I'd have changed the channel by now.",
+        "Plot twist: the real enemy was the paperwork all along."
+      ],
+      "idle": [
+        "I bet {other} I could moonwalk an Everest. I'm going to lose that bet.",
+        "Who wants to hear a joke about blink gates? You'll get it instantly. Probably.",
+        "New rule: whoever gets shot first buys drinks.",
+        "I named my mech. It doesn't like the name."
+      ]
+    }
+  },
+  "replies": {
+    "reply_steady": [
+      "Agreed.",
+      "Copy that.",
+      "We'll be ready."
+    ],
+    "reply_bold": [
+      "Ha! Count me in.",
+      "Now you're talking."
+    ],
+    "reply_kind": [
+      "We've got each other.",
+      "Take care of yourself too."
+    ],
+    "reply_mercenary": [
+      "As long as it pays.",
+      "Noted. Billed accordingly."
+    ],
+    "reply_curious": [
+      "Hm. I'll think about that.",
+      "Interesting point."
+    ],
+    "reply_sly": [
+      "We'll see.",
+      "Of course. Of course."
+    ],
+    "reply_grim": [
+      "Hm.",
+      "If you say so."
+    ],
+    "reply_joker": [
+      "Is that a promise or a threat?",
+      "I'll put it on my list. My list is long."
+    ]
+  }
+}

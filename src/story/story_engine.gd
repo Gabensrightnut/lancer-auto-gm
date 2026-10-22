@@ -35,6 +35,12 @@ func submit(story: StoryState, campaign: Campaign, action: Dictionary) -> Dictio
 		return {"ok": false, "reason": why["reason"], "rule_ref": why.get("rule_ref", ""), "events": []}
 	var events := _resolve(story, campaign, action)
 	events.append_array(_run_ai(story, campaign))
+	Squadmate.observe(story, campaign, events)
+	# AI squadmates talk it over after the debrief, and a little when downtime starts.
+	if events.any(func(x: Dictionary) -> bool: return str(x.get("type", "")) == "debrief"):
+		events.append_array(Squadmate.banter(story, campaign, 2))
+	elif events.any(func(x: Dictionary) -> bool: return str(x.get("type", "")) == "downtime_started"):
+		events.append_array(Squadmate.banter(story, campaign, 1))
 	events.append_array(Tutorial.observe_story(story, campaign, events))
 	for e: Dictionary in events:
 		if str(e.get("type", "")) == "combat_requested" and story.phase != "mission":
@@ -197,7 +203,11 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 	var me := story.pilot_of_seat(seat)
 	match str(action["type"]):
 		"set_seat":
-			story.seats[str(p.get("seat", seat))] = {"pilot": str(p["pilot"]), "ai": bool(p.get("ai", false)), "persona": str(p.get("persona", "steady"))}
+			# An AI squadmate without a chosen persona gets the one their triggers and background suggest.
+			var persona := str(p.get("persona", ""))
+			if persona == "":
+				persona = Squadmate.suggest(campaign.pilots[str(p["pilot"])])
+			story.seats[str(p.get("seat", seat))] = {"pilot": str(p["pilot"]), "ai": bool(p.get("ai", false)), "persona": persona}
 			return [{"type": "seat_set", "seat": p.get("seat", seat), "pilot": p["pilot"], "ai": bool(p.get("ai", false))}]
 		"enter_hub":
 			var events: Array = []
@@ -536,8 +546,11 @@ func _ai_downtime(story: StoryState, campaign: Campaign) -> Array:
 		while int(story.downtime.get("actions_left", {}).get(pid, 0)) > 0 and guard < 4:
 			guard += 1
 			var done := false
-			for aid: Variant in persona.get("downtime", ["dt_get_focused"]):
-				var params := _ai_params(story, campaign, pid, str(aid))
+			for want: Variant in Squadmate.downtime_prefs(story, pid, persona):
+				var aid := str(want).split(":")[0]
+				var params := _ai_params(story, campaign, pid, aid)
+				if ":" in str(want):
+					params["subject"] = str(want).split(":")[1]
 				if Downtime.refusal(story, campaign, pid, str(aid), params).is_empty():
 					events.append({"type": "ai_chose", "seat": s, "action": aid, "why": "%s spends downtime on %s." % [campaign.pilots[pid].get("callsign", ""), Downtime.book(str(aid)).get("name", aid)]})
 					events.append_array(Downtime.perform(story, campaign, pid, str(aid), params))

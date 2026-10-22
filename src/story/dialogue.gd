@@ -9,6 +9,7 @@ extends RefCounted
 ##          "choices": [choice]}
 ##   choice: {"id", "text", "condition", "tags": ["diplomatic"], "trigger": "sk_charm" (badge + unlock),
 ##            "effects", "next", "end", "pinned": true (always offered), "priority": n,
+##            "once": true (gone for the rest of this conversation once picked),
 ##            "check": {"skills", "tags", "against_tags", "difficult", "risky", "heroic", "goal",
 ##                      "teamwork", "challenge", "consequence", "success", "fail",
 ##                      "success_effects", "fail_effects"}}
@@ -112,7 +113,8 @@ static func _enter(story: StoryState, campaign: Campaign, node_id: String) -> Ar
 		var npc: Dictionary = story.npcs.get(str(ctx.get("npc", "")), {})
 		story.dialogue["expression"] = str(node.get("expression", PortraitSpec.npc_expression(story, npc) if speaker == "npc" else "neutral"))
 		story.dialogue["votes"] = {}
-		story.dialogue["choices"] = _build_choices(story, campaign, node.get("choices", []), ctx)
+		var raw: Array = (node.get("choices", []) as Array) + BackgroundStory.options_for(story, campaign, ctx, node_id)
+		story.dialogue["choices"] = _build_choices(story, campaign, raw, ctx)
 		if text != "":
 			(story.dialogue["log"] as Array).append({"speaker": speaker, "name": speaker_name(story, campaign, speaker), "text": text})
 			events.append({"type": "dialogue_line", "speaker": speaker, "name": speaker_name(story, campaign, speaker),
@@ -136,11 +138,15 @@ static func _build_choices(story: StoryState, campaign: Campaign, raw: Array, ct
 			continue
 		if c.has("trigger") and not StoryConditions.check({"trigger": c["trigger"]}, story, campaign, ctx):
 			continue
+		if bool(c.get("once", false)) and (story.dialogue.get("asked", []) as Array).has(str(c.get("id", ""))):
+			continue
 		var cc := {"id": str(c.get("id", "c%d" % i)), "order": i, "tags": c.get("tags", []), "pinned": bool(c.get("pinned", false)),
 			"priority": int(c.get("priority", 2 if c.has("trigger") else 1))}
 		cc["text"] = StoryText.line(c.get("text", "..."), story, campaign, ctx)
 		if c.has("trigger"):
 			cc["badge"] = NarrativeCheck.trigger_name(str(c["trigger"]))
+		elif c.has("badge"):
+			cc["badge"] = str(c["badge"])
 		if c.has("check"):
 			var chk: Dictionary = c["check"]
 			var level := NarrativeCheck.level_of(chk)
@@ -176,17 +182,21 @@ static func resolve_choice(story: StoryState, campaign: Campaign, choice_id: Str
 	var node := current_node(story)
 	var ctx: Dictionary = story.dialogue["ctx"]
 	var c: Dictionary = {}
-	for raw: Dictionary in node.get("choices", []):
+	for raw: Dictionary in (node.get("choices", []) as Array) + BackgroundStory.options_for(story, campaign, ctx, str(story.dialogue.get("node", ""))):
 		if str(raw.get("id", "")) == choice_id:
 			c = raw
 	var shown: Dictionary = {}
 	for o: Dictionary in offered(story):
 		if o["id"] == choice_id:
 			shown = o
-	var events: Array = [{"type": "dialogue_choice", "choice": choice_id, "text": shown.get("text", ""), "by": chooser_seat,
+	var by := chooser_seat if chooser_seat != "vote" else story.seat_of(str(story.dialogue.get("ctx", {}).get("speaker", "")))
+	var events: Array = [{"type": "dialogue_choice", "choice": choice_id, "text": shown.get("text", ""), "by": by, "tags": shown.get("tags", []),
 		"votes": story.dialogue.get("votes", {}).duplicate()}]
 	(story.dialogue["log"] as Array).append({"speaker": "pilot", "name": speaker_name(story, campaign, "pilot"), "text": shown.get("text", "")})
 	story.dialogue["pilot_expression"] = PortraitSpec.pilot_expression(shown.get("tags", []))
+	if not story.dialogue.has("asked"):
+		story.dialogue["asked"] = []
+	(story.dialogue["asked"] as Array).append(choice_id)
 	events.append_array(StoryEffects.apply_all(c.get("effects", []), story, campaign, ctx))
 	if not is_open(story):
 		return events
@@ -323,8 +333,8 @@ static func vote_result(story: StoryState, campaign: Campaign) -> String:
 static func ai_pick(story: StoryState, campaign: Campaign, seat: String) -> Dictionary:
 	var persona_id := str(story.seats.get(seat, {}).get("persona", "steady"))
 	var persona: Dictionary = personas().get(persona_id, personas().get("steady", {}))
-	var likes: Dictionary = persona.get("likes", {})
 	var pilot: Dictionary = campaign.pilots.get(story.pilot_of_seat(seat), {})
+	var likes: Dictionary = Squadmate.likes(story, str(pilot.get("id", "")), persona)
 	var best_id := ""
 	var best_score := -INF
 	var best_tag := ""
