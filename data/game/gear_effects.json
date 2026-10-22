@@ -445,5 +445,172 @@
     {
       "kind": "compartment"
     }
+  ],
+  "cb_auto_stabilizing_hardpoints": [],
+  "cb_overpower_caliber": [],
+  "cb_improved_armament": [],
+  "cb_integrated_weapon": [],
+  "cb_mount_retrofitting": [],
+  "cb_universal_compatibility": [
+    {
+      "kind": "universal_compat"
+    }
+  ],
+  "cb_briareos_frame": [
+    {
+      "kind": "briareos"
+    }
+  ],
+  "cb_gyges_frame": [
+    {
+      "kind": "accuracy",
+      "on": "check",
+      "skill": "hull",
+      "value": 1
+    },
+    {
+      "kind": "accuracy",
+      "on": "save",
+      "skill": "hull",
+      "value": 1
+    },
+    {
+      "kind": "reach_bonus",
+      "threat": 1
+    }
+  ],
+  "cb_reinforced_frame": [
+    {
+      "kind": "stat",
+      "stat": "max_hp",
+      "value": 5
+    }
+  ],
+  "cb_sloped_plating": [
+    {
+      "kind": "stat",
+      "stat": "armor",
+      "value": 1,
+      "max": 4
+    }
+  ],
+  "cb_titanomachy_mesh": [
+    {
+      "kind": "titanomachy"
+    },
+    {
+      "kind": "free_action",
+      "id": "titanomachy",
+      "action": "ram_or_grapple",
+      "per": "round",
+      "needs": "titanomachy_ready"
+    }
+  ],
+  "cb_full_subjectivity_sync": [
+    {
+      "kind": "stat",
+      "stat": "evasion",
+      "value": 2
+    }
+  ],
+  "cb_neurolink_targeting": [
+    {
+      "kind": "reach_bonus",
+      "range": 3
+    }
+  ],
+  "cb_the_lesson_of_disbelief": [
+    {
+      "kind": "stat",
+      "stat": "edef",
+      "value": 2
+    },
+    {
+      "kind": "accuracy",
+      "on": "check",
+      "skill": "systems",
+      "value": 1
+    },
+    {
+      "kind": "accuracy",
+      "on": "save",
+      "skill": "systems",
+      "value": 1
+    }
+  ],
+  "cb_the_lesson_of_the_open_door": [
+    {
+      "kind": "stat",
+      "stat": "save_target",
+      "value": 2
+    },
+    {
+      "kind": "open_door"
+    }
+  ],
+  "cb_the_lesson_of_the_held_image": [
+    {
+      "kind": "held_image"
+    }
+  ],
+  "cb_the_lesson_of_thinking_tomorrows_thought": [
+    {
+      "kind": "tomorrows_thought"
+    }
+  ],
+  "cb_the_lesson_of_transubstantiation": [
+    {
+      "kind": "transubstantiation"
+    }
+  ],
+  "cb_the_lesson_of_shaping": [],
+  "cb_adaptive_reactor": [
+    {
+      "kind": "adaptive_reactor"
+    }
+  ],
+  "cb_armory_sculpted_chassis": [
+    {
+      "kind": "accuracy",
+      "on": "check",
+      "skill": "engineering",
+      "value": 1
+    },
+    {
+      "kind": "accuracy",
+      "on": "save",
+      "skill": "engineering",
+      "value": 1
+    },
+    {
+      "kind": "overcharge_cover"
+    }
+  ],
+  "cb_heatfall_coolant_system": [
+    {
+      "kind": "overcharge_cap"
+    }
+  ],
+  "cb_integrated_ammo_feeds": [
+    {
+      "kind": "limited_bonus",
+      "value": 2
+    }
+  ],
+  "cb_stasis_shielding": [
+    {
+      "kind": "stasis_shielding"
+    }
+  ],
+  "cb_superior_by_design": [
+    {
+      "kind": "immune",
+      "status": "Impaired"
+    },
+    {
+      "kind": "stat",
+      "stat": "heat_cap",
+      "value": 2
+    }
   ]
 }

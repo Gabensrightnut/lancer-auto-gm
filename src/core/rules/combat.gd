@@ -181,7 +181,7 @@ static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dict
 			amount -= armor_used
 		# 3) Resistance halves what's left, rounding the damage taken up (Core p.12).
 		var resisted := 0
-		if not shredded and not unreducible and amount > 0 and (resist_here or _resists(target, dtype)):
+		if not shredded and not unreducible and amount > 0 and (resist_here or _resists(target, dtype) or CoreBonuses.briareos_resists(target)):
 			resisted = amount / 2
 			amount -= resisted
 		var ev := {"type": "damage_dealt", "target": target.id, "source": source, "amount": amount,
@@ -226,6 +226,11 @@ static func lose_hp(state: GameState, u: Unit, amount: int, source: String) -> A
 	var from_shield := mini(u.overshield, amount)
 	u.overshield -= from_shield
 	amount -= from_shield
+	if u.counters.get("briareos_down", false) and not u.destroyed:
+		# Briareos Frame at 0 Structure: every hit is a structure damage check.
+		events.append({"type": "hp_changed", "unit": u.id, "hp": 0, "overshield": u.overshield, "source": source})
+		events.append_array(structure_check(state, u))
+		return events
 	u.hp -= amount
 	events.append({"type": "hp_changed", "unit": u.id, "hp": maxi(u.hp, 0), "overshield": u.overshield, "source": source})
 	if u.hp > 0:
@@ -251,6 +256,15 @@ static func lose_hp(state: GameState, u: Unit, amount: int, source: String) -> A
 		u.structure -= 1
 		events.append({"type": "structure_lost", "unit": u.id, "structure": u.structure, "rule_ref": "Core p.80 Structure"})
 		events.append_array(GearSystems.batteries_blow(state, u))
+		if u.structure <= 0 and CoreBonuses.briareos_holds(u):
+			# Briareos Frame: at 0 HP and 0 Structure it isn't destroyed; it makes a structure
+			# damage check each time it takes damage, and gets no HP back until it rests.
+			u.structure = 0
+			u.hp = 0
+			u.counters["briareos_down"] = true
+			events.append_array(structure_check(state, u))
+			return events
+		events.append_array(CoreBonuses.structure_lost(state, u))
 		events.append_array(_on_structure_or_stress(state, u, true))
 		if u.structure <= 0:
 			events.append_array(destroy(state, u, "Reached 0 Structure."))
@@ -419,6 +433,7 @@ static func apply_heat(state: GameState, u: Unit, amount: int, source: String, r
 		u.heat = 0
 		u.stress -= 1
 		events.append({"type": "stress_lost", "unit": u.id, "stress": u.stress, "rule_ref": "Core p.81 Overheating"})
+		events.append_array(CoreBonuses.stress_lost(state, u))
 		events.append_array(GearSystems.vents(state, u))  # Explosive Vents: took stress
 		events.append_array(_on_structure_or_stress(state, u, false))
 		events.append({"type": "heat_changed", "unit": u.id, "amount": 0, "total": 0, "source": "overheat"})

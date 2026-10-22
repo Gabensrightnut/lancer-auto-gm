@@ -56,6 +56,7 @@ class Rest:
 		elif u.kind == Unit.KIND_MECH:
 			pilot = Pilots.pilot_of(state, u)
 		if mech != null and mech.kind == Unit.KIND_MECH:
+			mech.counters.erase("briareos_down")
 			events.append_array(Combat.clear_heat(mech, "rest"))
 			for st: String in mech.statuses.keys():
 				events.append_array(Combat.remove_status(mech, st, "rest"))

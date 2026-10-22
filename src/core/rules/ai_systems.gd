@@ -26,10 +26,15 @@ static func cascading(u: Unit) -> bool:
 
 ## The AI tag from systems and mods: {"source": id, "cascade": bool}.
 static func detect(db: ContentDB, u: Unit) -> void:
+	var count := 0
 	for s: Dictionary in u.loadout.get("systems", []):
 		if Weapons.has_tag(s, "tg_ai"):
-			u.loadout["ai"] = {"source": s["id"], "cascade": not Weapons.has_tag(s, "tg_no_cascade")}
-			return
+			count += 1
+			if not u.loadout.has("ai"):
+				u.loadout["ai"] = {"source": s["id"], "cascade": not Weapons.has_tag(s, "tg_no_cascade")}
+	if count > 0:
+		u.loadout["ai"]["count"] = count  # The Lesson of Shaping: a second AI keeps control
+		return
 	for w: Dictionary in u.loadout.get("weapons", []):
 		if w.has("mod"):
 			var mod := db.get_entry("mods", String(w["mod"]["id"]))
@@ -82,6 +87,12 @@ static func cascade_check(state: GameState, u: Unit) -> Array[Dictionary]:
 	events.append({"type": "cascade_check", "unit": u.id, "roll": roll, "cascade": roll == 1, "rule_ref": REF})
 	if roll != 1:
 		return events
+	var cascaded := int(u.counters.get("ais_cascaded", 0)) + 1
+	u.counters["ais_cascaded"] = cascaded
+	if cascaded < int(u.loadout["ai"].get("count", 1)):
+		# The Lesson of Shaping: the other AI keeps the cascading one from taking control.
+		events.append({"type": "effect_triggered", "unit": u.id, "effect": "The Lesson of Shaping", "target": u.id, "rule_ref": "Core p.191"})
+		return events
 	u.counters["cascade"] = {"controller": u.controller}
 	u.controller = "gm"
 	u.counters["ai_control"] = true
@@ -96,6 +107,7 @@ static func shut_down(state: GameState, u: Unit) -> Array[Dictionary]:
 		return events
 	u.controller = String(u.counters["cascade"].get("controller", u.controller))
 	u.counters.erase("cascade")
+	u.counters.erase("ais_cascaded")
 	u.counters.erase("ai_control")
 	events.append_array(Combat.remove_status(u, "Cascading", "Shut Down"))
 	events.append({"type": "ai_control", "unit": u.id, "on": false, "source": "cascade stabilized", "rule_ref": REF})

@@ -47,6 +47,22 @@ static func total_sp(frame: Dictionary, pilot: Dictionary) -> int:
 	return int(frame.get("stats", {}).get("sp", 0)) + grit(int(pilot.get("ll", 0))) + int(pilot.get("systems", 0)) / 2
 
 
+## The frame's mounts with core bonuses applied (Core p.118): Improved Armament adds a Flex
+## mount if there are fewer than three; Mount Retrofitting turns the chosen mount
+## (pilot core_bonus_choices.cb_mount_retrofitting) into a Main/Aux mount.
+static func mounts_for(frame: Dictionary, pilot: Dictionary) -> Array:
+	var mounts: Array = (frame.get("mounts", []) as Array).duplicate()
+	var cbs: Array = pilot.get("core_bonuses", [])
+	var choices: Dictionary = pilot.get("core_bonus_choices", {})
+	if cbs.has("cb_mount_retrofitting"):
+		var i := int(choices.get("cb_mount_retrofitting", 0))
+		if i >= 0 and i < mounts.size():
+			mounts[i] = "Main/Aux"
+	if cbs.has("cb_improved_armament") and mounts.size() < 3:
+		mounts.append("Flex")
+	return mounts
+
+
 ## Is this loadout legal on this frame? Collects every problem in `details`.
 static func check_loadout(db: ContentDB, frame_id: String, loadout: Dictionary, pilot: Dictionary = {}) -> RuleResult:
 	var problems: Array = []
@@ -56,7 +72,7 @@ static func check_loadout(db: ContentDB, frame_id: String, loadout: Dictionary, 
 	problems.append_array(check_pilot(db, pilot))
 	_license(problems, frame, pilot)
 	var fittings: Dictionary = db.rules.get("mount_fittings", {})
-	var frame_mounts: Array = frame.get("mounts", [])
+	var frame_mounts: Array = mounts_for(frame, pilot)
 	var mounts: Array = loadout.get("mounts", [])
 	if float(frame["stats"].get("size", 1)) > float(db.rules.get("max_frame_size", 3)):
 		problems.append({"reason": "Frame is larger than the largest allowed size.", "rule_ref": "rules.json: max_frame_size"})
@@ -120,8 +136,18 @@ static func check_loadout(db: ContentDB, frame_id: String, loadout: Dictionary, 
 			seen_unique[sid] = true
 		if _has_tag(s, "tg_ai"):
 			ai_count += 1
-	if ai_count > 1:
-		problems.append({"reason": "Only one AI system can be installed.", "rule_ref": "tags: AI"})
+	var ai_cap := 2 if (pilot.get("core_bonuses", []) as Array).has("cb_the_lesson_of_shaping") else 1
+	if ai_count > ai_cap:
+		problems.append({"reason": "Only %d AI system%s can be installed." % [ai_cap, "" if ai_cap == 1 else "s"], "rule_ref": "tags: AI; Core p.191"})
+	var iw := String(loadout.get("integrated_weapon", ""))
+	if iw != "":
+		if not (pilot.get("core_bonuses", []) as Array).has("cb_integrated_weapon"):
+			problems.append({"reason": "An integrated weapon needs the Integrated Weapon core bonus.", "rule_ref": "Core p.118"})
+		elif db.weapon(iw).get("mount", "") != "Auxiliary":
+			problems.append({"reason": "The Integrated Weapon mount takes one Auxiliary weapon.", "rule_ref": "Core p.118"})
+		else:
+			sp_used += int(db.weapon(iw).get("sp", 0))
+			_license(problems, db.weapon(iw), pilot)
 	var sp := total_sp(frame, pilot)
 	if sp_used > sp:
 		problems.append({"reason": "Uses %d SP but this mech has %d." % [sp_used, sp], "rule_ref": REF_SP})
@@ -251,7 +277,7 @@ static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dic
 	u.stress = u.max_stress
 	var weapons: Array = []
 	var mounts: Array = []
-	var frame_mounts: Array = frame.get("mounts", [])
+	var frame_mounts: Array = mounts_for(frame, pilot)
 	var given: Array = loadout.get("mounts", [])
 	for i in range(frame_mounts.size()):
 		var m: Dictionary = given[i] if i < given.size() else {}
@@ -265,6 +291,13 @@ static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dic
 					apply_mod(db, prof, String(m["mod"]), u)
 				weapons.append(prof)
 			slot += 1
+	# Integrated Weapon core bonus: an integrated Auxiliary mount (Core p.118).
+	var cbw := String(loadout.get("integrated_weapon", ""))
+	if cbw != "" and (pilot.get("core_bonuses", []) as Array).has("cb_integrated_weapon") and not db.weapon(cbw).is_empty():
+		var iwp := weapon_profile(db.weapon(cbw), "cbi:0", -1)
+		iwp["integrated"] = true
+		iwp["no_attack"] = true  # fired 1/round as a free action when you fire another weapon
+		weapons.append(iwp)
 	# Integrated mounts: the frame's own weapons, always included, never destroyed, removed or
 	# modified (Core p.32).
 	var integ := 0
@@ -295,8 +328,10 @@ static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dic
 		gear_ids.append(s["id"])
 	gear_ids.append_array(pilot.get("core_bonuses", []))
 	_add_gear_effects(u, gear_ids, pilot.get("talents", {}))
+	_core_bonus_choices(u, pilot)
 	TalentRules.adjust_weapons(u)
 	AISystems.detect(db, u)
+	u.loadout["core_bonus_ids"] = (pilot.get("core_bonuses", []) as Array).duplicate()
 	u.loadout["abilities"] = _abilities(db, u, frame, loadout.get("systems", []), pilot.get("talents", {}))
 	if (frame_effects_data().get(frame_id, {}) as Dictionary).get("orochi_choice", false):
 		# Hydra: one OROCHI drone accompanies it; Full Deployment brings all four.
@@ -369,6 +404,10 @@ static func _abilities(db: ContentDB, u: Unit, frame: Dictionary, system_ids: Ar
 			src = t.duplicate(true)
 			src["actions"] = (t.get("actions", []) as Array).filter(func(a: Dictionary) -> bool: return Abilities.COSTS.has(String(a.get("activation", ""))))
 		_add_source(out, src, "trait:" + String(t.get("name", "")), String(t.get("name", "")), String(frame.get("id", "")))
+	for cid: Variant in u.loadout.get("core_bonus_ids", []):
+		var cb := db.get_entry("core_bonuses", String(cid))
+		if not cb.is_empty():
+			_add_source(out, cb, "cb:" + String(cid), String(cb.get("name", cid)), String(cid))
 	for tid: String in talents:
 		var tal := db.get_entry("talents", tid)
 		for r in range(mini(int(talents[tid]), (tal.get("ranks", []) as Array).size())):
@@ -454,6 +493,8 @@ static func _add_gear_effects(u: Unit, ids: Array, talents: Dictionary) -> void:
 			if copy["kind"] == "hp_bonus":
 				u.max_hp += int(copy.get("value", 0))  # Personalizations
 				u.hp = u.max_hp
+			if copy["kind"] == "stat":
+				_stat_bonus(u, copy)
 	for id: String in ids:
 		if data.get(id) is Array:
 			add.call(data[id], id)
@@ -463,6 +504,43 @@ static func _add_gear_effects(u: Unit, ids: Array, talents: Dictionary) -> void:
 			for r in range(1, int(talents[t]) + 1):
 				if (ranks as Dictionary).has(str(r)):
 					add.call(ranks[str(r)], "%s rank %d" % [t, r])
+	u.loadout["effects"] = effects
+
+
+## Core bonus stat changes ({stat, value, max}).
+static func _stat_bonus(u: Unit, e: Dictionary) -> void:
+	var v := int(e.get("value", 0))
+	match String(e.get("stat", "")):
+		"max_hp":
+			u.max_hp += v
+			u.hp = u.max_hp
+		"armor":
+			u.armor = mini(u.armor + v, int(e.get("max", 99)))
+		"evasion":
+			u.evasion += v
+		"edef":
+			u.edef += v
+		"save_target":
+			u.save_target += v
+		"heat_cap":
+			u.heat_cap += v
+
+
+## Core bonuses that need a choice: Auto-Stabilizing Hardpoints (a mount) and Overpower
+## Caliber (a weapon key), from pilot.core_bonus_choices.
+static func _core_bonus_choices(u: Unit, pilot: Dictionary) -> void:
+	var cbs: Array = pilot.get("core_bonuses", [])
+	var choices: Dictionary = pilot.get("core_bonus_choices", {})
+	var effects: Array = u.loadout.get("effects", [])
+	if cbs.has("cb_auto_stabilizing_hardpoints"):
+		effects.append({"kind": "mount_accuracy", "mount": int(choices.get("cb_auto_stabilizing_hardpoints", 0)), "value": 1,
+			"label": "cb_auto_stabilizing_hardpoints", "rule_ref": "Core p.118"})
+	if cbs.has("cb_overpower_caliber"):
+		var key := String(choices.get("cb_overpower_caliber", ""))
+		if key == "" and not (u.loadout.get("weapons", []) as Array).is_empty():
+			key = String(u.loadout["weapons"][0]["key"])
+		effects.append({"kind": "bonus_damage", "value": "1d6", "per": "round", "weapon_key": key, "on": "attack",
+			"label": "cb_overpower_caliber", "rule_ref": "Core p.118"})
 	u.loadout["effects"] = effects
 
 

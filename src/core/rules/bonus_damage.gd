@@ -84,6 +84,8 @@ static func sources(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 			continue
 		if e.get("per", "") == "round" and _used_this_round(state, attacker, e):
 			continue
+		if e.has("weapon_key") and String(e["weapon_key"]) != String(w.get("key", "")):
+			continue  # Overpower Caliber: the chosen weapon only
 		match String(e.get("when", "")):
 			"after_boost":
 				if not info.get("momentum", false):

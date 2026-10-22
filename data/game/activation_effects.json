@@ -876,5 +876,15 @@
         "adjacent": true
       }
     }
-  ]
+  ],
+  "cb_integrated_weapon:Integrated Weapon": [
+    {
+      "op": "fire_integrated"
+    }
+  ],
+  "cb_universal_compatibility:Universal Compatibility": [],
+  "cb_the_lesson_of_the_open_door:The Lesson of the Open Door": [],
+  "cb_the_lesson_of_the_held_image:Lesson of the Held Image": [],
+  "cb_the_lesson_of_transubstantiation:The Lesson of Transubstantiation": [],
+  "cb_overpower_caliber:Overpower Caliber": []
 }

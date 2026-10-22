@@ -263,6 +263,8 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				events.append_array(Combat.deal_damage(state, target, [{"type": "Burn", "amount": int(roll["total"])}], {"source": u.id}))
 				if had_burn:
 					events.append_array(Combat.add_status(state, target, "Blinded", u.id, target.id))
+			"fire_integrated":
+				events.append_array(Attacks.attack(state, u, Weapons.find(u, "cbi:0"), target, {"fired_by_rule": true}))
 			"fire_weapon":
 				var fw := Weapons.find(u, String(a["source_key"]).trim_prefix("w:"))
 				events.append_array(Attacks.attack(state, u, fw, target, {"fired_by_rule": true}))
@@ -418,6 +420,8 @@ static func apply_target_ops(state: GameState, u: Unit, ops: Array, ids: Array) 
 				var save := Combat.skill_check(state, t, String(op.get("save", "agility")), "Save vs %s" % op.get("label", "core"), u.save_target, acc, 0, extra, true)
 				events.append({"type": "skill_check", "unit": t.id, "check": save})
 				success = save["success"]
+				if not success:
+					events.append_array(CoreBonuses.failed_save(state, u, t))
 			var amount := int(roll["total"])
 			if success:
 				amount = amount - amount / 2 if op.get("half", false) else 0
@@ -486,6 +490,13 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 			var ww := String(a["source_key"]).trim_prefix("mod:")
 			if not (u.turn.get("hits", {}).get(ww, []) as Array).has(String(params.get("target", ""))):
 				return RuleResult.deny("Only right after hitting that character with the wreathed weapon this turn.", "mods: Shock Wreath")
+		if op.get("op", "") == "fire_integrated":
+			var fired: Array = u.turn.get("fired", [])
+			if fired.filter(func(k: String) -> bool: return k != "cbi:0").is_empty():
+				return RuleResult.deny("Only when you fire another weapon this turn.", "Core p.118")
+			var pv2 := Attacks.preview(state, u, Weapons.find(u, "cbi:0"), state.unit(String(params.get("target", ""))), {"fired_by_rule": true})
+			if not pv2["ok"]:
+				return RuleResult.deny(pv2["reason"], pv2["rule_ref"])
 		if op.get("op", "") == "fire_weapon":
 			var fw := Weapons.find(u, String(a["source_key"]).trim_prefix("w:"))
 			var pv := Attacks.preview(state, u, fw, state.unit(String(params.get("target", ""))), {"fired_by_rule": true})

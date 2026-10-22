@@ -149,6 +149,14 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 			continue
 		sources.append(_src(String(e.get("label", "")), "difficulty", Effects.REF, int(e.get("value", 1))))
 		diff += int(e.get("value", 1))
+	for e: Dictionary in Effects.of(attacker, "mount_accuracy"):
+		if int(w.get("mount", -9)) == int(e.get("mount", -1)):
+			sources.append(_src("Auto-Stabilizing Hardpoints", "accuracy", "Core p.118", int(e.get("value", 1))))
+			acc += int(e.get("value", 1))
+	if kind == KIND_MELEE and String(attacker.counters.get("tomorrow", "")) == target.id:
+		sources.append(_src("Thinking Tomorrow's Thought", "accuracy", "Core p.191"))
+		acc += 1
+		out["tomorrow"] = true
 	for src: Dictionary in TalentRules.sources(state, attacker, w, target, kind, opts):
 		sources.append(src)
 		if src["kind"] == "accuracy":
@@ -560,7 +568,9 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 	if overkill_heat > 0 and not shared.get("overkill_paid", false):
 		shared["overkill_paid"] = true
 		events.append_array(Combat.apply_heat(state, attacker, overkill_heat, "Overkill"))
-	events.append_array(_apply(state, attacker, target, parts, ap, opts.has("area_origin"), pv.get("seeking_payload", false) or Weapons.has_tag(w, "tg_irreducible"), opts.get("resist_all", false), opts.get("half_damage", false)))
+	if pv.get("tomorrow", false):
+		attacker.counters.erase("tomorrow")
+	events.append_array(_apply(state, attacker, target, parts, ap, opts.has("area_origin"), pv.get("seeking_payload", false) or Weapons.has_tag(w, "tg_irreducible") or pv.get("tomorrow", false), opts.get("resist_all", false), opts.get("half_damage", false)))
 	if chambers >= 4 and Combat.is_present(target):
 		events.append_array(Combat.add_status(state, target, "Shredded", attacker.id, target.id))
 	events.append_array(WeaponRules.on_hit(state, attacker, w, target, crit))
@@ -576,6 +586,8 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 		kb = maxi(kb, Effects.value(attacker, "melee_knockback"))  # Ramjet
 	if crit:
 		kb = maxi(kb, Effects.value(attacker, "crit_knockback"))  # Brutal: Cull the Herd
+	if Weapons.is_melee(w) and kb > 0 and Effects.has(attacker, "titanomachy"):
+		kb += 1  # Titanomachy Mesh: one more space
 	var want: Variant = opts.get("knockback", false)
 	if kb > 0 and not target.destroyed and want != null and (want is int or bool(want)):
 		var spaces: int = mini(kb, int(want)) if want is int else kb
@@ -961,6 +973,8 @@ static func tech_attack(state: GameState, attacker: Unit, target: Unit, label: S
 		events.append_array(Combat.remove_status(attacker, "Hidden", "attacked"))
 		events.append_array(Combat.refresh_engagement(state))
 	Effects.attacked(state, attacker, "tech")
+	if hit and Effects.has(attacker, "tomorrows_thought"):
+		attacker.counters["tomorrow"] = target.id  # the next melee attack on it: +1 Accuracy, unreducible
 	if hit and p["lock_on"] and Effects.has(attacker, "snow_crash"):
 		events.append_array(Combat.apply_heat(state, target, 2, attacker.id))  # Hacker SNOW_CRASH
 	if hit:
