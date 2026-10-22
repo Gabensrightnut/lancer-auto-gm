@@ -166,7 +166,26 @@ var _explorer := ""
 var _explore_label: Label
 
 
+var _careful_button: Button
+
+
 func _update_explore_banner() -> void:
+	# Careful mode (turn-based exploring) for the host while nobody's fighting yet.
+	var can_careful := _loaded and not _ended and session.is_host and (str(session.view.get("phase", "")) == GameState.PHASE_SETUP and session.mission != null and bool(session.mission.flavor.get("explore_first", false)) or session.careful())
+	if can_careful and _careful_button == null:
+		_careful_button = Button.new()
+		_careful_button.theme = MenuTheme.theme()
+		_careful_button.focus_mode = Control.FOCUS_NONE
+		_careful_button.position = Vector2(get_viewport().get_visible_rect().size.x / 2.0 - 120, 205)
+		_careful_button.tooltip_text = "Careful mode: explore in turns (for stealth and heists), the way a fight goes. Off: everyone walks in real time."
+		_careful_button.pressed.connect(func() -> void:
+			var why := session.set_careful(not session.careful())
+			if why != "":
+				show_banner(why))
+		ui.add_child(_careful_button)
+	if _careful_button != null:
+		_careful_button.visible = can_careful
+		_careful_button.text = "Careful mode: ON (turns)" if session.careful() else "Careful mode: off (real time)"
 	var on := _loaded and not _ended and session.exploring() and not turn.active
 	if on and _explore_label == null:
 		_explore_label = MenuTheme.label("", 18, Color(0.6, 0.95, 0.75))

@@ -72,3 +72,32 @@ func test_a_latecomer_walks_up_and_joins_from_the_next_round() -> void:
 		s.poll(0.4)
 	expect(not bool(state.unit(me).counters.get("exploring", false)), "walked up and joined the fight")
 	expect(state.map.grid.distance(state.unit(me).cell, foe.cell) <= AiDirector.CONTACT + 4, "where they arrived")
+
+
+func test_careful_mode_takes_turns_until_contact() -> void:
+	var gen := MissionGenerator.generate(828, {"db": MissionTest.db(), "size": 30, "players": 1, "sitrep": "sitrep_standardcombat", "environments": []})
+	var state: GameState = gen["state"]
+	var mission: Mission = gen["mission"]
+	mission.flavor["explore_first"] = true
+	var host := NetHost.new(state, RulesEngine.new())
+	var director := AiDirector.new(host, GmSettings.from_preset("Standard"), mission)
+	var s := BattleSession.for_host(host, director, mission, ["p1"])
+	s.start()
+	s.poll(0.1)
+	expect_eq(s.set_careful(true), "")
+	s.poll(0.1)
+	expect(s.careful() and not s.exploring(), "careful mode: turns, no free walking")
+	expect_eq(state.turn_mode, "explore")
+	expect_eq(s.set_careful(false), "")
+	s.poll(0.1)
+	expect_eq(state.phase, GameState.PHASE_SETUP, "back to real time")
+	s.set_careful(true)
+	var me: Unit = state.units_on_side(Mission.PLAYERS)[0]
+	var foe: Unit = state.units_on_side(Mission.ENEMIES)[0]
+	me.cell = foe.cell + Vector2i(0, 5)  # sneaking up close
+	var guard := 0
+	while state.turn_mode == "explore" and guard < 50:
+		guard += 1
+		s.poll(0.5)
+	expect_eq(state.turn_mode, "combat", "contact in careful mode: the fight begins")
+	expect_eq(state.phase, GameState.PHASE_COMBAT)

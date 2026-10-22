@@ -137,6 +137,8 @@ func poll(delta: float) -> void:
 ## in real time before the fight (mission flavor explore_first), or a unit of ours is outside
 ## the fight going on (counters.exploring).
 func exploring() -> bool:
+	if careful():
+		return false  # careful mode: moves take turns
 	var phase := str(view.get("phase", ""))
 	if phase == GameState.PHASE_SETUP:
 		return true
@@ -243,6 +245,29 @@ func _explore_move(id: String, cell: Vector2i) -> bool:
 		return r.ok and r.grey_area == ""
 	client.submit(a)
 	return true
+
+
+## Careful mode (turn-based exploring, DESIGN.md: off by default, for heists and stealth): the
+## host's GM switches exploring to turns (start_combat mode "explore") or back to real time
+## (end_combat). Contact with the enemy turns it into the fight (AiDirector). Returns "" or why not.
+func set_careful(on: bool) -> String:
+	if not is_host:
+		return "The host switches careful mode."
+	var st := host.state
+	if on:
+		if st.phase != GameState.PHASE_SETUP:
+			return "Careful mode is for exploring, before a fight."
+		_walk.clear()
+		var r: RuleResult = host.submit(NetHost.GM_SEAT, {"type": "start_combat", "params": {"first_side": Mission.PLAYERS, "mode": "explore"}})["result"]
+		return "" if r.ok else r.reason
+	if st.turn_mode != "explore":
+		return "Careful mode is off."
+	var r2: RuleResult = host.submit(NetHost.GM_SEAT, {"type": "end_combat"})["result"]
+	return "" if r2.ok else r2.reason
+
+
+func careful() -> bool:
+	return str(view.get("turn_mode", "combat")) == "explore" and str(view.get("phase", "")) == GameState.PHASE_COMBAT
 
 
 ## Who the game is waiting on, as the seat on screen may know it (NetHost.waiting_on).

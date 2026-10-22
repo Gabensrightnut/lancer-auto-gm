@@ -83,6 +83,13 @@ func step() -> bool:
 		if not carry.is_empty():
 			host.submit(NetHost.GM_SEAT, carry)
 			return true
+	if state.phase == GameState.PHASE_COMBAT and state.turn_mode == "explore" and state.active_unit == "" and _contact() != Vector2i(-99999, -99999):
+		# Careful mode met the enemy: the turn-based exploring ends and the fight begins there.
+		var at := _contact()
+		host.submit(NetHost.GM_SEAT, {"type": "end_combat"})
+		var first := mission.first_side if mission != null else Mission.PLAYERS
+		_log("", "Contact: the fight starts.")
+		return (host.submit(NetHost.GM_SEAT, {"type": "start_combat", "params": {"first_side": first, "center": [at.x, at.y], "radius": FIGHT_RADIUS}})["result"] as RuleResult).ok
 	if _maybe_join():
 		return true
 	if _maybe_narrate():
@@ -140,6 +147,11 @@ func step() -> bool:
 
 ## Plans and plays the active AI unit's whole turn, then ends it.
 func play_turn(u: Unit) -> void:
+	if host.state.turn_mode == "explore":
+		# Turn-based exploring (careful mode): nobody's fighting yet; the AI's units hold
+		# their ground until there's contact.
+		host.submit_ai({"type": "end_turn", "actor": u.id})
+		return
 	var know := AiKnowledge.for_side(host.state, host.view_filter, u.side)
 	know.seen_harm = seen_harm.get(u.side, {})
 	var plan: Dictionary
@@ -270,16 +282,23 @@ const FIGHT_RADIUS := 16
 ## While the squad explores in real time: AI squadmates follow the nearest person on their
 ## side; once the squad and the enemy are within CONTACT, the fight starts around them.
 func _explore_step(first: String) -> bool:
+	var at := _contact()
+	if at != Vector2i(-99999, -99999):
+		_log("", "Contact: the squad sees the enemy. The fight starts.")
+		return (host.submit(NetHost.GM_SEAT, {"type": "start_combat", "params": {"first_side": first, "center": [at.x, at.y], "radius": FIGHT_RADIUS}})["result"] as RuleResult).ok
+	return _follow_step()
+
+
+## Where the squad first meets the enemy (between the two), or (-99999, -99999).
+func _contact() -> Vector2i:
 	var state := host.state
 	for p: Unit in state.units_on_side(Mission.PLAYERS):
 		if p.destroyed:
 			continue
 		for e: Unit in state.units_on_side(Mission.ENEMIES):
 			if not e.destroyed and state.map.grid.distance(p.cell, e.cell) <= CONTACT:
-				var mid := Vector2i((p.cell.x + e.cell.x) / 2, (p.cell.y + e.cell.y) / 2)
-				_log("", "Contact: %s sees the enemy. The fight starts." % p.name)
-				return (host.submit(NetHost.GM_SEAT, {"type": "start_combat", "params": {"first_side": first, "center": [mid.x, mid.y], "radius": FIGHT_RADIUS}})["result"] as RuleResult).ok
-	return _follow_step()
+				return Vector2i((p.cell.x + e.cell.x) / 2, (p.cell.y + e.cell.y) / 2)
+	return Vector2i(-99999, -99999)
 
 
 ## A unit still exploring (outside the fight) that comes within CONTACT of a fighting enemy
