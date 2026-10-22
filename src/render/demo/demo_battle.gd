@@ -61,6 +61,7 @@ func setup(db: ContentDB, battle_view: BattleView, events: EventPlayer, layer: C
 	barks.view = view
 	ui.add_child(barks)
 	player.on_table_note = table_notice.show_note
+	player.on_map_changed = func() -> BattleMap: return state.map if state else null
 	player.camera = view.tactical
 	turn = PlayerTurn.new()
 	turn.bar = bar
@@ -167,6 +168,7 @@ func sync_views() -> void:
 	# Zones (smoke, caltrops...): the seat's view once ViewFilter carries them; this demo is
 	# the host, so state.zones until then.
 	view.zones.set_zones(v.get("zones", state.zones))
+	view.refresh_map(state.map)  # destroyed terrain the events didn't already show
 	_render_portraits()  # pilots who just got out
 	_update_order()
 

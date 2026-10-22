@@ -42,6 +42,8 @@ var skip_to_my_turn := false
 var on_banner: Callable
 ## (source, rule text, guidance) for effects the table resolves (a pop-up).
 var on_table_note: Callable
+## Returns the rules' current BattleMap (host side) for terrain_destroyed; optional.
+var on_map_changed: Callable
 ## Called with (unit_id) when a unit's turn starts.
 var on_turn_started: Callable
 var _saved_speed := 1.0
@@ -113,6 +115,23 @@ func play_event(e: Dictionary) -> void:
 			await _pilot_out(e)
 		"pilot_mounted":
 			await _pilot_in(e)
+		"terrain_destroyed":
+			# Walls and buildings knocked down: collapse them with dust and rubble. The board
+			# gets the rules' current map from on_map_changed when there is one (the host),
+			# else the event's cells and new heights are applied to the board's own copy.
+			_log("Terrain destroyed (%d space%s)." % [(e.get("cells", []) as Array).size(), "" if (e.get("cells", []) as Array).size() == 1 else "s"])
+			var current: BattleMap = on_map_changed.call() if on_map_changed.is_valid() else null
+			if current == null:
+				current = BattleMap.from_dict(battle.map.to_dict())
+				for c: Variant in e.get("cells", []):
+					var a: Array = c if c is Array else [(c as Dictionary).get("cell", [0, 0])[0], (c as Dictionary).get("cell", [0, 0])[1], (c as Dictionary).get("ground", 0)]
+					var cell := Vector2i(int(a[0]), int(a[1]))
+					var col := current.column(cell)
+					if col and a.size() > 2:
+						col.ground = int(a[2])
+			battle.refresh_map(current)
+			if Fx.speed > 0.0:
+				await Fx.wait(self, 0.6)
 		"zone_created":
 			var z: Dictionary = e.get("zone", {})
 			battle.zones.add_zone(z)
