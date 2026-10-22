@@ -46,6 +46,8 @@ var battle_events: Array = []
 ## Host: every batch of events the rules engine produced (all seats'), for the story.
 signal host_events(events: Array)
 
+## A human GM plays at this screen (campaign option "Human GM", host).
+var gm_here := false
 var _ai_wait := 0.0
 var _local_humans: Array = []
 
@@ -58,7 +60,13 @@ static func for_host(net_host: NetHost, ai: AiDirector, the_mission: Mission, lo
 	s.mission = the_mission
 	s.autosave = save
 	s._local_humans = local_seats.filter(func(x: String) -> bool: return not net_host.is_ai_seat(x))
+	s.gm_here = net_host.human_gm and NetHost.GM_SEAT in local_seats
 	var screen_seats: Array = s._local_humans.duplicate()
+	if screen_seats.is_empty() and s.gm_here:
+		# A human GM at this screen with no pilot here watches from the GM seat (the whole
+		# picture). With pilots played here too the screen is theirs: the GM never takes a turn
+		# (the AI flies the enemies) and the GM tools (G) open over it.
+		screen_seats.append(NetHost.GM_SEAT)
 	if screen_seats.is_empty():
 		# Nobody plays here (everything AI or remote): watch from the squad's first seat.
 		for id: String in net_host.state.seats:
@@ -306,6 +314,22 @@ func end_by_parley(e: Dictionary) -> bool:
 	var action := CampaignLoop.end_by_parley(mission, e)
 	mission.ended = true
 	return (host.submit(NetHost.GM_SEAT, action)["result"] as RuleResult).ok
+
+
+## A human GM reveals the mission's twist (their GM tools, story event twist_revealed): the
+## GM narrates it in the battle for the squad, as the AI GM would (Core p.43). Host only.
+func gm_reveal_twist(twist: Dictionary) -> bool:
+	if not is_host or over or mission == null or str(twist.get("reveal", "")).strip_edges() == "":
+		return false
+	var a := {"type": "gm_narrate", "params": {"kind": "twist", "id": str(twist.get("id", "")), "title": "Twist",
+		"text": str(twist["reveal"]), "question": str(twist.get("question", "")), "seen_by": GmTwist.SEEN_BY.duplicate(), "rule_ref": GmTwist.REF}}
+	GmTwist.done(mission, a)
+	return (host.submit(NetHost.GM_SEAT, a)["result"] as RuleResult).ok
+
+
+## This screen is a human GM's (their seat is the GM's).
+func is_gm_screen() -> bool:
+	return seat == NetHost.GM_SEAT
 
 
 func _check_end(events: Array) -> void:

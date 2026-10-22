@@ -36,6 +36,8 @@ var _hover_term := ""
 ## and the squad's "Call for terms". The engine is the host's StoryHostEngine or a friend's
 ## StoryClient; `dlg_story`/`dlg_campaign` are the objects the dialogue shows.
 var dialogue: DialogueView
+## A human GM's story tools (G) over the battle, when the GM seat is played at this screen.
+var gm_panel: GmPanel
 var terms_button: Button
 var story_engine: StoryEngine
 var dlg_story: StoryState
@@ -193,6 +195,11 @@ func _on_view(_seat: String, v: Dictionary, events: Array) -> void:
 
 ## Every batch the seat on screen sees (its own actions too): tutorial lessons and tips.
 func _on_events_seen(_seat: String, events: Array) -> void:
+	for e: Dictionary in events:
+		if str(e.get("type", "")) == "house_rule_changed":
+			var text := HouseRules.announce(str(e.get("id", "")), bool(e.get("on", false)))
+			combat_log.add_line("[color=#c9a0ff]%s[/color]" % text)  # every switch is announced
+			show_banner(text)
 	tutorial.show_events(Tutorial.observe_battle(story, campaign, events, _local_units()))
 
 
@@ -321,6 +328,21 @@ func _setup_story_battle() -> void:
 	terms_button.position = Vector2(150, 16)
 	terms_button.pressed.connect(_call_for_terms)
 	ui.add_child(terms_button)
+	if _gm_here():
+		terms_button.visible = _story_seat() != NetHost.GM_SEAT  # the squad calls for terms, not the GM
+		gm_panel = GmPanel.new()
+		ui.add_child(gm_panel)
+		ui.move_child(gm_panel, codex.get_index())
+		gm_panel.bind(story_engine, dlg_story, dlg_campaign)
+		# Host: the story session's update brings the GM's events (with everyone else's).
+		gm_panel.story_events.connect(func(evs: Array) -> void:
+			if not session.is_host:
+				_story_events(evs))
+
+
+## The GM seat is played at this screen (campaign option "Human GM").
+func _gm_here() -> bool:
+	return session.gm_here if session.is_host else session.seat == NetHost.GM_SEAT
 
 
 func _story_seat() -> String:
@@ -365,6 +387,12 @@ func _story_events(events: Array) -> void:
 				combat_log.add_line("[color=#ff8a7a]%s[/color]" % e.get("text", ""))
 			"battle_end_requested":
 				session.end_by_parley(e)
+			"house_rule_changed":
+				# A story house rule switched mid-battle (the story announces its own).
+				combat_log.add_line("[color=#c9a0ff]%s[/color]" % HouseRules.announce(str(e.get("id", "")), bool(e.get("on", false))))
+			"twist_revealed":
+				if session.is_host and bool(e.get("by_gm", false)) and e.get("twist") is Dictionary:
+					session.gm_reveal_twist(e["twist"])  # a human GM revealed it: narrate it in the battle
 	if dialogue != null:
 		dialogue.refresh()
 
@@ -875,7 +903,12 @@ func hovered_term() -> String:
 
 
 func _unhandled_input(ev: InputEvent) -> void:
-	if InputMap.has_action("codex") and ev.is_action_pressed("codex"):
+	if gm_panel != null and ev is InputEventKey and ev.pressed and not ev.echo and (ev as InputEventKey).keycode == KEY_G:
+		gm_panel.visible = not gm_panel.visible
+		if gm_panel.visible:
+			gm_panel.open()
+		get_viewport().set_input_as_handled()
+	elif InputMap.has_action("codex") and ev.is_action_pressed("codex"):
 		if codex.visible:
 			codex.visible = false
 		else:

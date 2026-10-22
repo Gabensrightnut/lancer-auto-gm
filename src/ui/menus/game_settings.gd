@@ -41,6 +41,9 @@ var popup_duration := 1.0
 var ai_squad_auto := true
 ## action name -> keycode
 var keybinds: Dictionary = {}
+## This player's house rules (HouseRules: id -> on). They're the game's when this player
+## decides: the GM, or the host when the AI is the GM.
+var house_rules: Dictionary = {}
 
 
 static func load_settings(path: String = FILE) -> GameSettings:
@@ -62,6 +65,9 @@ static func load_settings(path: String = FILE) -> GameSettings:
 	s.ai_squad_auto = bool(cfg.get_value("gameplay", "ai_squad_auto", true))
 	for a: String in ACTIONS:
 		s.keybinds[a] = int(cfg.get_value("keys", a, s.keybinds[a]))
+	for id: String in HouseRules.defaults():
+		if cfg.has_section_key("house_rules", id):
+			s.house_rules[id] = bool(cfg.get_value("house_rules", id))
 	return s
 
 
@@ -77,6 +83,8 @@ func save(path: String = FILE) -> Error:
 	cfg.set_value("gameplay", "ai_squad_auto", ai_squad_auto)
 	for a: String in keybinds:
 		cfg.set_value("keys", a, keybinds[a])
+	for id: String in house_rules:
+		cfg.set_value("house_rules", id, bool(house_rules[id]))
 	return cfg.save(path)
 
 

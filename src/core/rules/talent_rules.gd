@@ -87,6 +87,16 @@ extends RefCounted
 ##   collateral              1/round, a Cannon crit: Burst 2 around the target; characters there
 ##                           drop Prone (reaction) or take 2 explosive and are knocked back 2
 ##                           (Siege Specialist 3; params.collateral false to skip)
+##   leadership {dice}       Leadership Dice (counters.leadership); the free action "issue_order"
+##                           gives an ally one; the ally spends it with params.leadership for
+##                           +1 Accuracy (Leader 1), or params.leadership_damage for +1d6 bonus
+##                           damage (Leader 3)
+##   ace_burst               while flying, before a Boost: the free action "ace_burst" rolls 1d6
+##                           extra spaces for it, heat = half (Ace 2)
+##   nhp_assist              1/round, a failed mech skill check or save is rerolled (Technophile 2)
+##   no_cascade              its AI can't cascade (Technophile 3)
+##   supply_drop             1/mission at a rest: allies regain 1 use of Limited gear and 1
+##                           Structure (params.supply_drop) (Grease Monkey 3)
 ##   prowl                   on its own turn: Hidden isn't lost to line of sight or leaving cover,
 ##                           Hide in plain sight, pass through enemies (Infiltrator 1)
 
@@ -153,6 +163,8 @@ static func sources(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 	var partner := String(attacker.counters.get("duel", ""))
 	if partner != "" and partner != target.id and not attacker.counters.get("duel_paused", false):
 		out.append({"label": "Duel to the death", "kind": "difficulty", "type": "difficulty", "value": 3, "rule_ref": REF})
+	if opts.get("leadership", false) and attacker.counters.has("leader_die"):
+		out.append({"label": "Leadership Die", "kind": "accuracy", "type": "accuracy", "value": 1, "rule_ref": "talents: Leader"})
 	var miss := int(attacker.counters.get("relentless", 0))
 	if miss > 0 and Effects.has(attacker, "relentless"):
 		out.append({"label": "Relentless", "kind": "accuracy", "type": "accuracy", "value": miss, "rule_ref": REF})
@@ -369,6 +381,9 @@ static func bonus_sources(state: GameState, attacker: Unit, w: Dictionary, targe
 		out.append({"value": "1d6", "label": "Zero In"})
 	if attacker.counters.get("gunslinger_fire", false):
 		out.append({"value": "2d6", "label": "Gunslinger Die"})
+	if info.get("leadership_damage", false) and attacker.counters.has("leader_die") and Effects.has(state.unit(String(attacker.counters["leader_die"])), "leadership_plus"):
+		attacker.counters.erase("leader_die")
+		out.append({"value": "1d6", "label": "Leadership Die"})
 	return out
 
 
@@ -886,6 +901,31 @@ static func intercede(state: GameState, target: Unit, source: Unit, parts: Array
 			Reactions._mark_used(o, "intercede", state)
 			return o
 	return null
+
+
+## Leader: dice left in the pool (3, 5 at rank 2, 6 at rank 3).
+static func leadership_left(u: Unit) -> int:
+	if not u.counters.has("leadership"):
+		u.counters["leadership"] = Effects.value(u, "leadership", "dice")
+	return int(u.counters["leadership"])
+
+
+## Spends an ally's Leadership Die after the roll it was used for (attacks).
+static func used_leadership(attacker: Unit, opts: Dictionary) -> void:
+	if opts.get("leadership", false):
+		attacker.counters.erase("leader_die")
+
+
+## Technophile 2 NHP Assistance: a failed mech skill check or save is rerolled, 1/round
+## (the new result stands; a failure can't get worse).
+static func nhp_reroll(state: GameState, u: Unit, check: Dictionary, retry: Callable) -> Dictionary:
+	if check.get("success", true) or state == null or not Effects.has(u, "nhp_assist") or not _round_ok(state, u, "nhp_assist"):
+		return check
+	_use_round(state, u, "nhp_assist")
+	var again: Dictionary = retry.call()
+	again["rerolled_from"] = check.get("total", 0)
+	again["reroll_source"] = "NHP Assistance"
+	return again
 
 
 ## Infiltrator Prowl is active (its own turn).

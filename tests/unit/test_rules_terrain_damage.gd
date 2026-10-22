@@ -142,3 +142,17 @@ func test_apocalypse_rail_hits_objects() -> void:
 	var ev := TerrainDamage.after_area(s, a, w, [[5, 5]])
 	expect_eq(s.map.ground_height(Vector2i(5, 5)), 0, "Charge Rail 2: 40 AP to objects and terrain in the area")
 	expect_eq(F.events_of({"events": ev}, "terrain_destroyed")[0]["cells"], [[5, 5, 0]])
+
+
+func test_materials_and_hp_tags() -> void:
+	_setup()
+	s.map.set_column(Vector2i(3, 0), 1, PackedStringArray([BattleMap.TAG_DESTRUCTIBLE, "material:fortified"]))
+	expect_eq(TerrainDamage.info(s, Vector2i(3, 0))["armor"], 4, "fortified: Armor 4")
+	F.load_dice(s, [10, 4])
+	F.act(e, s, "skirmish", "a", {"weapon": "0:0", "target": "terrain:3,0"})
+	expect_eq(TerrainDamage.hp_left(s, Vector2i(3, 0)), 10, "a 4-damage shot bounces off")
+	TerrainDamage.damage_cell(s, Vector2i(3, 0), 4, "Kinetic", true, "test")
+	expect_eq(TerrainDamage.hp_left(s, Vector2i(3, 0)), 6, "AP gets through")
+	s.map.set_column(Vector2i(5, 5), 1, PackedStringArray([BattleMap.TAG_DESTRUCTIBLE, "material:wood", "hp_20", "armor_1"]))
+	var info := TerrainDamage.info(s, Vector2i(5, 5))
+	expect_eq([info["armor"], info["max_hp"]], [1, 20], "explicit armor_N wins over the material; hp_N sets the section HP")

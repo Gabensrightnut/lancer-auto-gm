@@ -65,6 +65,9 @@ class Activate:
 		var events: Array[Dictionary] = [{"type": "activated", "unit": u.id, "ability": a["key"], "name": a["name"],
 			"source": a.get("source_name", ""), "activation": a.get("activation", ""), "automated": a.get("automated", false),
 			"detail": a.get("detail", ""), "rule_ref": Abilities.REF}]
+		if u.turn.has("recharge_heat"):
+			events.append_array(Combat.apply_heat(state, u, int(u.turn["recharge_heat"]), "Recharge (house rule)"))
+			u.turn.erase("recharge_heat")
 		var self_heat := Abilities.heat_self(state, u, a)
 		if self_heat > 0:
 			events.append_array(Combat.apply_heat(state, u, Environments.gear_heat(state, self_heat), "Heat (Self): " + String(a.get("source_name", ""))))
@@ -621,7 +624,7 @@ const BASIC := [
 	["end_grapple", "Let Go", "other"], ["break_free", "Break Free", "other"], ["grapple_contest", "Grapple Contest", "other"],
 	["climb_on", "Climb On", "move"], ["board", "Board", "other"], ["disembark", "Climb Out", "other"], ["cut_cable", "Cut Cable", "attack"],
 	["pull_stake", "Pull Out Stake", "other"], ["use_object", "Use Object", "other"], ["ai_control", "Hand Over to AI", "other"],
-	["break_ice", "Break Free of the Ice", "other"], ["dig_out", "Dig Out of the Mud", "other"], ["backswing", "Backswing Cut", "attack"], ["hunter_throw", "Throw Knife (Hunter)", "attack"], ["feint", "Blademaster: Feint", "other"], ["trip", "Blademaster: Trip", "attack"], ["duelist_strike", "Blademaster: Grapple or Ram", "attack"],
+	["break_ice", "Break Free of the Ice", "other"], ["dig_out", "Dig Out of the Mud", "other"], ["backswing", "Backswing Cut", "attack"], ["hunter_throw", "Throw Knife (Hunter)", "attack"], ["drag", "Drag", "other"], ["issue_order", "Issue Order", "other"], ["ace_burst", "Afterburners (Ace)", "move"], ["release_drag", "Let Go (drag)", "other"], ["feint", "Blademaster: Feint", "other"], ["trip", "Blademaster: Trip", "attack"], ["duelist_strike", "Blademaster: Grapple or Ram", "attack"],
 ]
 ## Actions whose own check needs no target, so the bar can show exactly whether they work.
 const NO_TARGET := ["stand_up", "bonus_move", "disengage", "hide", "overcharge", "shut_down", "boot_up",

@@ -33,7 +33,7 @@ var _rng := RandomNumberGenerator.new()
 var _big: PortraitArt
 var _token_view: SubViewportContainer
 var _token_root: Node3D
-var _token: PilotToken
+var _token: Node3D
 var _part_rows: VBoxContainer
 var _options: GridContainer
 var _option_title: Label
@@ -508,7 +508,7 @@ func _build_token_view() -> SubViewportContainer:
 func _rebuild_token() -> void:
 	if _token:
 		_token.queue_free()
-	_token = PilotToken.new().build(portrait)
+	_token = HumanFigure.new().build(portrait, {"gear": {"pack": true}})
 	_token.rotation_degrees.y = 200.0
 	_token_root.add_child(_token)
 

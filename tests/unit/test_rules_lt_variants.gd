@@ -12,7 +12,7 @@ var t: Unit
 func _setup(lt: Array) -> void:
 	s = F.state()
 	for id: String in lt:
-		s.rulings[id] = {"choice": "lancer_tactics"}
+		s.house_rules[id] = true
 	e = RulesEngine.new()
 	a = F.mech(s, "a", "players", Vector2i(0, 0))
 	a.loadout["weapons"].append(F.weapon("1:0", "Pistol", "Auxiliary", "CQB", "1d3", 5))
@@ -22,10 +22,11 @@ func _setup(lt: Array) -> void:
 	F.begin(e, s, a)
 
 
-func test_variants_are_off_by_default() -> void:
-	for r: Dictionary in Rulings.catalog():
-		if r["variant"] == "lancer_tactics":
-			expect_eq(r["suggested"], "book", r["id"])
+func test_defaults_follow_the_users_picks() -> void:
+	var fresh := GameState.new(1)
+	expect(Rulings.lancer_tactics(fresh, "lt_split_barrage"), "split Barrage on for new campaigns")
+	expect(Rulings.lancer_tactics(fresh, "lt_brace_prompt"), "LT Brace prompt on")
+	expect(not Rulings.lancer_tactics(fresh, "lt_repeat_quick_tech"), "Quick Tech stays book")
 	_setup([])
 	F.load_dice(s, [15, 3, 15, 3])
 	expect(F.ok(F.act(e, s, "skirmish", "a", {"weapon": "0:0", "target": "t"})))

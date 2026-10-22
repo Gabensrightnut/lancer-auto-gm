@@ -27,6 +27,10 @@ const BY_TYPE := {
 	"improvised_attack": ["target", "unit", "other", "Pick a target"],
 	"search": ["target", "unit", "other", "Pick who to search for"],
 	"bolster": ["target", "unit", "ally", "Pick an ally to Bolster"],
+	"feint": ["target", "unit", "other", "Feint: pick an adjacent character"],
+	"trip": ["target", "unit", "other", "Trip: pick an adjacent character"],
+	"duelist_strike": ["target", "unit", "other", "Pick the character you just hit"],
+	"hunter_throw": ["target", "unit", "other", "Throw at a character in Range"],
 }
 const PROBE_RANGE := 8
 

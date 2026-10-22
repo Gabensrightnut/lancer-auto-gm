@@ -264,6 +264,19 @@ them, and they disappear when the turn moves on.
   Destructible terrain visibly breaks when destroyed.
 - The grid stays readable on top of everything (toggle-able grid lines, clear tile edges).
 
+### People up close (feedback to act on next)
+- The user, seeing a town NPC face to face: "people here still too blocky and round for my
+  liking". Next pass on people: less round, less blocky, closer to the Lancer art style, with
+  the most detail on head, face and hands (the face-to-face camera is about 1.25 m away).
+
+### Every place is its own place
+- No two towns look the same: every hub and every map gets its own layout, building mix and
+  details, even within one culture and landscape.
+- Battles happen where you are on the world: fight in town, walk a mile down the road and get
+  ambushed, and the second map keeps the same region's look (landscape, culture, weather,
+  vegetation, building style) but with different buildings and terrain, as the next stretch of
+  the same place.
+
 ### Town fights and building toughness
 - A fight that breaks out in a town happens in that town: the battle map is built from the
   hub's own layout and culture kit at mech scale, so the saloon you walked into is the cover
@@ -681,6 +694,12 @@ pixel art).
 - Optional: a person can run the game instead of the procedural GM: sees everything, spawns
   units, edits the map, triggers events, makes rulings. The procedural GM can still run the
   enemies while the human GM handles story.
+- Built so far: "Who is the GM" (the AI, a person at the host's computer, or a friend online who
+  joins as the GM). The human GM sees the whole battle and story (secrets included), has the
+  story GM tools (G) in the hub and over battles, and reveals the mission twist themselves.
+  The AI still flies the enemies, starts the fight, answers rules questions and calls
+  reinforcements. Still to come: spawning units, the map editor, making rulings and flying
+  enemies by hand.
 
 ### Milestones
 1. **First playable:** one full mission start to finish, hot-seat, core frames vs.
@@ -742,6 +761,11 @@ at any time, even mid-campaign. The game stays canon until someone turns one on.
   are ON by your pick; repeating quick tech stays OFF.
 - **Community house rules:** popular ones researched from the Lancer community (forums, Reddit,
   Discord write-ups, GM blogs), each with its source.
+- Built: the House Rules panel in settings lists every switch (the rules engine's and the
+  story's) by source, each with "Not a book rule", where it applies (battle / between missions)
+  and a link to where it's from. A flip applies at once; a human GM's set wins, else the host's;
+  every switch is announced (battle log, lobby, story log) and saved with the campaign. Not yet:
+  marking them in the codex.
 
 ## Rule differences: Lancer Tactics vs. the book
 
@@ -755,8 +779,7 @@ Sources: the Lancer Tactics developers' public FAQ and comments on itch.io
 ([NPC Rebake](https://wick.itch.io/lancer-tactics/devlog/937132/npc-rebake-rests-repairs-community-maps),
 [talents](https://wick.itch.io/lancer-tactics/devlog/960548/keeping-the-fire-lit-more-talents)).
 Lancer Tactics says it keeps "extremely close" to the book, so the list is short. Rows with
-an option name can already be switched in the game's table rules (`state.rulings`,
-`Rulings.catalog()` entries with `variant: "lancer_tactics"`); the book is the default.
+an option name are switches on the House Rules page (`HouseRuleSwitches`, `state.house_rules`).
 
 | Rule | Book | Lancer Tactics | Why LT might do it | Your pick |
 |---|---|---|---|---|

@@ -19,6 +19,9 @@ static var persist := true
 static var _loaded := false
 static var _scale := 1.0
 static var _skip_seen := false
+## "third": Lancer Tactics-style pop-up with portrait cards; "first": face to face (the camera
+## holds on the person's face, subtitles at the bottom). Radio calls always use the comms frame.
+static var _view := "third"
 static var _seen: Dictionary = {}
 static var _notifier: Notifier
 
@@ -44,6 +47,7 @@ static func _load() -> void:
 	if cfg.load(FILE) == OK:
 		_scale = clampf(float(cfg.get_value("text", "scale", 1.0)), 0.8, 1.6)
 		_skip_seen = bool(cfg.get_value("dialogue", "skip_seen", false))
+		_view = str(cfg.get_value("dialogue", "view", "third"))
 	if FileAccess.file_exists(SEEN_FILE):
 		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(SEEN_FILE))
 		if d is Array:
@@ -57,6 +61,7 @@ static func _save() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("text", "scale", _scale)
 	cfg.set_value("dialogue", "skip_seen", _skip_seen)
+	cfg.set_value("dialogue", "view", _view)
 	cfg.save(FILE)
 
 
@@ -99,6 +104,18 @@ static func set_skip_seen(on: bool) -> void:
 	notifier().changed.emit()
 
 
+static func dialogue_view() -> String:
+	_load()
+	return _view
+
+
+static func set_dialogue_view(v: String) -> void:
+	_load()
+	_view = "first" if v == "first" else "third"
+	_save()
+	notifier().changed.emit()
+
+
 static func line_key(scene: String, node: String, text: String) -> String:
 	return "%s:%s:%d" % [scene, node, hash(text)]
 
@@ -127,4 +144,5 @@ static func reset_for_tests() -> void:
 	_loaded = true
 	_scale = 1.0
 	_skip_seen = false
+	_view = "third"
 	_seen = {}

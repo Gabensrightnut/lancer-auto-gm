@@ -28,6 +28,8 @@ var submitter: Callable
 
 var _prompt: PanelContainer
 var _prompt_text: RichTextLabel
+## Attack options (duel, storm, collateral, delayed) shown under the confirm buttons.
+var _opt_row: HBoxContainer
 var _hint: Label
 var _last_cell := Vector2i(99999, 99999)
 var _hover_unit := ""
@@ -58,6 +60,9 @@ func setup(ui_layer: CanvasLayer) -> void:
 	h.alignment = BoxContainer.ALIGNMENT_CENTER
 	h.add_theme_constant_override("separation", 12)
 	v.add_child(h)
+	_opt_row = HBoxContainer.new()
+	_opt_row.add_theme_constant_override("separation", 8)
+	v.add_child(_opt_row)
 	var ok := Button.new()
 	ok.text = "Confirm  (Enter)"
 	ok.focus_mode = Control.FOCUS_NONE
@@ -563,6 +568,7 @@ func _ask_pick() -> void:
 
 func _ask(text: String, action: Dictionary) -> void:
 	pending = action
+	_fill_options(selected.get("options", []) if not action.is_empty() and not selected.is_empty() else [])
 	_prompt_text.text = text
 	_prompt.visible = true
 	_prompt.reset_size()
@@ -570,6 +576,29 @@ func _ask(text: String, action: Dictionary) -> void:
 	_prompt.position = Vector2((vp.x - _prompt.size.x) / 2.0, vp.y * 0.6)
 	# Without an action there is nothing to confirm: just a message.
 	(_prompt.get_child(0).get_child(1).get_child(0) as Button).visible = not action.is_empty()
+
+
+## One drop-down per option; picking sets that param on the pending action (defaults first).
+func _fill_options(opts: Array) -> void:
+	for c in _opt_row.get_children():
+		_opt_row.remove_child(c)
+		c.queue_free()
+	_opt_row.visible = not opts.is_empty()
+	for o: Dictionary in opts:
+		var params: Dictionary = pending.get("params", {})
+		params[String(o["key"])] = o.get("default")
+		pending["params"] = params
+		var ob := OptionButton.new()
+		ob.focus_mode = Control.FOCUS_NONE
+		var vals: Array = o.get("values", [])
+		for v: Array in vals:
+			ob.add_item(String(v[1]))
+		ob.tooltip_text = String(o.get("label", ""))
+		for i in range(vals.size()):
+			if vals[i][0] == o.get("default"):
+				ob.select(i)
+		ob.item_selected.connect(func(i: int) -> void: (pending["params"] as Dictionary)[String(o["key"])] = vals[i][0])
+		_opt_row.add_child(ob)
 
 
 func cancel() -> void:

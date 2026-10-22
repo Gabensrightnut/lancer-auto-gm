@@ -23,6 +23,8 @@ const PERSONAS := "res://data/game/story/personas.json"
 ## Every conversation is kept for the scroll-back log (story.flags), up to this many rows.
 const TRANSCRIPT := "_transcript"
 const TRANSCRIPT_MAX := 400
+## Pilots whose mechs are Jammed right now (kept up to date from battle events, Rivals.observe).
+const JAMMED := "_jammed"
 
 static var _scenes: Dictionary = {}
 static var _personas: Dictionary = {}
@@ -68,6 +70,9 @@ static func start(story: StoryState, campaign: Campaign, scene_id: String, ctx: 
 
 ## Goes to the next node of a line without choices.
 static func advance(story: StoryState, campaign: Campaign) -> Array:
+	# A Jammed pilot can't answer: the call drops (statuses: Jammed).
+	if bool(story.dialogue.get("jammed_hold", false)):
+		return close(story, "jammed")
 	var node := current_node(story)
 	if node.get("end", false) or not node.has("next"):
 		return close(story, "finished")
@@ -107,6 +112,11 @@ static func _keep_transcript(story: StoryState) -> void:
 	if kept.size() > TRANSCRIPT_MAX:
 		kept = kept.slice(kept.size() - TRANSCRIPT_MAX)
 	story.flags[TRANSCRIPT] = kept
+
+
+## A pilot whose mech is Jammed in the battle being fought can't use comms.
+static func is_jammed(story: StoryState, pid: String) -> bool:
+	return (story.flags.get(JAMMED, []) as Array).has(pid)
 
 
 static func current_node(story: StoryState) -> Dictionary:
@@ -153,12 +163,25 @@ static func _enter(story: StoryState, campaign: Campaign, node_id: String) -> Ar
 		story.dialogue["votes"] = {}
 		var raw: Array = (node.get("choices", []) as Array) + BackgroundStory.options_for(story, campaign, ctx, node_id)
 		story.dialogue["choices"] = _build_choices(story, campaign, raw, ctx)
+		# Face to face or over comms (DESIGN: dialogue modes). Over comms, a Jammed pilot gets
+		# static and can't answer (statuses: Jammed, "can't use comms to talk to other characters").
+		var sc_def := scene_of(story, str(story.dialogue["scene"]))
+		var mode := str(node.get("mode", sc_def.get("mode", ctx.get("mode", "talk"))))
+		story.dialogue["mode"] = mode
+		story.dialogue["channel"] = str(node.get("channel", sc_def.get("channel", ctx.get("channel", ""))))
+		story.dialogue["jammed"] = mode == "radio" and is_jammed(story, str(ctx.get("speaker", "")))
+		if bool(story.dialogue["jammed"]) and text != "":
+			text = "[static: the signal breaks up]"
+			story.dialogue["text"] = text
+			story.dialogue["jammed_hold"] = not story.dialogue["choices"].is_empty() or node.has("choices")
+			story.dialogue["choices"] = []
 		if text != "":
 			(story.dialogue["log"] as Array).append({"speaker": speaker, "name": speaker_name(story, campaign, speaker), "text": text})
 			events.append({"type": "dialogue_line", "speaker": speaker, "name": speaker_name(story, campaign, speaker),
+				"mode": story.dialogue["mode"], "channel": story.dialogue["channel"], "jammed": story.dialogue["jammed"],
 				"expression": story.dialogue["expression"], "text": text, "choices": story.dialogue["choices"].duplicate(true),
 				"face": PortraitSpec.of_speaker(story, campaign, ctx, speaker, str(story.dialogue["expression"]))})
-		if node.has("choices") and (story.dialogue["choices"] as Array).is_empty():
+		if node.has("choices") and (story.dialogue["choices"] as Array).is_empty() and not bool(story.dialogue.get("jammed_hold", false)):
 			# Nothing to say here any more: go on (or end) instead of getting stuck.
 			if node.has("next"):
 				node_id = str(node["next"])
