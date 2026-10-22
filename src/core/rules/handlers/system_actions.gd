@@ -104,6 +104,7 @@ class Stabilize:
 				for w: Dictionary in u.loadout.get("weapons", []):
 					if Weapons.has_tag(w, "tg_loading"):
 						Weapons.state_of(u, w)["loaded"] = true
+				GearSystems.reloaded(u)
 				events.append({"type": "reloaded", "unit": u.id})
 			"clear_burn":
 				u.burn = 0

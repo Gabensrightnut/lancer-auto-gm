@@ -33,6 +33,7 @@ const NPC_TEMPLATES := "res://data/game/npc_templates.json"
 const FRAME_EFFECTS := "res://data/game/frame_effects.json"
 const GEAR_EFFECTS := "res://data/game/gear_effects.json"
 const ACTIVATION_EFFECTS := "res://data/game/activation_effects.json"
+const WEAPON_EFFECTS := "res://data/game/weapon_effects.json"
 ## lancer-data core_system active_bonuses ids -> the roll type they give Accuracy on.
 const BONUS_ROLLS := {"attack": "attack", "check": "check", "save": "save", "tech_attack": "tech_attack"}
 
@@ -273,12 +274,6 @@ static func build_mech(db: ContentDB, id: String, frame_id: String, loadout: Dic
 		# Drone: "can't make normal attacks").
 		if w.get("skirmish", true) == false or "make normal attacks" in String(w.get("effect", "")):
 			prof["no_attack"] = true
-		if w.has("profiles"):
-			var all: Array = []
-			for i in range((w["profiles"] as Array).size()):
-				all.append(weapon_profile(_with_profile(w, i), "", -1))
-			prof["profiles"] = all
-			prof["profile"] = 0
 		weapons.append(prof)
 		integ += 1
 	var systems: Array = []
@@ -330,7 +325,15 @@ static func _abilities(db: ContentDB, u: Unit, frame: Dictionary, system_ids: Ar
 	for w: Dictionary in u.loadout.get("weapons", []):
 		var raw := db.weapon(String(w.get("id", "")))
 		if not raw.is_empty():
-			_add_source(out, raw, "w:" + String(w["key"]), raw.get("name", ""), String(raw.get("id", "")), true)
+			var src := raw
+			if (w.get("rules", {}) as Dictionary).has("spin_up"):
+				# Spin Up as a quick action, end it as a protocol (WeaponRules).
+				src = raw.duplicate(true)
+				var acts: Array = (src.get("actions", []) as Array).duplicate(true)
+				acts.append({"name": "Spin Up " + String(raw.get("name", "")), "activation": "Quick", "detail": "Spin up the barrels: the Spin-Up profile.", "ops": [{"op": "spin_up", "weapon": w["key"]}]})
+				acts.append({"name": "Spin Down " + String(raw.get("name", "")), "activation": "Protocol", "detail": "End Spin-Up mode.", "ops": [{"op": "spin_down", "weapon": w["key"]}]})
+				src["actions"] = acts
+			_add_source(out, src, "w:" + String(w["key"]), raw.get("name", ""), String(raw.get("id", "")), true)
 	var core: Dictionary = frame.get("core_system", {})
 	var core_src := {"actions": [], "deployables": core.get("deployables", [])}
 	for a: Dictionary in core.get("passive_actions", []):
@@ -372,12 +375,18 @@ static func _add_source(out: Array, src: Dictionary, key: String, name: String, 
 		elif tag.get("id", "") == "tg_turn":
 			tag_freq = "%s/turn" % str(tag.get("val", 1))
 	var n := 0
-	for a: Dictionary in src.get("actions", []):
-		var act := String(a.get("activation", ""))
+	var actions: Array = (src.get("actions", []) as Array).duplicate()
+	actions.append_array(data.get("actions:%s" % data_id, []))  # our extra actions (Detonate)
+	for a: Dictionary in actions:
+		var act := String(a.get("activation", "") if a.get("activation") != null else "")
 		if weapon and act == "":
 			continue
-		var aname := String(a.get("name", name))
+		var aname := String(a.get("name", name) if a.get("name") != null else name)
 		var ops: Variant = a.get("ops") if a.has("ops") else data.get("%s:%s" % [data_id, aname])
+		if ops is Dictionary:
+			# {"activation": ..., "ops": [...]}: lancer-data gives no activation (Thermal Grenade).
+			act = String(ops.get("activation", act))
+			ops = ops.get("ops", [])
 		out.append({"key": "%s/a%d" % [key, n], "name": aname, "source_key": key, "source_name": name,
 			"kind": "action", "activation": act, "frequency": a.get("frequency", tag_freq),
 			"trigger": a.get("trigger", ""), "detail": a.get("detail", ""), "range": a.get("range", []),
@@ -385,7 +394,12 @@ static func _add_source(out: Array, src: Dictionary, key: String, name: String, 
 			"ops": ops if ops is Array else [], "automated": ops is Array})
 		n += 1
 	var m := 0
-	for d: Dictionary in src.get("deployables", []):
+	for raw: Dictionary in src.get("deployables", []):
+		# Our corrections and extras for a deployable (activation_effects "deploy:<id>:<name>").
+		var d := raw.duplicate(true)
+		var over: Variant = data.get("deploy:%s:%s" % [data_id, raw.get("name", "")])
+		if over is Dictionary:
+			d.merge(over, true)
 		var dkey := "%s/d%d" % [key, m]
 		out.append({"key": dkey, "name": "Deploy " + String(d.get("name", "")), "source_key": key, "source_name": name,
 			"kind": "deploy", "activation": String(d.get("activation", "Quick")) if String(d.get("activation", "Quick")) != "None" else "Quick",
@@ -420,6 +434,9 @@ static func _add_gear_effects(u: Unit, ids: Array, talents: Dictionary) -> void:
 			effects.append(copy)
 			if copy["kind"] == "size_step":
 				u.size = minf(3.0, 1.0 if u.size < 1.0 else u.size + 1.0)
+			if copy["kind"] == "hp_bonus":
+				u.max_hp += int(copy.get("value", 0))  # Personalizations
+				u.hp = u.max_hp
 	for id: String in ids:
 		if data.get(id) is Array:
 			add.call(data[id], id)
@@ -522,11 +539,35 @@ static func weapon_profile(w: Dictionary, key: String, mount: int) -> Dictionary
 	if w.has("profiles") and not (w["profiles"] as Array).is_empty():
 		src = w.duplicate(true)
 		src.merge(w["profiles"][0], true)
-	return {"key": key, "id": w.get("id", ""), "name": w.get("name", ""), "mount": mount,
+	var out := {"key": key, "id": w.get("id", ""), "name": w.get("name", ""), "mount": mount,
 		"size": w.get("mount", ""), "type": w.get("type", ""),
 		"damage": (src.get("damage", []) as Array).duplicate(true),
 		"range": (src.get("range", []) as Array).duplicate(true),
 		"tags": (src.get("tags", []) as Array).duplicate(true)}
+	# Structured on-hit / on-crit conditions and our own rules (WeaponRules).
+	for field in ["on_hit", "on_crit"]:
+		if src.get(field) is Dictionary:
+			out["data_" + field] = (src[field] as Dictionary).duplicate(true)
+	var r: Variant = weapon_effects_data().get(String(w.get("id", "")))
+	if r is Dictionary:
+		out["rules"] = (r as Dictionary).duplicate(true)
+	if key != "" and w.has("profiles") and (w["profiles"] as Array).size() > 1:
+		var all: Array = []
+		for i in range((w["profiles"] as Array).size()):
+			all.append(weapon_profile(_with_profile(w, i), "", -1))
+		out["profiles"] = all
+		out["profile"] = 0
+	return out
+
+
+static var _weapon_data: Dictionary = {}
+
+
+static func weapon_effects_data() -> Dictionary:
+	if _weapon_data.is_empty():
+		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(WEAPON_EFFECTS))
+		_weapon_data = d if d is Dictionary else {}
+	return _weapon_data
 
 
 ## Hand-written NPC templates (data/game/npc_templates.json). Not official NPC data.

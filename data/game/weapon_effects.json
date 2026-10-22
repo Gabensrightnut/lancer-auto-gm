@@ -1,0 +1,61 @@
+{
+  "_note": "Our encodings of weapon rules beyond tags (src/core/rules/weapon_rules.gd). lancer-data's own structured on_hit/on_crit add_status are read directly.",
+  "mw_chain_axe": {
+    "on_crit": [
+      {
+        "status": "Shredded",
+        "until": "end_this_turn"
+      }
+    ]
+  },
+  "mw_bristlecrown_flechette_launcher": {
+    "ignore_engaged": true,
+    "damage_vs": {
+      "grappled_or_biological": 3
+    }
+  },
+  "mw_cutter_mkii_plasma_torch": {
+    "object_damage": "10"
+  },
+  "mw_combat_drill": {
+    "overkill_bonus_vs": [
+      "Prone",
+      "Immobilized",
+      "Stunned"
+    ]
+  },
+  "mw_impact_lance": {
+    "line_attack": true
+  },
+  "mw_assault_cannon": {
+    "spin_up": {
+      "profile": 1,
+      "status": "Slowed"
+    }
+  },
+  "mw_leviathan_heavy_assault_cannon": {
+    "spin_up": {
+      "profile": 1,
+      "status": "Slowed",
+      "skirmish_only_standard": true
+    }
+  },
+  "mw_magnetic_cannon": {
+    "on_hit_pull": {
+      "spaces": "1d3+1",
+      "save": "hull"
+    }
+  },
+  "mw_veil_rifle": {
+    "spare_allies_cover": true
+  },
+  "mw_sharanga_missiles": {
+    "targets": 2
+  },
+  "mw_fold_knife": {
+    "on_crit_teleport": 2
+  },
+  "mw_pinaka_missiles": {
+    "blasts": 2
+  }
+}

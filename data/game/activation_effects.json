@@ -71,5 +71,349 @@
     {
       "op": "hologram_teleport"
     }
+  ],
+  "ms_pattern_b_hex_charges:Frag Grenade": [
+    {
+      "op": "blast_save",
+      "range": 5,
+      "blast": 1,
+      "save": "agility",
+      "damage": "1d6",
+      "type": "Explosive",
+      "half": true,
+      "grenade": true,
+      "label": "Frag Grenade"
+    }
+  ],
+  "ms_pattern_a_smoke_charges:Smoke Grenade": [
+    {
+      "op": "smoke",
+      "range": 5,
+      "blast": 2,
+      "grenade": true
+    }
+  ],
+  "ms_type_3_projected_shield:Project Shield": [
+    {
+      "op": "project_shield"
+    }
+  ],
+  "deploy:ms_pattern_b_hex_charges:Explosive Mine": {
+    "damage": [
+      {
+        "type": "Explosive",
+        "val": "2d6",
+        "save": "agi",
+        "save_half": true,
+        "aoe": true
+      }
+    ],
+    "_note": "Core p.120 says 2d6; lancer-data has 3d6."
+  },
+  "deploy:ms_pattern_a_smoke_charges:Smoke Mine": {
+    "trigger": "ally",
+    "zone_size": 3
+  },
+  "deploy:ms_turret_drones:Turret Drone": {
+    "turret": true
+  },
+  "ms_reinforced_cabling:Drag Down": [
+    {
+      "op": "contest_prone",
+      "label": "Drag Down",
+      "target": {
+        "who": "other",
+        "range": 5,
+        "los": true
+      }
+    }
+  ],
+  "ms_argonaut_shield:Argonaut Shield": [
+    {
+      "op": "argonaut",
+      "label": "Argonaut Shield",
+      "target": {
+        "who": "ally",
+        "adjacent": true
+      }
+    }
+  ],
+  "ms_whitewash_sealant_spray:Whitewash Sealant Spray": [
+    {
+      "op": "whitewash",
+      "label": "Whitewash Sealant Spray",
+      "target": {
+        "who": "any",
+        "range": 5,
+        "los": true,
+        "or_space": true
+      }
+    }
+  ],
+  "ms_aceso_stabilizer:Aceso Stabilizer": [
+    {
+      "op": "overshield",
+      "plus": 4,
+      "immune_while": [
+        "Impaired",
+        "Jammed"
+      ],
+      "label": "Aceso Stabilizer",
+      "target": {
+        "who": "ally_mech",
+        "range": 5
+      }
+    }
+  ],
+  "ms_ramjet:Ramjet": [
+    {
+      "op": "self_effects",
+      "duration": "start_next_turn",
+      "effects": [
+        {
+          "kind": "boost_bonus",
+          "value": 2
+        },
+        {
+          "kind": "melee_knockback",
+          "value": 2
+        }
+      ]
+    }
+  ],
+  "ms_hyperdense_armor:HyperDense Armor": [
+    {
+      "op": "self_effects",
+      "duration": "scene",
+      "effects": [
+        {
+          "kind": "resist",
+          "damage": [
+            "All"
+          ],
+          "beyond": 3
+        },
+        {
+          "kind": "status",
+          "status": "Slowed",
+          "when": "always"
+        },
+        {
+          "kind": "half_damage_beyond",
+          "value": 3
+        }
+      ]
+    }
+  ],
+  "ms_hyperdense_armor:Deactivate HyperDense Armor": [
+    {
+      "op": "remove_effects",
+      "label": "HyperDense Armor"
+    }
+  ],
+  "ms_bb_breach_blast_charges:Thermal Grenade": {
+    "activation": "Quick",
+    "ops": [
+      {
+        "op": "blast_save",
+        "range": 5,
+        "blast": 1,
+        "save": "agility",
+        "damage": "1d6",
+        "type": "Energy",
+        "half": true,
+        "grenade": true,
+        "object_damage": 10,
+        "label": "Thermal Grenade"
+      }
+    ]
+  },
+  "deploy:ms_bb_breach_blast_charges:Breaching Charge": {
+    "trigger": "manual",
+    "range": [
+      {
+        "type": "Burst",
+        "val": 1
+      }
+    ],
+    "damage": [
+      {
+        "type": "Explosive",
+        "val": "2d6",
+        "ap": true,
+        "save": "agi",
+        "save_half": true
+      }
+    ]
+  },
+  "actions:ms_bb_breach_blast_charges": [
+    {
+      "name": "Detonate Breaching Charge",
+      "activation": "Quick",
+      "detail": "Detonate your armed Breaching Charge.",
+      "ops": [
+        {
+          "op": "detonate",
+          "deployable": "Breaching Charge"
+        }
+      ]
+    }
+  ],
+  "ms_charged_stake:Charged Stake": [
+    {
+      "op": "impale",
+      "label": "Charged Stake",
+      "target": {
+        "who": "other",
+        "adjacent": true
+      }
+    }
+  ],
+  "deploy:ms_restock_drone:Restock Drone": {
+    "interact": [
+      {
+        "op": "restock"
+      }
+    ]
+  },
+  "deploy:ms_aegis_shield_generator:Aegis Shield Generator": {
+    "aegis_dice": 3
+  },
+  "deploy:ms_portable_bunker:Portable Bunker": {
+    "zone": {
+      "kind": "bunker",
+      "size": 4
+    }
+  },
+  "deploy:ms_caltrop_launcher:Caltrop Field": {
+    "zone": {
+      "kind": "caltrops",
+      "size": 1
+    },
+    "range": [
+      {
+        "type": "Range",
+        "val": 5
+      }
+    ],
+    "size": 1
+  },
+  "deploy:ms_webjaw_snare:Webjaw Snare": {
+    "snare": true
+  },
+  "ms_singularity_motivator:Exposed Singularity": [],
+  "ms_ferrous_lash:Ferrous Lash": [
+    {
+      "op": "ferrous_lash",
+      "label": "Ferrous Lash",
+      "target": {
+        "who": "other",
+        "range": 8,
+        "los": true
+      }
+    }
+  ],
+  "ms_tracking_bug:Tracking Bug": [
+    {
+      "op": "tracking_bug",
+      "tech_attack": true
+    }
+  ],
+  "ms_core_siphon:Core Siphon": [
+    {
+      "op": "turn_flag",
+      "flag": "siphon"
+    }
+  ],
+  "ms_neurospike:Shrike Code": [
+    {
+      "op": "shrike_code"
+    }
+  ],
+  "ms_neurospike:Mirage": [
+    {
+      "op": "mirage"
+    }
+  ],
+  "ms_hunter_logic_suite:Stalk Prey": [
+    {
+      "op": "stalk_prey"
+    }
+  ],
+  "ms_hunter_logic_suite:Terrify": [
+    {
+      "op": "terrify"
+    }
+  ],
+  "ms_active_camouflage:Active Camouflage": [
+    {
+      "op": "status",
+      "who": "self",
+      "status": "Invisible",
+      "duration": "end_next_turn"
+    }
+  ],
+  "ms_javelin_rockets:Javelin Rockets": [
+    {
+      "op": "javelin"
+    }
+  ],
+  "ms_markerlight:Markerlight": [
+    {
+      "op": "markerlight",
+      "tech_attack": true
+    }
+  ],
+  "ms_retractable_profile:Retractable Profile": [
+    {
+      "op": "self_effects",
+      "duration": "scene",
+      "effects": [
+        {
+          "kind": "defense_difficulty",
+          "value": 1,
+          "vs": [
+            "ranged",
+            "tech"
+          ]
+        },
+        {
+          "kind": "status",
+          "status": "Slowed",
+          "when": "always"
+        },
+        {
+          "kind": "no_attacks"
+        }
+      ]
+    }
+  ],
+  "ms_retractable_profile:Deactivate Retractable Profile": [
+    {
+      "op": "remove_effects",
+      "label": "Retractable Profile"
+    }
+  ],
+  "ms_lb_oc_cloaking_field:LB/OC Cloaking Field": [
+    {
+      "op": "cloaking_field"
+    }
+  ],
+  "ms_lb_oc_cloaking_field:Deactivate LB/OC Cloaking Field": [
+    {
+      "op": "remove_zone",
+      "kind": "cloak"
+    }
+  ],
+  "deploy:ms_iceout_drone:ICEOUT Drone": {
+    "aura": "iceout"
+  },
+  "deploy:ms_lotus_projector:Lotus Projector": {
+    "aura": "lotus"
+  },
+  "ms_stuncrown:StunCrown": [
+    {
+      "op": "stuncrown"
+    }
   ]
 }

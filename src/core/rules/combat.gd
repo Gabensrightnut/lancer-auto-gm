@@ -63,6 +63,7 @@ static func remove_status(u: Unit, status: String, source: String = "") -> Array
 	if not u.statuses.has(status):
 		return [] as Array[Dictionary]
 	u.statuses.erase(status)
+	GearSystems.status_ended(u, status)
 	return [{"type": "status_removed", "unit": u.id, "status": status, "source": source}] as Array[Dictionary]
 
 
@@ -127,6 +128,10 @@ static func skill_check(state: GameState, u: Unit, skill: String, label: String,
 	if u.has_status("Stunned") and (skill == "hull" or skill == "agility"):
 		record["success"] = false
 		record["auto_fail"] = "Stunned mechs automatically fail Hull and Agility checks and saves."
+	for e: Dictionary in Effects.of(u, "auto_save"):
+		if (e.get("skills", []) as Array).has(skill):
+			record["success"] = true  # Armor-Lock Plating: can't fail these
+			record["auto_success"] = String(e.get("label", ""))
 	return record
 
 
@@ -196,6 +201,12 @@ static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dict
 		ev["overshield"] = target.overshield
 		if target.destroyed:
 			break
+	var took := false
+	for ev: Dictionary in events:
+		took = took or (ev.get("type", "") == "damage_dealt" and int(ev.get("amount", 0)) > 0 and ev.get("target", "") == target.id)
+	if took and not target.destroyed:
+		events.append_array(GearSystems.took_damage(state, target, source))
+		events.append_array(GearSystems.singularity(state, target))
 	return events
 
 
@@ -228,6 +239,10 @@ static func lose_hp(state: GameState, u: Unit, amount: int, source: String) -> A
 		var frenzy := FrameSystems.frenzy_saves(state, u)
 		events.append_array(frenzy)
 		if not frenzy.is_empty() and frenzy[0].get("saved", false):
+			break
+		var paint := GearSystems.paint_job(state, u)
+		events.append_array(paint)
+		if not paint.is_empty() and paint[0].get("saved", false):
 			break
 		u.structure -= 1
 		events.append({"type": "structure_lost", "unit": u.id, "structure": u.structure, "rule_ref": "Core p.80 Structure"})
@@ -504,6 +519,8 @@ static func destroy(state: GameState, u: Unit, why: String) -> Array[Dictionary]
 	u.destroyed = true
 	u.hp = 0
 	var events: Array[Dictionary] = [{"type": "unit_destroyed", "unit": u.id, "reason": why}]
+	if u.counters.get("snare", false):
+		events.append_array(GearSystems.snare_gone(state, u))
 	if Pilots.castigating(state, u) and not u.counters.get("vaporized", false) and why != "Self Destruct.":
 		# Manticore Castigate the Enemies of the Godhead: it explodes at once (burst 2, 8d6).
 		events.append_array(Pilots.explode(state, u, "Castigation: " + why))
@@ -700,6 +717,11 @@ static func refresh_engagement(state: GameState) -> Array[Dictionary]:
 ## Could `u` HIDE right now? Not Engaged, and every enemy either has no line of sight or
 ## the unit is entirely inside soft cover; INVISIBLE can always hide (actions: Hide).
 static func can_hide(state: GameState, u: Unit) -> RuleResult:
+	if not (u.counters.get("tracked_by", []) as Array).is_empty():
+		return RuleResult.deny("A tracking bug is on you: you can't Hide.", "systems: Tracking Bug")
+	for o: Unit in state.units.values():
+		if o.counters.get("aura", "") == "lotus" and not o.destroyed and o.side != u.side and Sight.unit_distance(state, o, u) <= 2:
+			return RuleResult.deny("Inside a Lotus Projector field you can't Hide.", "systems: Lotus Projector")
 	if u.has_status("Engaged"):
 		return RuleResult.deny("You can't Hide while Engaged.", "actions: Hide")
 	if u.has_status("Invisible"):

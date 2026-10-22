@@ -1,29 +1,173 @@
 {
   "_note": "Our machine-readable encoding of passive effects from systems, core bonuses, talents (by rank, cumulative) and pilot gear. Effect kinds: src/core/rules/effects.gd. Rule text stays in lancer-data. Only what the text grants is encoded; anything needing an activation or a choice isn't here yet (see docs/RULES_TODO.md).",
-  "ms_bulwark_mods": [{"kind": "ignore_difficult"}],
-  "ms_high_stress_mag_clamps": [{"kind": "climb_normal"}],
-  "ms_type_i_flight_system": [{"kind": "optional_flight", "heat": "size+1"}],
-  "ms_rapid_burst_jump_jet_system": [{"kind": "boost_flight"}],
-  "ms_flicker_field_projector": [{"kind": "afterimage"}],
-  "cb_all_theater_movement_suite": [{"kind": "optional_flight", "heat": 1}],
-  "cb_integrated_nerveweave": [{"kind": "boost_bonus", "value": 2}],
-  "cb_kai_bioplating": [
-    {"kind": "accuracy", "on": "check", "skill": "agility", "value": 1},
-    {"kind": "accuracy", "on": "save", "skill": "agility", "value": 1},
-    {"kind": "climb_normal"},
-    {"kind": "ignore_difficult"},
-    {"kind": "jump_plus"}
+  "ms_bulwark_mods": [
+    {
+      "kind": "ignore_difficult"
+    }
   ],
-  "cb_fomorian_frame": [{"kind": "size_step"}, {"kind": "heavy_frame"}],
-  "cb_ghostweave": [{"kind": "status", "status": "Invisible", "when": "own_turn"}],
+  "ms_high_stress_mag_clamps": [
+    {
+      "kind": "climb_normal"
+    }
+  ],
+  "ms_type_i_flight_system": [
+    {
+      "kind": "optional_flight",
+      "heat": "size+1"
+    }
+  ],
+  "ms_rapid_burst_jump_jet_system": [
+    {
+      "kind": "boost_flight"
+    }
+  ],
+  "ms_flicker_field_projector": [
+    {
+      "kind": "afterimage"
+    }
+  ],
+  "cb_all_theater_movement_suite": [
+    {
+      "kind": "optional_flight",
+      "heat": 1
+    }
+  ],
+  "cb_integrated_nerveweave": [
+    {
+      "kind": "boost_bonus",
+      "value": 2
+    }
+  ],
+  "cb_kai_bioplating": [
+    {
+      "kind": "accuracy",
+      "on": "check",
+      "skill": "agility",
+      "value": 1
+    },
+    {
+      "kind": "accuracy",
+      "on": "save",
+      "skill": "agility",
+      "value": 1
+    },
+    {
+      "kind": "climb_normal"
+    },
+    {
+      "kind": "ignore_difficult"
+    },
+    {
+      "kind": "jump_plus"
+    }
+  ],
+  "cb_fomorian_frame": [
+    {
+      "kind": "size_step"
+    },
+    {
+      "kind": "heavy_frame"
+    }
+  ],
+  "cb_ghostweave": [
+    {
+      "kind": "status",
+      "status": "Invisible",
+      "when": "own_turn"
+    }
+  ],
   "t_ace": {
     "1": [
-      {"kind": "accuracy", "on": "check", "skill": "agility", "value": 1, "while_flying": true},
-      {"kind": "accuracy", "on": "save", "skill": "agility", "value": 1, "while_flying": true}
+      {
+        "kind": "accuracy",
+        "on": "check",
+        "skill": "agility",
+        "value": 1,
+        "while_flying": true
+      },
+      {
+        "kind": "accuracy",
+        "on": "save",
+        "skill": "agility",
+        "value": 1,
+        "while_flying": true
+      }
     ]
   },
   "t_skirmisher": {
-    "2": [{"kind": "after_attack_move", "spaces": 2, "after": "skirmish"}]
+    "2": [
+      {
+        "kind": "after_attack_move",
+        "spaces": 2,
+        "after": "skirmish"
+      }
+    ]
   },
-  "pg_mobility_hardsuit": [{"kind": "optional_flight", "heat": 0, "land_by_turn_end": true}]
+  "pg_mobility_hardsuit": [
+    {
+      "kind": "optional_flight",
+      "heat": 0,
+      "land_by_turn_end": true
+    }
+  ],
+  "ms_custom_paint_job": [
+    {
+      "kind": "paint_job"
+    }
+  ],
+  "ms_personalizations": [
+    {
+      "kind": "hp_bonus",
+      "value": 2
+    }
+  ],
+  "ms_stable_structure": [
+    {
+      "kind": "save_vs_prone",
+      "value": 1
+    }
+  ],
+  "ms_manipulators": [],
+  "ms_synthetic_muscle_netting": [
+    {
+      "kind": "muscle_netting"
+    }
+  ],
+  "ms_armor_lock_plating": [
+    {
+      "kind": "armor_lock"
+    }
+  ],
+  "ms_roland_chamber": [
+    {
+      "kind": "roland_chamber"
+    }
+  ],
+  "ms_siege_ram": [
+    {
+      "kind": "ram_damage",
+      "value": 2,
+      "objects": 10
+    }
+  ],
+  "ms_kinetic_compensator": [
+    {
+      "kind": "kinetic_compensator"
+    }
+  ],
+  "ms_black_ice_module": [
+    {
+      "kind": "black_ice"
+    }
+  ],
+  "ms_reactive_weave": [
+    {
+      "kind": "reactive_weave"
+    }
+  ],
+  "ms_singularity_motivator": [
+    {
+      "kind": "singularity_motivator"
+    }
+  ]
 }

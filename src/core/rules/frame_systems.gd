@@ -121,6 +121,9 @@ static func on_status(state: GameState, u: Unit, status: String) -> Array[Dictio
 			if link.get("ends_on_stun", false) and (x == u or String(link.get("target", "")) == u.id):
 				events.append_array(end_link(state, x, "Stunned"))
 	if status == "Stunned":
+		for z: Dictionary in Zones.of_kind(state, "cloak"):
+			if z.get("owner", "") == u.id:
+				events.append_array(Zones.remove(state, String(z["id"]), "Stunned"))
 		if u.counters.has("symbiosis"):
 			events.append_array(detach(state, u, "Stunned"))
 		elif u.counters.has("hosting"):
@@ -288,7 +291,7 @@ static func extra_cover(state: GameState, target: Unit, cover: Dictionary, attac
 	if cover.get("cover", "none") == "hard":
 		return cover
 	var give := ""
-	if Effects.has(target, "always_hard_cover") or target.counters.has("symbiosis"):
+	if Effects.has(target, "always_hard_cover") or target.counters.has("symbiosis") or Zones.bunker_protects(state, target, attacker):
 		give = "hard"
 	elif cover.get("cover", "none") == "none":
 		if Effects.has(target, "soft_cover_aura") or Zones.soft_cover(state, target, attacker):

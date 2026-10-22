@@ -319,12 +319,12 @@ static func pull_path(state: GameState, u: Unit, toward: Unit) -> Array:
 
 
 ## Same, toward any body, stopping within `reach` (0: onto it, e.g. the center of a field).
-static func pull_path_to(state: GameState, u: Unit, goal: Sight.Body, reach: int) -> Array:
+static func pull_path_to(state: GameState, u: Unit, goal: Sight.Body, reach: int, max_steps: int = 100) -> Array:
 	var path: Array = [[u.cell.x, u.cell.y, u.level]]
 	var others := _others(state, u)
 	var cur := u.cell
 	var lv := u.level
-	for _i in range(100):
+	for _i in range(max_steps):
 		var here := Sight.distance(state, Sight.make_body(state, cur, lv, u.size), goal)
 		if here <= reach:
 			break

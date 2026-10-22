@@ -64,7 +64,7 @@ class Ram:
 		if not r.ok:
 			return r
 		var t := state.unit(String(params["target"]))
-		if t.size > u.size:
+		if t.size > GearSystems.grapple_size(u, t):
 			return RuleResult.deny("You can only Ram characters your Size or smaller.", CloseCombat.REF_RAM)
 		var p := Attacks.preview(state, u, CloseCombat.body_attack(u, "Ram"), t, {"improvised": true})
 		return RuleResult.allow() if p["ok"] else RuleResult.deny(p["reason"], p["rule_ref"])
@@ -72,8 +72,14 @@ class Ram:
 	func apply(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
 		var t := state.unit(String(params["target"]))
 		var events := Attacks.attack(state, u, CloseCombat.body_attack(u, "Ram"), t, {"improvised": true})
+		for e: Dictionary in Effects.of(u, "ram_damage"):
+			if CloseCombat._hit(events) and Combat.is_present(t):
+				# Siege Ram: 2 kinetic on a hit; 10 AP against objects.
+				var obj := t.kind == Unit.KIND_DEPLOYABLE
+				events.append_array(Combat.deal_damage(state, t, [{"type": "Kinetic", "amount": int(e.get("objects", 10) if obj else e.get("value", 2))}], {"source": u.id, "ap": obj}))
+			break
 		if CloseCombat._hit(events) and Combat.is_present(t):
-			if Effects.has(t, "heavy_frame") and u.size < t.size:
+			if Effects.has(t, "heavy_frame") and GearSystems.grapple_size(u, t) < t.size:
 				events.append({"type": "no_effect", "target": t.id, "reason": "Heavy Frame: smaller characters can't knock it Prone or back.", "rule_ref": Effects.REF})
 				return events
 			events.append_array(Combat.add_status(state, t, "Prone", u.id))
@@ -101,6 +107,8 @@ class Grapple:
 		if u.counters.has("grapple"):
 			return RuleResult.deny("You're already in a grapple.", CloseCombat.REF_GRAPPLE)
 		var t := state.unit(String(params["target"]))
+		if Effects.has(t, "immune_grapple"):
+			return RuleResult.deny("It's immune to Grapple right now.", Effects.REF)
 		var p := Attacks.preview(state, u, CloseCombat.grapple_attack(u), t, {"improvised": true})
 		return RuleResult.allow() if p["ok"] else RuleResult.deny(p["reason"], p["rule_ref"])
 
@@ -126,7 +134,9 @@ class Grapple:
 		u.counters["grapple"] = {"with": t.id, "attacker": true}
 		t.counters["grapple"] = {"with": u.id, "attacker": false}
 		events.append({"type": "grappled", "unit": u.id, "target": t.id, "rule_ref": CloseCombat.REF_GRAPPLE})
-		var smaller: Unit = t if t.size < u.size else (u if u.size < t.size else null)
+		var us := GearSystems.grapple_size(u, t)
+		var ts := GearSystems.grapple_size(t, u)
+		var smaller: Unit = t if ts < us else (u if us < ts else null)
 		if smaller != null:
 			events.append_array(Combat.add_status(state, smaller, "Immobilized", "Grapple"))
 		events.append_array(Combat.refresh_engagement(state))

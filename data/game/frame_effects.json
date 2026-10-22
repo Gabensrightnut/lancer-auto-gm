@@ -815,15 +815,12 @@
   },
   "mf_iskander": {
     "traits": {
-      "Assault Launcher": {
-        "effects": [
-          {
-            "kind": "assault_launcher",
-            "range": 15
-          }
-        ],
-        "manual": "Throwing a grenade as though it had range 15 is left to the table."
-      },
+      "Assault Launcher": [
+        {
+          "kind": "assault_launcher",
+          "range": 15
+        }
+      ],
       "Mine Deployers": [
         {
           "kind": "mine_deployers"
