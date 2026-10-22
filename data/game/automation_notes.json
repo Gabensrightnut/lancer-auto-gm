@@ -3,7 +3,6 @@
   "ms_ramjet": "While it's on you must move your full Speed in straight lines; move that way yourself.",
   "ms_portable_bunker": "The bunker's own 40 HP isn't tracked; if it's attacked, the GM keeps count.",
   "ms_restock_drone": "It primes at the end of your turn: don't use it on the turn you deploy it.",
-  "ms_bb_breach_blast_charges": "Objects and walls caught in a Breaching Charge take 30 AP explosive; the GM applies that.",
   "ms_reactive_weave": "After Bracing you may move up to your Speed; make that move yourself.",
   "ms_hunter_logic_suite": "Terrify: the target can't move any closer to you; the GM keeps to that.",
   "ms_tracking_bug": "Removing the bug takes the target an Engineering check as a quick action; resolve that at the table.",

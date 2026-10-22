@@ -284,6 +284,17 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 	var afterimage: bool = target.counters.get("afterimage", false)
 	if afterimage:
 		target.counters.erase("afterimage")  # Flicker Field: Invisible the next time it's attacked
+	var barrier := Zones.wall_field_between(state, attacker, target)
+	if barrier.get("flavor", "") == "stasis" and kind != KIND_TECH and not target.has_status("Invisible"):
+		# Stasis Barrier: on 4+ on 1d6 the attack is consumed with no effect at all.
+		var sb := state.dice.die(6)
+		events.append({"type": "effect_triggered", "unit": String(barrier.get("owner", "")), "effect": "Stasis Barrier", "target": target.id, "roll": sb, "rule_ref": "systems: Stasis Barrier"})
+		if sb >= 4:
+			events.append({"type": "attack_blocked", "attacker": attacker.id, "target": target.id, "zone": barrier["id"], "rule_ref": "systems: Stasis Barrier"})
+			attacker.turn["attacked"] = true
+			if not opts.get("skip_spend", false):
+				events.append_array(_spend_weapon(state, attacker, w))
+			return events
 	var blocked := Zones.blocking_field(state, attacker, target, w, kind) if not opts.has("area_origin") else {}
 	if not blocked.is_empty():
 		# Black Witch Mag Field: the projectile stops at the edge; the field records it.
@@ -742,7 +753,7 @@ static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array,
 		resist_all = true  # Portable Bunker: Resistance to area attacks from outside
 	events.append_array(Combat.deal_damage(state, target, parts, {"source": attacker.id, "ap": ap, "resist_all": (brace and not aegis) or resist_all,
 		"damage_to_one": aegis, "area": area, "distance": Sight.unit_distance(state, attacker, target), "unreducible": unreducible,
-		"resist_types": ["Energy"] if energy_resist else []}))
+		"resist_types": (["Energy"] if energy_resist else []) + (["Kinetic", "Explosive"] if Zones.wall_field_between(state, attacker, target).get("flavor", "") == "magnetic" else [])}))
 	events.append_array(TraitReactions.teleport(state, target, sim["teleport"]))
 	return events
 

@@ -272,6 +272,12 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				events.append_array(Attacks.attack(state, u, Weapons.find(u, "cbi:0"), target, {"fired_by_rule": true}))
 			"jackhammer":
 				events.append_array(TalentRules.jackhammer(state, u, target))
+			"wall_field":
+				events.append_array(Zones.make_wall_field(state, u, String(op.get("label", "")), String(op.get("flavor", "")), params))
+			"wall_field_off":
+				for z: Dictionary in Zones.of_kind(state, "wall_field"):
+					if z.get("owner", "") == u.id and z.get("flavor", "") == String(op.get("flavor", "")):
+						events.append_array(Zones.remove(state, String(z["id"]), "deactivated"))
 			"last_argument":
 				# Hacker 3: burn equal to the target's current heat.
 				if Combat.is_present(target) and target.heat > 0:
@@ -509,6 +515,10 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 			var ww := String(a["source_key"]).trim_prefix("mod:")
 			if not (u.turn.get("hits", {}).get(ww, []) as Array).has(String(params.get("target", ""))):
 				return RuleResult.deny("Only right after hitting that character with the wreathed weapon this turn.", "mods: Shock Wreath")
+		if op.get("op", "") == "wall_field":
+			var aim: Variant = TurnAction.cell_param(params, "aim")
+			if aim == null or not state.map.has_cell(aim) or state.map.grid.footprint_distance(state.map.grid.footprint(u.cell, u.size), [aim] as Array[Vector2i]) != 1:
+				return RuleResult.deny("Choose the first space of the line, next to you (params.aim); the line runs away from you.", "systems: " + String(op.get("label", "")))
 		if op.get("op", "") == "covering_fire":
 			for ct: Variant in TalentRules.covering_targets(state, u, params):
 				var cr := TalentRules.check_covering_fire(state, u, ct)

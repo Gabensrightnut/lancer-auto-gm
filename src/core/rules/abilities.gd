@@ -333,7 +333,7 @@ static func deploy(state: GameState, owner: Unit, a: Dictionary, cell: Vector2i)
 	u.counters = {"owner": owner.id, "ability": a["key"], "deploy_type": d.get("type", "Deployable"),
 		"turret": d.get("turret", false), "trigger": d.get("trigger", ""),
 		"pattern": (d.get("range", []) as Array).duplicate(true), "damage": (d.get("damage", []) as Array).duplicate(true),
-		"text": d.get("detail", "")}
+		"text": d.get("detail", ""), "object_damage": d.get("object_damage", {})}
 	u.loadout = {"weapons": [], "systems": [], "effects": []}
 	var events: Array[Dictionary] = []
 	state.add_unit(u)
@@ -466,4 +466,9 @@ static func detonate(state: GameState, m: Unit, trigger: Unit) -> Array[Dictiona
 						amount = mini(amount, 1)
 			if amount > 0:
 				events.append_array(Combat.deal_damage(state, u, [{"type": d.get("type", "Kinetic"), "amount": amount}], {"source": owner.id, "ap": d.get("ap", false), "area": true}))
+	var od: Dictionary = m.counters.get("object_damage", {})
+	if not od.is_empty():
+		# Objects and terrain in the area are hit automatically (Breaching Charge: 30 AP explosive).
+		var cells := Zones.cells_around(state, center.cells, radius)
+		events.append_array(TerrainDamage.object_damage_in(state, owner, cells, int(od.get("amount", 0)), String(od.get("type", "Explosive"))))
 	return events

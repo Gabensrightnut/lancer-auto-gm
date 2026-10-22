@@ -267,7 +267,11 @@
         "save": "agi",
         "save_half": true
       }
-    ]
+    ],
+    "object_damage": {
+      "amount": 30,
+      "type": "Explosive"
+    }
   },
   "actions:ms_bb_breach_blast_charges": [
     {
@@ -936,5 +940,40 @@
   "t_duelist:Blademaster: Deflect": [],
   "t_duelist:Blademaster: Feint": [],
   "t_duelist:Blademaster: Trip": [],
-  "t_exemplar:Duel To The Death": []
+  "t_exemplar:Duel To The Death": [],
+  "ms_magnetic_shield:Magnetic Shield": [
+    {
+      "op": "wall_field",
+      "flavor": "magnetic",
+      "label": "Magnetic Shield"
+    }
+  ],
+  "actions:ms_stasis_barrier": [
+    {
+      "name": "Deploy Stasis Barrier",
+      "activation": "Quick",
+      "detail": "A line 4 barrier, 4 spaces high, starting next to you (params.aim): an obstruction and soft cover; attacks on characters behind it are consumed on 4+.",
+      "ops": [
+        {
+          "op": "wall_field",
+          "flavor": "stasis",
+          "label": "Stasis Barrier"
+        }
+      ]
+    },
+    {
+      "name": "Deactivate Stasis Barrier",
+      "activation": "Quick",
+      "detail": "Switch the barrier off.",
+      "ops": [
+        {
+          "op": "wall_field_off",
+          "flavor": "stasis"
+        }
+      ]
+    }
+  ],
+  "deploy:ms_stasis_barrier:Stasis Barrier": {
+    "skip": true
+  }
 }
