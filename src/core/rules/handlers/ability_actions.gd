@@ -117,7 +117,7 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 	var events: Array[Dictionary] = []
 	if not a.get("automated", false):
 		events.append({"type": "manual_effect", "unit": u.id, "source": a["name"], "text": a.get("detail", ""),
-			"note": "Not automated yet: the table applies this."})
+			"note": "Not automated yet: the table applies this.", "guidance": Automation.MANUAL_GUIDANCE})
 		return events
 	for op: Dictionary in a.get("ops", []):
 		var duration := String(op.get("duration", "scene"))
@@ -545,7 +545,9 @@ static func listing(state: GameState, u: Unit) -> Array:
 			"uses_max": Abilities.max_uses(u, String(a["source_key"])), "frequency": a.get("frequency", ""),
 			"used": Abilities._times_used(u, String(a["key"]), f.get("per", "scene")) if not f.is_empty() else 0,
 			"recharge": {"value": int(src.get("recharge", 0)), "charged": src.get("charged", true)},
-			"destroyed": src["destroyed"], "automated": a.get("automated", false), "detail": a.get("detail", ""), "kind": a.get("kind", "action")})
+			"destroyed": src["destroyed"], "automated": a.get("automated", false), "detail": a.get("detail", ""), "kind": a.get("kind", "action"),
+			"automation": "automated" if a.get("automated", false) else "manual",
+			"table_note": "" if a.get("automated", false) else Automation.MANUAL_GUIDANCE})
 	for kind: String in TraitReactions.KINDS:
 		if not Effects.has(u, kind):
 			continue
@@ -562,6 +564,10 @@ static func listing(state: GameState, u: Unit) -> Array:
 			"available": rr.ok, "reason": rr.reason, "rule_ref": rr.rule_ref, "frequency": "1/round",
 			"used": 1 if (u.counters.get("reactions", []) as Array).has(reaction) else 0,
 			"policy": Reactions.policy(u, reaction)})
+	var core: Dictionary = u.loadout.get("core", {})
+	var cnote := String(core.get("manual_note", ""))
+	var cstatus := "manual" if not core.get("automated", false) else ("partial" if cnote != "" else "automated")
 	out.append({"id": "core_power_charges", "type": "", "name": "Core Power", "group": "status", "uses_left": int(u.counters.get("core_power", 0)),
-		"uses_max": 1 if u.loadout.has("core") else 0, "active": u.counters.get("core_active", false)})
+		"uses_max": 1 if u.loadout.has("core") else 0, "active": u.counters.get("core_active", false),
+		"automation": cstatus, "table_note": Automation.MANUAL_GUIDANCE if cstatus == "manual" else (Automation.PARTIAL_GUIDANCE % cnote if cstatus == "partial" else "")})
 	return out

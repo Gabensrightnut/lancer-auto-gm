@@ -114,6 +114,19 @@ static func available_actions(state: GameState, unit_id: String) -> Array:
 	return AbilityActions.listing(state, u)
 
 
+## What the game automates for this unit and what the table handles (traits, core, systems,
+## weapons): [{kind, id, name, status: automated|partial|manual, note, guidance, text}].
+## Add the pilot's talents with Automation.for_talents(db, talents).
+static func automation(state: GameState, unit_id: String, db: ContentDB) -> Array:
+	var u := state.unit(unit_id)
+	return [] if u == null else Automation.for_unit(db, u)
+
+
+## The same for the builder, before a battle: frame, loadout and pilot record (with talents).
+static func automation_for_build(db: ContentDB, frame_id: String, loadout: Dictionary, pilot: Dictionary) -> Array:
+	return Automation.for_build(db, frame_id, loadout, pilot)
+
+
 ## Hostiles that could react (Overwatch) if the unit starts moving now.
 static func threatened_by(state: GameState, unit_id: String) -> Array[String]:
 	return Movement.threatened_by(state, state.unit(unit_id))
