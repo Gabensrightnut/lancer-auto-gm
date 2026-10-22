@@ -149,9 +149,13 @@ func refresh() -> void:
 	var h := model.height
 	_label.text = String(unit.get("name", unit.get("id", "")))
 	_label.modulate = side_color().lightened(0.35)
-	_label.position = Vector3(0, h + 0.42, 0)
-	_bars.position = Vector3(0, h + 0.27, 0)
-	_status.position = Vector3(0, h + 0.57, 0)
+	# Same anchor, stacked in screen pixels, so they never overlap at steep camera angles.
+	for l: Label3D in [_label, _bars, _status]:
+		l.position = Vector3(0, h + 0.3, 0)
+		l.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	_bars.offset = Vector2(0, 0)
+	_label.offset = Vector2(0, 46)
+	_status.offset = Vector2(0, 92)
 	_bars.text = _bar_text()
 	var tags: Array = []
 	for s: String in (unit.get("statuses", {}) as Dictionary):

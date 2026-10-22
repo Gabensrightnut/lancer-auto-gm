@@ -351,6 +351,8 @@ static func data_link(root: Node3D, from: Vector3, to: Vector3, color: Color, du
 		l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		l.no_depth_test = true
 		l.shaded = false
+		# Don't fill the screen when the beam passes the camera (cockpit view).
+		l.visibility_range_begin = 1.5
 		root.add_child(l)
 		var offset := Vector3(sin(i * 2.1), cos(i * 1.7), sin(i * 0.9)) * 0.05
 		var tw := l.create_tween()

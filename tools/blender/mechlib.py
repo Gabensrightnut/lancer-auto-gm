@@ -107,6 +107,18 @@ def _mesh_obj(name, bm, material, parent, smooth=True):
     return obj
 
 
+def set_world(obj, mw):
+    """Place an object in world space, keeping its parent (re-parents without jumping)."""
+    p = obj.parent
+    obj.parent = None
+    obj.matrix_world = mw
+    bpy.context.view_layer.update()
+    if p is not None:
+        obj.parent = p
+        obj.matrix_parent_inverse = p.matrix_world.inverted()
+    return obj
+
+
 def subsurf(obj, levels=2, crease_edges=None):
     m = obj.modifiers.new("Subsurf", "SUBSURF")
     m.levels = levels
