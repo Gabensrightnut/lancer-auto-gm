@@ -20,6 +20,30 @@ and no CC0 assets yet (so no CREDITS entries are needed for this folder).
 - The mission generator (`src/gm/terrain_gen.gd`) picks a landscape and culture, builds the
   map for it, and puts the kit in `mission.flavor.kit`.
 
+## Landscapes, cultures and weather
+
+Landscapes: grassy_hills, desert_mesas, tundra, volcanic, alien_wilds, crystal_fields,
+toxic_marsh, city, station, starship, moon, asteroid, ocean, jungle. Cultures: ruins,
+cyberpunk, burning, medieval, old_west, retro, east_asian, union. Weather (`data/game/biomes/
+weather.json`): clear, rain, storm, snow, blizzard, sandstorm, ashfall, spores, mist. A kit can
+end in `+weather`: `"jungle+rain"`, `"desert_mesas/old_west+sandstorm"`. The mission generator
+picks weather to suit the landscape (`opts.weather` overrides) and puts it in `flavor.kit`.
+
+**Weather is look only.** Particles, fog, clouds, darker light, lightning flashes. A storm that
+should *do* something in the rules comes from a LANCER environment (lancer-data
+`environments.json`), which the rules engine applies; weather.json names the matching one in
+`environment` (sandstorm: `env_particulatestorms`, storm: `env_electricalstorms`, blizzard:
+`env_extremecold`) so a mission that uses that environment can show it. Low gravity on moons
+and asteroids is also look only (slow-hanging dust); its rules are `env_lowgravity`.
+
+## Destroyed terrain
+
+`TerrainRenderer.sync_map(new_map)`: give it the rules' current map (e.g. from a fresh view
+after an attack). Every destructible column that got lower collapses on screen (the lost part
+shudders and sinks, chunks fly, dust rolls out) and the board rebuilds from the new data. What
+is left is exactly the new data: if the rules tagged the cell difficult it shows rubble; if
+not, only flat debris. `break_cells(cells, {cell: old_ground})` does the same for known cells.
+
 ## What you see is what the rules use
 
 Every look comes from the map data. Nothing that looks like cover or an obstacle exists
@@ -29,6 +53,7 @@ without the map saying so, and the checks in `tests/unit/test_render_world.gd` h
 |---|---|
 | raised column (`ground` > neighbors) | cliff, rock stack (`rock`), crystal prisms (`crystal`), wall (`wall`), building (`building`, or any plain raised column in a city) |
 | `soft_cover` | woods: trees, bamboo, glowing fungus (only here) |
+| raised `bulkhead` / `container` / `machinery` / `platform` | station and ship walls (3 levels: full cover), cargo containers, machinery blocks, raised decks and walkways |
 | `difficult` | rough ground: stones, scree, ice chunks, rubble, cinders (flat, under 0.18) |
 | `difficult` + `water` / `ice` | river or frozen lake sunk below its banks |
 | `dangerous` | cracked ground glowing through, low flames, embers, flickering light |

@@ -12,7 +12,7 @@ const SHADER := preload("res://src/render/shaders/building.gdshader")
 const TYPES := {"concrete": 0, "brick": 1, "plaster": 2, "metal": 3, "stone": 4, "wood": 5, "glass": 6, "timber": 7}
 const PARAPET := 0.06
 ## Tags that keep a raised column out of buildings (it is rock, a wall, woods...).
-const NOT_BUILDING := ["rock", "crystal", "wall", "woods", "chasm", "soft_cover"]
+const NOT_BUILDING := ["rock", "crystal", "wall", "woods", "chasm", "soft_cover", "bulkhead", "container", "machinery", "deck", "platform"]
 
 var t: TerrainRenderer
 var arch: Dictionary

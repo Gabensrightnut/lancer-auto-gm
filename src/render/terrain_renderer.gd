@@ -32,9 +32,13 @@ const KIND_CRYSTAL := 6
 const KIND_WALL := 7
 const KIND_CHASM := 8
 const KIND_BRIDGE := 9
+const KIND_BULKHEAD := 10
+const KIND_CONTAINER := 11
+const KIND_DECK := 12
+const KIND_MACHINERY := 13
 ## Liquid look tags (the cell's rules come from its other tags, e.g. difficult/dangerous).
 const LIQUIDS := ["water", "toxic", "lava", "ice"]
-const GROUND_STYLES := {"grass": 0, "sand": 1, "snow": 2, "moss": 3, "paving": 4, "ash": 5}
+const GROUND_STYLES := {"grass": 0, "sand": 1, "snow": 2, "moss": 3, "paving": 4, "ash": 5, "deck": 6, "regolith": 7}
 
 var map: BattleMap
 ## Resolved kit name ("landscape" or "landscape/culture").
@@ -44,18 +48,26 @@ var material: ShaderMaterial
 var grid_lines: MeshInstance3D
 ## Cells drawn by a structure builder (buildings), which the block mesh leaves out.
 var structure_cells: Dictionary = {}
+## Cells whose terrain the rules destroyed (cell -> true). Remembered across rebuilds of the
+## same board so the debris stays; reset when a different board is built.
+var broken_cells: Dictionary = {}
 var _props: Node3D
 var _shape: Dictionary
 var _bottom := -BASE_DEPTH
 
 
 func build(battle_map: BattleMap, kit_name: String = "grassy_hills") -> void:
+	if battle_map != map:
+		broken_cells = {}
 	map = battle_map
 	style = WorldStyle.resolve(kit_name)
 	kit = style["kit"]
 	for c in get_children():
 		remove_child(c)
-		c.queue_free()
+		if is_inside_tree():
+			c.queue_free()
+		else:
+			c.free()  # queue_free never runs outside the tree
 	_shape = MeshKit.cell_shape(map.grid)
 	material = make_material(style)
 	structure_cells = {}
@@ -110,7 +122,9 @@ static func make_material(s: Dictionary) -> ShaderMaterial:
 	for k: String in ["top_a", "top_b", "top_dry", "soil", "rock_a", "rock_b", "bed"]:
 		if g.has(k):
 			m.set_shader_parameter(k, WorldStyle.color(g[k]))
-	var pairs := {"rough": "rough_col", "hazard": "hazard_col", "veins": "vein_col", "crystal": "crystal_col", "wall": "wall_col"}
+	var pairs := {"rough": "rough_col", "hazard": "hazard_col", "veins": "vein_col", "crystal": "crystal_col", "wall": "wall_col",
+		"metal_a": "metal_a", "metal_b": "metal_b", "stripe": "stripe_col", "strip_light": "strip_light",
+		"cargo_a": "cargo_a", "cargo_b": "cargo_b", "cargo_c": "cargo_c"}
 	for k: String in pairs:
 		if g.has(k):
 			m.set_shader_parameter(pairs[k], WorldStyle.color(g[k]))
@@ -192,6 +206,14 @@ func surface(cell: Vector2i) -> int:
 		return KIND_CRYSTAL
 	if col.has_tag("rock") or (col.has_tag(BattleMap.TAG_IMPASSABLE) and col.ground > 0):
 		return KIND_ROCK
+	if col.has_tag("bulkhead"):
+		return KIND_BULKHEAD
+	if col.has_tag("container"):
+		return KIND_CONTAINER
+	if col.has_tag("machinery"):
+		return KIND_MACHINERY
+	if col.has_tag("deck") or col.has_tag("platform"):
+		return KIND_DECK
 	if col.gap_top > 0 and col.gap_top > col.gap_bottom:
 		return KIND_BRIDGE
 	if col.has_tag("wall") or col.has_tag("building"):
@@ -318,6 +340,7 @@ func _build_blocks() -> void:
 		var nb := _smooth_normal(corner_normals, b, n)
 		st.set_color(e[4])
 		st.set_uv2(e[5])
+		st.set_uv(Vector2(0, s.x))  # the floor this wall rises from
 		var quad := [[a + Vector3(0, s.x, 0), na], [b + Vector3(0, s.x, 0), nb], [b + Vector3(0, s.y, 0), nb], [a + Vector3(0, s.y, 0), na]]
 		# Wind so the front faces outward (clockwise seen from outside).
 		var order := [0, 1, 2, 0, 2, 3]
@@ -447,5 +470,32 @@ func bounds(margin: float = 0.6) -> Rect2:
 ## Terrain destroyed by the rules: the map already has the new columns. Shows the old
 ## structures breaking apart at `cells` (old_heights: cell -> old ground) and rebuilds.
 func break_cells(cells: Array, old_heights: Dictionary = {}) -> void:
+	for c: Vector2i in cells:
+		broken_cells[c] = true
 	TerrainBreak.play(self, cells, old_heights)
 	build(map, kit)
+
+
+## Brings the board up to date with a newer copy of the map (the rules' current terrain, e.g.
+## from a fresh view after an attack). Every destructible column that got lower collapses
+## visibly; then the board is rebuilt from the new data. Returns the cells that broke.
+## What's left is whatever the new data says: rubble that slows you only if the rules tagged
+## the cell difficult, otherwise flat debris.
+func sync_map(new_map: BattleMap) -> Array:
+	var broke: Array = []
+	var old := {}
+	if map != null:
+		for c in new_map.cells():
+			var was := map.column(c)
+			var now := new_map.column(c)
+			if was != null and now != null and was.has_tag(BattleMap.TAG_DESTRUCTIBLE) and now.ground < was.ground:
+				broke.append(c)
+				old[c] = was.ground
+	var keep := broken_cells
+	map = new_map
+	broken_cells = keep
+	if broke.is_empty():
+		build(map, kit)
+	else:
+		break_cells(broke, old)
+	return broke

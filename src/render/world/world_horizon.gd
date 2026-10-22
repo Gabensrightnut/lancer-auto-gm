@@ -24,10 +24,12 @@ static func build(t: TerrainRenderer, root: Node3D) -> void:
 			if k > 0.0:
 				h = lerpf(h, float(r["y"]) - 0.35, k)
 		return h
-	_land(t, root, b, height_fn)
+	_land(t, root, b, height_fn, TerrainRenderer.KIND_BED if land == "sea" else TerrainRenderer.KIND_GROUND)
 	_river_water(t, root, rivers)
 	Landmarks.build(t, root, b, height_fn)
 	_forest(t, root, b, height_fn, float(hz.get("forest", 0.0)))
+	if land == "sea":
+		_sea(t, root, b)
 	var far_kind := str(hz.get("far", "mountains"))
 	if far_kind in ["mountains", "mesas", "volcanoes"]:
 		# A nearer, darker layer of foothills in front of the far range.
@@ -42,6 +44,13 @@ static func build(t: TerrainRenderer, root: Node3D) -> void:
 		"megastructures":
 			_ring(root, b, t.style, "spires")
 			_megastructures(root, b)
+		"islands":
+			_ring(root, b, t.style, "islands", 120.0, 6, 26.0)
+		"station", "ship":
+			SpaceScenery.build(t, root, b, far_kind)
+		"asteroids":
+			_ring(root, b, t.style, "mountains", 170.0, 6, 18.0, 25.0)
+			SpaceScenery.asteroids(root, b, WorldStyle.col(t.style, "ground.rock_a", Color(0.4, 0.37, 0.34)))
 		"skyline":
 			Skyline.build(t, root, b)
 			_ring(root, b, t.style, "foothills", 150.0, 4, 20.0, 18.0)
@@ -169,6 +178,27 @@ static func _river_water(t: TerrainRenderer, root: Node3D, rivers: Array) -> voi
 		root.add_child(mi, true)
 
 
+## Open water to the horizon around the board, at the board's water level.
+static func _sea(t: TerrainRenderer, root: Node3D, b: Rect2) -> void:
+	var y := -TerrainRenderer.LIQUID_SURFACE
+	var e := LAND_EXT + 60.0
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var lo := Vector3(b.position.x - e, y, b.position.y - e)
+	var hi := Vector3(b.end.x + e, y, b.end.y + e)
+	MeshKit.add_quad(st, lo, Vector3(hi.x, y, lo.z), hi, Vector3(lo.x, y, hi.z), Vector3.UP)
+	var mi := MeshInstance3D.new()
+	mi.name = "Sea"
+	mi.mesh = st.commit()
+	var m := ShaderMaterial.new()
+	m.shader = WorldDressing.WATER_SHADER
+	m.set_shader_parameter("shallow", WorldStyle.col(t.style, "liquid.shallow", Color(0.16, 0.5, 0.56)))
+	m.set_shader_parameter("deep", WorldStyle.col(t.style, "liquid.deep", Color(0.04, 0.2, 0.3)))
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(mi)
+
+
 ## Returns a function giving the ground height at the nearest board cell to (x, z).
 static func _edge_sampler(t: TerrainRenderer, b: Rect2) -> Callable:
 	var cache := {}
@@ -201,13 +231,33 @@ static func _dist(x: float, z: float, b: Rect2) -> float:
 static func _height(x: float, z: float, b: Rect2, edge: Callable, land: String, amp: float) -> float:
 	var d := _dist(x, z, b)
 	# Flat (city) land stays at street level next to the board even where edge cells are tall.
-	var near: float = (edge.call(x, z) if land != "flat" else 0.0) - 0.03
+	var near: float = (edge.call(x, z) if not (land in ["flat", "sea"]) else 0.0) - 0.03
+	if land == "sea":
+		return lerpf(-0.6, -2.5, smoothstep(0.0, 6.0, d))
 	var n := DemoMap.fbm(x * 0.035 + 11.0, z * 0.035 + 3.0)
 	var detail := DemoMap.fbm(x * 0.3, z * 0.3) * 0.5
 	var far := 0.0
 	match land:
 		"flat":
 			far = 0.15 * detail
+		"sea":
+			far = -2.5
+		"craters":
+			# Bowls with raised rims on a cell grid, plus gentle rolls.
+			var cs := 26.0
+			var ci := Vector2(floorf(x / cs), floorf(z / cs))
+			var crater := 0.0
+			for oy in range(-1, 2):
+				for ox in range(-1, 2):
+					var cc := ci + Vector2(ox, oy)
+					var key := "cr%d_%d" % [cc.x, cc.y]
+					if WorldRand.f(key, 0) < 0.35:
+						continue
+					var ctr := (cc + Vector2(0.2 + 0.6 * WorldRand.f(key, 1), 0.2 + 0.6 * WorldRand.f(key, 2))) * cs
+					var r := 5.0 + 9.0 * WorldRand.f(key, 3)
+					var dd := Vector2(x, z).distance_to(ctr) / r
+					crater += (exp(-pow((dd - 1.0) * 3.0, 2.0)) * 0.6 - smoothstep(1.0, 0.0, dd) * 0.8) * r * 0.25
+			far = detail * 0.6 + n * amp * 0.5 + crater
 		"mesas":
 			var plateau := smoothstep(0.52, 0.56, n) * amp * (0.6 + 0.4 * floorf(DemoMap.fbm(x * 0.02, z * 0.02) * 3.0) / 2.0)
 			far = detail * 0.8 + plateau
@@ -245,7 +295,7 @@ static func _coords(lo: float, hi: float) -> PackedFloat32Array:
 	return out
 
 
-static func _land(t: TerrainRenderer, root: Node3D, b: Rect2, height_fn: Callable) -> void:
+static func _land(t: TerrainRenderer, root: Node3D, b: Rect2, height_fn: Callable, kind: int = TerrainRenderer.KIND_GROUND) -> void:
 	var xs := _coords(b.position.x, b.end.x)
 	var zs := _coords(b.position.y, b.end.y)
 	var hs := PackedFloat32Array()
@@ -278,7 +328,7 @@ static func _land(t: TerrainRenderer, root: Node3D, b: Rect2, height_fn: Callabl
 			verts[k] = p
 			norms[k] = n if n.y >= 0.0 else -n
 			var dist := _dist(p.x, p.z, b)
-			cols[k] = Color(TerrainRenderer.KIND_GROUND / 16.0, WorldRand.f("l", k), 0.12 + 0.1 * smoothstep(0.0, 2.0, dist) + 0.2 * smoothstep(20.0, 140.0, dist), 1.0)
+			cols[k] = Color(kind / 16.0, WorldRand.f("l", k), 0.12 + 0.1 * smoothstep(0.0, 2.0, dist) + 0.2 * smoothstep(20.0, 140.0, dist), 1.0)
 			# Soil/stone depth on slopes: measured from a little above this point.
 			uv2[k] = Vector2(0, p.y + 0.05)
 	var idx := PackedInt32Array()
@@ -398,6 +448,9 @@ static func _ring(root: Node3D, b: Rect2, style: Dictionary, kind: String, start
 				"spires":
 					var sp := pow(maxf(0.0, DemoMap.fbm(u * 1.4, j * 0.9) - 0.5), 1.6) * 6.0
 					h = (DemoMap.fbm(u * 0.4, j * 0.5) * 0.5 + sp) * amp * prof
+				"islands":
+					var isl := maxf(0.0, DemoMap.fbm(u * 0.8 + 3.0, j * 0.7) - 0.55) * 4.0
+					h = isl * amp * prof - 0.5
 				"foothills":
 					h = (DemoMap.fbm(u * 0.9 + 7.0, j * 0.6) * 0.8 + 0.2) * amp * prof
 				_:

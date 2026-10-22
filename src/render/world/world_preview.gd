@@ -98,15 +98,16 @@ func screenshot_stage(tag: String) -> void:
 			t.yaw = 30
 		"break":
 			# Knock down the destructible wall and watch it fall apart.
-			var old := {}
-			var cells: Array = []
-			for c in map.cells():
-				if map.column(c).has_tag(BattleMap.TAG_DESTRUCTIBLE):
-					old[c] = map.column(c).ground
-					cells.append(c)
-					map.column(c).ground = 0
-					map.column(c).tags = PackedStringArray(["difficult", "rubble"])
-			view.terrain.break_cells(cells, old)
+			var newer := BattleMap.from_dict(map.to_dict())
+			var n := 0
+			for c in newer.cells():
+				if newer.column(c).has_tag(BattleMap.TAG_DESTRUCTIBLE):
+					newer.column(c).ground = 0
+					# The rules decide what's left: here half rubble (difficult), half clear.
+					newer.column(c).tags = PackedStringArray(["difficult"] if n % 2 == 0 else [])
+					n += 1
+			view.map = newer
+			view.terrain.sync_map(newer)
 			t.look_at_point(mid + Vector3(-4.0, 0.5, 2.0), 8.0)
 			t.pitch = -30
 			t.yaw = -10
