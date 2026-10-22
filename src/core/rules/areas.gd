@@ -99,7 +99,7 @@ static func plan(state: GameState, attacker: Unit, w: Dictionary, aim: Variant, 
 	elif pattern != "Burst":
 		out["reason"] = "Choose where to aim (params.aim = [x, y])."
 		return out
-	var listed_range := Weapons.range_value(w, "Range")
+	var listed_range := Weapons.range_for(attacker, w)
 	var origin_cells: Array[Vector2i] = me.cells
 	if pattern != "Blast" and listed_range > 0:
 		# "The attack's origin point can be drawn from a point within the range specified and
@@ -125,7 +125,7 @@ static func plan(state: GameState, attacker: Unit, w: Dictionary, aim: Variant, 
 			return out
 		var lv := aim_level if aim_level >= 0 else state.map.ground_height(aim_cell)
 		origin_body = Sight.make_body(state, aim_cell, lv, 0.5)
-		var reach := Weapons.range_value(w, "Range")
+		var reach := Weapons.range_for(attacker, w)
 		if Sight.distance(state, me, origin_body) > reach:
 			out["reason"] = "The blast center must be within Range %d." % reach
 			out["rule_ref"] = "glossary: Blast"
@@ -198,5 +198,6 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, params: Dict
 		opts["shared_damage"] = shared
 		opts["knockback_from"] = Vector2i(origin[0], origin[1])
 		opts["area"] = true
+		opts["area_targets"] = (p["targets"] as Array).size()
 		events.append_array(Attacks.attack(state, attacker, w, target, opts))
 	return events

@@ -50,12 +50,71 @@ static func threat(w: Dictionary) -> int:
 	return maxi(1, maxi(range_value(w, "Threat"), tag_value(w, "tg_threat")))
 
 
-## THREAT for this unit: some effects raise ranged weapons' THREAT (Tortuga core: at least 3).
+## THREAT for this unit: some effects raise ranged weapons' THREAT (Tortuga core: at least 3)
+## or melee THREAT (Tokugawa Limit Break and Radiance).
 static func threat_for(u: Unit, w: Dictionary) -> int:
 	var t := threat(w)
 	if not is_melee(w):
 		t = maxi(t, Effects.value(u, "min_threat"))
+	else:
+		t += reach_bonus(u, w, "threat")
 	return t
+
+
+## RANGE for this unit: the listed Range plus effects (Tokugawa Limit Break and Radiance).
+static func range_for(u: Unit, w: Dictionary) -> int:
+	var r := range_value(w, "Range")
+	if r > 0 and not is_melee(w):
+		r += reach_bonus(u, w, "range")
+	return r
+
+
+## Sum of reach_bonus effects that apply to this weapon ("range" or "threat").
+## {kind: reach_bonus, range, threat, when?: exposed, damage_type?: only weapons dealing it}
+static func reach_bonus(u: Unit, w: Dictionary, which: String) -> int:
+	var total := 0
+	for e: Dictionary in Effects.of(u, "reach_bonus"):
+		if e.get("when", "") == "exposed" and not u.has_status("Exposed"):
+			continue
+		if e.has("damage_type") and not damage_types(u, w).has(e["damage_type"]):
+			continue
+		total += int(e.get(which, 0))
+	return total
+
+
+## Damage types this weapon deals for this unit, after swaps (Tokugawa Limit Break: kinetic
+## and explosive become energy while Exposed).
+static func damage_types(u: Unit, w: Dictionary) -> Array:
+	var out: Array = []
+	for d: Dictionary in w.get("damage", []):
+		var t := swapped_type(u, String(d.get("type", "Kinetic")))
+		if not out.has(t):
+			out.append(t)
+	return out
+
+
+static func swapped_type(u: Unit, dtype: String) -> String:
+	if u == null:
+		return dtype
+	for e: Dictionary in Effects.of(u, "damage_type_swap"):
+		if e.get("when", "") == "exposed" and not u.has_status("Exposed"):
+			continue
+		if (e.get("from", []) as Array).has(dtype):
+			return String(e.get("to", dtype))
+	return dtype
+
+
+## Weapons whose profile depends on a counter (ZF4 SOLIDCORE charges, Apocalypse Rail die)
+## keep every profile in "profiles"; this switches the live one.
+static func set_profile(w: Dictionary, index: int) -> void:
+	var profiles: Array = w.get("profiles", [])
+	if profiles.is_empty():
+		return
+	var p: Dictionary = profiles[clampi(index, 0, profiles.size() - 1)]
+	w["profile"] = clampi(index, 0, profiles.size() - 1)
+	w["profile_name"] = p.get("name", "")
+	for k in ["damage", "range", "tags"]:
+		w[k] = (p.get(k, []) as Array).duplicate(true)
 
 
 ## The area pattern ("Blast", "Burst", "Cone", "Line") or "" for single-target weapons.

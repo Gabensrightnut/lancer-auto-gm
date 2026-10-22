@@ -261,12 +261,22 @@ class CorePower:
 				var t := state.unit(String(id))
 				if t == null or not Combat.is_present(t) or Sight.unit_distance(state, u, t) > int(op.get("range", 50)):
 					return RuleResult.deny("Each target must be within range %d." % int(op.get("range", 50)), "frames: core_system")
+		if _core_kind(u, "defensive_pulse"):
+			var r2 := AbilityActions.ally_in_sensors(state, u, state.unit(String(action.get("params", {}).get("target", ""))))
+			if not r2.ok:
+				return RuleResult.deny("Choose an allied character within Sensors to shield (params.target).", r2.rule_ref)
 		var act := _activation(u)
 		if act == "Reaction" or act == "None":
 			return RuleResult.deny("This core system is a %s; it isn't automated yet, so the table applies it." % ("reaction" if act == "Reaction" else "passive effect"), "frames: core_system")
 		if act == "Protocol" and (u.turn.get("acted", false) or u.turn.get("moved", false)):
 			return RuleResult.deny("A Protocol can only be activated at the start of your turn.", "tags: Protocol")
 		return TurnRules.can_spend(u, _cost_of(act), type())
+
+	func _core_kind(u: Unit, kind: String) -> bool:
+		for e: Dictionary in u.loadout.get("core", {}).get("effects", []):
+			if e.get("kind", "") == kind:
+				return true
+		return false
 
 	func _cost_of(act: String) -> String:
 		match act:
@@ -285,6 +295,8 @@ class CorePower:
 			"power": core.get("power", ""), "text": core.get("text", ""), "automated": core.get("automated", false),
 			"rule_ref": "frames: core_system"}]
 		events.append_array(Effects.activate(state, u, core.get("effects", []), String(core.get("name", ""))))
+		if _core_kind(u, "defensive_pulse"):
+			u.counters["tachyon_target"] = String(action.get("params", {}).get("target", ""))
 		var ops: Array = core.get("ops", [])
 		if not ops.is_empty():
 			var labelled: Array = []

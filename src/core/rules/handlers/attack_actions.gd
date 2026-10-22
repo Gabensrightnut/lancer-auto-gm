@@ -15,6 +15,8 @@ static func _check_attack(state: GameState, u: Unit, a: Variant, ref: String) ->
 	var w := Weapons.find(u, String(a.get("weapon", "")))
 	if w.is_empty():
 		return RuleResult.deny("No such weapon on this mech.", ref)
+	if w.get("no_attack", false):
+		return RuleResult.deny("%s can't make normal attacks; it's fired through its own rule." % w.get("name", ""), "weapons: " + String(w.get("name", "")))
 	if Weapons.area(w) != "":
 		var r := Attacks.weapon_ready(u, w, a.get("improvised", false))
 		if not r.ok:

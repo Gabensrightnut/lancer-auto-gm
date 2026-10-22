@@ -274,7 +274,8 @@ static func plan(state: GameState, u: Unit, dest: Vector2i, level: int = -1, mod
 ## air); ignores obstructions, line of sight and engagement, doesn't provoke; counts as moving
 ## 1 space; affected by Immobilized; an occupied destination makes it fail.
 ## How much movement it uses is the table's "teleport_move_cost" ruling.
-static func plan_teleport(state: GameState, u: Unit, dest: Vector2i, level: int = -1, mode: String = MODE_MOVE) -> Dictionary:
+## `reach_override` >= 0: a teleport granted by another rule, up to that many spaces.
+static func plan_teleport(state: GameState, u: Unit, dest: Vector2i, level: int = -1, mode: String = MODE_MOVE, reach_override: int = -1) -> Dictionary:
 	var out := {"ok": false, "reason": "", "rule_ref": REF_TELEPORT, "path": [], "cost": 1,
 		"budget": budget(u, mode), "remaining": 0, "needs_boost": false, "stopped_by": "",
 		"warnings": [], "grey_area": "", "teleport": true}
@@ -289,6 +290,8 @@ static func plan_teleport(state: GameState, u: Unit, dest: Vector2i, level: int 
 	var reach := int(out["budget"])
 	if Rulings.choice_or_suggested(state, "teleport_move_cost") == "one_space" and reach > 0:
 		reach = u.speed + (Effects.value(u, "boost_bonus") if mode == MODE_BOOST else 0)
+	if reach_override >= 0:
+		reach = reach_override
 	for lv in levels:
 		var place := placement(state, u.size, dest, lv)
 		if not place["ok"] or (place["airborne"] and not can_fly(u, mode)):

@@ -107,6 +107,9 @@ static func can_activate(state: GameState, u: Unit, a: Dictionary) -> RuleResult
 	if not src.get("charged", true):
 		return RuleResult.deny("%s is recharging (Recharge %d+)." % [a.get("source_name", ""), int(src.get("recharge", 6))], "tags: Recharge")
 	var f := frequency_of(a)
+	for e: Dictionary in Effects.of(u, "frequency_override"):
+		if String(e.get("ability", "")) == String(a.get("name", "")) and not f.is_empty():
+			f["count"] = int(e.get("count", f["count"]))  # Pegasus Unshackle Ushabti: 3/round
 	if not f.is_empty() and _times_used(u, String(a["key"]), f["per"]) >= int(f["count"]):
 		return RuleResult.deny("%s can only be used %s." % [a["name"], a["frequency"]], "Core p.60 (1/round, 1/turn...)")
 	if act == "Protocol" and (u.turn.get("acted", false) or u.turn.get("moved", false)):
