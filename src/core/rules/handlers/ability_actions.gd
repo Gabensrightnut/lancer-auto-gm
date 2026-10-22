@@ -38,6 +38,9 @@ class Activate:
 					if not ok.ok:
 						return ok
 			"action":
+				var ops_ok := AbilityActions.check_ops(state, u, a, params)
+				if not ops_ok.ok:
+					return ops_ok
 				if a.get("activation", "") == "Invade":
 					return Attacks.tech_target_check(state, u, state.unit(String(params.get("target", ""))), "invade")
 		return RuleResult.allow()
@@ -112,7 +115,55 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit) ->
 					events.append_array(Combat.add_status(state, who, String(op["status"]), a["name"]))
 			"self_effects":
 				events.append_array(Effects.activate(state, u, op.get("effects", []), String(a["name"]), duration))
+			"revive":
+				# Lancaster Combat Repair: 4 Repairs bring a destroyed mech back to 1 Structure, 1 Stress, 1 HP.
+				if target != null and target.destroyed:
+					u.repairs -= int(op.get("repairs", 4))
+					target.destroyed = false
+					target.structure = 1
+					target.stress = 1
+					target.hp = 1
+					events.append({"type": "revived", "unit": target.id, "by": u.id})
 	return events
+
+
+## Ops that use a list of targets (params.targets), e.g. Monarch's missiles: each target
+## saves or takes the damage (half on a success).
+static func apply_target_ops(state: GameState, u: Unit, ops: Array, ids: Array) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for op: Dictionary in ops:
+		if op.get("op", "") != "save_damage":
+			continue
+		var roll := state.dice.roll(String(op.get("damage", "1d6")))
+		events.append({"type": "damage_rolled", "attacker": u.id, "target": "", "damage_type": op.get("type", "Kinetic"), "roll": roll, "crit": false})
+		for id in ids:
+			var t := state.unit(String(id))
+			if t == null or not Combat.is_present(t):
+				continue
+			var save := Combat.skill_check(state, t, String(op.get("save", "agility")), "Save vs %s" % op.get("label", "core"), u.save_target, 0, 0, [], true)
+			events.append({"type": "skill_check", "unit": t.id, "check": save})
+			var amount := int(roll["total"])
+			if save["success"]:
+				amount = amount - amount / 2 if op.get("half", false) else 0
+				if op.get("half", false) and Effects.has(t, "heavy_shielding"):
+					amount = mini(amount, 1)
+			if amount > 0:
+				events.append_array(Combat.deal_damage(state, t, [{"type": op.get("type", "Kinetic"), "amount": amount}], {"source": u.id, "area": true}))
+	return events
+
+
+## Extra checks some ops need before activating.
+static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictionary) -> RuleResult:
+	for op: Dictionary in a.get("ops", []):
+		if op.get("op", "") == "revive":
+			var t := state.unit(String(params.get("target", "")))
+			if t == null or not t.destroyed or t.kind != Unit.KIND_MECH or t.counters.get("vaporized", false):
+				return RuleResult.deny("Choose a destroyed mech (not vaporized).", "frames: Lancaster, Combat Repair")
+			if Sight.unit_distance(state, u, t) > 1:
+				return RuleResult.deny("It must be adjacent.", "frames: Lancaster, Combat Repair")
+			if u.repairs < int(op.get("repairs", 4)):
+				return RuleResult.deny("Needs %d Repairs." % int(op.get("repairs", 4)), "frames: Lancaster, Combat Repair")
+	return RuleResult.allow()
 
 
 ## Basic actions shown on the action bar: [type, name, group, params-free check?].

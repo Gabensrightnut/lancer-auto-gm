@@ -110,6 +110,16 @@ static func resists(u: Unit, dtype: String, area: bool, distance: int) -> bool:
 	return false
 
 
+## Hydra Shepherd Field: drones, deployables and objects next to a Hydra resist all damage.
+static func shepherded(state: GameState, u: Unit) -> bool:
+	if u.kind != Unit.KIND_DEPLOYABLE:
+		return false
+	for o: Unit in state.units.values():
+		if o != u and Combat.is_present(o) and has(o, "shepherd_field") and Sight.unit_distance(state, o, u) <= 1:
+			return true
+	return false
+
+
 static func immune_to_status(u: Unit, status: String) -> bool:
 	for e: Dictionary in of(u, "immune"):
 		if e.get("status", "") == status:
@@ -252,6 +262,16 @@ static func attacked(state: GameState, attacker: Unit, action: String) -> void:
 ## Start of the unit's turn: statuses it has "during its turn".
 static func turn_started(state: GameState, u: Unit) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
+	# Balor Scouring Swarm: characters of its choice (here: hostiles) that start their turn
+	# grappled by or adjacent to it take 2 kinetic.
+	for o: Unit in state.units.values():
+		if o == u or o.side == u.side or not Combat.is_present(o):
+			continue
+		for e: Dictionary in of(o, "start_turn_damage"):
+			var grappled := String(u.counters.get("grapple", {}).get("with", "")) == o.id
+			if grappled or Sight.unit_distance(state, o, u) <= 1:
+				events.append({"type": "effect_triggered", "unit": o.id, "effect": e.get("label", ""), "target": u.id})
+				events.append_array(Combat.deal_damage(state, u, [{"type": e.get("type", "Kinetic"), "amount": int(e.get("value", 2))}], {"source": o.id}))
 	for e: Dictionary in of(u, "status_if_still"):
 		events.append_array(_drop_still_status(u, e))
 	for e: Dictionary in of(u, "status"):

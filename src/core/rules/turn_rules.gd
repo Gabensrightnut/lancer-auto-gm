@@ -125,6 +125,12 @@ static func finish_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 	events.append_array(Abilities.expire(state, u, "end"))
 	Abilities.arm_mines(state, u)
 	events.append_array(Combat.tick_meltdown(state, u))
+	var wreck := state.unit(String(u.counters.get("mounted_in", "")))
+	if wreck != null and wreck.counters.has("unstable_explosion"):
+		wreck.counters["unstable_explosion"] = int(wreck.counters["unstable_explosion"]) - 1
+		if int(wreck.counters["unstable_explosion"]) <= 0:
+			wreck.counters.erase("unstable_explosion")
+			events.append_array(Pilots.explode(state, wreck, "Unstable System: the wreck explodes."))
 	state.acted.append(u.id)
 	state.active_unit = ""
 	events.append({"type": "turn_ended", "unit": u.id})

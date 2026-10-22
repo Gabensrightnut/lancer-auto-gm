@@ -10,9 +10,8 @@ extends RefCounted
 ## Book rules used: base pilot stats (rules.json base_pilot_*), Down and Out (statuses),
 ## Mount, Dismount, Eject, Self Destruct (actions), Size 1/2.
 ## Pilots are Biological: no heat cap, heat becomes energy damage (Core p.74).
-## PROVISIONAL (docs/RULES_TODO.md "Pilot of a destroyed mech", "Reactor explosion save"):
-## the pilot of a destroyed mech climbs out next to it; the explosion's Agility save is
-## against the exploding mech's Save Target.
+## The pilot of a destroyed mech stays inside, can be targeted and may Dismount (Core p.74,
+## 80). The explosion's save target is the table's "explosion_save_target" ruling.
 
 ## rules.json base pilot numbers (copied so the core needs no ContentDB).
 const BASE := {"hp": 6, "evasion": 10, "edef": 10, "speed": 4, "sensors": 5, "save_target": 10}
@@ -131,11 +130,14 @@ static func explode(state: GameState, mech: Unit, why: String) -> Array[Dictiona
 		var amount := int(roll["total"])
 		if save["success"]:
 			amount -= amount / 2
+			if Effects.has(u, "heavy_shielding"):
+				amount = mini(amount, 1)  # Napoleon Heavy Shielding: half damage on a save becomes 1
 		events.append_array(Combat.deal_damage(state, u, [{"type": "Explosive", "amount": amount}], {"source": mech.id}))
 	var pilot := pilot_of(state, mech)
-	if pilot != null and pilot.counters.get("mounted_in", "") == mech.id:
+	if pilot != null and pilot.counters.get("mounted_in", "") == mech.id and not pilot.destroyed:
 		pilot.destroyed = true
 		events.append({"type": "unit_destroyed", "unit": pilot.id, "reason": "Inside the mech when its reactor exploded."})
+	mech.counters["vaporized"] = true  # "The wreck is annihilated" (Core p.81)
 	events.append_array(Combat.destroy(state, mech, why))
 	return events
 

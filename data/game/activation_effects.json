@@ -1,10 +1,30 @@
 {
   "_note": "Engine effects for activated abilities, keyed '<source id>:<action name>' (source id = lancer-data system/talent/frame id). Ops: status (who self|target, status, duration start_next_turn|end_next_turn|scene), self_effects (effects as in src/core/rules/effects.gd, duration). Abilities not listed still work through 'activate': the action and uses are spent and the table applies the text.",
   "t_crack_shot:Steady Aim": [
-    {"op": "status", "who": "self", "status": "Immobilized", "duration": "start_next_turn"},
-    {"op": "self_effects", "duration": "start_next_turn",
-     "effects": [{"kind": "accuracy", "on": "attack", "weapon_type": "Rifle", "value": 1}]}
+    {
+      "op": "status",
+      "who": "self",
+      "status": "Immobilized",
+      "duration": "start_next_turn"
+    },
+    {
+      "op": "self_effects",
+      "duration": "start_next_turn",
+      "effects": [
+        {
+          "kind": "accuracy",
+          "on": "attack",
+          "weapon_type": "Rifle",
+          "value": 1
+        }
+      ]
+    }
   ],
   "ms_siege_stabilizers:Siege Stabilizers": "toggle: not encoded yet",
-  "mf_tortuga:WATCHDOG Co-Pilot": "core: not encoded yet"
+  "mf_lancaster:Combat Repair": [
+    {
+      "op": "revive",
+      "repairs": 4
+    }
+  ]
 }

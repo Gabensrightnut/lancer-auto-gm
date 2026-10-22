@@ -199,9 +199,10 @@ static func deploy_stats(owner: Unit, d: Dictionary) -> Dictionary:
 	var type := String(d.get("type", "Deployable"))
 	var drone := type == "Drone"
 	var size := float(d.get("size", 0.5 if drone or type == "Mine" else 1.0))
+	var bonus := Effects.value(owner, "deployable_hp_bonus") if (drone or type == "Deployable") else 0  # Hydra System Link
 	return {
 		"size": size,
-		"hp": _stat(owner, d.get("hp"), 5 if drone else 10 * maxi(1, int(size))),
+		"hp": _stat(owner, d.get("hp"), 5 if drone else 10 * maxi(1, int(size))) + bonus,
 		"evasion": _stat(owner, d.get("evasion"), 10 if drone else 5),
 		"edef": _stat(owner, d.get("edef"), 10 if drone else 0),
 		"armor": _stat(owner, d.get("armor"), 0),
@@ -317,8 +318,8 @@ static func arm_mines(state: GameState, owner: Unit) -> void:
 ## PROVISIONAL (RULES_TODO "Mines"): the mine goes off after the move resolves.
 static func check_mines(state: GameState, mover: Unit, path: Array) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
-	if mover.kind == Unit.KIND_DEPLOYABLE:
-		return events
+	if mover.kind == Unit.KIND_DEPLOYABLE or Effects.has(mover, "mine_immune"):
+		return events  # Iskander Skeleton Key: never sets off mines unless it chooses to
 	for m: Unit in state.units.values():
 		if m.destroyed or m.counters.get("deploy_type", "") != "Mine" or not m.counters.get("armed", false):
 			continue
@@ -364,6 +365,8 @@ static func detonate(state: GameState, m: Unit, trigger: Unit) -> Array[Dictiona
 				events.append({"type": "skill_check", "unit": u.id, "check": save, "rule_ref": "tags: Mine"})
 				if save["success"]:
 					amount = amount - amount / 2 if d.get("save_half", false) else 0
+					if d.get("save_half", false) and Effects.has(u, "heavy_shielding"):
+						amount = mini(amount, 1)
 			if amount > 0:
 				events.append_array(Combat.deal_damage(state, u, [{"type": d.get("type", "Kinetic"), "amount": amount}], {"source": owner.id, "ap": d.get("ap", false), "area": true}))
 	return events

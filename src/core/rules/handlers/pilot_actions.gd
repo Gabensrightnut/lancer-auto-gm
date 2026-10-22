@@ -54,7 +54,8 @@ class Eject:
 		var pilot := Pilots.ensure_pilot(state, u)
 		u.counters["ejected"] = true
 		var events: Array[Dictionary] = [{"type": "ejected", "unit": u.id, "pilot": pilot.id, "rule_ref": "actions: Eject"}]
-		events.append_array(Combat.add_status(state, u, "Impaired", "Eject"))
+		if not Effects.has(u, "eject_no_impair"):
+			events.append_array(Combat.add_status(state, u, "Impaired", "Eject"))
 		events.append_array(Pilots.unseat(state, pilot, u, to, state.map.ground_height(to)))
 		TurnRules.spend(u, cost(), type())
 		PilotActions._hand_turn(state, u, pilot)

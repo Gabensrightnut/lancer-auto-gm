@@ -51,6 +51,12 @@ keeps the choices. An AI GM answers with the suggested reading and logs it. Code
 | Prepare triggers | Only movement triggers so far (a character moves adjacent / within a range); the book allows any "When X, then Y" (p.72) | `pilot_actions.gd`, `reactions.gd` |
 | After-attack moves | Taken right away, on your own turn only; the Skirmisher talent's "before" option and its use after Overwatch aren't supported yet | `move_actions.gd`, `effects.gd` |
 | Multi-character grapples | Sizes add up on each side (p.69): not supported, only two-character grapples | `close_combat.gd` |
+| Mines | A mine goes off after the triggering move resolves (the mover isn't stopped); detecting and disarming mines (Systems checks) aren't automated yet | `abilities.gd` |
+| Deployables as cover | Solid deployed objects (type Deployable/Object) are hard cover like terrain; drones and mines aren't | `sight.gd` |
+| Drones and engagement | Drones don't engage or get Engaged | `combat.gd`, `movement.gd` |
+| Manticore Unstable System | "At the end of its next turn" counted on the pilot's turns inside the wreck | `combat.gd`, `turn_rules.gd` |
+| Minotaur Invert Cockpit | Eject without Impaired and a free Dismount 1/round are automated; the free Mount (taken by the pilot) isn't yet | `frame_effects.json` |
+| Balor Scouring Swarm | "Characters of its choice" read as every hostile character | `effects.gd` |
 | Frame trait readings | Tortuga Sentinel counts Overwatch as a reaction attack; Blast Plating resists all damage types from area attacks; Vlad's core resistance applies to attackers within range 3; Shrike Armor damage comes before the attack roll; Kai Bioplating jumps up to Speed across, half Speed up; Iskander's range is measured at each move | `data/game/frame_effects.json`, `gear_effects.json` |
 
 ## Movement audit (Core p.62-63, 77-78 and lancer-data text)
@@ -75,7 +81,7 @@ still pays for difficult terrain unless a rule says otherwise). Tests:
 | Blackbeard | Lock/Kill: Boost while grappling | automated; Grapple Cable (range 5, pulled adjacent) and core not yet |
 | Drake, Barbarossa | Heavy Frame: not pushed/pulled/knocked Prone/back by smaller | automated; Drake core (Immobilized, immune to involuntary movement) not yet |
 | Nelson | Skirmisher: 1 space after attacking, ignores engagement, no reactions; core: 4 spaces | automated |
-| Tortuga core | Overwatch hits Immobilize | not yet |
+| Tortuga core | Threat 3 for ranged weapons, an extra Overwatch, Overwatch hits Immobilize | automated |
 | Dusk Wing | Hover | automated; core (hologram teleport) not yet |
 | Mourning Cloak core | Teleport on Boost and standard move | automated; Blinkspace Jump not yet |
 | Swallowtail | Integrated Cloak (Invisible if it didn't move) | automated |
@@ -95,10 +101,19 @@ still pays for difficult terrain unless a rule says otherwise). Tests:
 | Pilot gear | Mobility Hardsuit (fly, land by end of turn) | automated |
 | EVA Module | Fly and not Slowed in zero-g | not yet (no zero-g) |
 
+## Activated abilities and deployables
+
+Every action in lancer-data (systems, weapons, core systems, unautomated traits, talents,
+NPC features) is an ability used with `activate`; costs, once-per-system-per-turn, Protocols,
+Limited, X/turn, X/round, 1/scene, Recharge and lockouts are automated. What an ability does
+is automated only where `data/game/activation_effects.json` (or frame core ops) encodes it:
+now Crack Shot's Steady Aim, Lancaster Combat Repair, Monarch's missile core. Everything
+else is handed to the table as text (`manual_effect`). Deployables, drones and mines deploy,
+take damage and are destroyed or recalled.
+
 ## Not implemented yet
 
-Deployables and drones, system activations (Activate), NPC templates and multiple
-activations, Recharge, weapon profile choice, mod effects, frame traits and core systems
+NPC templates and multiple activations, weapon profile choice, mod effects, frame traits and core systems
 marked "manual" in `data/game/frame_effects.json`, talents (beyond unlocking talent gear),
 bonus damage (p.67), Jockey and Reload (p.75), pilot armor and gear, zero-g
 (p.63), lifting and dragging (p.62), dragging wrecks, objects as attack targets (p.68),

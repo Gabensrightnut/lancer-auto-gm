@@ -16,11 +16,12 @@ extends RefCounted
 ##   significantly obstructed (smoke, foliage...), or the target is obscured by hard cover it
 ##   isn't adjacent to. Hard and soft don't stack. Characters shoot over cover no bigger than
 ##   themselves.
-## PROVISIONAL (docs/RULES_TODO.md "Line of sight in 3D", "Distance in 3D", "Cover geometry"):
+## Engine geometry (docs/RULES_TODO.md "Engine geometry"; the book describes a flat map):
 ## - Lines are sampled between the middles of the spaces (voxels) characters fill, plus the
 ##   tops of their heads for line of sight; a column's terrain "size" is its height above the
 ##   target's base.
-## - Distance in 3D: the larger of ground distance between footprints and the height gap.
+## - Adjacency counts height (Core p.62); Range/Threat/Sensors with height follow the table's
+##   "distance_3d" ruling (range_distance).
 ## - A column tagged "soft_cover" is soft cover over its whole height.
 ## Only ranged attacks are affected by cover (Core p.64: melee and tech attacks ignore cover).
 
@@ -67,7 +68,8 @@ static func is_solid(map: BattleMap, cell: Vector2i, level: int) -> bool:
 	return not (c.gap_top > 0 and level >= c.gap_bottom and level < c.gap_top)
 
 
-## Distance in spaces between two bodies. PROVISIONAL: larger of ground and height distance.
+## Distance in spaces in any direction: the larger of ground distance and height gap
+## (adjacency, Core p.62). For Range/Threat/Sensors use range_distance().
 static func distance(state: GameState, a: Body, b: Body) -> int:
 	var flat := state.map.grid.footprint_distance(a.cells, b.cells)
 	var a_top := a.level + a.height - 1

@@ -435,13 +435,16 @@ static func _frame_effects(u: Unit, frame: Dictionary) -> void:
 	var enc_core: Variant = data.get("core", "manual")
 	if enc_core is Array:
 		core_effects.append_array((enc_core as Array).duplicate(true))
+	var core_ops: Array = (data.get("core_ops", []) as Array).duplicate(true)
+	if not core_ops.is_empty():
+		enc_core = core_effects
 	for e: Dictionary in core_effects:
 		e["label"] = core_name
 		e["rule_ref"] = "frames: %s core system" % frame.get("name", "")
 	u.loadout["effects"] = effects
 	u.loadout["traits"] = traits
 	u.loadout["core"] = {"name": core_name, "power": core.get("active_name", ""), "activation": core.get("activation", "Quick"),
-		"text": core.get("active_effect", ""), "effects": core_effects, "automated": enc_core is Array}
+		"text": core.get("active_effect", ""), "effects": core_effects, "ops": core_ops, "automated": enc_core is Array}
 	# One Core Power per mission, recovered by a Full Repair (Core p.32, 82).
 	u.counters["core_power"] = 1
 

@@ -219,6 +219,10 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		check["target_label"] = p["defense_name"]
 		if check["success"]:
 			result = "crit" if check["crit"] else "hit"
+		if Effects.has(target, "attack_paralysis") and int(check["d20"]) <= 2:
+			# Gorgon Metastatic Paralysis: a 1-2 misses and Stuns the attacker.
+			result = "miss"
+			check["paralysis"] = true
 	events.append({"type": "attack_rolled", "attacker": attacker.id, "target": target.id,
 		"weapon": w.get("key", ""), "weapon_name": w.get("name", ""), "kind": kind, "check": check,
 		"result": result, "cover": p["cover"].get("cover", "none") if p["cover"] is Dictionary else "none",
@@ -226,6 +230,8 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		"lock_on_consumed": p["lock_on"], "rule_ref": p["rule_ref"]})
 	if not opts.get("skip_spend", false):
 		events.append_array(_spend_weapon(state, attacker, w))
+	if check.get("paralysis", false):
+		events.append_array(Combat.add_status(state, attacker, "Stunned", target.id, attacker.id))
 	if result != "miss":
 		events.append_array(_hit(state, attacker, w, target, result == "crit", opts))
 	elif Weapons.tag_value(w, "tg_reliable") > 0:
@@ -306,8 +312,9 @@ static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array,
 		brace = d.get("take", false)
 	if brace:
 		events.append_array(Reactions.brace(state, target, attacker.id))
-	events.append_array(Combat.deal_damage(state, target, parts, {"source": attacker.id, "ap": ap, "resist_all": brace,
-		"area": area, "distance": Sight.unit_distance(state, attacker, target)}))
+	var aegis := brace and Effects.has(target, "flash_aegis")
+	events.append_array(Combat.deal_damage(state, target, parts, {"source": attacker.id, "ap": ap, "resist_all": brace and not aegis,
+		"damage_to_one": aegis, "area": area, "distance": Sight.unit_distance(state, attacker, target)}))
 	return events
 
 

@@ -50,6 +50,14 @@ static func threat(w: Dictionary) -> int:
 	return maxi(1, maxi(range_value(w, "Threat"), tag_value(w, "tg_threat")))
 
 
+## THREAT for this unit: some effects raise ranged weapons' THREAT (Tortuga core: at least 3).
+static func threat_for(u: Unit, w: Dictionary) -> int:
+	var t := threat(w)
+	if not is_melee(w):
+		t = maxi(t, Effects.value(u, "min_threat"))
+	return t
+
+
 ## The area pattern ("Blast", "Burst", "Cone", "Line") or "" for single-target weapons.
 static func area(w: Dictionary) -> String:
 	for r: Dictionary in w.get("range", []):

@@ -19,9 +19,9 @@ extends RefCounted
 ##   mechs always pass through pilots on foot (p.74); no one ends a move in an occupied space.
 ## - Flying ignores obstructions when physically possible (p.63); flyers more than 10 spaces
 ##   above any surface can only move and Boost, and can't climb past that after acting.
-## PROVISIONAL (docs/RULES_TODO.md "Movement"): a step up or down d levels costs 1 + 2d;
-## climbing down costs the same as up; a big mech on uneven ground is a table ruling;
-## flying ignores difficult terrain; a footprint needs room for `Size` levels of height.
+## Table rulings (Rulings): climbing cost, flight over difficult terrain, big mechs on uneven
+## ground, Prone with "ignore difficult terrain". A footprint needs room for Size levels of
+## height (Core p.59: N spaces high).
 
 const MODE_MOVE := "move"
 const MODE_BOOST := "boost"
@@ -273,8 +273,7 @@ static func plan(state: GameState, u: Unit, dest: Vector2i, level: int = -1, mod
 ## and ending on a surface the unit can normally move on (non-flyers can't teleport into the
 ## air); ignores obstructions, line of sight and engagement, doesn't provoke; counts as moving
 ## 1 space; affected by Immobilized; an occupied destination makes it fail.
-## PROVISIONAL (RULES_TODO "Teleport moves"): a teleporting standard move or Boost uses all of
-## that move.
+## How much movement it uses is the table's "teleport_move_cost" ruling.
 static func plan_teleport(state: GameState, u: Unit, dest: Vector2i, level: int = -1, mode: String = MODE_MOVE) -> Dictionary:
 	var out := {"ok": false, "reason": "", "rule_ref": REF_TELEPORT, "path": [], "cost": 1,
 		"budget": budget(u, mode), "remaining": 0, "needs_boost": false, "stopped_by": "",
@@ -347,8 +346,8 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool) -> Dictionar
 	var prone := u.has_status("Prone")
 	var wreck_cells := _wreck_cells(others)
 	# Bulwark Mods / Kai Bioplating: ignore difficult terrain. Kai Bioplating / High-Stress Mag
-	# Clamps: climb at normal speed. PROVISIONAL: ignoring difficult terrain also covers
-	# Prone's "counts as moving in difficult terrain".
+	# Clamps: climb at normal speed. Whether ignoring difficult terrain also covers Prone is
+	# the table's "prone_ignore_difficult" ruling.
 	var ignore_difficult := Effects.has(u, "ignore_difficult")
 	var climb_cost := 1 if Effects.has(u, "climb_normal") else 2
 	# Table rulings (Rulings): the readings the book allows. Previews use the suggested one
@@ -582,7 +581,7 @@ static func threatened_by(state: GameState, u: Unit) -> Array[String]:
 			continue
 		var reach := 0
 		for w: Dictionary in o.loadout.get("weapons", []):
-			reach = maxi(reach, Weapons.threat(w))
+			reach = maxi(reach, Weapons.threat_for(o, w))
 		if reach > 0 and Sight.unit_distance(state, o, u) <= reach:
 			out.append(o.id)
 	return out
