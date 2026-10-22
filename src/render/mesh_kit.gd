@@ -202,6 +202,23 @@ static func mech_material(color: Color, metallic: float = 0.55, roughness: float
 	return m
 
 
+## Paint for hand-modeled frames: like mech_material but with a panel-line strength
+## (smooth curved parts look best with faint lines).
+static func paint(color: Color, metallic: float = 0.45, roughness: float = 0.45, panel_strength: float = 0.3, emit: Color = Color.BLACK) -> ShaderMaterial:
+	var key := "paint|%s|%.2f|%.2f|%.2f|%s" % [color.to_html(), metallic, roughness, panel_strength, emit.to_html()]
+	if _mat_cache.has(key):
+		return _mat_cache[key]
+	var m := ShaderMaterial.new()
+	m.shader = MECH_SHADER
+	m.set_shader_parameter("base_color", color)
+	m.set_shader_parameter("metallic_value", metallic)
+	m.set_shader_parameter("roughness_value", roughness)
+	m.set_shader_parameter("emission_color", emit)
+	m.set_shader_parameter("panel_strength", panel_strength)
+	_mat_cache[key] = m
+	return m
+
+
 ## Bright additive material for beams, tracers, glows. Ignores lighting.
 ## `soft` fades edges that face away from the camera (for tubes and spheres); turn it off
 ## for flat ribbons.

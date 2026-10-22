@@ -17,6 +17,8 @@ func _ready() -> void:
 	view.terrain.set_grid_visible(false)
 	if show_weapons:
 		_weapons(content)
+	elif "sculpts" in OS.get_cmdline_user_args():
+		show_sculpts(content)
 	else:
 		_frames(content)
 
@@ -78,11 +80,51 @@ func _weapons(content: ContentDB) -> void:
 	view.tactical.snap()
 
 
-## Screenshot hook: "row0".."row2" frames one row up close.
+## Screenshot hook: "row0".."row2" frames one row up close; "close0".."close2" one sculpt.
 func screenshot_setup(args: PackedStringArray) -> void:
 	for a in args:
+		if a.begins_with("close"):
+			var spot: Array = _sculpt_spots[int(a.substr(5))]
+			view.tactical.look_at_point(spot[0], spot[1])
+			view.tactical.pitch = -10
+			view.tactical.yaw = 25
+			view.tactical.snap()
 		if a.begins_with("row"):
 			var r := int(a.substr(3))
 			view.tactical.look_at_point(Vector3(9.0 if r < 2 else 7.0, 0.7, 2.0 + r * 3.6), 9.5)
 			view.tactical.pitch = -22
 			view.tactical.snap()
+
+
+## Hand-modeled frames, large, with the loadouts their official art shows.
+## Run with the extra argument "sculpts".
+var _sculpt_spots: Array = []
+
+
+func show_sculpts(content: ContentDB) -> void:
+	for c in view.get_children():
+		if c is MechModel or c is Label3D or c is Node3D and c.name.begins_with("Weapon"):
+			c.queue_free()
+	var setups := [
+		["mf_standard_pattern_i_everest", [["Main", ["mw_assault_rifle"]], ["Heavy", []]]],
+		["mf_drake", [["Main", ["mw_assault_cannon"]]]],
+		["mf_mourning_cloak", [["Main/Aux", ["mw_variable_sword"]]]],
+	]
+	var x := 3.0
+	for sdef: Array in setups:
+		var f := content.frame(sdef[0])
+		var mounts: Array = []
+		for mnt: Array in sdef[1]:
+			mounts.append({"mount": mnt[0], "weapons": mnt[1], "mod": ""})
+		var mech := MechBuilder.build(f, {"mounts": mounts}, content)
+		var w := maxf(1.0, float(f["stats"]["size"])) * 1.3
+		x += w * 0.5
+		mech.position = Vector3(x, 0, 5.0)
+		mech.rotation_degrees.y = 215
+		view.add_child(mech)
+		_sculpt_spots.append([mech.position + Vector3.UP * mech.height * 0.55, maxf(2.2, mech.height * 2.3)])
+		x += w * 0.5 + 0.5
+	view.tactical.look_at_point(Vector3((3.0 + x) * 0.5, 0.9, 5.0), 5.2)
+	view.tactical.pitch = -12
+	view.tactical.yaw = 0
+	view.tactical.snap()

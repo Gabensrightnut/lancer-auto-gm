@@ -83,7 +83,11 @@ static func build(w: Dictionary) -> Node3D:
 		"taper": 0.8 if mfr == "SSC" else 1.0,
 	}
 	var muzzle := Vector3(0, 0, -0.3 * k)
-	match String(w.get("type", "")):
+	var signature := {"mw_assault_cannon": _gatling, "mw_variable_sword": _katana}
+	var type := String(w.get("type", "")) if not signature.has(id) else "signature"
+	match type:
+		"signature":
+			muzzle = (signature[id] as Callable).call(ctx)
 		"Rifle":
 			muzzle = _rifle(ctx)
 		"Cannon":
@@ -253,6 +257,31 @@ static func _melee(ctx: Dictionary) -> Vector3:
 	_box(ctx, Vector3(0.012, 0.055, len), Vector3(0, 0, -0.04 - len / 2.0), "light", Vector3.ZERO, 0.7)
 	_box(ctx, Vector3(0.006, 0.012, len * 0.95), Vector3(0, 0.028, -0.04 - len / 2.0), edge_key)
 	return Vector3(0, 0, -0.04 - len)
+
+
+## Signature: IPS-N assault cannon as a six-barrel rotary gun with a hanging ammo belt.
+static func _gatling(ctx: Dictionary) -> Vector3:
+	var len := 0.34
+	_box(ctx, Vector3(0.1, 0.11, 0.18), Vector3(0, 0, 0.0), "paint")
+	_box(ctx, Vector3(0.05, 0.06, 0.1), Vector3(0, -0.07, 0.05), "body")
+	for i in range(6):
+		var a := TAU * i / 6.0
+		_barrel(ctx, 0.011, len, Vector3(cos(a) * 0.028, sin(a) * 0.028, -0.09 - len / 2.0), "body", 8)
+	for z in [-0.14, -0.3, -0.4]:
+		_barrel(ctx, 0.045, 0.02, Vector3(0, 0, z), "light", 12)
+	for i in range(9):
+		_box(ctx, Vector3(0.03, 0.012, 0.02), Vector3(-0.04, -0.06 - i * 0.022, -0.02 + sin(i * 0.7) * 0.02), "hazard" if i % 2 else "body")
+	return Vector3(0, 0, -0.09 - len)
+
+
+## Signature: SSC variable sword as a long slender katana with a wrapped hilt.
+static func _katana(ctx: Dictionary) -> Vector3:
+	var len := 0.62
+	_box(ctx, Vector3(0.022, 0.022, 0.12), Vector3(0, 0, 0.03), "glow")
+	_box(ctx, Vector3(0.05, 0.012, 0.05), Vector3(0, 0, -0.035), "paint")
+	_box(ctx, Vector3(0.006, 0.028, len), Vector3(0, 0.004, -0.04 - len / 2.0), "light", Vector3(-2, 0, 0), 0.6)
+	_box(ctx, Vector3(0.004, 0.006, len * 0.95), Vector3(0, 0.018, -0.04 - len / 2.0), "body", Vector3(-2, 0, 0))
+	return Vector3(0, 0.02, -0.04 - len)
 
 
 static func _nexus(ctx: Dictionary) -> Vector3:

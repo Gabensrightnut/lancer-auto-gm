@@ -48,16 +48,21 @@ func _build(frame: Dictionary, loadout: Dictionary, content: ContentDB, size_ove
 	var body := Node3D.new()
 	body.name = "Body"
 	_m.add_child(body)
-	_legs(body)
-	_torso()
-	_head()
-	_arms()
+	var sculpted := FrameSculpts.has(_m.frame_id)
+	if sculpted:
+		FrameSculpts.sculpt(_m.frame_id, _m, body)
+	else:
+		_legs(body)
+		_torso()
+		_head()
+		_arms()
 	# Scale the body so its height (without antennas, wings...) matches the Size.
 	var top := _top_of(body, Transform3D.IDENTITY)
 	_m.height = _m.size * 0.95
 	_m.root_scale = _m.height / maxf(top, 0.01)
 	body.scale = Vector3.ONE * _m.root_scale
-	_features()
+	if not sculpted:
+		_features()
 	_weapons(loadout, content)
 	_m.collect_meshes()
 	return _m
@@ -66,7 +71,7 @@ func _build(frame: Dictionary, loadout: Dictionary, content: ContentDB, size_ove
 func _top_of(n: Node, xf: Transform3D) -> float:
 	var best := 0.0
 	for c in n.get_children():
-		if not c is Node3D:
+		if not c is Node3D or c.has_meta("no_height"):
 			continue
 		var cx: Transform3D = xf * (c as Node3D).transform
 		if c is MeshInstance3D:
