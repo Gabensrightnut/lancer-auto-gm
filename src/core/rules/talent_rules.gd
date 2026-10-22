@@ -979,6 +979,7 @@ static func lunge(state: GameState, u: Unit, t: Unit) -> Array[Dictionary]:
 
 ## Start of a turn: chaff, ambush.
 static func turn_started(state: GameState, u: Unit) -> void:
+	u.counters["bent_uses"] = 0  # SISYPHUS: two uses before the start of your next turn
 	u.counters.erase("feint")  # Duelist Feint lasts until the start of its next turn
 	for o: Unit in state.units.values():
 		if String(o.counters.get("exemplar_mark", "")) == u.id and String(u.counters.get("duel", "")) != o.id:

@@ -13,6 +13,9 @@ static func _can_move_voluntarily(u: Unit) -> RuleResult:
 
 
 static func _plan(state: GameState, u: Unit, params: Dictionary, mode: String) -> Dictionary:
+	var carried := state.unit(String(u.counters.get("dragging", "")))
+	if carried != null and carried.size > 0.5 and (params.get("fly", false) or params.get("swing", false)):
+		return {"ok": false, "reason": "Carrying more than Size 1/2: you can't fly.", "rule_ref": Riders.REF_DRAG}
 	var plan := _plan_raw(state, u, params, mode)
 	if plan["ok"] and u.counters.has("cable") and not (plan["path"] as Array).is_empty():
 		var last: Array = (plan["path"] as Array).back()
@@ -20,6 +23,14 @@ static func _plan(state: GameState, u: Unit, params: Dictionary, mode: String) -
 			plan["ok"] = false
 			plan["reason"] = "The cable holds you within 5 spaces of the other end."
 			plan["rule_ref"] = Riders.REF_WINCH
+	for me: Dictionary in Effects.of(u, "mesmerized"):
+		var lure := state.unit(String(me.get("by", "")))
+		if plan["ok"] and lure != null and Combat.is_present(lure) and not (plan["path"] as Array).is_empty():
+			var lm: Array = (plan["path"] as Array).back()
+			if Sight.distance(state, Sight.make_body(state, Vector2i(lm[0], lm[1]), int(lm[2]), u.size), Sight.body_of(state, lure)) >= Sight.unit_distance(state, u, lure):
+				plan["ok"] = false
+				plan["reason"] = "Mesmerized: you can only move toward it."
+				plan["rule_ref"] = "systems: Mesmer Charges"
 	var scary := state.unit(String(u.counters.get("terrified_of", "")))
 	if plan["ok"] and scary != null and Combat.is_present(scary) and u.has_status("Impaired") and String(u.statuses["Impaired"].get("source", "")) == scary.id \
 			and not (plan["path"] as Array).is_empty():
@@ -50,7 +61,10 @@ static func _plan_raw(state: GameState, u: Unit, params: Dictionary, mode: Strin
 		return Movement.plan_teleport(state, u, to, int(params.get("level", -1)), mode)
 	if params.get("swing", false) and mode == Movement.MODE_MOVE:
 		return _swing_plan(state, u, to, params)
-	return Movement.plan(state, u, to, int(params.get("level", -1)), mode, bool(params.get("fly", false)))
+	var level := int(params.get("level", -1))
+	if params.get("fly", false) and HouseRuleSwitches.on(state, "lt_flight_fixed") and state.map.has_cell(to):
+		level = state.map.ground_height(to) + 3  # Lancer Tactics option: flying is 3 spaces above the surface
+	return Movement.plan(state, u, to, level, mode, bool(params.get("fly", false)))
 
 
 ## Grapple Swing (Reinforced Cabling): 1/turn, a standard move flown in a straight line with a
@@ -187,6 +201,7 @@ class Move:
 		if not r.is_empty():
 			events.append(r)
 			return events
+		events.append_array(GearSystems.area_denial_start(state, u))  # Assassin Drone
 		var plan := MoveActions._plan(state, u, params, Movement.MODE_MOVE)
 		u.turn["move_spent"] = int(u.turn.get("move_spent", 0)) + int(plan["cost"])
 		if plan["stopped_by"] != "":

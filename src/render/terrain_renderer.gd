@@ -247,7 +247,7 @@ func surface(cell: Vector2i) -> int:
 		return KIND_CRYSTAL
 	if col.has_tag("rock") or (col.has_tag(BattleMap.TAG_IMPASSABLE) and col.ground > 0):
 		return KIND_ROCK
-	if (col.has_tag("road") or col.has_tag("lot")) and not col.has_tag(BattleMap.TAG_DANGEROUS) and col.gap_top == 0:
+	if (col.has_tag("road") or col.has_tag("lot") or col.has_tag("plaza") or col.has_tag("rail")) and not col.has_tag(BattleMap.TAG_DANGEROUS) and col.gap_top == 0:
 		return KIND_ROAD
 	if col.has_tag("farm"):
 		return KIND_FARM
@@ -339,7 +339,26 @@ func _build_blocks() -> void:
 		if kind == KIND_ROAD:
 			# Roads carry their direction for the lane markings (shader): along x, along z, crossing.
 			# Lots (yards, sidewalks, squares between a settlement's buildings): 0.97, no markings.
-			variation = 0.97 if col.has_tag("lot") and not col.has_tag("road") else (0.85 if col.has_tag("crossing") else (0.5 if col.has_tag("road_z") else 0.15))
+			# Straight roads add their lane (i across, n wide; tag "lane<i>_<n>") in 1/255 steps:
+			# along x 0.05 + code, along z 0.4 + code (code = n * 6 + i), so the shader can draw
+			# centre lines, lane lines, medians and curbs where they belong.
+			if col.has_tag("rail"):
+				variation = 0.915 if col.has_tag("rail_z") else 0.9
+			elif col.has_tag("plaza") and not col.has_tag("road"):
+				variation = 0.99
+			elif col.has_tag("lot") and not col.has_tag("road"):
+				variation = 0.97
+			elif col.has_tag("crossing"):
+				variation = 0.85
+			else:
+				var code := 0
+				for t in col.tags:
+					if t.begins_with("lane"):
+						var p := t.trim_prefix("lane").split("_")
+						code = int(p[1]) * 6 + int(p[0])
+				if col.has_tag("crosswalk"):
+					code += 42
+				variation = (0.45 if col.has_tag("road_z") else 0.05) + code / 255.0
 		elif kind == KIND_FARM:
 			variation = (0.75 if col.has_tag("dry") else 0.25) + 0.2 * WorldRand.f(str(cell), 3)
 		var base_col := Color(kind / 16.0, variation, 0.0, 1.0)

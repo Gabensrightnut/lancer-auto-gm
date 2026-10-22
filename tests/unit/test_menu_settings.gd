@@ -6,7 +6,7 @@ func test_settings_round_trip_and_clamping() -> void:
 	var path := "user://test_settings_%d.cfg" % Time.get_ticks_usec()
 	var s := GameSettings.load_settings(path)
 	expect_eq(s.colorblind, "off")
-	expect_eq(s.keybinds["end_turn"], KEY_E)
+	expect_eq(s.keybinds["end_turn"], KEY_X)
 	s.ui_scale = 1.25
 	s.colorblind = "tritanopia"
 	s.animation_speed = "fast"
@@ -30,9 +30,9 @@ func test_settings_round_trip_and_clamping() -> void:
 
 func test_rebinding_swaps_instead_of_leaving_a_hole() -> void:
 	var s := GameSettings.load_settings("user://does_not_exist.cfg")
-	expect_eq(s.rebind("end_turn", KEY_Q), "camera_left", "Q was rotate-left: they swap")
+	expect_eq(s.rebind("end_turn", KEY_Q), "cam_rotate_left", "Q was rotate-left: they swap")
 	expect_eq(s.keybinds["end_turn"], KEY_Q)
-	expect_eq(s.keybinds["camera_left"], KEY_E)
+	expect_eq(s.keybinds["cam_rotate_left"], KEY_X)
 	expect_eq(s.rebind("end_turn", KEY_F5), "")
 	s.apply_keys()
 	expect(InputMap.has_action("end_turn"))
@@ -57,4 +57,24 @@ func test_graphics_preset_drives_world_quality() -> void:
 	cfg.save(path)
 	expect_eq(GameSettings.load_settings(path).graphics, "high", "the old Ultra setting becomes High")
 	WorldQuality.set_preset("high")
+	DirAccess.remove_absolute(path)
+
+
+## Every key in data/game/keybinds.json can be rebound, and no two defaults share a key.
+func test_every_battle_key_is_rebindable_and_none_clash() -> void:
+	var s := GameSettings.load_settings("user://does_not_exist.cfg")
+	for a: String in BattleKeys.defaults():
+		expect(s.keybinds.has(a), "%s is in Settings" % a)
+	expect_eq(GameSettings.default_clashes(), [], "no default clashes")
+	s.apply_keys()
+	var up := InputMap.action_get_events("cam_pan_up").map(func(e: InputEventKey) -> int: return e.physical_keycode)
+	expect(up.has(KEY_W) and up.has(KEY_UP), "second keys (arrows) stay")
+
+
+func test_old_saved_keys_are_dropped_once() -> void:
+	var path := "user://test_old_keys_%d.cfg" % Time.get_ticks_usec()
+	var cfg := ConfigFile.new()
+	cfg.set_value("keys", "end_turn", KEY_E)  # the old default, now rotate right
+	cfg.save(path)
+	expect_eq(GameSettings.load_settings(path).keybinds["end_turn"], KEY_X, "no clash with camera rotate right")
 	DirAccess.remove_absolute(path)

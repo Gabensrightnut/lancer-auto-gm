@@ -74,11 +74,29 @@ static func all(u: Unit) -> Array:
 
 
 static func of(u: Unit, kind: String) -> Array:
-	return all(u).filter(func(e: Dictionary) -> bool: return e.get("kind", "") == kind)
+	if u == null:
+		return []
+	if u.counters.get("ai_control", false):
+		return all(u).filter(func(e: Dictionary) -> bool: return e.get("kind", "") == kind)
+	# Hot path: scan the three lists in place instead of joining them first.
+	var out: Array = []
+	for list: Variant in [u.loadout.get("effects", []), u.counters.get("active_effects", []), u.counters.get("env_effects", [])]:
+		for e: Dictionary in list:
+			if e.get("kind", "") == kind:
+				out.append(e)
+	return out
 
 
 static func has(u: Unit, kind: String) -> bool:
-	return not of(u, kind).is_empty()
+	if u == null:
+		return false
+	if u.counters.get("ai_control", false):
+		return not of(u, kind).is_empty()
+	for list: Variant in [u.loadout.get("effects", []), u.counters.get("active_effects", []), u.counters.get("env_effects", [])]:
+		for e: Dictionary in list:
+			if e.get("kind", "") == kind:
+				return true
+	return false
 
 
 ## Accuracy/Difficulty sources for a roll. `on` lists the roll types this counts as, e.g.

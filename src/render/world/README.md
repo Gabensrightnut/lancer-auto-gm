@@ -353,3 +353,21 @@ settlements. `salt_flats` (base desert_mesas; `TerrainGen._flats`): dead level w
 cracked soft patches (difficult), low pressure ridges in straight runs (one level), rare rock
 islands, old mine spoil heaps; little cover, so the open ground is the danger. Old West, retro
 or industrial mining towns.
+
+## Road hierarchy
+
+Every straight road cell carries `lane<i>_<n>` (TerrainGen._lane_tags: its place across the
+road and the road's width), packed into the road's variation for the shader. One space: an
+alley, no markings. Two: a street with a yellow centre line on the edge the lanes share. Three:
+white lane lines. Four or more: a boulevard with a double-yellow median. Outer lanes get solid
+edge lines and a curb. Cities have a four-lane boulevard through the middle; mega-cities run an
+elevated highway over it (`highway`: a deck two levels up on gap columns, ramps at the ends;
+units pass under and walk on top, like river bridges). Modern towns get a two-lane highway
+that bridges rivers. In a city every open space is street, sidewalk/lot or a paved square
+(`plaza`: warm stone pavers); no bare ground. Roads are never cover.
+Ramps two spaces long (one level a step) lead from the boulevard's outer lanes up to the
+elevated deck. Crosswalks (`crosswalk`) sit on the last road cell before each intersection
+(streets two lanes or wider); the intersection itself is plain. Railways (`rail`, `rail_x`):
+frontier, industrial, port, atomic-age and Union towns often have one past them on a level bed
+(embankments and cuttings), bridged over water, with level crossings where it meets a road;
+ballast, sleepers and two rails; look only (track is open ground).

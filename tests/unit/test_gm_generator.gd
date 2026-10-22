@@ -450,3 +450,42 @@ func test_no_rock_against_buildings() -> void:
 						if map.has_cell(n) and (map.column(n).has_tag("building") or map.column(n).has_tag("house")):
 							bad += 1
 			expect_eq(bad, 0, "mission %s/%s seed %d: rock against a building" % [kit[0], kit[1], s])
+
+
+func test_roads_have_a_hierarchy_and_no_bare_city_ground() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 22
+	var city := TerrainGen.generate(rng, 44, 44, GridLayout.Shape.SQUARE, {}, "city", "cyberpunk")
+	var widths := {}
+	var deck := 0
+	var bare := 0
+	for c in city.cells():
+		var col := city.column(c)
+		for t in col.tags:
+			if t.begins_with("lane"):
+				widths[int(t.split("_")[1])] = true
+		if col.has_tag("highway") and col.gap_top >= 2 and col.ground >= 2:
+			deck += 1
+		if col.ground == 0 and col.gap_top == 0 and col.tags.is_empty():
+			bare += 1
+	expect(widths.has(4), "a four-lane boulevard: %s" % widths.keys())
+	expect(widths.has(2) or widths.has(3), "streets: %s" % widths.keys())
+	expect(deck > 20, "an elevated highway on pillars in the mega-city: %d" % deck)
+	expect_eq(bare, 0, "no bare ground in the city")
+	var ramps := 0
+	var walks := 0
+	for c in city.cells():
+		ramps += 1 if city.column(c).has_tag("ramp") else 0
+		walks += 1 if city.column(c).has_tag("crosswalk") else 0
+	expect(ramps >= 2 and walks > 4, "ramps up to the highway (%d) and crosswalks at intersections (%d)" % [ramps, walks])
+	# Frontier towns often have a railway past them, bridged over water, crossing the roads.
+	var railed := 0
+	for s in range(1, 9):
+		var r2 := RandomNumberGenerator.new()
+		r2.seed = s
+		var town := TerrainGen.generate(r2, 40, 40, GridLayout.Shape.SQUARE, {}, "desert_mesas", "old_west")
+		for c in town.cells():
+			if town.column(c).has_tag("rail"):
+				railed += 1
+				break
+	expect(railed >= 3, "railways past some frontier towns: %d of 8" % railed)

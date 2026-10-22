@@ -19,10 +19,11 @@ $G --path . -s res://tools/screenshot.gd -- res://scenes/main.tscn out.png   # c
 Before every commit run only your area's tests (`-- <area>` filter); the main session runs the full
 suite on merge. The user's PC is shared: launch Godot/Blender/Python at below-normal priority
 (`cmd.exe //c start "" //belownormal //b //wait <exe> <args>`), no benchmarks unless asked, and keep
-screenshots and GPU-heavy work to a minimum. Only ONE GPU-heavy job may run at a time across
-all sessions (Blender, TripoSG, windowed Godot runs, screenshot batches): wrap it in
-`tools/gpu_lock.sh run <session-name> -- <command>`, which waits for the lock. Everything else
-stays small (code, data, headless filtered tests).
+screenshots and GPU-heavy work to a minimum. Only ONE Godot/Blender/Python run may go at a
+time across all sessions, headless tests included: wrap every run in
+`tools/gpu_lock.sh run <session-name> -- <command>`, which waits for the lock. The user's
+`tools/pc_guard.ps1` keeps all such processes at idle priority on 4 cores; never undo it.
+Batch your checks into one filtered test run instead of many small ones.
 Keep files small: textures as JPG/WebP (PNG only when alpha is needed), at most 2048 px and
 1024 px for most; models with only the detail they need; screenshots as JPG and kept out of the
 repo unless a doc needs them (`local/screenshots/`). Audio is exempt.
