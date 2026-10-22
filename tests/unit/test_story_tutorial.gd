@@ -195,3 +195,16 @@ func test_expressions_are_known_and_drawable() -> void:
 	var npc: Dictionary = s.npcs[s.hub["npcs"][0]]
 	s.standing[npc["faction"]] = -2
 	expect_eq(PortraitSpec.npc_expression(s, npc), "angry", "an unfriendly NPC looks it")
+
+
+func test_jobs_name_the_world_maps_kit() -> void:
+	var expect_map := {"frontier_colony": "", "old_west": "old_west", "medieval_tech": "medieval", "cyberpunk": "cyberpunk",
+		"retrofuturistic": "retro", "east_asian": "east_asian", "union_core": "union"}
+	var landscapes := ["grassy_hills", "desert_mesas", "tundra", "volcanic", "alien_wilds", "crystal_fields", "toxic_marsh", "city"]
+	for kit: String in expect_map:
+		var t := Setup.setup(95)
+		var s: StoryState = t["story"]
+		s.hub["culture"] = kit
+		var hook := MissionHooks.make(s, t["campaign"], "clear_raiders", {})
+		expect_eq(hook["map_culture"], expect_map[kit], kit)
+		expect(landscapes.has(hook["landscape"]), "%s -> %s" % [kit, hook["landscape"]])

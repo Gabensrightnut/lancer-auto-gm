@@ -1,56 +1,499 @@
 {
-  "_note": "Our own writing. Hub culture/era kits (DESIGN.md 'Every kind of world'; canon: diaspora worlds differ greatly, Core p.10, p.21; feudal baronies exist, p.92; frontier vs core, p.21). Look and flavor only: no new canon factions or rules. Kit ids match the world/map session's kits by name; hooks carry hook['culture'] so a mission's map can use the same kit. Line pools named '<pool>_<kit>' are added to '<pool>' at a hub of that kit (src/story/story_text.gd). 'conflicts' and 'hooks' list ids that are more likely here (weight x3); hooks with a 'cultures' list only appear at those kits.",
-  "weights": {"frontier_colony": 4, "old_west": 3, "medieval_tech": 2, "cyberpunk": 2, "retrofuturistic": 2, "east_asian": 2, "union_core": 1},
-  "kinds": {"frontier_colony": ["town", "base", "station"], "old_west": ["town", "base"], "medieval_tech": ["town", "base"], "cyberpunk": ["town", "station"],
-    "retrofuturistic": ["town", "station"], "east_asian": ["town", "base"], "union_core": ["base", "station"]},
+  "_note": "Our own writing. Hub culture/era kits (DESIGN.md 'Every kind of world'; canon: diaspora worlds differ greatly, Core p.10, p.21; feudal baronies exist, p.92; frontier vs core, p.21). Look and flavor only: no new canon factions or rules. Kit ids match the world/map session's kits by name; hooks carry hook['culture'] so a mission's map can use the same kit. Line pools named '<pool>_<kit>' are added to '<pool>' at a hub of that kit (src/story/story_text.gd). 'conflicts' and 'hooks' list ids that are more likely here (weight x3); hooks with a 'cultures' list only appear at those kits. 'map_culture' = the world/maps session's culture id for the mission map (their data/game/biomes/cultures.json; '' = plain landscape, no settlement), 'landscapes' = landscape ids a mission from this hub picks from (TerrainGen falls back to a fitting culture if one doesn't fit).",
+  "weights": {
+    "frontier_colony": 4,
+    "old_west": 3,
+    "medieval_tech": 2,
+    "cyberpunk": 2,
+    "retrofuturistic": 2,
+    "east_asian": 2,
+    "union_core": 1
+  },
+  "kinds": {
+    "frontier_colony": [
+      "town",
+      "base",
+      "station"
+    ],
+    "old_west": [
+      "town",
+      "base"
+    ],
+    "medieval_tech": [
+      "town",
+      "base"
+    ],
+    "cyberpunk": [
+      "town",
+      "station"
+    ],
+    "retrofuturistic": [
+      "town",
+      "station"
+    ],
+    "east_asian": [
+      "town",
+      "base"
+    ],
+    "union_core": [
+      "base",
+      "station"
+    ]
+  },
   "kits": {
     "frontier_colony": {
-      "name": "Frontier colony", "summary": "A young settlement on the edge of settled space: prefab domes, water towers, everyone knows everyone.",
-      "hub_a": ["Meridian", "Kestrel", "Juniper", "Okoro", "Wren", "Calder"],
-      "spots": {"bar": ["The Last Dome", "Colony Commons Bar", "The Dust Trap"], "office": ["Colony Office", "Charter Hall"], "market": ["Supply Exchange", "Trade Shed"]},
-      "conflicts": ["charter_vs_colonists", "raiders_vs_shipping", "salvage_rush"], "hooks": ["clear_raiders", "rescue", "answer_sos"]
+      "name": "Frontier colony",
+      "summary": "A young settlement on the edge of settled space: prefab domes, water towers, everyone knows everyone.",
+      "hub_a": [
+        "Meridian",
+        "Kestrel",
+        "Juniper",
+        "Okoro",
+        "Wren",
+        "Calder"
+      ],
+      "spots": {
+        "bar": [
+          "The Last Dome",
+          "Colony Commons Bar",
+          "The Dust Trap"
+        ],
+        "office": [
+          "Colony Office",
+          "Charter Hall"
+        ],
+        "market": [
+          "Supply Exchange",
+          "Trade Shed"
+        ]
+      },
+      "conflicts": [
+        "charter_vs_colonists",
+        "raiders_vs_shipping",
+        "salvage_rush"
+      ],
+      "hooks": [
+        "clear_raiders",
+        "rescue",
+        "answer_sos"
+      ],
+      "map_culture": "",
+      "landscapes": [
+        "grassy_hills",
+        "desert_mesas",
+        "tundra",
+        "toxic_marsh",
+        "alien_wilds"
+      ]
     },
     "old_west": {
-      "name": "Old West frontier", "summary": "A dusty boomtown of rail lines, mining claims and saloons with satellite dishes on the roof.",
-      "hub_a": ["Dry Gulch", "Redrock", "Copperhead", "Tumbleweed", "Mesa Verde", "Silverbell"],
-      "spots": {"bar": ["The Rusty Spur", "Last Chance Saloon", "The Ironhorse"], "office": ["Marshal's Office", "Assay Office"], "market": ["Trading Post", "General Store"], "workshop": ["Rail Yard", "Smithy & Servos"]},
-      "titles": {"quartermaster": ["Depot Master", "Railhead Quartermaster"], "local": ["Prospector", "Rancher", "Rail Worker", "Schoolmarm", "Stable Hand"], "bartender": ["Saloon Keeper"], "fixer": ["Claim Broker", "Gun Runner"], "faction_agent": ["Railroad Agent", "Territorial Marshal"]},
-      "conflicts": ["salvage_rush", "raiders_vs_shipping", "claim_war"], "hooks": ["escort_convoy", "hunt_rivals", "train_job"]
+      "name": "Old West frontier",
+      "summary": "A dusty boomtown of rail lines, mining claims and saloons with satellite dishes on the roof.",
+      "hub_a": [
+        "Dry Gulch",
+        "Redrock",
+        "Copperhead",
+        "Tumbleweed",
+        "Mesa Verde",
+        "Silverbell"
+      ],
+      "spots": {
+        "bar": [
+          "The Rusty Spur",
+          "Last Chance Saloon",
+          "The Ironhorse"
+        ],
+        "office": [
+          "Marshal's Office",
+          "Assay Office"
+        ],
+        "market": [
+          "Trading Post",
+          "General Store"
+        ],
+        "workshop": [
+          "Rail Yard",
+          "Smithy & Servos"
+        ]
+      },
+      "titles": {
+        "quartermaster": [
+          "Depot Master",
+          "Railhead Quartermaster"
+        ],
+        "local": [
+          "Prospector",
+          "Rancher",
+          "Rail Worker",
+          "Schoolmarm",
+          "Stable Hand"
+        ],
+        "bartender": [
+          "Saloon Keeper"
+        ],
+        "fixer": [
+          "Claim Broker",
+          "Gun Runner"
+        ],
+        "faction_agent": [
+          "Railroad Agent",
+          "Territorial Marshal"
+        ]
+      },
+      "conflicts": [
+        "salvage_rush",
+        "raiders_vs_shipping",
+        "claim_war"
+      ],
+      "hooks": [
+        "escort_convoy",
+        "hunt_rivals",
+        "train_job"
+      ],
+      "map_culture": "old_west",
+      "landscapes": [
+        "desert_mesas",
+        "grassy_hills"
+      ]
     },
     "medieval_tech": {
-      "name": "Medieval-tech world", "summary": "Walled towns, banners and stone bridges, with mech hangars behind the castle gate. Titles matter here.",
-      "hub_a": ["Highmarch", "Saint Aubry", "Castellan", "Ravensgate", "Thornwall", "Kingsford"],
-      "spots": {"bar": ["The Crowned Lance", "The Wyvern's Rest", "Hall of the Tankard"], "office": ["The Steward's Hall", "Chancery"], "market": ["Market Cross", "The Guild Hall"], "workshop": ["The Armoury", "Smithing Hall"], "plaza": ["Castle Green", "Market Square"]},
-      "titles": {"company_rep": ["Licensing Envoy"], "quartermaster": ["Master of Stores", "Castle Quartermaster"], "local": ["Serf", "Herald", "Millwright", "Squire", "Pilgrim", "Guild Apprentice"], "bartender": ["Innkeeper", "Alewife"], "fixer": ["Smuggler of the Low Road"], "faction_agent": ["Knight of the House", "Baron's Envoy", "Seneschal"]},
-      "conflicts": ["noble_feud", "insurgency"], "hooks": ["escort_vip", "hold_the_line", "champion_duel"]
+      "name": "Medieval-tech world",
+      "summary": "Walled towns, banners and stone bridges, with mech hangars behind the castle gate. Titles matter here.",
+      "hub_a": [
+        "Highmarch",
+        "Saint Aubry",
+        "Castellan",
+        "Ravensgate",
+        "Thornwall",
+        "Kingsford"
+      ],
+      "spots": {
+        "bar": [
+          "The Crowned Lance",
+          "The Wyvern's Rest",
+          "Hall of the Tankard"
+        ],
+        "office": [
+          "The Steward's Hall",
+          "Chancery"
+        ],
+        "market": [
+          "Market Cross",
+          "The Guild Hall"
+        ],
+        "workshop": [
+          "The Armoury",
+          "Smithing Hall"
+        ],
+        "plaza": [
+          "Castle Green",
+          "Market Square"
+        ]
+      },
+      "titles": {
+        "company_rep": [
+          "Licensing Envoy"
+        ],
+        "quartermaster": [
+          "Master of Stores",
+          "Castle Quartermaster"
+        ],
+        "local": [
+          "Serf",
+          "Herald",
+          "Millwright",
+          "Squire",
+          "Pilgrim",
+          "Guild Apprentice"
+        ],
+        "bartender": [
+          "Innkeeper",
+          "Alewife"
+        ],
+        "fixer": [
+          "Smuggler of the Low Road"
+        ],
+        "faction_agent": [
+          "Knight of the House",
+          "Baron's Envoy",
+          "Seneschal"
+        ]
+      },
+      "conflicts": [
+        "noble_feud",
+        "insurgency"
+      ],
+      "hooks": [
+        "escort_vip",
+        "hold_the_line",
+        "champion_duel"
+      ],
+      "map_culture": "medieval",
+      "landscapes": [
+        "grassy_hills",
+        "tundra"
+      ]
     },
     "cyberpunk": {
-      "name": "Cyberpunk megacity", "summary": "Rain, neon and holo-ads over stacked slums, with corporate towers above it all.",
-      "hub_a": ["Neon Reach", "Lower Kowloon", "Gridlock", "Arcology Nine", "Sprawl Seven", "Chromehaven"],
-      "spots": {"bar": ["The Static Lounge", "Bar Afterimage", "Club Overclock"], "office": ["Tower Lobby", "Corporate Annex"], "market": ["Night Market", "Black Grid Bazaar"], "workshop": ["Chop Shop", "Rig Garage"], "plaza": ["Holo Plaza", "Undercity Square"]},
-      "titles": {"company_rep": ["Account Executive", "Asset Liaison"], "local": ["Street Doc", "Courier", "Data Broker", "Noodle Vendor", "Sanitation Tech"], "bartender": ["Bartender", "Club Owner"], "fixer": ["Fixer", "Netrunner", "Info Broker"], "faction_agent": ["Corporate Handler", "Union Inspector"]},
-      "conflicts": ["corpro_vs_local_government", "insurgency"], "hooks": ["extract_person", "investigate_tip", "data_heist"]
+      "name": "Cyberpunk megacity",
+      "summary": "Rain, neon and holo-ads over stacked slums, with corporate towers above it all.",
+      "hub_a": [
+        "Neon Reach",
+        "Lower Kowloon",
+        "Gridlock",
+        "Arcology Nine",
+        "Sprawl Seven",
+        "Chromehaven"
+      ],
+      "spots": {
+        "bar": [
+          "The Static Lounge",
+          "Bar Afterimage",
+          "Club Overclock"
+        ],
+        "office": [
+          "Tower Lobby",
+          "Corporate Annex"
+        ],
+        "market": [
+          "Night Market",
+          "Black Grid Bazaar"
+        ],
+        "workshop": [
+          "Chop Shop",
+          "Rig Garage"
+        ],
+        "plaza": [
+          "Holo Plaza",
+          "Undercity Square"
+        ]
+      },
+      "titles": {
+        "company_rep": [
+          "Account Executive",
+          "Asset Liaison"
+        ],
+        "local": [
+          "Street Doc",
+          "Courier",
+          "Data Broker",
+          "Noodle Vendor",
+          "Sanitation Tech"
+        ],
+        "bartender": [
+          "Bartender",
+          "Club Owner"
+        ],
+        "fixer": [
+          "Fixer",
+          "Netrunner",
+          "Info Broker"
+        ],
+        "faction_agent": [
+          "Corporate Handler",
+          "Union Inspector"
+        ]
+      },
+      "conflicts": [
+        "corpro_vs_local_government",
+        "insurgency"
+      ],
+      "hooks": [
+        "extract_person",
+        "investigate_tip",
+        "data_heist"
+      ],
+      "map_culture": "cyberpunk",
+      "landscapes": [
+        "city"
+      ]
     },
     "retrofuturistic": {
-      "name": "Retrofuturistic world", "summary": "Chrome, tail fins, atomic-age domes and monorails: a future someone dreamed of long ago.",
-      "hub_a": ["Atomville", "Starlight City", "Rocketport", "Tomorrowland Heights", "Jetstream", "Orbit Park"],
-      "spots": {"bar": ["The Atomic Lounge", "Rocket Diner", "The Starlite Bar"], "office": ["Civic Dome", "Bureau of Tomorrow"], "market": ["Monorail Mall", "The Arcade"], "workshop": ["Raygun Works", "Robot Repair"]},
-      "titles": {"local": ["Monorail Conductor", "Soda Jerk", "Civic Booster", "Robot Mechanic", "Radio Host"], "bartender": ["Diner Owner"], "faction_agent": ["Civic Commissioner"]},
-      "conflicts": ["reconnection_split", "corpro_vs_local_government"], "hooks": ["destroy_infrastructure", "secure_site", "answer_sos"]
+      "name": "Retrofuturistic world",
+      "summary": "Chrome, tail fins, atomic-age domes and monorails: a future someone dreamed of long ago.",
+      "hub_a": [
+        "Atomville",
+        "Starlight City",
+        "Rocketport",
+        "Tomorrowland Heights",
+        "Jetstream",
+        "Orbit Park"
+      ],
+      "spots": {
+        "bar": [
+          "The Atomic Lounge",
+          "Rocket Diner",
+          "The Starlite Bar"
+        ],
+        "office": [
+          "Civic Dome",
+          "Bureau of Tomorrow"
+        ],
+        "market": [
+          "Monorail Mall",
+          "The Arcade"
+        ],
+        "workshop": [
+          "Raygun Works",
+          "Robot Repair"
+        ]
+      },
+      "titles": {
+        "local": [
+          "Monorail Conductor",
+          "Soda Jerk",
+          "Civic Booster",
+          "Robot Mechanic",
+          "Radio Host"
+        ],
+        "bartender": [
+          "Diner Owner"
+        ],
+        "faction_agent": [
+          "Civic Commissioner"
+        ]
+      },
+      "conflicts": [
+        "reconnection_split",
+        "corpro_vs_local_government"
+      ],
+      "hooks": [
+        "destroy_infrastructure",
+        "secure_site",
+        "answer_sos"
+      ],
+      "map_culture": "retro",
+      "landscapes": [
+        "city",
+        "desert_mesas"
+      ]
     },
     "east_asian": {
-      "name": "East Asian-inspired world", "summary": "Pagoda towers and shrine gates beside high tech, terraced cities and lantern-lit streets.",
-      "hub_a": ["Lantern Terrace", "Jade Steps", "Kawabata", "Hanseong", "Mistwater", "Plum Gate"],
-      "spots": {"bar": ["The Lantern House", "Teahouse of the Red Gate", "Moonlight Noodle Bar"], "office": ["Prefecture Hall", "Shrine Office"], "market": ["Terrace Market", "Lantern Street"], "workshop": ["Gantry Temple", "Foundry Hall"], "plaza": ["Shrine Square", "Terrace Garden"]},
-      "titles": {"local": ["Tea Master", "Terrace Farmer", "Shrine Keeper", "Calligrapher", "Ferry Pilot"], "bartender": ["Teahouse Keeper"], "faction_agent": ["Prefect's Envoy", "Clan Elder"]},
-      "conflicts": ["noble_feud", "reconnection_split"], "hooks": ["escort_vip", "cover_evacuation", "shrine_guard"]
+      "name": "East Asian-inspired world",
+      "summary": "Pagoda towers and shrine gates beside high tech, terraced cities and lantern-lit streets.",
+      "hub_a": [
+        "Lantern Terrace",
+        "Jade Steps",
+        "Kawabata",
+        "Hanseong",
+        "Mistwater",
+        "Plum Gate"
+      ],
+      "spots": {
+        "bar": [
+          "The Lantern House",
+          "Teahouse of the Red Gate",
+          "Moonlight Noodle Bar"
+        ],
+        "office": [
+          "Prefecture Hall",
+          "Shrine Office"
+        ],
+        "market": [
+          "Terrace Market",
+          "Lantern Street"
+        ],
+        "workshop": [
+          "Gantry Temple",
+          "Foundry Hall"
+        ],
+        "plaza": [
+          "Shrine Square",
+          "Terrace Garden"
+        ]
+      },
+      "titles": {
+        "local": [
+          "Tea Master",
+          "Terrace Farmer",
+          "Shrine Keeper",
+          "Calligrapher",
+          "Ferry Pilot"
+        ],
+        "bartender": [
+          "Teahouse Keeper"
+        ],
+        "faction_agent": [
+          "Prefect's Envoy",
+          "Clan Elder"
+        ]
+      },
+      "conflicts": [
+        "noble_feud",
+        "reconnection_split"
+      ],
+      "hooks": [
+        "escort_vip",
+        "cover_evacuation",
+        "shrine_guard"
+      ],
+      "map_culture": "east_asian",
+      "landscapes": [
+        "grassy_hills",
+        "city"
+      ]
     },
     "union_core": {
-      "name": "Union core world", "summary": "Gleaming Union architecture, white and glass, orbital elevators on the horizon. Orderly, and very far from the frontier.",
-      "hub_a": ["Concord", "Solace", "Unity Terrace", "Harmony Spire", "Clearwater", "Ninefold"],
-      "spots": {"bar": ["The Commons Lounge", "Mess Hall Seven"], "office": ["Administrative Spire", "Liaison Office"], "market": ["Distribution Center", "Exchange Hall"], "workshop": ["Fabrication Bay", "Hangar Spire"]},
-      "titles": {"quartermaster": ["Logistics Officer"], "local": ["Civil Servant", "Archivist", "Transit Planner", "Teacher"], "bartender": ["Mess Steward"], "faction_agent": ["Union Liaison", "Committee Observer"]},
-      "conflicts": ["reconnection_split", "corpro_vs_local_government"], "hooks": ["escort_vip", "investigate_tip", "secure_site"]
+      "name": "Union core world",
+      "summary": "Gleaming Union architecture, white and glass, orbital elevators on the horizon. Orderly, and very far from the frontier.",
+      "hub_a": [
+        "Concord",
+        "Solace",
+        "Unity Terrace",
+        "Harmony Spire",
+        "Clearwater",
+        "Ninefold"
+      ],
+      "spots": {
+        "bar": [
+          "The Commons Lounge",
+          "Mess Hall Seven"
+        ],
+        "office": [
+          "Administrative Spire",
+          "Liaison Office"
+        ],
+        "market": [
+          "Distribution Center",
+          "Exchange Hall"
+        ],
+        "workshop": [
+          "Fabrication Bay",
+          "Hangar Spire"
+        ]
+      },
+      "titles": {
+        "quartermaster": [
+          "Logistics Officer"
+        ],
+        "local": [
+          "Civil Servant",
+          "Archivist",
+          "Transit Planner",
+          "Teacher"
+        ],
+        "bartender": [
+          "Mess Steward"
+        ],
+        "faction_agent": [
+          "Union Liaison",
+          "Committee Observer"
+        ]
+      },
+      "conflicts": [
+        "reconnection_split",
+        "corpro_vs_local_government"
+      ],
+      "hooks": [
+        "escort_vip",
+        "investigate_tip",
+        "secure_site"
+      ],
+      "map_culture": "union",
+      "landscapes": [
+        "city",
+        "grassy_hills"
+      ]
     }
   }
 }
