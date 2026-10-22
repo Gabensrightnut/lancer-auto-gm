@@ -684,6 +684,34 @@ pixel art).
 4. **Campaign:** the full narrative loop, progression, saves, procedural missions.
 5. **Polish:** effects coverage, animations, audio, accessibility, customization, human GM.
 
+## 11. The main campaign and branching timelines (AI GM)
+
+How the story works depends on who runs it:
+- **AI GM:** the story is **authored**, not made up on the fly. There's one main campaign (our
+  own original story, canon-consistent) with **at least 16 alternate branches**. Choices split
+  the timeline: pick A, then B, then A, then C and you get a different chain of events. People
+  who were friendly last playthrough may hate you this time and refuse you the item you need.
+  Procedural generation only fills in small details (names, maps, enemy mixes, line variants),
+  never the plot.
+- **Human GM:** the GM can make anything up as they go (GM tools, map editor, GM scenes).
+
+**No menu of solutions.** The game never offers "Fight / Steal / Find another" as a choice.
+Outcomes come from what players actually do in the world:
+- **Conversations escalate naturally:** insult someone, push your luck, threaten, and they may
+  draw on you, which starts the fight. Apologize and walk away, and the scene ends.
+- **Players come up with plans themselves:** e.g. go into the saloon, wait until night, follow
+  the NPC to where they sleep, then jump them or sneak in and steal the item. That works
+  because the world supports it, not because it was a listed option:
+  - a day/night clock in hubs (waiting, time passing between scenes);
+  - NPC schedules (where they are and what they do at each time of day, where they sleep);
+  - items that physically belong to someone and are kept somewhere (on them, in a room, a safe);
+  - following, sneaking, picking locks, pickpocketing and breaking in, resolved by skill checks
+    (book skill triggers, e.g. Hide, Get Somewhere Quickly, Spot, Take Someone Out), with
+    witnesses, alarms, and consequences (standing, bounties, a fight starting);
+  - enterable interiors for the places that matter (saloon, rooms, offices, warehouses).
+- **The campaign remembers:** every branch, theft, insult or kindness changes who helps or
+  hinders you later in the main campaign.
+
 ## House rules (toggles, all off by default)
 
 A **House Rules** page in settings lists optional rules as on/off switches that can be flipped

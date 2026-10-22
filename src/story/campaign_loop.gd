@@ -31,6 +31,9 @@ static func squad(campaign: Campaign, story: StoryState) -> Array:
 		var p: Dictionary = campaign.pilots.get(pid, {})
 		if p.is_empty() or not story.is_alive(pid):
 			continue
+		# Printer scarcity (house rule): a wrecked mech stays wrecked until it's reprinted.
+		if Economy.wrecked(story, campaign).has(pid):
+			continue
 		var mech: Dictionary = {}
 		for m: Dictionary in p.get("mechs", []):
 			if m["id"] == p.get("active_mech", "") or mech.is_empty():
