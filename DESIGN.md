@@ -575,11 +575,19 @@ differently without an AI. Each game has a **seed**: share it to replay the same
 - Pilots get out of their mechs and walk around towns, bases and stations in real time:
   talk to locals, faction contacts and company reps, take jobs, and use downtime actions.
   In combat, pilots can dismount, fight on foot and remount under the book's pilot rules.
-- **No money, by the book:** LANCER has no currency. New frames and gear come from License
-  Level and licenses; favors, deals, resources and access come from **Reserves** and
-  downtime actions (Get Resources, Get Connected, Get Creative, Power at a Cost...). So a
-  company rep you're in good standing with can grant a reserve (e.g. cheaper or faster
-  repairs), and the game explains how getting new mechs works through leveling.
+- **Money in the setting, licenses for mech gear:** the galaxy has money. **Manna** is the
+  universal currency accepted on every market outside the Core (Core p.10), and non-core
+  planets also use **local currencies** (Core p.126). What the rules don't use money for is
+  mech gear: frames, weapons, systems and upgrades come only from License Level and licenses
+  (Core p.18), so you can't buy a new mech with cash; you unlock it by leveling.
+- **Wallet for everyday things:** pilots carry manna and the local currency of the planet
+  they're on (exchanged at hubs). Spend it on food, drinks, lodging, travel, information,
+  bribes, pilot supplies and services; earn it from mission pay, jobs and selling salvage.
+  Company reps, quartermasters and merchants offer deals by standing (e.g. cheaper repairs
+  for company members). The core book doesn't track currency, so the exact amounts are our
+  own system, clearly labeled, and never a way around licenses.
+- **Favors and access** still come from **Reserves** and downtime actions as in the book
+  (Get Resources, Get Connected, Get Creative, Power at a Cost...).
 - **Supplies by the book:** food, water, repair materials and the like work exactly as
   LANCER handles them (Reserves, pilot gear, Repairs and Repair Cap, rest, downtime actions),
   shown as things you can actually do (e.g. a quartermaster scene to get a Supplies reserve).
