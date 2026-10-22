@@ -46,6 +46,10 @@ var on_table_note: Callable
 var on_map_changed: Callable
 ## Returns the seat's current mission view ({zones, deployment}) for objectives_changed.
 var on_mission_view: Callable
+## Returns the current terrain damage table ({"x,y": damage}, GameState.terrain_damage) on
+## the host; clients without it add up the terrain_damaged events they've seen.
+var on_terrain_damage: Callable
+var _terrain_damage: Dictionary = {}
 ## Called with (unit_id) when a unit's turn starts.
 var on_turn_started: Callable
 var _saved_speed := 1.0
@@ -117,6 +121,24 @@ func play_event(e: Dictionary) -> void:
 			await _pilot_out(e)
 		"pilot_mounted":
 			await _pilot_in(e)
+		"terrain_damaged":
+			# A hit on a wall or building: splinters, chips or sparks from the attacker's side,
+			# then the cracks for its new damage total.
+			var tc: Array = e.get("cell", [0, 0])
+			var tcell := Vector2i(int(tc[0]), int(tc[1]))
+			var src := _view(e.get("source", ""))
+			if Fx.speed > 0.0:
+				battle.terrain.hit_terrain(tcell, int(e.get("amount", 0)), src.body_center() if src else Vector3.INF)
+			var totals: Dictionary
+			if on_terrain_damage.is_valid():
+				totals = on_terrain_damage.call()
+			else:
+				var key := "%d,%d" % [tcell.x, tcell.y]
+				_terrain_damage[key] = int(_terrain_damage.get(key, 0)) + int(e.get("amount", 0))
+				totals = _terrain_damage
+			battle.terrain.show_damage(totals)
+			_log("Terrain hit for %d %s damage%s." % [int(e.get("amount", 0)), String(e.get("damage_type", "")).to_lower(),
+				" (%d Armor)" % int(e["armor"]) if int(e.get("armor", 0)) > 0 else ""])
 		"objectives_changed":
 			# The GM moved objectives (map editor): redraw them from the seat's fresh view.
 			if on_mission_view.is_valid():
