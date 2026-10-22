@@ -8,6 +8,12 @@ var continue_button: Button
 
 
 func _ready() -> void:
+	# Development QA: "qa:<mode>" launches the playtest driver (src/flow/dev/playtest_driver.gd).
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("qa:") and get_tree().root.get_node_or_null("PlaytestDriver") == null:
+			var driver := PlaytestDriver.new()
+			driver.name = "PlaytestDriver"
+			get_tree().root.add_child.call_deferred(driver)
 	theme = MenuTheme.theme()
 	MenuTheme.backdrop(self)
 	MenuSession.settings().apply(get_tree())

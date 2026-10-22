@@ -1,6 +1,6 @@
 extends Node
 ## The battle screen: the 3D view and HUD from the visuals work (BattleView, EventPlayer,
-## TurnOrderBar, ActionBar, PlayerTurn, RollDisplay, CombatLog) attached to a BattleSession.
+## TurnOrderBar, ActionBar, PlayerTurn, RollPopups, CombatLog) attached to a BattleSession.
 ## Shows the on-screen seat's view, animates events at a readable pace (the AI waits), runs
 ## your turn when it's yours, "I'll go" from the turn-order bar, hot-seat "Pass to" screens,
 ## reaction questions, and goes to the debrief when the mission ends.
@@ -11,12 +11,11 @@ var session: BattleSession
 var content: ContentDB
 var view: BattleView
 var player: EventPlayer
-var rolls: RollDisplay
+var rolls: RollPopups
 var combat_log: CombatLog
 var order_bar: TurnOrderBar
 var bar: ActionBar
 var turn: PlayerTurn
-var popup: SkillCheckPopup
 var ui: CanvasLayer
 var banner: Label
 var status: Label
@@ -29,6 +28,7 @@ var _queue: Array = []
 var _draining := false
 var _ended := false
 var _asked := ""
+var _hud_sig := ""
 
 
 func _ready() -> void:
@@ -39,7 +39,6 @@ func _ready() -> void:
 	add_child(view)
 	_build_ui()
 	player = EventPlayer.new(view, rolls, combat_log)
-	player.popup = popup
 	player.camera = view.tactical
 	player.on_banner = show_banner
 	add_child(player)
@@ -79,7 +78,8 @@ func _stage_turn() -> void:
 
 
 func _process(delta: float) -> void:
-	session.busy = _draining or player.playing or turn.busy
+	# The in-battle menu really pauses the AI when everyone in the game is at this screen.
+	session.busy = _draining or player.playing or turn.busy or (menu_layer.visible and _can_pause())
 	session.poll(delta)
 	if _ended or not _loaded:
 		return
@@ -90,6 +90,13 @@ func _process(delta: float) -> void:
 			turn.engine = session.engine
 			player.local_units = _local_units()
 			turn.begin(uid)
+	# Keep the turn-order bar in step with the game (whose pick, who acted, "I'll go").
+	if not _draining:
+		var v := session.view
+		var sig := "%s|%s|%s|%s|%s" % [v.get("round", 0), v.get("turn_side", ""), v.get("active_unit", ""), (v.get("acted", []) as Array).size(), session.my_pick()]
+		if sig != _hud_sig:
+			_hud_sig = sig
+			_refresh_hud()
 	var q := session.my_reaction()
 	var key := str(q.get("id", ""))
 	if key != _asked:
@@ -183,6 +190,15 @@ func _refresh_hud() -> void:
 	var active: Dictionary = v.get("units", {}).get(v.get("active_unit", ""), {})
 	order_bar.set_data({"round": maxi(1, int(v.get("round", 1))), "picking_side": v.get("turn_side", ""),
 		"local_side": my_side if session.my_pick() else "", "active_name": str(active.get("name", "")), "units": list})
+	# Workaround (docs/qa/milestone1.md): the bar centers itself while its old portraits are
+	# still counted, sliding it off the left edge; center it again once they're gone.
+	if not get_tree().process_frame.is_connected(_recenter_order_bar):
+		get_tree().process_frame.connect(_recenter_order_bar, CONNECT_ONE_SHOT)
+
+
+func _recenter_order_bar() -> void:
+	if is_instance_valid(order_bar) and order_bar.has_method("_center_box"):
+		order_bar._center_box()
 
 
 func _render_portraits(v: Dictionary) -> void:
@@ -196,6 +212,26 @@ func _on_i_will_go(uid: String) -> void:
 	var why := session.pick(uid)
 	if why != "":
 		show_banner(why)
+
+
+## Units the people here may send next: their own, or (host) AI squadmates.
+func _pickable() -> Array:
+	var out: Array = []
+	var mine := _local_units()
+	for id: Variant in session.waiting().get("units", []):
+		var u: Dictionary = session.view.get("units", {}).get(str(id), {})
+		if str(id) in mine or (session.is_host and session.host.is_ai_seat(str(u.get("controller", "")))):
+			out.append(str(id))
+	return out
+
+
+func _other_pickers() -> String:
+	var names := PackedStringArray()
+	var here := session.local_humans() if session.is_host else [session.seat]
+	for seat: Variant in session.waiting().get("seats", []):
+		if not str(seat) in here:
+			names.append(str(session.view.get("seats", {}).get(str(seat), {}).get("name", seat)))
+	return ", ".join(names) if not names.is_empty() else "another player"
 
 
 func _local_units() -> Array:
@@ -217,10 +253,15 @@ func _my_side() -> String:
 func _update_status() -> void:
 	var w := session.waiting()
 	var text := str(w.get("text", ""))
-	if turn.active:
-		text = ""
+	if turn.active or _draining:
+		text = ""  # While events animate, the board is behind the game: say nothing yet.
 	elif session.my_pick():
-		text = "Your squad's pick: click \"I'll go\" on a portrait above (yours or an AI squadmate's)."
+		if _pickable().is_empty():
+			text = "Waiting for %s to say \"I'll go\"." % _other_pickers()
+			if session.is_host:
+				text += "  (Away? The Menu can let the AI fly their mech.)"
+		else:
+			text = "Your squad's pick: click \"I'll go\" on a portrait above (yours or an AI squadmate's)."
 	status.text = text
 	status.visible = text != ""
 
@@ -266,10 +307,18 @@ func _show_reaction(q: Dictionary) -> void:
 	var who: Dictionary = session.view.get("units", {}).get(str(q.get("unit", "")), {})
 	var reaction := str(q.get("reaction", "react"))
 	v.add_child(MenuTheme.heading("Reaction: %s" % reaction.capitalize(), 22, MenuTheme.WARN))
-	var explain := content.rule_text(reaction.capitalize())
-	if explain == "":
-		explain = str(content.get_entry("actions", reaction.capitalize()).get("detail", ""))
-	v.add_child(MenuTheme.label("%s can %s now. %s" % [who.get("name", "Your mech"), reaction, BuilderModel._plain(explain).left(260)], 16, MenuTheme.TEXT, true))
+	# The player's version of the reaction (lancer-data actions: act_brace, act_overwatch).
+	var act := content.get_entry("actions", "act_" + reaction)
+	var trigger := BuilderModel._plain(str(act.get("trigger", ""))).replace("<br>", " ")
+	var detail := BuilderModel._plain(str(act.get("detail", "")).replace("<br>", " "))
+	var who_name := str(who.get("name", "Your mech"))
+	var text := MenuTheme.label("%s can %s now.%s" % [who_name, reaction, "  Trigger: " + trigger if trigger != "" else ""], 16, MenuTheme.TEXT, true)
+	text.custom_minimum_size = Vector2(590, 0)
+	v.add_child(text)
+	if detail != "":
+		var d := MenuTheme.label(detail, 15, MenuTheme.MUTED, true)
+		d.custom_minimum_size = Vector2(590, 0)
+		v.add_child(d)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	var weapons: Array = q.get("context", {}).get("weapons", [])
@@ -289,9 +338,15 @@ func _show_reaction(q: Dictionary) -> void:
 	no.pressed.connect(func() -> void: session.answer_reaction(false))
 	row.add_child(no)
 	v.add_child(row)
+	_place_reaction.call_deferred()
+
+
+## Sized after the new text has laid out (otherwise it keeps an old, larger size).
+func _place_reaction() -> void:
+	reaction_panel.size = Vector2.ZERO
 	reaction_panel.reset_size()
 	var vp := reaction_panel.get_viewport_rect().size
-	reaction_panel.position = Vector2((vp.x - 620) / 2.0, vp.y * 0.55)
+	reaction_panel.position = Vector2((vp.x - reaction_panel.size.x) / 2.0, vp.y * 0.55)
 
 
 static func _weapon_name(u: Dictionary, key: String) -> String:
@@ -335,7 +390,7 @@ func _on_mission_over(outcome: String, reason: String) -> void:
 func _build_ui() -> void:
 	ui = CanvasLayer.new()
 	add_child(ui)
-	rolls = RollDisplay.new()
+	rolls = RollPopups.new()
 	ui.add_child(rolls)
 	combat_log = CombatLog.new()
 	ui.add_child(combat_log)
@@ -345,8 +400,6 @@ func _build_ui() -> void:
 	bar = ActionBar.new()
 	bar.visible = false
 	ui.add_child(bar)
-	popup = SkillCheckPopup.new()
-	ui.add_child(popup)
 	banner = Label.new()
 	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	banner.add_theme_constant_override("outline_size", 10)
@@ -397,10 +450,40 @@ func _open_menu() -> void:
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	menu_layer.add_child(center)
-	var p := MenuTheme.panel("Paused" if session.is_host and session.local_humans().size() == session.hot.seats.size() else "Menu", MenuTheme.ACCENT)
+	var p := MenuTheme.panel("Paused" if _can_pause() else "Menu", MenuTheme.ACCENT)
 	p.custom_minimum_size = Vector2(520, 0)
 	var b := MenuTheme.body(p)
 	b.add_child(MenuTheme.label("The mission is saved after every turn. Continue it from the main menu any time.", 16, MenuTheme.MUTED, true))
+	if session.is_host:
+		for seat: String in session.local_seats():
+			var callsign := str(session.host.state.seats.get(seat, {}).get("name", seat))
+			var ai := session.host.is_ai_seat(seat)
+			var toggle := Button.new()
+			toggle.text = ("Take back control of %s" if ai else "Let the AI fly %s") % callsign
+			toggle.custom_minimum_size = Vector2(0, 50)
+			toggle.tooltip_text = "Switch any time. The AI follows the same rules and only knows what your squad knows."
+			toggle.pressed.connect(func() -> void:
+				session.set_ai(seat, not ai)
+				if not ai and turn.active and session.host.state.unit(turn.unit_id) != null and session.host.state.unit(turn.unit_id).controller == seat:
+					turn.cancel()
+					turn.active = false
+					bar.visible = false
+				menu_layer.visible = false)
+			b.add_child(toggle)
+	if session.is_host:
+		# A friend who dropped out: the AI can fly their mech until they reconnect.
+		var table := session.host.seat_table()
+		for seat: String in table:
+			var row: Dictionary = table[seat]
+			if row.get("where", "") == "remote" and not row.get("connected", false):
+				var ai_now := session.host.is_ai_seat(seat)
+				var b2 := Button.new()
+				b2.text = ("Stop the AI flying %s" if ai_now else "Let the AI fly %s until %s is back") % [row.get("name", seat), row.get("player", "they")] if not ai_now else "Stop the AI flying %s (wait for %s)" % [row.get("name", seat), row.get("player", "them")]
+				b2.custom_minimum_size = Vector2(0, 50)
+				b2.pressed.connect(func() -> void:
+					session.host.set_seat_ai(seat, not ai_now)
+					menu_layer.visible = false)
+				b.add_child(b2)
 	for item in [["Back to the battle", func() -> void: menu_layer.visible = false],
 			["Settings", func() -> void: _leave("settings")],
 			["Save and quit to main menu", func() -> void: _leave("main")]]:
@@ -411,6 +494,16 @@ func _open_menu() -> void:
 		b.add_child(btn)
 	center.add_child(p)
 	menu_layer.visible = true
+
+
+## Nobody plays from another computer, so stopping the AI keeps nobody waiting.
+func _can_pause() -> bool:
+	if not session.is_host:
+		return false
+	for seat: String in session.host.state.seats:
+		if session.host.seat_table().get(seat, {}).get("where", "") == "remote":
+			return false
+	return true
 
 
 func _leave(screen: String) -> void:

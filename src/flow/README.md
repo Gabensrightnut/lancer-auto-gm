@@ -9,9 +9,16 @@ mission end → debrief and level up → save → next mission. Solo, hot-seat a
 | `battle_session.gd` | `BattleSession`: one battle without rendering. Host (NetHost + HotSeat + AiDirector + autosave) or online client (NetClient). Whose turn, "I'll go", hot-seat handoffs, reaction questions, AI pacing (waits while the screen animates), mission end. Tested headless. |
 | `seat_engine.gd` | `SeatEngine`: the RulesEngine the turn UI talks to; previews on the seat's own view, submits through the host (or to the host when online). |
 | `view_mirror.gd` | A GameState rebuilt from one seat's view, so turn previews never see secrets. |
-| `battle_screen.gd` (`scenes/flow/battle.tscn`) | The visuals work's BattleView, EventPlayer, TurnOrderBar, ActionBar, PlayerTurn, RollDisplay, CombatLog on a BattleSession; plus the hot-seat "Pass to" screen, reaction prompt, in-battle menu. |
+| `battle_screen.gd` (`scenes/flow/battle.tscn`) | The visuals work's BattleView, EventPlayer, TurnOrderBar, ActionBar, PlayerTurn, RollPopups, CombatLog on a BattleSession; plus the hot-seat "Pass to" screen, reaction prompt, in-battle menu. |
 | `debrief_screen.gd` (`scenes/flow/debrief.tscn`) | Outcome, level ups with "Spend points" (builder), next mission / main menu. |
 
 Screenshot staging: `tools/screenshot.gd -- res://scenes/flow/battle.tscn out.png 150 stage:turn`
 (your turn) or `stage:hotseat` (pass-the-screen); opened on its own the battle uses an unsaved
 example campaign (saves under `user://example_saves`).
+
+## Playtesting the real window
+
+`src/flow/dev/playtest_driver.gd` plays the game like a person (real clicks and key presses on
+what's on screen) and saves screenshots and a log: launch with
+`godot --path . --resolution 1920x1080 -- qa:solo qa_out:C:/folder` (modes: solo, hotseat,
+host + join). It uses its own save folder. Findings: `docs/qa/milestone1.md`.

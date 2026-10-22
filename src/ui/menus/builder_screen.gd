@@ -119,11 +119,13 @@ func _refresh_pilot() -> void:
 	pilot_box.add_child(names)
 	var ll := HBoxContainer.new()
 	ll.add_theme_constant_override("separation", 10)
+	# License Level isn't picked here: it goes up by one after every mission (Core p.18).
 	ll.add_child(MenuTheme.label("LICENSE LEVEL", 15, MenuTheme.MUTED))
-	ll.add_child(_step_button("−", model.ll() > 0, "", func() -> void: model.set_ll(model.ll() - 1)))
 	ll.add_child(MenuTheme.heading(str(model.ll()), 28))
-	ll.add_child(_step_button("+", model.ll() < 12, "LL 12 is the highest.", func() -> void: model.set_ll(model.ll() + 1)))
-	ll.add_child(MenuTheme.label("(GRIT +%d)" % UnitFactory.grit(model.ll()), 15, MenuTheme.MUTED))
+	var ll_note := MenuTheme.label("GRIT +%d  ·  goes up after every mission" % UnitFactory.grit(model.ll()), 15, MenuTheme.MUTED)
+	ll_note.tooltip_text = "Pilots gain a License Level after every mission, success or failure (Core p.18)."
+	ll_note.mouse_filter = Control.MOUSE_FILTER_PASS
+	ll.add_child(ll_note)
 	pilot_box.add_child(ll)
 	var chips := HFlowContainer.new()
 	chips.add_theme_constant_override("h_separation", 6)
