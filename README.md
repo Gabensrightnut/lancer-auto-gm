@@ -1,6 +1,6 @@
-# Lancer Auto-GM
+# Lancer TTRPG
 
-A fan-made 3D tactics game for the LANCER tabletop RPG, built in Godot 4. Play missions and
+**An unofficial LANCER fan game.** A fan-made 3D tactics game for the LANCER tabletop RPG, built in Godot 4. Play missions and
 full campaigns online with friends, with a procedural Game Master that follows the book's rules.
 
 Work in progress. See [DESIGN.md](DESIGN.md) for what it will do and

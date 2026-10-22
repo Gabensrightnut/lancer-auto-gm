@@ -58,7 +58,7 @@ func join(room_code: String) -> void:
 	_sig.opened.connect(_on_client_signaling_open)
 	_sig.peer_gone.connect(_on_client_host_gone)
 	_join_deadline_ms = Time.get_ticks_msec() + int(float(config.get("join_timeout_sec", 25.0)) * 1000.0)
-	_sig.open("%s-c-%s" % [config.get("id_prefix", "lancerautogm"), Crypto.new().generate_random_bytes(6).hex_encode()])
+	_sig.open("%s-c-%s" % [config.get("id_prefix", "lancerttrpg"), Crypto.new().generate_random_bytes(6).hex_encode()])
 
 
 func send(peer: int, msg: Dictionary) -> void:
@@ -146,7 +146,7 @@ func _new_signaling() -> PeerJsSignaling:
 
 
 func _host_id(room_code: String) -> String:
-	return "%s-%s" % [config.get("id_prefix", "lancerautogm"), room_code]
+	return "%s-%s" % [config.get("id_prefix", "lancerttrpg"), room_code]
 
 
 func _new_peer(peer: int, remote: String, conn: String = "") -> Dictionary:

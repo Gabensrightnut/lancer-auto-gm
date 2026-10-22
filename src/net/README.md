@@ -61,7 +61,7 @@ launcher), `no_free_seat`, `seat_taken`.
   PeerJS client's or it drops the sender, so `WebRtcTransport` builds them that way.
 - NAT: Google STUN only. No TURN relay yet, so players on very strict networks may not
   connect. Add one without a new build via `user://net_config.json` (see `NetConfig`).
-- Room code: 6 characters, host id on the server is `lancerautogm-<CODE>`.
+- Room code: 6 characters, host id on the server is `lancerttrpg-<CODE>`.
 - Reconnect: a client keeps its seat token and retries (1, 2, 4, 8, 15, 30 s); the host holds
   the seat. A host that loses the matchmaking server keeps its connected players and retries.
 - Big messages are split into 12k-character chunks on the data channel.

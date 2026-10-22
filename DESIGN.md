@@ -1,4 +1,4 @@
-# Lancer Auto-GM: Design Notes
+# Lancer TTRPG: Design Notes
 
 Status: foundation built (grid, state, dice, rules engine skeleton, data loader, tests).
 Parallel work on rules engine, 3D visuals, and online/launcher in progress.
@@ -670,5 +670,5 @@ each with a narrow, self-contained brief, and a new piece only starts once one f
       rulebook text stays local and is never committed.
 - [x] Online connection method: **peer-to-peer (WebRTC)**. Note: some strict networks may
       need a TURN relay as a fallback.
-- [x] GitHub repo: https://github.com/Gabensrightnut/lancer-auto-gm (public)
+- [x] GitHub repo: https://github.com/Gabensrightnut/lancer-ttrpg (public)
 - [x] Project license: **GPL-3.0-or-later** (matches Massif's data license)
