@@ -64,7 +64,7 @@ func test_imports_a_v2_pilot() -> void:
 	var text := "\n".join(r["warnings"])
 	expect(text.contains("Juggle"), "custom skill reported")
 	expect(text.contains("mf_from_a_pack") and text.contains("Some Homebrew"), "unknown frame reported with the pack it may need")
-	expect(text.contains("Pilot gear"), "pilot gear noted")
+	expect(not text.contains("Pilot gear"), "pilot gear is used in battle now: no warning")
 	expect(UnitFactory.check_loadout(db, m["frame"], m["loadout"], p).ok, "imported Everest is legal")
 
 

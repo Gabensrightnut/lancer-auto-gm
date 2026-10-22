@@ -56,6 +56,10 @@ static func audit(db: ContentDB) -> Dictionary:
 		var b := _bucket()
 		for x: Dictionary in db.all(String(pair[1])):
 			var generic: bool = pair[1] == "mods" and (x.has("added_tags") or x.has("added_range") or x.has("added_damage"))  # applied from the data
+			if pair[1] == "pilot_gear":
+				# Weapons and armor are built from their data; gear with no rules text has nothing to do.
+				generic = String(x.get("type", "")) == "Weapon" or (String(x.get("type", "")) == "Armor" and String(x.get("effect", "")).strip_edges() == "") \
+					or (String(x.get("effect", "")).strip_edges() == "" and (x.get("actions", []) as Array).is_empty())
 			var status := "automated" if generic or text.contains("\"%s\"" % x["id"]) or text.contains(String(x["id"]) + ":") else "manual"
 			_add(b, String(x.get("name", x["id"])), {"id": x["id"], "status": status, "note": ""})
 		out[pair[0]] = b

@@ -93,7 +93,7 @@ class Activate:
 			"recall":
 				events.append_array(Abilities.recall(state, u, a))
 			_:
-				var target := state.unit(String(params.get("target", "")))
+				var target := state.unit(String(params.get("target", u.id if (a.get("ops", []) as Array).any(func(o: Dictionary) -> bool: return o.get("op", "") in ["patch", "corrective"]) else "")))
 				var hit := true
 				var tech: bool = (a.get("ops", []) as Array).any(func(o: Dictionary) -> bool: return o.get("tech_attack", false))
 				if a.get("activation", "") == "Invade" or tech:
@@ -386,6 +386,17 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				# bypasses Immunity, and can't be reduced.
 				events.append_array(Combat.deal_damage(state, target, [{"type": "Kinetic", "amount": int(op.get("damage", 1))}],
 					{"source": u.id, "ap": true, "unreducible": true, "bypass_immunity": true}))
+			"patch":
+				# Pilot gear Patch: half the pilot's maximum HP back (not if Down and Out).
+				if target != null and not target.has_status("Down and Out"):
+					target.hp = mini(target.max_hp, target.hp + ceili(target.max_hp / 2.0))
+					events.append({"type": "hp_changed", "unit": target.id, "hp": target.hp, "overshield": target.overshield, "source": "Patch"})
+			"corrective":
+				# Pilot gear Corrective: a Down and Out pilot is conscious again at 1 HP.
+				if target != null and target.has_status("Down and Out"):
+					target.hp = 1
+					events.append_array(Combat.remove_status(target, "Down and Out", "Corrective"))
+					events.append({"type": "revived", "unit": target.id, "by": u.id})
 			"revive":
 				# Lancaster Combat Repair: 4 Repairs bring a destroyed mech back to 1 Structure, 1 Stress, 1 HP.
 				if target != null and target.destroyed:
@@ -668,6 +679,14 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 			var r := AbilityActions.ally_in_sensors(state, u, state.unit(String(params.get("target", ""))))
 			if not r.ok:
 				return r
+		if op.get("op", "") in ["patch", "corrective"]:
+			var pt := state.unit(String(params.get("target", u.id)))
+			if pt == null or pt.kind != Unit.KIND_PILOT or (pt != u and Sight.unit_distance(state, u, pt) > 1):
+				return RuleResult.deny("Choose yourself or an adjacent pilot (params.target).", "pilot gear: " + String(a.get("source_name", "")))
+			if op["op"] == "corrective" and not pt.has_status("Down and Out"):
+				return RuleResult.deny("Correctives are for Down and Out pilots.", "pilot gear: Corrective")
+			if op["op"] == "patch" and pt.has_status("Down and Out"):
+				return RuleResult.deny("Patches have no effect on Down and Out pilots.", "pilot gear: Patch")
 		if op.get("op", "") == "revive":
 			var t := state.unit(String(params.get("target", "")))
 			if t == null or not t.destroyed or t.kind != Unit.KIND_MECH or t.counters.get("vaporized", false):

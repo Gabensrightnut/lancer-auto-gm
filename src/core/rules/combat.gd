@@ -175,6 +175,9 @@ static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dict
 			moved.append_array(deal_damage(state, mate, parts, o2))
 			return moved
 	TalentRules.damaged_by(target, state.unit(source))  # Heavy Gunner: Covering Fire ends
+	if target.has_status("Invisible") and String(target.statuses["Invisible"].get("source", "")).contains("Stealth Hardsuit") \
+			and parts.any(func(p: Dictionary) -> bool: return int(p.get("amount", 0)) > 0 and String(p.get("type", "")) != "Heat"):
+		events.append_array(remove_status(target, "Invisible", "took damage"))  # pilot gear: Stealth Hardsuit
 	var shredded := target.has_status("Shredded")
 	# "Can't be reduced in any way" (Monarch Seeking Payload, Pegasus Omnigun): no Armor,
 	# Resistance or other reduction; "bypasses Immunity" (Omnigun) skips Immunity too.

@@ -13,7 +13,7 @@ Partial = automated with a note for the table; manual = the table resolves it.
 | talent ranks | 87 | 66 | 10 | 11 |
 | core bonuses | 30 | 30 | 0 | 0 |
 | weapon mods | 8 | 8 | 0 | 0 |
-| pilot gear | 37 | 2 | 0 | 35 |
+| pilot gear | 37 | 36 | 0 | 1 |
 | NPC features (placeholder pack) | 17 | 16 | 0 | 1 |
 
 ## Gaps
@@ -84,41 +84,7 @@ Partial = automated with a note for the table; manual = the table resolves it.
 
 ### pilot gear
 
-- Archaic Melee (manual)
-- Archaic Ranged (manual)
-- Medium A/C (manual)
-- Heavy A/C (manual)
-- Light Signature (manual)
-- Medium Signature (manual)
-- Heavy Signature (manual)
-- Light Hardsuit (manual)
-- Assault Hardsuit (manual)
-- Heavy Hardsuit (manual)
-- Stealth Hardsuit (manual)
-- Corrective (manual)
-- Frag Grenades (manual)
-- Patch (manual)
-- Stims (manual)
-- Thermite Charge (manual)
-- Antiphoton Visor (manual)
-- Camo Cloth (manual)
-- Dataplating (manual)
-- Extra Rations (manual)
-- Flexsuit (manual)
-- Handheld Printer (manual)
-- Subjectivity-Enhancement Suite (manual)
-- Infoskin (manual)
-- Mag-Clamps (manual)
-- Nanite Spray (manual)
-- Omnihook (manual)
-- Personal Drone (manual)
-- Prosocollar (manual)
-- Smart Scope (manual)
 - Sleeping Bag (manual)
-- SSC Sylph Undersuit (manual)
-- Sound System (manual)
-- Tertiary Arm (manual)
-- Wilderness Survival Kit (manual)
 
 ### NPC features (placeholder pack)
 

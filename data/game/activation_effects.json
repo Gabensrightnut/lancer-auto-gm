@@ -1126,5 +1126,72 @@
         }
       ]
     }
+  ],
+  "pg_frag_grenades:Use Frag Grenade": [
+    {
+      "op": "blast_save",
+      "range": 5,
+      "blast": 1,
+      "save": "agility",
+      "damage": "2",
+      "type": "Explosive",
+      "grenade": true,
+      "label": "Frag Grenade"
+    }
+  ],
+  "pg_patch:Use Patch": [
+    {
+      "op": "patch",
+      "label": "Patch"
+    }
+  ],
+  "pg_corrective:Use Corrective": [
+    {
+      "op": "corrective",
+      "label": "Corrective"
+    }
+  ],
+  "pg_stims:Use Stim": [],
+  "pg_stealth_hardsuit:Activate Stealth Hardsuit": [
+    {
+      "op": "status",
+      "who": "self",
+      "status": "Invisible",
+      "label": "Stealth Hardsuit"
+    }
+  ],
+  "deploy:pg_thermite_charge:Thermite Charge": {
+    "trigger": "manual",
+    "range": [
+      {
+        "type": "Burst",
+        "val": 1
+      }
+    ],
+    "damage": [
+      {
+        "type": "Energy",
+        "val": 3,
+        "ap": true,
+        "save": "eng"
+      }
+    ],
+    "object_damage": {
+      "amount": 10,
+      "type": "Energy"
+    }
+  },
+  "actions:pg_thermite_charge": [
+    {
+      "name": "Detonate Thermite Charge",
+      "activation": "Quick",
+      "detail": "Detonate your Thermite Charge.",
+      "ops": [
+        {
+          "op": "detonate",
+          "deployable": "Thermite Charge"
+        }
+      ]
+    }
   ]
 }
