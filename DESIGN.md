@@ -571,6 +571,16 @@ differently without an AI. Each game has a **seed**: share it to replay the same
 - Dialogue is written as data (scenes, lines, choices, conditions, effects) so the procedural
   GM (section 9) can assemble scenes from it and new story content can be added without code.
 
+### Out of the mech: hubs, people and trade
+- Pilots get out of their mechs and walk around towns, bases and stations in real time:
+  talk to locals, faction contacts and company reps, take jobs, and use downtime actions.
+  In combat, pilots can dismount, fight on foot and remount under the book's pilot rules.
+- **No money, by the book:** LANCER has no currency. New frames and gear come from License
+  Level and licenses; favors, deals, resources and access come from **Reserves** and
+  downtime actions (Get Resources, Get Connected, Get Creative, Power at a Cost...). So a
+  company rep you're in good standing with can grant a reserve (e.g. cheaper or faster
+  repairs), and the game explains how getting new mechs works through leveling.
+
 ### Progression
 - **Everyone starts at the bottom, like D&D level 1:** by the book, new pilots start at
   **License Level 0** with only GMS starter gear (the Everest frame and GMS weapons/systems).
