@@ -19,10 +19,13 @@ const ROUGH := {"grass": "stones", "sand": "scree", "snow": "ice", "moss": "ston
 static func build(t: TerrainRenderer, root: Node3D) -> void:
 	_liquids(t, root)
 	_ground_cover(t, root)
+	TerrainRenderer._lap("  ground cover")
 	_rough(t, root)
 	_debris(t, root)
 	_woods(t, root)
+	TerrainRenderer._lap("  rough, woods")
 	_rocks(t, root)
+	TerrainRenderer._lap("  rocks")
 	_crystals(t, root)
 	_glow_plants(t, root)
 	_railings(t, root)
@@ -132,6 +135,10 @@ static func _liquids(t: TerrainRenderer, root: Node3D) -> void:
 ## Grass tufts, flowers and pebbles: never taller than FLAT.
 static func _ground_cover(t: TerrainRenderer, root: Node3D) -> void:
 	var density := WorldQuality.grass(int(WorldStyle.num(t.style, "flora.grass", 0.0)))
+	# Very big boards are seen from further away: fewer, slightly bigger tufts per space.
+	var cells_n := t.map.cells().size()
+	if cells_n > 2000:
+		density = int(round(density * sqrt(2000.0 / cells_n)))
 	var greens := _colors(t, "flora.grass_colors")
 	var flowers := _colors(t, "flora.flowers")
 	var tall := WorldStyle.num(t.style, "flora.grass_height", 1.0)
@@ -295,7 +302,8 @@ static func _rocks(t: TerrainRenderer, root: Node3D) -> void:
 			var y := low + (k + 0.5) * (top - low) / layers
 			var rad := 0.58 + 0.06 * WorldRand.f(key, k)
 			var basis := Basis(Vector3.UP, WorldRand.f(key, k + 10) * TAU) * Basis(Vector3.RIGHT, (WorldRand.f(key, k + 20) - 0.5) * 0.5)
-			var b := Flora.blob(rad, key + str(k), 0.2, 1.0, 16)
+			# A handful of boulder shapes, turned and scaled per column (shapes are cached).
+			var b := _boulder(int(WorldRand.f(key, k + 70) * 8.0), rad)
 			var verts: PackedVector3Array = b[0]
 			var idx: PackedInt32Array = b[2]
 			var half := (top - low) / layers * 0.5 + 0.35
@@ -334,6 +342,16 @@ static func _rocks(t: TerrainRenderer, root: Node3D) -> void:
 	mi.mesh = st.commit()
 	mi.material_override = t.material
 	root.add_child(mi)
+
+
+static var _boulders := {}
+
+
+static func _boulder(variant: int, rad: float) -> Array:
+	var key := "%d|%.2f" % [variant, snappedf(rad, 0.02)]
+	if not _boulders.has(key):
+		_boulders[key] = Flora.blob(snappedf(rad, 0.02), "boulder%d" % variant, 0.2, 1.0, 12)
+	return _boulders[key]
 
 
 # --- Bridges -----------------------------------------------------------------------------

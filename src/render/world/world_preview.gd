@@ -40,6 +40,20 @@ func screenshot_stage(tag: String) -> void:
 	if "^" in map_name:
 		sitrep = "sitrep_" + map_name.get_slice("^", 1)
 		map_name = map_name.get_slice("^", 0)
+	if map_name.begins_with("town"):
+		# town<seed>+<hub culture>[+sitrep]: a fight in a hub's own town (story.hub layout).
+		var tp := map_name.trim_prefix("town").split("+")
+		var hrng := RandomNumberGenerator.new()
+		hrng.seed = int(tp[0])
+		var hub := {"kind": "town", "culture": tp[1] if tp.size() > 1 else "old_west", "seed": int(tp[0]), "spots": HubLayout.spots("town", hrng)}
+		var tg := MissionGenerator.generate(int(tp[0]), {"db": content, "hub": hub, "sitrep": "sitrep_" + (tp[2] if tp.size() > 2 else "standardcombat"), "players": 2})
+		map = (tg["state"] as GameState).map
+		view.set_map(map, (tg["mission"] as Mission).flavor["kit"])
+		view.terrain.show_objectives((tg["mission"] as Mission).zones, (tg["mission"] as Mission).deployment)
+		print("town: ", (tg["mission"] as Mission).briefing, " fairness ok: ", tg["fairness"]["ok"])
+		_place_mechs(map)
+		await _aim_camera(map, cam)
+		return
 	if map_name.begins_with("gen"):
 		# gen<seed>[+landscape[+culture]][+size][^sitrep] (control, holdout, gauntlet, escort,
 		# extraction, recon, standardcombat)

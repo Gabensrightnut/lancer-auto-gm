@@ -51,8 +51,41 @@
   "_budget_note": "PROVISIONAL encounter size: enemy budget = players x per_player x difficulty, each NPC costs its template 'cost' (default 1). Not the book's encounter guidance yet.",
   "per_player": 1.5,
   "map_sizes": {
-    "min": 20,
-    "max": 40
+    "min": 30,
+    "max": 60,
+    "base": 30,
+    "per_player": 6,
+    "jitter": 4,
+    "sitreps": {
+      "sitrep_standardcombat": [
+        1.0,
+        1.1
+      ],
+      "sitrep_control": [
+        1.1,
+        1.05
+      ],
+      "sitrep_recon": [
+        1.1,
+        1.05
+      ],
+      "sitrep_holdout": [
+        1.05,
+        1.0
+      ],
+      "sitrep_gauntlet": [
+        0.9,
+        1.15
+      ],
+      "sitrep_escort": [
+        0.85,
+        1.3
+      ],
+      "sitrep_extraction": [
+        0.9,
+        1.2
+      ]
+    }
   },
   "npc_stub": [
     {
@@ -65,5 +98,6 @@
       "role": "striker",
       "cost": 1.5
     }
-  ]
+  ],
+  "_map_sizes_note": "Map width x height: (base + per_player x squad size) x the sitrep's [width, height] factors, +- jitter, kept in [min, max]. The extra room is flanking space; GmSettings.approach keeps the deployment zones close (SitrepLayout)."
 }

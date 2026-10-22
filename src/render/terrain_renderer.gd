@@ -58,6 +58,9 @@ var objectives: Array = []
 var building_material: Material
 ## Building look per structure cell from the last build: cell -> {color, type, top}.
 var building_looks: Dictionary = {}
+## Damage on destructible columns' top sections, {"x,y": damage} (GameState.terrain_damage):
+## shown as deeper cracks. Set with show_damage().
+var damage: Dictionary = {}
 var _props: Node3D
 var _shape: Dictionary
 var _bottom := -BASE_DEPTH
@@ -314,6 +317,9 @@ func _build_blocks() -> void:
 	var edge_n: Array[Vector2i] = _shape["edge_neighbors"]
 	var sides: Array = []
 	var corner_normals := {}
+	var span_cache := {}
+	for cell in map.cells():
+		span_cache[cell] = _spans(cell)
 	for cell in map.cells():
 		if structure_cells.has(cell):
 			continue
@@ -322,8 +328,11 @@ func _build_blocks() -> void:
 		var kind := surface(cell)
 		var variation := WorldRand.f(str(cell))
 		var base_col := Color(kind / 16.0, variation, 0.0, 1.0)
-		var flags := 1.0 if col.has_tag(BattleMap.TAG_DESTRUCTIBLE) else 0.0
-		var spans := _spans(cell)
+		# UV2.x: 0 sturdy, 1 + damage fraction for destructible (the shader cracks it deeper).
+		var flags := 0.0
+		if col.has_tag(BattleMap.TAG_DESTRUCTIBLE):
+			flags = 1.0 + clampf(float(damage.get("%d,%d" % [cell.x, cell.y], 0)) / 10.0, 0.0, 0.95)
+		var spans: Array[Vector2] = span_cache[cell]
 		var top := spans[spans.size() - 1].y
 		st.set_color(base_col)
 		st.set_uv2(Vector2(flags, top))
@@ -351,7 +360,7 @@ func _build_blocks() -> void:
 			var outward := ((a + b) * 0.5 - center).normalized()
 			var theirs: Array[Vector2] = []
 			if map.has_cell(other) and not structure_cells.has(other):
-				theirs = _spans(other)
+				theirs = span_cache[other]
 			elif structure_cells.has(other):
 				# Buildings draw their own walls down to their foot; keep ours below it.
 				theirs = [Vector2(_bottom, minf(top_y(other), top))]
@@ -498,6 +507,38 @@ func bounds(margin: float = 0.6) -> Rect2:
 		lo = Vector2(minf(lo.x, p.x), minf(lo.y, p.z))
 		hi = Vector2(maxf(hi.x, p.x), maxf(hi.y, p.z))
 	return Rect2(lo, hi - lo).grow(margin)
+
+
+## The material a column is made of ("material_*" tag), or "" if none.
+static func material_of(col: BattleMap.Column) -> String:
+	if col == null:
+		return ""
+	for t in col.tags:
+		if t.begins_with("material_"):
+			return t.substr(9)
+	return ""
+
+
+## Shows damage on destructible terrain ({"x,y": damage}, as GameState.terrain_damage):
+## cracks deepen as a section loses its 10 HP. Only the block mesh is rebuilt.
+func show_damage(d: Dictionary) -> void:
+	damage = d.duplicate()
+	var old := get_node_or_null("Blocks")
+	if old == null:
+		return
+	remove_child(old)
+	if is_inside_tree():
+		old.queue_free()
+	else:
+		old.free()
+	_build_blocks()
+
+
+## A hit on a terrain column (event terrain_damaged): splinters for wood, chips and dust for
+## stone and concrete, sparks and a dent flash for metal and fortified walls. `from` is where
+## the attack came from (optional), so debris flies back toward it.
+func hit_terrain(cell: Vector2i, amount: int = 5, from: Vector3 = Vector3.INF) -> void:
+	TerrainBreak.hit(self, cell, amount, from)
 
 
 ## Terrain destroyed by the rules: the map already has the new columns. Shows the old

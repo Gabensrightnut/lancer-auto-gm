@@ -2,7 +2,7 @@ extends TestCase
 ## Generated battlefields are fair (MapFairness): balanced cover between the two halves, part
 ## of each deployment zone out of the other's sight, and every objective reachable on foot
 ## by Size 1, 2 and 3. Seeds for every landscape, cycling through every sitrep layout, hex
-## and square grids and map sizes 20-40: 5 per landscape by default (fast), the full 50 with
+## and square grids and map sizes 30-60: 5 per landscape by default (fast), the full 50 with
 ## LANCER_SLOW_TESTS=1.
 
 const SEEDS_FAST := 5
@@ -20,11 +20,11 @@ func test_every_landscape_is_fair() -> void:
 			rng.seed = hash([land, s, "layout"])
 			var wr := RandomNumberGenerator.new()
 			wr.seed = hash([land, s, "world"])
-			var w := 20 + (s * 7) % 21
-			var h := clampi(int(w * (0.75 + 0.25 * ((s * 13) % 5) / 4.0)), 20, 40)
+			var w := 30 + (s * 7) % 31
+			var h := clampi(int(w * (0.8 + 0.4 * ((s * 13) % 5) / 4.0)), 30, 60)
 			var shape := GridLayout.Shape.SQUARE if s % 2 else GridLayout.Shape.HEX
 			var sitrep: String = SITREPS[s % SITREPS.size()]
-			var bf := MissionGenerator.battlefield(rng, wr, sitrep, w, h, shape, land)
+			var bf := MissionGenerator.battlefield(rng, wr, sitrep, w, h, shape, land, "", 14)
 			# Check again from scratch rather than trusting the generator's own report.
 			var r := MapFairness.check(bf["map"], bf["layout"], h)
 			if not r["ok"]:
