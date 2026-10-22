@@ -272,6 +272,8 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				events.append_array(Attacks.attack(state, u, Weapons.find(u, "cbi:0"), target, {"fired_by_rule": true}))
 			"jackhammer":
 				events.append_array(TalentRules.jackhammer(state, u, target))
+			"monitor":
+				events.append_array(GearSystems.monitor(state, u, target))
 			"roller_grenade":
 				events.append_array(GearSystems.roller_grenade(state, u, params))
 			"wall_field":
@@ -517,6 +519,10 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 			var ww := String(a["source_key"]).trim_prefix("mod:")
 			if not (u.turn.get("hits", {}).get(ww, []) as Array).has(String(params.get("target", ""))):
 				return RuleResult.deny("Only right after hitting that character with the wreathed weapon this turn.", "mods: Shock Wreath")
+		if op.get("op", "") == "monitor":
+			var mt := state.unit(String(params.get("target", "")))
+			if mt == null or mt == u or mt.side != u.side or not Combat.is_present(mt) or Sight.unit_distance(state, u, mt) > 1:
+				return RuleResult.deny("Choose an adjacent allied character (params.target).", "systems: Monitor Module")
 		if op.get("op", "") == "roller_grenade":
 			var ra: Variant = TurnAction.cell_param(params, "aim")
 			if ra == null or ra == u.cell or not state.map.has_cell(ra):

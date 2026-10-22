@@ -118,3 +118,54 @@ func test_bouncing_mine_grounds_flyers() -> void:
 	F.act(e, s, "move", "t", {"to": [2, 0], "fly": true, "level": 3})
 	expect(t.has_status("Grounded"), "can't fly until the end of its next turn")
 	expect(not t.flying)
+
+
+func _mech_with(id: String, cell: Vector2i, mounts: Array, systems: Array = []) -> Unit:
+	var u := UnitFactory.build_mech(db(), id, "mf_standard_pattern_i_everest", {"mounts": mounts, "systems": systems}, {"ll": 12})
+	u.side = "players"
+	u.cell = cell
+	s.add_unit(u)
+	return u
+
+
+func test_autopod() -> void:
+	_setup([], Vector2i(6, 0))
+	var pod := _mech_with("pod", Vector2i(0, 3), [{"weapons": ["mw_autopod"]}])
+	expect(not F.ok(F.act(e, s, "skirmish", "pod", {"weapon": "0:0", "target": "t"})), "only through its reaction")
+	t.statuses["Lock On"] = {"source": "a"}
+	F.load_dice(s, [5, 1, 2])  # d20 (+6 Grit at LL12), Lock On's Accuracy die, damage
+	F.act(e, s, "skirmish", "a", {"weapon": "0:0", "target": "t", "use_lock_on": true})
+	expect_eq(t.hp, 40 - 2 - 3, "the Autopod hits automatically for 3")
+
+
+func test_vorpal_gun() -> void:
+	_setup([], Vector2i(3, 0))
+	var vorpal := _mech_with("v", Vector2i(2, 2), [{"weapons": ["mw_vorpal_gun"]}])
+	F.act(e, s, "end_turn", "a")
+	F.act(e, s, "start_turn", "t")
+	F.load_dice(s, [15, 2, 15, 3, 3])
+	var out := F.act(e, s, "skirmish", "t", {"weapon": "0:0", "target": "a"})
+	expect_eq(F.events_of(out, "attack_rolled").filter(func(x: Dictionary) -> bool: return x["attacker"] == "v").size(), 1, "Snicker-Snack")
+
+
+func test_monitor_module() -> void:
+	_setup(["ms_monitor_module"], Vector2i(4, 0))
+	var ally := F.mech(s, "ally", "players", Vector2i(1, 0))
+	F.load_dice(s, [2])
+	var out := F.act(e, s, "activate", "a", {"ability": _key("Monitor Module"), "target": "ally"})
+	expect(F.ok(out), F.reason(out))
+	F.act(e, s, "end_turn", "a")
+	F.act(e, s, "start_turn", "t")
+	F.load_dice(s, [15, 2, 5, 4])  # the reaction: 5 + 6 Grit hits without a crit
+	out = F.act(e, s, "skirmish", "t", {"weapon": "0:0", "target": "ally"})
+	expect_eq(t.hp, 38, "the Gorgon's half-damage Skirmish")
+
+
+func test_gravity_gun() -> void:
+	_setup([], Vector2i(5, 1))
+	a.loadout["weapons"] = [{"key": "0:0", "id": "mw_gravity_gun", "name": "Gravity Gun", "mount": 0, "size": "Heavy", "type": "Rifle", "damage": [],
+		"range": [{"type": "Range", "val": 8}, {"type": "Blast", "val": 3}], "tags": []}]
+	F.load_dice(s, [4, 3])
+	var out := F.act(e, s, "skirmish", "a", {"weapon": "0:0", "aim": [6, 0]})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(t.hp, 36, "failed the Hull save: 1d6 energy")

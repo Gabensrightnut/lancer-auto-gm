@@ -952,6 +952,83 @@ static func reload_one(state: GameState, u: Unit, key: String, source: String) -
 	return [{"type": "reloaded", "unit": u.id, "weapon": w["key"], "source": source}] as Array[Dictionary]
 
 
+## Weapon and system reactions to an attack: Autopod (an ally's attack consumed Lock On on a
+## target within 15: hit it automatically for 3 kinetic), Vorpal Gun (a hostile in Range and
+## line of sight damaged an ally: attack it), Monitor Module (the monitored ally was attacked
+## next to the Gorgon: Skirmish the attacker for half damage).
+static func after_attack(state: GameState, attacker: Unit, target: Unit, lock_on: bool, dealt: bool) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	if target.kind == Unit.KIND_DEPLOYABLE:
+		return events
+	var ids: Array = state.units.keys()
+	ids.sort()
+	for id: String in ids:
+		var o := state.unit(id)
+		if o == attacker or not Combat.is_present(o) or not Combat.is_present(attacker):
+			continue
+		for w: Dictionary in o.loadout.get("weapons", []):
+			match String(w.get("id", "")):
+				"mw_autopod":
+					if lock_on and o != target and Combat.is_present(target) and Sight.unit_distance(state, o, target) <= 15 \
+							and TalentRules._round_ok(state, o, "autopod") and Reactions.can_react(o, "autonomous_assault", state).ok:
+						var d := Reactions.offer(state, o, "autonomous_assault", {"target": target.id, "suggested": {"take": true}}, {"take": true})
+						if d.get("take", false):
+							TalentRules._use_round(state, o, "autopod")
+							Reactions._mark_used(o, "autonomous_assault", state)
+							events.append({"type": "effect_triggered", "unit": o.id, "effect": "Autopod: Autonomous Assault", "target": target.id, "rule_ref": "weapons: Autopod"})
+							events.append_array(Combat.deal_damage(state, target, [{"type": "Kinetic", "amount": 3}], {"source": o.id}))
+				"mw_vorpal_gun":
+					if dealt and o.side == target.side and o != target and attacker.side != o.side and TalentRules._round_ok(state, o, "vorpal") \
+							and Reactions.can_react(o, "snicker_snack", state).ok and Attacks.preview(state, o, w, attacker, {"reaction": true, "fired_by_rule": true})["ok"]:
+						var d := Reactions.offer(state, o, "snicker_snack", {"target": attacker.id, "suggested": {"take": true}}, {"take": true})
+						if d.get("take", false):
+							TalentRules._use_round(state, o, "vorpal")
+							Reactions._mark_used(o, "snicker_snack", state)
+							events.append_array(Attacks.attack(state, o, w, attacker, {"reaction": true, "fired_by_rule": true}))
+		var mon: Dictionary = o.counters.get("monitor", {})
+		if not mon.is_empty() and Effects.has(o, "monitor_on") and String(mon.get("ally", "")) == target.id and int(mon.get("charges", 0)) > 0 and o.side != attacker.side \
+				and Sight.unit_distance(state, o, target) <= 1 and Reactions.can_react(o, "monitor", state).ok:
+			for mw: Dictionary in o.loadout.get("weapons", []):
+				if Attacks.preview(state, o, mw, attacker, {"reaction": true})["ok"]:
+					var d := Reactions.offer(state, o, "monitor", {"target": attacker.id, "weapon": mw.get("key", ""), "suggested": {"take": true}}, {"take": true})
+					if d.get("take", false):
+						mon["charges"] = int(mon["charges"]) - 1
+						Reactions._mark_used(o, "monitor", state)
+						events.append_array(Attacks.attack(state, o, mw, attacker, {"reaction": true, "half_damage": true}))
+					break
+	return events
+
+
+## Monitor Module: 1d3 charges and an adjacent ally, until the end of your next turn.
+static func monitor(state: GameState, u: Unit, ally: Unit) -> Array[Dictionary]:
+	var roll := state.dice.roll("1d3")
+	u.counters["monitor"] = {"ally": ally.id, "charges": int(roll["total"])}
+	var events: Array[Dictionary] = [{"type": "effect_triggered", "unit": u.id, "effect": "Monitor Module", "target": ally.id, "charges": int(roll["total"]), "rule_ref": "systems: Monitor Module"}]
+	events.append_array(Effects.activate(state, u, [{"kind": "monitor_on", "label": "Monitor Module"}], "Monitor Module", "end_next_turn"))
+	return events
+
+
+## Gravity Gun: no attack roll; characters in the blast make a Hull save or take 1d6 energy and
+## are pulled as close to the center as they can.
+static func gravity_gun(state: GameState, u: Unit, w: Dictionary, p: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var roll := state.dice.roll("1d6")
+	var origin: Array = p["origin"]
+	var center := Sight.make_body(state, Vector2i(origin[0], origin[1]), state.map.ground_height(Vector2i(origin[0], origin[1])), 1.0)
+	for id: String in p["targets"]:
+		var t := state.unit(id)
+		if t == null or not Combat.is_present(t):
+			continue
+		var save := Combat.skill_check(state, t, "hull", "Save vs Gravity Gun", u.save_target, 0, 0, [], true)
+		events.append({"type": "skill_check", "unit": t.id, "check": save, "rule_ref": "weapons: Gravity Gun"})
+		if save["success"]:
+			continue
+		events.append_array(Combat.deal_damage(state, t, [{"type": "Energy", "amount": int(roll["total"])}], {"source": u.id, "area": true}))
+		if Combat.is_present(t):
+			events.append_array(Attacks.pull_to(state, t, center, 0))
+	return events
+
+
 ## Lands a flyer at once without falling damage; it can't fly until the end of its next turn
 ## (Bouncing Mine).
 static func ground_flyer(state: GameState, t: Unit, by: Unit) -> Array[Dictionary]:

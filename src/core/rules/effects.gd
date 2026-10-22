@@ -345,6 +345,8 @@ static func turn_ending(state: GameState, u: Unit) -> Array[Dictionary]:
 			"target": u.id, "chambers": u.counters["chambers"], "rule_ref": "frames: Raleigh core system"})
 	events.append_array(GearSystems.impaled_turn_end(state, u))
 	events.append_array(TalentRules.turn_ending(state, u))
+	if u.counters.has("monitor") and not has(u, "monitor_on"):
+		u.counters.erase("monitor")  # all charges are lost when it ends
 	events.append_array(GearSystems.horus_turn_ending(state, u))
 	events.append_array(AISystems.turn_ending(state, u))
 	events.append_array(GearSystems.ha_turn_ending(state, u))

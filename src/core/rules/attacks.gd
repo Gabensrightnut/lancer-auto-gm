@@ -499,6 +499,8 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 	var aopts := opts.duplicate()
 	aopts["lock_on_consumed"] = p["lock_on"]
 	events.append_array(TalentRules.after_attack(state, attacker, w, target, kind, result, aopts))
+	var dealt := events.any(func(ev: Dictionary) -> bool: return ev.get("type", "") == "damage_dealt" and ev.get("target", "") == target.id and int(ev.get("amount", 0)) > 0)
+	events.append_array(GearSystems.after_attack(state, attacker, target, p["lock_on"], dealt))
 	Effects.attacked(state, attacker, String(opts.get("action", "attack")))
 	return events
 

@@ -999,5 +999,11 @@
         "label": "Roller Grenade"
       }
     ]
-  }
+  },
+  "ms_monitor_module:Monitor Module": [
+    {
+      "op": "monitor",
+      "label": "Monitor Module"
+    }
+  ]
 }
