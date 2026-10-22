@@ -33,14 +33,61 @@ for the user to decide. Code that depends on a row here is marked `PROVISIONAL`.
 | Eject | Lands in any free space within 6 (no straight-line or path check) | `pilot_actions.gd` |
 | Self Destruct timing | "Within the following two rounds" read as your next turn (delay 1) or the one after (delay 2) | `pilot_actions.gd` |
 | Frame trait readings | Tortuga Sentinel counts Overwatch as a reaction attack; Blast Plating resists all damage types from area attacks; Vlad's core resistance applies to attackers within range 3; Shrike Armor damage comes before the attack roll | `data/game/frame_effects.json` |
+| Teleport moves | A teleporting standard move or Boost (Mourning Cloak core) reaches up to that move's budget and uses all of it; the book says a teleport "counts as moving 1 space" (p.63) | `movement.gd`, `move_actions.gd` |
+| Ignoring difficult terrain while Prone | Bulwark Mods / Kai Bioplating also cancel Prone's "counts as moving in difficult terrain" | `movement.gd` |
+| After-attack moves | Taken right away (lost if another action comes first); only on your own turn, so the Skirmisher talent's "before" option and its use after Overwatch aren't supported yet | `move_actions.gd`, `effects.gd` |
+| Kai Bioplating jumps | "Up to full Speed across and half Speed up, in any combination" read as: horizontal jumps up to Speed, vertical jumps rise up to half Speed (rounded up) | `close_combat.gd` |
+| Iskander's Broad-Sweep Seeder | Range 50 measured from the Iskander at the time of each move (the text says the hostiles within range 50 when it fires); jumps count as movement other than the standard move | `effects.gd` |
 | Mech building limits | Each license rank 1-3, ranks add up to at most LL (p.31: +1 rank per LL, ranks bought in order) | `unit_factory.gd` |
+
+## Movement audit (Core p.62-63, 77-78 and lancer-data text)
+
+Only rule text grants movement; a frame's look never does (a mech that looks like it floats
+still pays for difficult terrain unless a rule says otherwise). Tests:
+`tests/unit/test_rules_movement*.gd`.
+
+| Source | Rule | Status |
+|---|---|---|
+| Core p.62 | Standard move, splitting, adjacency, obstruction by Size, allies never obstruct, mechs pass pilots, engagement stop, provoking, Disengage | automated |
+| Core p.62 | Involuntary movement: straight line, no reactions/engagement, blocked by obstructions (passes smaller characters, can't end in occupied spaces) | automated |
+| Core p.62 | Difficult terrain (x2), dangerous terrain (Engineering check, once per round) | automated |
+| Core p.62 | Lifting and dragging (Slowed / Immobilized) | not yet |
+| Core p.63 | Jumping, climbing (half speed), falling (10 per round, 3 AP per 3, max 9) | automated |
+| Core p.63 | Flight: straight line, ignores obstructions, immune to Prone, must move or fall, falls if Immobilized/Stunned, Agility save, 10-space ceiling; Hover | automated |
+| Core p.63 | Teleportation | automated |
+| Core p.63 | Zero-g / underwater (Slowed without propulsion, can't fall, can fly) | not yet |
+| Core p.77-78 | Prone (Slowed, difficult, stand up), Slowed (only the standard move), Immobilized (no voluntary movement), Stunned, Engaged, Hidden (Boost reveals) | automated |
+| Core p.69 | Grapple: smaller is Immobilized and dragged along; no Boost | automated (same-Size contest not yet) |
+| Everest core | Boost as a free action 1/turn | automated |
+| Blackbeard | Lock/Kill: Boost while grappling | automated; Grapple Cable (range 5, pulled adjacent) and core not yet |
+| Drake, Barbarossa | Heavy Frame: not pushed/pulled/knocked Prone/back by smaller | automated; Drake core (Immobilized, immune to involuntary movement) not yet |
+| Nelson | Skirmisher: 1 space after attacking, ignores engagement, no reactions; core: 4 spaces | automated |
+| Tortuga core | Overwatch hits Immobilize | not yet |
+| Dusk Wing | Hover | automated; core (hologram teleport) not yet |
+| Mourning Cloak core | Teleport on Boost and standard move | automated; Blinkspace Jump not yet |
+| Swallowtail | Integrated Cloak (Invisible if it didn't move) | automated |
+| Iskander core | Damage on hostile non-standard movement | automated |
+| Minotaur | Localized Maze (hostiles can't pass through its space and always stop when Engaged with it) | automated |
+| Black Witch, Balor, Barbarossa, Goblin, Hydra, Death's Head, Lancaster cores | Difficult zones, Immobilize, Apocalypse Die reset on moving, riding a host, drones | not yet |
+| Bulwark Mods | Ignore difficult terrain | automated |
+| High-Stress Mag Clamps | Climb at normal speed | automated (wall-walking and falling when knocked Prone not yet) |
+| Type-I Flight System | Count any movement as flying, Size+1 heat on turns flown | automated |
+| Rapid Burst Jump Jet System | Fly when Boosting, land or fall | automated |
+| Flicker Field Projector | Invisible against the next attack after a standard move or Boost | automated |
+| Reinforced Cabling, Ramjet, Singularity Motivator, FADE Cloak, Ferrous Lash, Beckoner, Metafold Carver, Mimic Mesh, Puppetmaster, Cable Winch, MULE Harness, Webjaw Snare, Caltrop Launcher, Perimeter Command Plate, Grounding Charges, Flak Launcher, Tesseract, Interdiction Field, H0R_OS upgrades, Hunter Logic Suite, Mesmer Charges, Viral Logic Suite, Siege Stabilizers, Retractable Profile, HyperDense Armor, deployable mines/drones | Activated systems, deployables or choices | not yet (need system activation / deployables) |
+| Weapons | Impaler Nailgun (Immobilize), Magnetic Cannon / Gravity Gun / Nanobot Whip (pull), Fold Knife (teleport on crit), Assault Cannon / Leviathan spin-up (Slowed), Pinaka (Slowed) | not yet (on-hit effects and profiles) |
+| Talents | Skirmisher II (2 spaces after a Skirmish) | automated (after only, own turn) |
+| Talents | Ace I (+1 Agility while flying) | automated; Ace II-III, Hunter, Infiltrator III, Juggernaut, Brawler, Brutal, Siege Specialist, Stormbringer, Hacker, Heavy Gunner, Crack Shot, Duelist, Vanguard, Grease Monkey | not yet |
+| Core bonuses | Integrated Nerveweave (+2 Boost), All-Theater Movement Suite, Kai Bioplating, Fomorian Frame, Ghostweave (Invisible on own turn) | automated (Ghostweave's "stays Invisible if you only moved, hid or Boosted" not yet) |
+| Pilot gear | Mobility Hardsuit (fly, land by end of turn) | automated |
+| EVA Module | Fly and not Slowed in zero-g | not yet (no zero-g) |
 
 ## Not implemented yet
 
 Deployables and drones, system activations (Activate), NPC templates and multiple
 activations, Recharge, weapon profile choice, mod effects, frame traits and core systems
 marked "manual" in `data/game/frame_effects.json`, talents (beyond unlocking talent gear),
-bonus damage (p.67), Jockey and Reload (p.75), pilot armor and gear, teleport (p.63), zero-g
+bonus damage (p.67), Jockey and Reload (p.75), pilot armor and gear, zero-g
 (p.63), lifting and dragging (p.62), dragging wrecks, objects as attack targets (p.68),
 overshield sources, Scan's other two options, the same-Size grapple contest, Engineering
 retries against a meltdown, rest and Full Repair (p.82), unlicensed mechs (p.74: Impaired
@@ -62,6 +109,7 @@ and Slowed), NHP control (p.75).
 | Difficult terrain costs 2 per space; dangerous terrain: Engineering check or 5 damage, once per round | Core p.62 |
 | Climbing is half speed; jumping (half speed horizontal, Size up vertical); ending a jump mid-air falls at the end of the move | Core p.63 |
 | Falling: starts at the end of the current turn, then at the end of each of the faller's turns, 10 spaces per round, 3 AP kinetic per 3 spaces, max 9 | Core p.63 |
+| Teleportation: free space in range, start and end on a surface you can move on, ignores obstructions/LOS/engagement, no reactions, counts as 1 space, Immobilized stops it, occupied destination fails | Core p.63 |
 | Flight: Speed in any direction, straight line, ignores obstructions if physically possible, immune to Prone; must move or fall; falls if Immobilized/Stunned; Agility save after structure/stress damage; more than 10 above any surface: only move/Boost, no reactions; hover | Core p.63 |
 | Critical hits: 20+ on melee/ranged, damage dice rolled twice keeping the best | Core p.64 |
 | Range and Threat measured from any edge; Threat 1 by default | Core p.64, 73 |

@@ -252,3 +252,15 @@ func test_knockback_passes_smaller_characters_but_not_obstructions() -> void:
 	small.cell = Vector2i(4, 0)
 	Attacks.knock_back(s, t, Vector2i(0, 0), 3)
 	expect_eq(t.cell, Vector2i(3, 0), "a same-Size character is an obstruction")
+
+
+func test_minotaur_maze_blocks_even_bigger_hostiles() -> void:
+	s = F.state(GridLayout.Shape.SQUARE, 8, 2)
+	e = RulesEngine.new()
+	a = F.mech(s, "a", "players", Vector2i(0, 0), 2.0)
+	t = F.mech(s, "t", "enemies", Vector2i(2, 0))
+	a.speed = 6
+	F.begin(e, s, a)
+	expect(RulesQueries.preview_move(s, "a", Vector2i(3, 0))["ok"], "a Size 2 can pass a smaller hostile")
+	_give(t, [{"kind": "maze", "label": "Localized Maze"}])
+	expect(not RulesQueries.preview_move(s, "a", Vector2i(3, 0))["ok"], "but never through a Minotaur")

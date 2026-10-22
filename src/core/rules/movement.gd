@@ -109,6 +109,8 @@ static func _others(state: GameState, u: Unit) -> Array[Dictionary]:
 		var blocks: bool = (object or o.side != u.side) and o.size >= u.size
 		if o.kind == Unit.KIND_PILOT and u.kind != Unit.KIND_PILOT:
 			blocks = false  # mechs can always move through unmounted humans (Core p.62)
+		if Effects.has(o, "maze") and o.side != u.side:
+			blocks = true  # Minotaur Localized Maze: hostiles can't pass through it for any reason
 		out.append({"body": Sight.body_of(state, o), "unit": o, "blocks": blocks, "wreck": wreck})
 	return out
 
