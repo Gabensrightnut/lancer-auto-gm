@@ -58,6 +58,24 @@ Every effect gets an animation, a combat-log line, and floating text (damage, MI
 | Movement | Movement arrow and cover highlights while planning (see Turn overlays), then walk, hover or boost trail; engagement indicators |
 | Destruction / eject | Mech collapses into a wreck that stays as terrain; pilot ejects on foot |
 
+### Resource HUD and action buttons
+- **Always-visible resources** for the active mech/pilot, shown as current / total:
+  HP, Overshield, Heat (with the Danger Zone threshold marked), Structure, Reactor Stress,
+  Repairs, Burn, core power (available/used), and the turn's action economy: Quick and Full
+  actions left, Move, Reaction (1/round), Overcharge (next heat cost: 1, 1d3, 1d6, 1d6+4).
+- **Limited uses:** weapons and systems with Limited X, Loading, 1/round, 1/scene or
+  1/mission show charges left on their button.
+- **Action buttons:** every available action is a button showing:
+  - an icon for what it costs: Quick, Full, Free, Reaction, Protocol, Move; plus heat cost,
+    charges, or Overcharge as extra icons with numbers;
+  - its name and a short description from the book data (hover/hold for the full text and
+    rule reference);
+  - greyed out with the reason when it can't be used ("Already used your Quick actions",
+    "Jammed: can't take tech actions").
+- **Cost preview:** hovering a button shows what it will spend on the resource bars (e.g. the
+  heat bar previews +2), and warns if it would push you into the Danger Zone or overheat.
+- Enemies show only what the view rules allow (section 6): unscanned enemies show "??".
+
 ### Roll visuals
 
 Every roll is shown step by step on screen, then logged:
