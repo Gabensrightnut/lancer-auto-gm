@@ -28,7 +28,7 @@ func _init() -> void:
 		PilotActions.Eject.new(), PilotActions.Dismount.new(), PilotActions.Mount.new(),
 		PilotActions.Fight.new(), PilotActions.SelfDestruct.new(), PilotActions.Prepare.new(),
 		PilotActions.DropPrepared.new(), SystemActions.CorePower.new(), MoveActions.BonusMove.new(),
-		Rulings.SetRuling.new(), HouseRuleSwitches.SetHouseRule.new(), CloseCombat.GrappleContest.new(), AbilityActions.Activate.new(),
+		Rulings.SetRuling.new(), HouseRuleSwitches.SetHouseRule.new(), TurnActions.JoinCombat.new(), TurnActions.ExploreMove.new(), TurnActions.EndCombat.new(), CloseCombat.GrappleContest.new(), AbilityActions.Activate.new(),
 		RestActions.Rest.new(), GearActions.AIControl.new(), GearActions.ClimbOn.new(), GearActions.Board.new(), GearActions.Disembark.new(), GearActions.CutCable.new(), GearActions.PullStake.new(), GearActions.UseObject.new(), GearActions.ShakeOff.new(),
 		EnvironmentActions.BreakIce.new(), EnvironmentActions.DigOut.new(), AttackActions.Backswing.new(), AttackActions.HunterThrow.new(), CloseCombat.Feint.new(), CloseCombat.Trip.new(), CloseCombat.DuelistStrike.new(), GearActions.FixHack.new(), GearActions.Drag.new(), GearActions.LetGoDrag.new(), GearActions.IssueOrder.new(), GearActions.AceBurst.new(), GearActions.DetectMines.new(), GearActions.DisarmMine.new(),
 	]:
