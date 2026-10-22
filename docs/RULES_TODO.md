@@ -38,6 +38,7 @@ for the user to decide. Code that depends on a row here is marked `PROVISIONAL`.
 | Reliable on a miss | Uses the weapon's first damage type | `attacks.gd` |
 | Pilot stat bonuses | HP + GRIT + 2/Hull; Repair Cap +1 per 2 Hull; Evasion +1/Agility; Speed +1 per 2 Agility; E-Defense and Tech Attack +1/Systems; Heat Cap +1/Engineering; Limited +1 per 2 Engineering; Save Target + GRIT | `unit_factory.gd`, `weapons.gd` |
 | Mount capacities | Main and Heavy hold 1 weapon, Main/Aux holds Main + Aux, Aux/Aux holds 2 Aux, Flex holds 1 Main or 2 Aux (sizes that fit come from rules.json) | `unit_factory.gd` |
+| License ranks | One license rank per License Level (ranks add up to at most LL); each license rank 1-3. Items unlock at their lancer-data `license_level` (frames at 2); talent gear needs its talent rank; gear with no license or talent (integrated weapons) can't be installed | `unit_factory.gd` |
 | Superheavy mounting | A Superheavy weapon needs a Heavy mount plus one other mount left empty | `unit_factory.gd` |
 | High ground | No general bonus assumed | rules engine |
 | Square grid range/area templates (blast, burst, cone, line) | Not implemented yet: area weapons are refused with a reason | `attacks.gd` |
@@ -48,7 +49,7 @@ Area attacks (Blast, Burst, Cone, Line), Overwatch and other reactions besides B
 movement preview only warns which enemies could react), Ram, Grapple, Jump, Full Tech,
 Bolster, Prepare, Eject, Self Destruct, Mount/Dismount, pilots on foot, deployables and
 drones, system activations, NPC features/tiers/templates and multiple activations, Recharge,
-choosing a weapon profile, mod and frame trait/core system effects, talents, licenses,
+choosing a weapon profile, mod and frame trait/core system effects, talents (beyond unlocking talent gear),
 teleport, zero-g, lifting and dragging, bonus damage, overshield sources, Scan's other two
 options (hidden information, public records).
 
@@ -89,3 +90,4 @@ options (hidden information, public records).
 | Stabilize options; Shut Down / Boot Up; Scan; Invade + Fragment Signal | actions |
 | Tags: Accurate, Inaccurate, AP, Reliable, Knockback, Loading, Limited, Ordnance, Smart (no E-Def counts as 8), Seeking, Arcing, Overkill, Heat (Self/Target), Burn, Threat (default 1) | tags.json, glossary: Threat |
 | GRIT = half LL rounded up; SP = frame + GRIT + 1 per 2 Systems | glossary: GRIT, System Points |
+| Max License Level 12 | rules.json: max_pilot_level |

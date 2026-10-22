@@ -5,14 +5,22 @@ extends RefCounted
 ## A loadout lists what goes in each of the frame's mounts, in the frame's mount order:
 ##   {"mounts": [{"weapons": ["mw_assault_rifle"], "mod": ""}, ...],
 ##    "systems": ["ms_pattern_a_smoke_charges", ...]}
-## A pilot gives License Level and mech skills:
-##   {"ll": 0, "hull": 0, "agility": 0, "systems": 0, "engineering": 0}
+## A pilot gives License Level, license ranks, talents and mech skills:
+##   {"ll": 2, "licenses": {"mf_raleigh": 2}, "talents": {"t_...": 1},
+##    "hull": 0, "agility": 0, "systems": 0, "engineering": 0}
+## License keys are lancer-data license ids (the frame id, e.g. "mf_raleigh"); the license
+## name ("Raleigh") also works.
 ##
 ## The built Unit carries copies of its weapon profiles in loadout["weapons"] (see Weapons),
 ## so the rules engine never needs ContentDB.
 
 const REF_MOUNTS := "rules.json: mount_fittings"
 const REF_SP := "glossary: System Points"
+const REF_LICENSE := "lancer-data: license / license_level"
+## PROVISIONAL (docs/RULES_TODO.md "License ranks"): one license rank per License Level,
+## ranks 1-3 per license.
+const REF_LICENSE_RANKS := "PROVISIONAL Core: License ranks (docs/RULES_TODO.md)"
+const MAX_LICENSE_RANK := 3
 ## PROVISIONAL (docs/RULES_TODO.md "Mount capacities"): how many weapons each mount holds.
 ## Fittings (which sizes fit) come from rules.json; "Flex" holds one Main or two Auxiliary.
 const MOUNT_SLOTS := {
@@ -40,6 +48,8 @@ static func check_loadout(db: ContentDB, frame_id: String, loadout: Dictionary, 
 	var frame := db.frame(frame_id)
 	if frame.is_empty():
 		return RuleResult.deny("Unknown frame '%s'." % frame_id, "")
+	problems.append_array(check_pilot(db, pilot))
+	_license(problems, frame, pilot)
 	var fittings: Dictionary = db.rules.get("mount_fittings", {})
 	var frame_mounts: Array = frame.get("mounts", [])
 	var mounts: Array = loadout.get("mounts", [])
@@ -64,6 +74,7 @@ static func check_loadout(db: ContentDB, frame_id: String, loadout: Dictionary, 
 				continue
 			sizes.append(String(w.get("mount", "")))
 			sp_used += int(w.get("sp", 0))
+			_license(problems, w, pilot)
 			if w.get("mount", "") == "Superheavy":
 				superheavy_mounts.append(i)
 		var why := _mount_problem(mount_type, sizes, fittings)
@@ -76,6 +87,7 @@ static func check_loadout(db: ContentDB, frame_id: String, loadout: Dictionary, 
 				problems.append({"reason": "Unknown mod '%s'." % mod_id, "rule_ref": ""})
 			else:
 				sp_used += int(mod.get("sp", 0))
+				_license(problems, mod, pilot)
 				var w0 := db.weapon(String(ids[0])) if not ids.is_empty() else {}
 				if w0.is_empty():
 					problems.append({"reason": "Mount %d has a mod but no weapon to put it on." % (i + 1), "rule_ref": "tags: Mod"})
@@ -95,6 +107,7 @@ static func check_loadout(db: ContentDB, frame_id: String, loadout: Dictionary, 
 			problems.append({"reason": "Unknown system '%s'." % sid, "rule_ref": ""})
 			continue
 		sp_used += int(s.get("sp", 0))
+		_license(problems, s, pilot)
 		if _has_tag(s, "tg_unique"):
 			if seen_unique.has(sid):
 				problems.append({"reason": "%s is Unique: only one copy." % s["name"], "rule_ref": "tags: Unique"})
@@ -111,6 +124,57 @@ static func check_loadout(db: ContentDB, frame_id: String, loadout: Dictionary, 
 	var r := RuleResult.deny(problems[0]["reason"], problems[0]["rule_ref"])
 	r.details = problems
 	return r
+
+
+## Problems with the pilot itself: License Level in range, license ranks add up.
+static func check_pilot(db: ContentDB, pilot: Dictionary) -> Array:
+	var problems: Array = []
+	var ll := int(pilot.get("ll", 0))
+	var max_ll := int(db.rules.get("max_pilot_level", 12))
+	if ll < 0 or ll > max_ll:
+		problems.append({"reason": "License Level must be 0 to %d." % max_ll, "rule_ref": "rules.json: max_pilot_level"})
+	var total := 0
+	var licenses: Dictionary = pilot.get("licenses", {})
+	for key: String in licenses:
+		var rank := int(licenses[key])
+		total += rank
+		if rank < 1 or rank > MAX_LICENSE_RANK:
+			problems.append({"reason": "%s license rank must be 1 to %d." % [key, MAX_LICENSE_RANK], "rule_ref": REF_LICENSE_RANKS})
+	if total > ll:
+		problems.append({"reason": "License ranks add up to %d, but a License Level %d pilot has only %d." % [total, ll, ll], "rule_ref": REF_LICENSE_RANKS})
+	return problems
+
+
+## Is a frame/weapon/system/mod unlocked for this pilot? GMS gear at license level 0 is
+## always available; manufacturer gear needs that frame's license at its license_level;
+## talent gear needs the talent rank.
+static func license_problem(item: Dictionary, pilot: Dictionary) -> String:
+	if item.get("talent_item", false):
+		var talent := String(item.get("talent_id", ""))
+		var need := int(item.get("talent_rank", 1))
+		if int(pilot.get("talents", {}).get(talent, 0)) < need:
+			return "%s needs talent %s rank %d." % [item.get("name", ""), talent, need]
+		return ""
+	var level := int(item.get("license_level", 0))
+	var lic_id := String(item.get("license_id", ""))
+	var gms: bool = item.get("source", "") == "GMS" or item.get("license", "") == "GMS"
+	if gms and level == 0:
+		return ""
+	if lic_id == "":
+		return "%s isn't installable gear (integrated or special equipment)." % item.get("name", "")
+	# Frames are their own license (license_id = frame id) and have no "license" name field.
+	var lic_name := String(item.get("license", item.get("name", lic_id)))
+	var licenses: Dictionary = pilot.get("licenses", {})
+	var rank := int(licenses.get(lic_id, licenses.get(lic_name, 0)))
+	if rank < level:
+		return "Needs %s license rank %d." % [lic_name, level]
+	return ""
+
+
+static func _license(problems: Array, item: Dictionary, pilot: Dictionary) -> void:
+	var why := license_problem(item, pilot)
+	if why != "":
+		problems.append({"reason": why, "rule_ref": REF_LICENSE, "item": item.get("id", "")})
 
 
 ## "" if the weapon sizes fit the mount, else why not.

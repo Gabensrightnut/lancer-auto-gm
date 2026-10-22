@@ -78,3 +78,48 @@ func test_npc_template() -> void:
 	var w: Dictionary = n.loadout["weapons"][0]
 	expect_eq(w["attack_bonus"], 1)
 	expect_eq(Weapons.range_value(w, "Range"), 8)
+
+
+func test_gms_gear_needs_no_license() -> void:
+	var loadout := {"mounts": [{"weapons": ["mw_assault_rifle"]}], "systems": []}
+	expect(UnitFactory.check_loadout(_db(), "mf_standard_pattern_i_everest", loadout, {"ll": 0}).ok)
+
+
+func test_frame_needs_its_license_rank_two() -> void:
+	var r := UnitFactory.check_loadout(_db(), "mf_raleigh", {"mounts": []}, {"ll": 1, "licenses": {"mf_raleigh": 1}})
+	expect(not r.ok)
+	expect_eq(r.reason, "Needs Raleigh license rank 2.")
+	expect_eq(r.rule_ref, UnitFactory.REF_LICENSE)
+	var ok := UnitFactory.check_loadout(_db(), "mf_raleigh", {"mounts": []}, {"ll": 2, "licenses": {"mf_raleigh": 2}})
+	expect(ok.ok, ok.reason)
+
+
+func test_manufacturer_gear_needs_the_license_rank() -> void:
+	var loadout := {"mounts": [{}, {}, {"weapons": ["mw_kinetic_hammer"]}], "systems": []}
+	var r := UnitFactory.check_loadout(_db(), "mf_standard_pattern_i_everest", loadout, {"ll": 2, "licenses": {"Raleigh": 2}})
+	expect(not r.ok)
+	expect_eq(r.reason, "Needs Raleigh license rank 3.")
+	var hand_cannon := {"mounts": [{}, {"weapons": ["mw_hand_cannon"]}], "systems": []}
+	expect(UnitFactory.check_loadout(_db(), "mf_standard_pattern_i_everest", hand_cannon, {"ll": 1, "licenses": {"mf_raleigh": 1}}).ok, "license name or id both work")
+
+
+func test_license_ranks_come_from_license_level() -> void:
+	var r := UnitFactory.check_loadout(_db(), "mf_raleigh", {"mounts": []}, {"ll": 1, "licenses": {"mf_raleigh": 2}})
+	expect(not r.ok, "2 ranks at LL1")
+	expect_eq(r.rule_ref, UnitFactory.REF_LICENSE_RANKS)
+	expect(not UnitFactory.check_loadout(_db(), "mf_standard_pattern_i_everest", {}, {"ll": 13}).ok, "LL above 12")
+
+
+func test_talent_gear_needs_the_talent() -> void:
+	var loadout := {"mounts": [{"weapons": ["mw_fuel_rod_gun"]}], "systems": []}
+	expect(not UnitFactory.check_loadout(_db(), "mf_standard_pattern_i_everest", loadout, {"ll": 3}).ok)
+	expect(UnitFactory.check_loadout(_db(), "mf_standard_pattern_i_everest", loadout, {"ll": 3, "talents": {"t_nuclear_cavalier": 3}}).ok)
+
+
+func test_grit_comes_from_license_level() -> void:
+	expect_eq(UnitFactory.grit(0), 0)
+	expect_eq(UnitFactory.grit(1), 1)
+	expect_eq(UnitFactory.grit(12), 6)
+	var u := UnitFactory.build_mech(_db(), "p", "mf_standard_pattern_i_everest", {}, {"ll": 5})
+	expect_eq(u.grit, 3)
+	expect_eq(u.save_target, 10 + 3)
