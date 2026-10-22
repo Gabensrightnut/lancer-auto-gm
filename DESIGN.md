@@ -70,6 +70,18 @@ game waits for people.
   own pilot's turn while others watch (and can ping and chat); dialogue choices go to the
   speaking pilot's player or a vote.
 
+### Exploring vs. fighting (a Final Fantasy / BG3 mix)
+- **Outside combat there are no turns:** everyone moves in real time (pilots on foot, mechs
+  walking). Combat starts seamlessly where you are, on the same ground, with no loading into a
+  separate battle screen.
+- **Optional turn-based exploring:** off by default; worth turning on for careful heists and
+  stealth (a guard's patrol, a timed lockpick), the way BG3 offers it.
+- **Free, independent exploring in multiplayer:** players go wherever they want on their own until
+  a major story event pulls everyone to it.
+- **Fights start with whoever is there.** Teammates elsewhere can travel to the fight and join it;
+  they enter where they arrive, so arriving behind the enemy means starting behind the enemy.
+  Late arrivals join the turn order from the next round (Lancer's alternating activations).
+
 ## 1. Animations and visual feedback
 
 Every effect gets an animation, a combat-log line, and floating text (damage, MISS,
