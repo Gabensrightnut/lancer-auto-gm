@@ -17,5 +17,14 @@ director and opens `MenuSession.BATTLE_SCENE` (`scenes/main.tscn`).
 
 For the battle HUD: read `GameSettings.load_settings()` for `action_bar_scale`, `colorblind`,
 `animation_speed`, `popup_duration`; key bindings are InputMap actions named in
-`GameSettings.ACTIONS`. The builder's `preview_area` (node `MechPreview`) is the placeholder for
-the 3D mech preview.
+`GameSettings.ACTIONS`. Graphics: `GameSettings.graphics` is a WorldQuality preset, applied with
+`apply_graphics(viewport)` before a board is built.
+
+Builder: the pilot's portrait with "Edit look" (the visuals' `PilotCreator`, full screen;
+result in `pilot["portrait"]`), the visuals' `MechPreview` (turntable and paint customizer,
+`mech["paint"]`) in `preview_area`, and "What the game handles": `BuilderModel.automation()`
+lists each trait, core system, system, weapon and talent as automatic / partly / at the table
+with what to do at the table (the rules engine's `Automation.for_build` when it's in the game;
+until then the frame's traits and core system). Lobby "+ New pilot" makes a pilot (random
+starting look) and opens the builder with the look creator first. Screenshot stages for the
+builder: `stage:creator`, `stage:automation`.

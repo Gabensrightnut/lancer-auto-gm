@@ -431,6 +431,9 @@ func _on_mission_over(outcome: String, reason: String) -> void:
 		if d.get("story", false):
 			MenuSession.go(self, "hub")
 			return
+	elif GameFlow.story_client != null:
+		MenuSession.go(self, "hub")  # a friend in a story campaign: the host's debrief is at the hub
+		return
 	else:
 		GameFlow.debrief = {"outcome": outcome, "reason": reason, "title": GameFlow.title_for(outcome), "pilots": [], "client": true}
 	MenuSession.go(self, "debrief")

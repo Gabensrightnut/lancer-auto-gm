@@ -63,16 +63,26 @@ static func for_host(the_campaign: Campaign, content: ContentDB, mission_seed: i
 
 ## A host lobby whose seats and battlefield come from elsewhere (a story campaign's job):
 ## `seat_modes` seat -> mode, `pilots` seat -> pilot id, `builder` as mission_builder.
-static func for_mission(the_campaign: Campaign, content: ContentDB, seat_modes: Dictionary, pilots: Dictionary, builder: Callable) -> LobbyModel:
+static func for_mission(the_campaign: Campaign, content: ContentDB, seat_modes: Dictionary, pilots: Dictionary, builder: Callable, net_host: NetHost = null) -> LobbyModel:
 	var m := LobbyModel.new()
 	m.campaign = the_campaign
 	m.db = content
+	if net_host != null:
+		# Friends are already connected to this host (a story campaign's hub): keep them.
+		m.host = net_host
+		net_host.lobby_message.connect(m._on_lobby_message)
+		net_host.seats_changed.connect(m._on_seats_changed)
 	m.options["preset"] = str(the_campaign.gm_settings.get("preset", "Standard"))
 	m.modes = seat_modes.duplicate()
 	m.assignment = pilots.duplicate()
 	m.mission_builder = builder
 	m._rebuild()
 	return m
+
+
+## A friend joined a host who is at a story campaign's hub: its first story payload (the hub
+## screen takes over from the lobby with it).
+var story_payload: Dictionary = {}
 
 
 ## A joining player's lobby: mirrors the host through `net_client`.
@@ -339,6 +349,11 @@ func _on_lobby_message(seat: String, msg: Dictionary) -> void:
 
 
 func _on_remote_lobby(data: Dictionary) -> void:
+	if data.has("story"):
+		if story_payload.is_empty() and data["story"] is Dictionary and data["story"].has("view"):
+			story_payload = data
+			changed.emit()
+		return
 	remote = data
 	started = bool(data.get("started", false))
 	options = (data.get("options", {}) as Dictionary).duplicate()
