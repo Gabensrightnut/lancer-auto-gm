@@ -17,6 +17,8 @@ var cockpit_unit := ""
 var cockpit_target := ""
 var sun: DirectionalLight3D
 var world_env: WorldEnvironment
+## Keeps nameplates apart and out from under the HUD (set active_unit / hover_unit on it).
+var labels: LabelDeclutter
 var _units_root: Node3D
 
 
@@ -33,6 +35,8 @@ func _init() -> void:
 	add_child(_units_root)
 	overlays = TurnOverlays.new(self)
 	add_child(overlays)
+	labels = LabelDeclutter.new(self)
+	add_child(labels)
 	tactical = TacticalCamera.new()
 	tactical.name = "TacticalCamera"
 	add_child(tactical)

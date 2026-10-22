@@ -51,6 +51,7 @@ func _init() -> void:
 	_panel.add_theme_stylebox_override("panel", sb)
 	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(_panel)
+	_panel.add_to_group(LabelDeclutter.GROUP_KEEPOUT)
 	_tabs = HBoxContainer.new()
 	_tabs.add_theme_constant_override("separation", 2)
 	_panel.add_child(_tabs)
@@ -59,6 +60,7 @@ func _init() -> void:
 	_panel.add_child(_row)
 	resources = ResourceCluster.new()
 	add_child(resources)
+	resources.add_to_group(LabelDeclutter.GROUP_KEEPOUT)
 	_end_turn = Button.new()
 	_end_turn.text = "END TURN"
 	_end_turn.focus_mode = Control.FOCUS_NONE

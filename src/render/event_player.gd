@@ -84,6 +84,8 @@ func play_event(e: Dictionary) -> void:
 		"turn_started":
 			_log("[b]%s's turn.[/b]" % _name(e.get("unit", "")))
 			var mv := _view(e.get("unit", ""))
+			if mv and mv.battle:
+				mv.battle.labels.active_unit = String(e.get("unit", ""))
 			if on_banner.is_valid() and mv:
 				on_banner.call("%s's turn" % mv.unit.get("name", e["unit"]))
 			if on_turn_started.is_valid():

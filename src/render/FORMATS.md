@@ -140,6 +140,20 @@ button. Everything is submitted to `RulesEngine`; the events go to `EventPlayer`
 `skip_to_my_turn`, `on_banner`, `on_turn_started`, `popup`. Speeds: `EventPlayer.SPEEDS`
 (cinematic 0.7, normal 1.0, fast 1.8; debug 4.0 and instant 0 for tests and demos).
 
+## Floating labels (`BattleView.labels: LabelDeclutter`)
+
+Nameplates (name, HP/heat/structure, status tags) are a fixed size on screen (1080p pixels,
+scaled with the window). Each frame they are laid out in screen space:
+- `labels.active_unit` (set on `turn_started` and by `PlayerTurn.begin`) and `labels.hover_unit`
+  (the hovered target) are placed first; other units' plates keep off the active mech.
+- A plate that overlaps another plate or a planning label steps up (at most 70 px, then it
+  fades). Plates at the window edges slide back on screen.
+- Plates under HUD panels vanish: any visible Control in group `LabelDeclutter.GROUP_KEEPOUT`
+  (turn-order bar and banner, hint, action bar, hover card, prompts, combat log).
+- Plates next to the cursor dim, except the hovered unit (your own unit's plate dims less).
+- Overlay labels made with `screen_px` (move cost, terrain flags, cover, NO LOS) are also fixed
+  size and in group `GROUP_PRIORITY`: plates make room for them, and they step past each other.
+
 ## Cameras
 
 `BattleView.set_camera_mode("tactical")` or `set_camera_mode("cockpit", unit_id, target_id)`.

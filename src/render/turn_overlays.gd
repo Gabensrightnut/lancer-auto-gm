@@ -74,13 +74,20 @@ func _mesh_node(st: SurfaceTool, color: Color, on_top: bool = false) -> MeshInst
 	return mi
 
 
-func _label(text: String, pos: Vector3, color: Color, size: int = 40) -> Label3D:
+## A floating label. `size` is in world terms; `screen_px` > 0 makes it a fixed size on
+## screen instead (1080p pixels) and a label nameplates make room for (LabelDeclutter).
+func _label(text: String, pos: Vector3, color: Color, size: int = 40, screen_px: int = 0) -> Label3D:
 	var l := Label3D.new()
 	l.text = text
 	l.font_size = size
 	l.pixel_size = 0.0035
 	l.outline_size = 10
-	l.outline_modulate = Color(0, 0, 0, 0.85)
+	if screen_px > 0:
+		l.font_size = screen_px
+		l.outline_size = 8
+		l.add_to_group(LabelDeclutter.GROUP_PRIORITY)
+		l.add_to_group(LabelDeclutter.GROUP_SCREEN_SIZED)
+	l.outline_modulate = Color(0, 0, 0, 0.95 if screen_px > 0 else 0.85)
 	l.modulate = color
 	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	l.no_depth_test = true
@@ -167,13 +174,13 @@ func _draw_path(p: Dictionary) -> void:
 				_segment(prev_pt, e1, col)
 				_segment(e1, e2, col)
 				_segment(e2, pt, col)
-				_label("+%d CLIMB" % (lv - prev_lv), e2 + Vector3(0.25, 0.1, 0), col, 30)
+				_label("+%d CLIMB" % (lv - prev_lv), e2 + Vector3(0.25, 0.1, 0), col, 30, 17)
 			else:
 				_segment(prev_pt, e1, col)
 				_segment(e1, e2, COLORS["provoke"] if "fall" in flags else col)
 				_segment(e2, pt, col)
 				if "fall" in flags:
-					_label("FALL %d" % (prev_lv - lv), (e1 + e2) * 0.5 + Vector3(0.3, 0, 0), COLORS["provoke"], 30)
+					_label("FALL %d" % (prev_lv - lv), (e1 + e2) * 0.5 + Vector3(0.3, 0, 0), COLORS["provoke"], 30, 17)
 			_joint(e1, col, 0.05)
 			_joint(e2, col, 0.05)
 		else:
@@ -183,7 +190,7 @@ func _draw_path(p: Dictionary) -> void:
 			_label(str(total), pt + Vector3.UP * 0.18, col.lightened(0.3), 28)
 		for f: String in flags:
 			if FLAG_TEXT.has(f) and f != "climb" and f != "fall" and f != "boost":
-				_label(FLAG_TEXT[f], pt + Vector3(0, 0.4, 0), COLORS.get(f, col), 30)
+				_label(FLAG_TEXT[f], pt + Vector3(0, 0.4, 0), COLORS.get(f, col), 30, 17)
 		if i == path.size() - 1:
 			_arrowhead(prev_pt, pt, col)
 			var left := speed - total
@@ -194,7 +201,7 @@ func _draw_path(p: Dictionary) -> void:
 				text += "  BOOST"
 			else:
 				text += "  TOO FAR"
-			_label(text, pt + Vector3.UP * 0.55, col.lightened(0.2), 40)
+			_label(text, pt + Vector3.UP * 0.55, col.lerp(Color.WHITE, 0.5), 40, 21)
 		prev_pt = pt
 
 
@@ -248,7 +255,7 @@ func _draw_footprint(fp: Dictionary) -> void:
 		cells.append([fc.x, fc.y, lv])
 	_draw_cells(cells, lv, COLORS["footprint"] if ok else COLORS["bad"], 0.3, true, 0.035)
 	if not ok:
-		_label(String(fp.get("reason", "CAN'T STAND HERE")), _footprint_center(c, lv, float(fp.get("size", 1))) + Vector3.UP * 0.4, COLORS["bad"], 34)
+		_label(String(fp.get("reason", "CAN'T STAND HERE")), _footprint_center(c, lv, float(fp.get("size", 1))) + Vector3.UP * 0.4, COLORS["bad"], 34, 19)
 
 
 func _draw_cover(list: Array) -> void:
@@ -295,7 +302,7 @@ func _draw_cover_from(list: Array) -> void:
 		var kind := String(e.get("kind", "none"))
 		var text := "NO COVER" if kind == "none" else "%s COVER" % kind.to_upper()
 		var col: Color = COLORS.get(kind, Color(0.8, 0.8, 0.8))
-		_label("◈ " + text + " from here", mv.global_position + Vector3.UP * (mv.model.height + 0.8), col, 34)
+		_label("◈ " + text + " from here", mv.global_position + Vector3.UP * (mv.model.height + 0.8), col, 34, 19)
 
 
 func _draw_sky(sky: Dictionary) -> void:
@@ -322,7 +329,7 @@ func _draw_sky(sky: Dictionary) -> void:
 	_mesh_node(line, Color(col.r, col.g, col.b, 0.55))
 	if not cells.is_empty():
 		var center := sum / cells.size()
-		_label("SKY LAYER %d  (R / F to change)" % lv, center + Vector3(0, 0.3, 0), col, 44)
+		_label("SKY LAYER %d  (R / F to change)" % lv, center + Vector3(0, 0.3, 0), col, 44, 22)
 
 
 func _draw_los(los: Dictionary) -> void:
@@ -333,4 +340,4 @@ func _draw_los(los: Dictionary) -> void:
 			continue
 		mv.model.set_fx("dim", 0.7)
 		_dimmed_units.append(id)
-		_label("NO LOS", mv.global_position + Vector3.UP * (mv.model.height + 0.8), Color(0.75, 0.75, 0.8), 36)
+		_label("NO LOS", mv.global_position + Vector3.UP * (mv.model.height + 0.8), Color(0.75, 0.75, 0.8), 36, 19)

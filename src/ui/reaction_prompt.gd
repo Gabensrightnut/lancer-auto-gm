@@ -15,6 +15,7 @@ var _buttons: HBoxContainer
 
 
 func _init() -> void:
+	add_to_group(LabelDeclutter.GROUP_KEEPOUT)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.04, 0.05, 0.07, 0.96)
 	sb.border_color = Color(0.95, 0.45, 0.95, 0.9)

@@ -6,6 +6,7 @@ var _text: RichTextLabel
 
 
 func _init() -> void:
+	add_to_group(LabelDeclutter.GROUP_KEEPOUT)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.04, 0.05, 0.07, 0.72)
 	sb.set_corner_radius_all(4)
