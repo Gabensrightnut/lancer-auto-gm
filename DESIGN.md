@@ -389,6 +389,24 @@ differently without an AI. Each game has a **seed**: share it to replay the same
 - **Between missions:** for AI pilots you either make their builds and level-up choices
   yourself, or let the AI pick (by role: e.g. "keep this pilot a support build").
 
+### Dialogue scenes
+- **Pop-up conversations in and out of battle,** like Lancer Tactics: character portrait
+  cards on each side and a speech bubble from whoever's talking, over the live 3D scene.
+  Click or press a key to advance; a log keeps every line.
+- **Portraits are made in house** (no pixel art): a portrait builder for pilots and NPCs,
+  matching each character's look, plus expressions (neutral, angry, worried...).
+- **Choices: 4 to 6 options** when a decision matters, each leading the story a different way
+  (e.g. negotiate, threaten, stall, attack, ask for terms, stay silent).
+- **Options follow the story:** only choices that make sense given what has happened are
+  offered: earlier decisions, who's alive, faction standing, mission state, relationships.
+  A skill trigger a pilot has can unlock a matching option, still within the 4-6 cap.
+- **Choices have consequences** recorded in the campaign (story flags): they change later
+  dialogue, missions offered, enemies, allies and reserves.
+- **Multiplayer:** the player whose pilot is speaking chooses, or the squad votes (host
+  setting). AI squadmates pick in character when the conversation is theirs.
+- Dialogue is written as data (scenes, lines, choices, conditions, effects) so the procedural
+  GM (section 9) can assemble scenes from it and new story content can be added without code.
+
 ### Progression
 - License level up after missions, unlocking manufacturer gear by license rank, talent ranks,
   core bonuses, pilot rank; the builder enforces it.
