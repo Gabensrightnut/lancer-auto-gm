@@ -13,7 +13,7 @@ const RULES_TAGS := ["difficult", "dangerous", "impassable", "destructible", "so
 	"dangerous_energy", "dangerous_explosive", "dangerous_burn"]
 const LOOK_TAGS := ["rock", "woods", "building", "wall", "water", "ice", "lava", "toxic", "crystal",
 	"rubble", "chasm", "bulkhead", "container", "machinery", "platform", "deck",
-	"road", "road_x", "road_z", "crossing", "farm", "dry", "house", "keep", "void", "lot",
+	"road", "road_x", "road_z", "crossing", "farm", "dry", "house", "keep", "void", "lot", "plaza", "highway",
 	"hull", "breach", "torpedo", "airlock", "console", "bunk", "table", "galley"]
 const MAX_GROUND := 10
 const REF := "GM: battlefield edit (human GM seat)"
@@ -30,6 +30,8 @@ static func known_tag(t: String) -> bool:
 		return t.substr(t.find("_") + 1).is_valid_int()
 	if t.begins_with("material_"):
 		return t.substr(9) in MATERIALS
+	if t.begins_with("lane"):
+		return t.trim_prefix("lane").split("_").size() == 2  # road markings (look only)
 	return t in RULES_TAGS or t in LOOK_TAGS
 
 

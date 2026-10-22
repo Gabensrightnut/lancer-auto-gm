@@ -325,7 +325,13 @@ void fragment() {
 			vec2 loc = UV;
 			bool along_z = vcol.g > 0.3 && vcol.g < 0.7;
 			bool lot = vcol.g > 0.93;  // a yard, sidewalk or square: paving without markings
+			bool plaza = vcol.g > 0.985;
 			bool crossing = vcol.g > 0.7 && !lot;
+			// Lane code (renderer): along x 0.05 + code/255, along z 0.4 + code/255; code = n*6 + i.
+			float lbase = vcol.g < 0.3 ? 0.05 : 0.4;
+			int code = int(round((vcol.g - lbase) * 255.0));
+			int lane_n = (crossing || lot) ? 0 : code / 6;
+			int lane_i = (crossing || lot) ? 0 : code - lane_n * 6;
 			float across = along_z ? loc.x : loc.y;   // distance from the lane's middle
 			float along = along_z ? wpos.z : wpos.x;
 			if (road_style == 0) {
@@ -354,11 +360,56 @@ void fragment() {
 				float wet_r = smoothstep(0.6, 0.66, fbm3(p * 0.6 + 21.0)) * wetness;
 				rough = mix(0.8, 0.05, wet_r);
 				col *= 1.0 - 0.35 * wet_r;
-				if (lot) {
+				if (plaza) {
+					// A square: warm stone pavers in a basket weave, a border every few meters.
+					vec2 q = wpos.xz * 2.2;
+					vec2 cellq = floor(q);
+					bool turn = mod(cellq.x + cellq.y, 2.0) > 0.5;
+					vec2 f = fract(turn ? q.yx * vec2(2.0, 1.0) : q * vec2(2.0, 1.0));
+					float seam = smoothstep(0.42, 0.48, max(abs(f.x - 0.5), abs(f.y - 0.5)));
+					col = mix(vec3(0.42, 0.38, 0.33), vec3(0.52, 0.47, 0.4), hash(cellq)) * (1.0 - 0.3 * seam) * (1.0 - 0.3 * wet_r);
+				} else if (lot) {
 					// Sidewalk and lot: pale concrete slabs with seams.
 					vec2 g = abs(fract(wpos.xz * 1.6) - 0.5);
 					float seam = smoothstep(0.46, 0.49, max(g.x, g.y));
 					col = mix(vec3(0.3, 0.3, 0.3), vec3(0.4, 0.39, 0.37), n3) * (1.0 - 0.35 * seam) * (1.0 - 0.3 * wet_r);
+				} else if (lane_n > 0) {
+					// Lanes by the road's width: an alley has none; a street a centre line on the
+					// edge it shares with the next lane; wider roads lane lines; four or more a
+					// median (double yellow); solid edge lines and a curb at the outer lanes.
+					float dash = step(0.5, fract(along * 0.9));
+					vec3 white = vec3(0.86, 0.85, 0.8);
+					vec3 yellow = vec3(0.9, 0.72, 0.2);
+					float half_n = float(lane_n) * 0.5;
+					if (lane_n >= 2) {
+						if (lane_i < lane_n - 1) {
+							bool mid = float(lane_i + 1) == floor(half_n) || (lane_n == 3 && lane_i == 0);
+							float ln = smoothstep(0.035, 0.012, abs(across - 0.47));
+							if (lane_n >= 4 && float(lane_i + 1) == floor(half_n)) {
+								ln = smoothstep(0.02, 0.008, abs(across - 0.47)) + smoothstep(0.02, 0.008, abs(across - 0.42));
+								col = mix(col, yellow, clamp(ln, 0.0, 1.0) * 0.9);
+							} else {
+								col = mix(col, lane_n == 2 ? yellow : white, ln * dash * 0.9);
+							}
+						}
+						if (lane_i > 0) {
+							float ln = smoothstep(0.035, 0.012, abs(across + 0.47));
+							if (lane_n >= 4 && lane_i == int(floor(half_n))) {
+								ln = smoothstep(0.02, 0.008, abs(across + 0.47)) + smoothstep(0.02, 0.008, abs(across + 0.42));
+								col = mix(col, yellow, clamp(ln, 0.0, 1.0) * 0.9);
+							} else {
+								col = mix(col, lane_n == 2 ? yellow : white, ln * dash * 0.9);
+							}
+						}
+					}
+					if (lane_n >= 2) {
+						float edge_lo = lane_i == 0 ? smoothstep(0.03, 0.012, abs(across + 0.4)) : 0.0;
+						float edge_hi = lane_i == lane_n - 1 ? smoothstep(0.03, 0.012, abs(across - 0.4)) : 0.0;
+						col = mix(col, white, (edge_lo + edge_hi) * 0.7);
+					}
+					// Curb: a pale strip right at the outer edge of the outer lanes.
+					float curb = (lane_i == 0 ? smoothstep(0.455, 0.49, -across) : 0.0) + (lane_i == lane_n - 1 ? smoothstep(0.455, 0.49, across) : 0.0);
+					col = mix(col, vec3(0.55, 0.54, 0.52), clamp(curb, 0.0, 1.0));
 				} else if (!crossing) {
 					// Dashed lane line along the middle of the lane, solid edge lines.
 					float dash = step(0.5, fract(along * 0.9));
