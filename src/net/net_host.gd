@@ -18,6 +18,8 @@ signal local_update(seat: String, view: Dictionary, events: Array)
 signal action_resolved(seat: String, action: Dictionary, result: RuleResult, events: Array)
 ## Every seat has been sent its view for the latest change.
 signal updates_sent(events: Array)
+## A seated client sent a lobby message (ready-up). See LobbyModel.
+signal lobby_message(seat: String, msg: Dictionary)
 ## Who the game is waiting on changed. See waiting_on().
 signal waiting_changed(info: Dictionary)
 
@@ -52,6 +54,21 @@ func _init(game_state: GameState, rules_engine: RulesEngine, filter: ViewFilter 
 	state = game_state
 	engine = rules_engine
 	view_filter = filter if filter != null else ViewFilter.new()
+
+
+func remove_local_seat(seat: String) -> void:
+	var i := local_seats.find(seat)
+	if i >= 0:
+		local_seats.remove_at(i)
+		_seats_changed()
+
+
+## Sends lobby info to every connected player.
+func send_lobby(data: Dictionary) -> void:
+	if transport == null:
+		return
+	for seat: String in _seat_peer:
+		transport.send(_seat_peer[seat], {"t": NetProtocol.LOBBY, "lobby": data})
 
 
 func add_local_seat(seat: String) -> void:
@@ -346,6 +363,9 @@ func _on_message(peer: int, msg: Dictionary) -> void:
 	match msg.get("t"):
 		NetProtocol.HELLO:
 			_on_hello(peer, msg)
+		NetProtocol.LOBBY:
+			if _peer_seat.has(peer):
+				lobby_message.emit(_peer_seat[peer], msg)
 		NetProtocol.ACTION:
 			var seat: String = _peer_seat.get(peer, "")
 			var action: Variant = msg.get("action")

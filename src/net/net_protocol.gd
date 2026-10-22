@@ -7,6 +7,7 @@ extends RefCounted
 ##   hello    {version, name, token, seat, packs}   join, or rejoin with the token from
 ##                                           `welcome`; packs = content packs installed
 ##   action   {id, action}                   an action for the rules engine
+##   lobby    {ready: bool}                  before the battle: ready-up in the lobby
 ## host -> client
 ##   welcome  {seat, token, room, version}   you have a seat; keep the token to reconnect
 ##   refused  {code, reason}                 not let in (see REFUSE_*); connection closes
@@ -14,6 +15,7 @@ extends RefCounted
 ##                                           who the game is waiting on (NetHost.waiting_on)
 ##   result   {id, result}                   answer to your `action` (RuleResult.to_dict())
 ##   seats    {seats, waiting}               who is sitting where (lobby / reconnect info)
+##   lobby    {lobby}                        lobby settings and seat rows (LobbyModel)
 
 ## Bump when the message format changes in a way old builds can't read.
 const PROTOCOL := 1
@@ -25,6 +27,7 @@ const REFUSED := "refused"
 const UPDATE := "update"
 const RESULT := "result"
 const SEATS := "seats"
+const LOBBY := "lobby"
 
 const REFUSE_VERSION := "version_mismatch"
 const REFUSE_FULL := "no_free_seat"
