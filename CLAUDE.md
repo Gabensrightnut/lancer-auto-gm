@@ -36,6 +36,9 @@ Run the tests before every commit. For visual work, take a screenshot and look a
   screenshots, devlogs only). If Lancer Tactics handles a rule differently from the book, follow
   the book and add a row to DESIGN.md's "Rule differences" table for the user to decide.
 - **Never commit rulebook text or PDFs** (repo is public). Put them in `/local/` (gitignored).
+- Official icons: `assets/icons/lancer/` (from COMP/CON, GPL-3.0). Use them for every damage
+  type, range/area, action type, status and manufacturer. COMP/CON name lists:
+  `data/compcon/generators/`. Never edit either; COMP/CON's fonts are NOT free, don't use them.
 - `data/lancer-data/` is Massif's data: never edit it. Our own data goes in `data/game/`.
 - Don't read or use anything from other projects on this machine (e.g. MechFortress).
 
