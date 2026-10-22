@@ -1,0 +1,59 @@
+{
+  "_note": "Our own data. The portrait builder's parts, colors and expressions (DESIGN.md 'Customization'), as data hooks: the dialogue and portraits read these ids now, the visuals session draws the real parts later. A portrait is {version: 2, parts: {part: {option, primary, secondary}}}; the placeholder drawer (src/story/ui/portrait.gd) uses only some of it (see 'placeholder'). 'expressions' = every expression a scene may ask for; 'draw_as' = the placeholder face used until the real one exists. 'auto' = how dialogue picks an expression when a scene doesn't say.",
+  "version": 2,
+  "parts": [
+    {"id": "body", "name": "Body", "options": ["slim", "average", "broad", "heavy"], "colors": ["primary"], "palette": "skin"},
+    {"id": "face", "name": "Face", "options": ["oval", "round", "square", "long", "heart"], "colors": ["primary"], "palette": "skin"},
+    {"id": "face_detail", "name": "Face detail", "options": ["none", "freckles", "scar_cheek", "scar_brow", "wrinkles", "tattoo_line", "cybernetic_plate"], "colors": ["primary"], "palette": "detail"},
+    {"id": "body_detail", "name": "Body detail", "options": ["none", "neck_tattoo", "prosthetic_arm", "burn_scar", "port_implants"], "colors": ["primary"], "palette": "detail"},
+    {"id": "eyes", "name": "Eyes", "options": ["round", "narrow", "wide", "hooded", "cyber_left", "cyber_both"], "colors": ["primary"], "palette": "eyes"},
+    {"id": "nose", "name": "Nose", "options": ["small", "straight", "broad", "hooked", "flat"], "colors": [], "palette": ""},
+    {"id": "mouth", "name": "Mouth", "options": ["thin", "full", "wide", "small"], "colors": ["primary"], "palette": "lips"},
+    {"id": "ears", "name": "Ears", "options": ["round", "small", "large", "pointed_augment"], "colors": [], "palette": ""},
+    {"id": "hair", "name": "Hair", "options": ["short", "buzz", "long", "bun", "mohawk", "bald", "braids", "swept"], "colors": ["primary", "secondary"], "palette": "hair"},
+    {"id": "beard", "name": "Beard", "options": ["none", "stubble", "short", "full", "goatee"], "colors": ["primary"], "palette": "hair"},
+    {"id": "mustache", "name": "Mustache", "options": ["none", "thin", "full", "handlebar"], "colors": ["primary"], "palette": "hair"},
+    {"id": "eyebrows", "name": "Eyebrows", "options": ["straight", "arched", "thick", "thin", "scarred"], "colors": ["primary"], "palette": "hair"},
+    {"id": "inner_outfit", "name": "Inner outfit", "options": ["flight_suit", "shirt", "undersuit", "turtleneck"], "colors": ["primary", "secondary"], "palette": "cloth"},
+    {"id": "outer_outfit", "name": "Outer outfit", "options": ["none", "jacket", "hardsuit_collar", "coat", "poncho", "uniform"], "colors": ["primary", "secondary"], "palette": "cloth"},
+    {"id": "glasses", "name": "Glasses", "options": ["none", "glasses", "visor", "goggles", "eyepatch"], "colors": ["primary"], "palette": "accent"},
+    {"id": "scarves", "name": "Scarves", "options": ["none", "scarf", "shemagh", "collar_wrap"], "colors": ["primary"], "palette": "accent"},
+    {"id": "hats", "name": "Hats", "options": ["none", "cap", "beanie", "helmet", "headset", "hood"], "colors": ["primary"], "palette": "accent"},
+    {"id": "jewelry", "name": "Jewelry", "options": ["none", "earring", "nose_ring", "dog_tags", "necklace"], "colors": ["primary"], "palette": "metal"},
+    {"id": "other", "name": "Other", "options": ["none", "face_paint", "bandage", "cigarette", "comm_bead"], "colors": ["primary"], "palette": "accent"}
+  ],
+  "palettes": {
+    "skin": ["#f1d3b8", "#e0b493", "#c68d66", "#a16a45", "#7a4b2e", "#5a3420", "#3e2416", "#d9b9a0", "#b98a6e", "#8d5a3c"],
+    "hair": ["#1b1410", "#3a2518", "#6b4423", "#a5672f", "#d8b46a", "#e7e0cf", "#8a8a8a", "#b23a2c", "#2f3b6b", "#4f7a3a", "#c7c7c7", "#5b2a4a"],
+    "eyes": ["#3b2a1a", "#4a6b8a", "#4d7a4d", "#7a5a2a", "#2a2a2a", "#8a8a9a", "#3ab8d8"],
+    "lips": ["#a0605a", "#8a4a48", "#6a3a38", "#b07070", "#5a3030"],
+    "cloth": ["#4a5a6a", "#6a4a3a", "#3a4a3a", "#5a5a5a", "#7a6a4a", "#3a3a5a", "#6a2a2a", "#2a4a5a", "#8a7a5a", "#4a3a5a", "#3b4c5e"],
+    "accent": ["#d8a23a", "#c83a2a", "#3a8ac8", "#5ac88a", "#e8e8e8", "#8a3ac8", "#e86a2a", "#2ac8c8"],
+    "detail": ["#3a3a3a", "#6a4a3a", "#2a4a8a", "#8a2a2a", "#9a9aa0"],
+    "metal": ["#c8b060", "#c0c0c8", "#8a6a3a", "#3a3a40"]
+  },
+  "placeholder": {
+    "_note": "What the placeholder drawer reads, and from where in a v2 portrait.",
+    "skin": ["face", "primary"], "hair_style": ["hair", "option"], "hair": ["hair", "primary"], "eyes": ["eyes", "primary"],
+    "outfit": ["outer_outfit", "primary"], "accent": ["outer_outfit", "secondary"]
+  },
+  "expressions": [
+    {"id": "neutral", "name": "Neutral", "draw_as": "neutral"},
+    {"id": "smiling", "name": "Smiling", "draw_as": "smiling"},
+    {"id": "angry", "name": "Angry", "draw_as": "angry"},
+    {"id": "worried", "name": "Worried", "draw_as": "worried"},
+    {"id": "shouting", "name": "Shouting", "draw_as": "shouting"},
+    {"id": "sad", "name": "Sad", "draw_as": "worried"},
+    {"id": "surprised", "name": "Surprised", "draw_as": "shouting"},
+    {"id": "determined", "name": "Determined", "draw_as": "angry"},
+    {"id": "smug", "name": "Smug", "draw_as": "smiling"},
+    {"id": "hurt", "name": "Hurt", "draw_as": "worried"}
+  ],
+  "auto": {
+    "standing": {"hostile": "angry", "friendly": "smiling"},
+    "personality": {"warm": "smiling", "gruff": "neutral", "nervous": "worried", "sly": "smug", "formal": "neutral", "weary": "sad", "cheerful": "smiling", "zealous": "determined"},
+    "pilot_tags": {"aggressive": "angry", "bold": "determined", "kind": "smiling", "diplomatic": "smiling", "cautious": "worried", "greedy": "smug", "deceptive": "smug", "curious": "surprised", "honest": "neutral", "practical": "neutral", "leave": "neutral"},
+    "check": {"success": "smiling", "success_cost": "worried", "fail": "angry"},
+    "harmed": "hurt"
+  }
+}

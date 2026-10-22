@@ -7,7 +7,7 @@ extends RefCounted
 ## The host runs it; clients get the events (and StoryView.view_for for their seat).
 ##
 ## Actions (params):
-##   set_seat {seat, pilot, ai, persona}             enter_hub {kind, seed}
+##   set_seat {seat, pilot, ai, persona}             enter_hub {kind, seed, culture}
 ##   talk {npc}                                      dialogue_next {}
 ##   dialogue_choose {choice}                        skill_check {goal, label, skills, tags, difficult, risky, heroic, consequence}
 ##   rest {}                                         set_pilot_gear {pilot, gear: [ids]}
@@ -35,6 +35,7 @@ func submit(story: StoryState, campaign: Campaign, action: Dictionary) -> Dictio
 		return {"ok": false, "reason": why["reason"], "rule_ref": why.get("rule_ref", ""), "events": []}
 	var events := _resolve(story, campaign, action)
 	events.append_array(_run_ai(story, campaign))
+	events.append_array(Tutorial.observe_story(story, campaign, events))
 	for e: Dictionary in events:
 		if str(e.get("type", "")) == "combat_requested" and story.phase != "mission":
 			events.append_array(_combat_from_scene(story, campaign, e["spec"]))
@@ -191,10 +192,11 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 		"enter_hub":
 			var events: Array = []
 			if story.hub.is_empty() or int(story.hub.get("seed", -1)) != int(p.get("seed", story.hub.get("seed", 0))):
-				NpcGen.make_hub(story, campaign, int(p.get("seed", story.mission_number)), str(p.get("kind", "town")))
+				NpcGen.make_hub(story, campaign, int(p.get("seed", story.mission_number)), str(p.get("kind", "town")), str(p.get("culture", "")))
 				events.append({"type": "hub_entered", "hub": story.hub.duplicate(true)})
-			for h: Dictionary in MissionHooks.fill_board(story, campaign):
-				events.append({"type": "hook_added", "hook": h})
+			if not bool(p.get("no_jobs", false)):
+				for h: Dictionary in MissionHooks.fill_board(story, campaign):
+					events.append({"type": "hook_added", "hook": h})
 			return events
 		"talk":
 			var npc_id := str(p["npc"])
@@ -243,8 +245,9 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 			story.hooks = story.hooks.filter(func(h: Dictionary) -> bool: return h["id"] != story.current_hook["id"])
 			story.phase = "reserves"
 			var events: Array = [{"type": "hook_chosen", "hook": story.current_hook.duplicate(true), "rule_ref": "Core p.40: briefing"}]
-			if not Dialogue.is_open(story) and not Dialogue.scene("briefing").is_empty():
-				events.append_array(Dialogue.start(story, campaign, "briefing", {"speaker": _first_alive(story, campaign), "npc": str(story.current_hook.get("patron_id", "")), "hook": story.current_hook}))
+			var brief := str(story.current_hook.get("briefing_scene", "briefing"))
+			if not Dialogue.is_open(story) and not Dialogue.scene(brief).is_empty():
+				events.append_array(Dialogue.start(story, campaign, brief, {"speaker": _first_alive(story, campaign), "npc": str(story.current_hook.get("patron_id", "")), "hook": story.current_hook}))
 			return events
 		"confirm_reserves":
 			story.phase = "mission"

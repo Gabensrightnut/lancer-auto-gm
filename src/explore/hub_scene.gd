@@ -42,6 +42,7 @@ var downtime_panel: DowntimePanel
 var hud: HubHud
 var level_panel: LevelUpPanel
 var gear_panel: PilotGearPanel
+var tutorial_panel: TutorialPanel
 
 
 func setup(e: StoryEngine, s: StoryState, c: Campaign, content: ContentDB, seat: String = "p1") -> void:
@@ -533,6 +534,9 @@ func _build_ui() -> void:
 	level_panel.story_events.connect(_handle)
 	popup = StoryCheckPopup.new()
 	ui.add_child(popup)
+	tutorial_panel = TutorialPanel.new()
+	ui.add_child(tutorial_panel)
+	tutorial_panel.bind(campaign)
 
 
 func _center(c: Control) -> void:
@@ -544,6 +548,7 @@ func _center(c: Control) -> void:
 ## Everything the story engine reports: pop-ups, toasts, panels to open, missions to start.
 func _handle(events: Array) -> void:
 	popup.dock = "bottom" if downtime_panel.visible or hud.board_open() else "top"
+	tutorial_panel.show_events(events)
 	for e: Dictionary in events:
 		var who: String = str(campaign.pilots.get(str(e.get("pilot", "")), {}).get("callsign", ""))
 		match str(e.get("type", "")):
@@ -604,8 +609,17 @@ func _handle(events: Array) -> void:
 # --- Screenshots -------------------------------------------------------------------------
 
 ## godot --path . -s res://tools/screenshot.gd -- res://scenes/explore/hub.tscn "out_%s.png" 30
-func screenshot_setup(_args: Array) -> Array:
-	var d := HubDemo.make()
+func screenshot_setup(args: Array) -> Array:
+	if args.has("tutorial"):
+		var t := HubDemo.make_tutorial()
+		setup(t["engine"], t["story"], t["campaign"], t["db"], "p1")
+		_handle(t["events"])
+		return ["tutorial_briefing", "tutorial_hub"]
+	var culture := ""
+	for a: Variant in args:
+		if str(a).begins_with("culture="):
+			culture = str(a).substr(8)
+	var d := HubDemo.make(12, culture)
 	setup(d["engine"], d["story"], d["campaign"], d["db"], "p1")
 	return ["walk", "talk", "choices", "check", "downtime", "supplies", "gear", "board", "briefing", "levelup"]
 
@@ -613,6 +627,16 @@ func screenshot_setup(_args: Array) -> Array:
 func screenshot_stage(tag: String) -> void:
 	var me: PilotFigure = avatars.get(local_seat)
 	match tag:
+		"tutorial_briefing":
+			dialogue.advance()
+		"tutorial_hub":
+			while Dialogue.is_open(story):
+				var o := Dialogue.offered(story)
+				var a := {"type": "dialogue_next", "seat": "gm", "params": {}} if o.is_empty() else {"type": "dialogue_choose", "seat": "gm", "params": {"choice": o[0]["id"]}}
+				_handle(engine.submit(story, campaign, a)["events"])
+			tutorial_panel._next()
+			_handle(engine.submit(story, campaign, {"type": "confirm_reserves", "seat": "gm", "params": {}})["events"])
+			_handle(Tutorial.observe_battle(story, campaign, [{"type": "combat_started"}, {"type": "turn_started", "unit": "p1"}], ["p1"]))
 		"walk":
 			me.position = Vector3(2, 0, 3)
 			_yaw = 0.9

@@ -1,5 +1,5 @@
 {
-  "_note": "Our own writing. Line pools for dialogue scenes: '@pool' in a scene picks one (never the same twice in a row). 'pool_<personality>' lines are added for NPCs with that personality; 'pool_friendly' lines are added at Friendly standing or better; 'pool_hostile' lines replace the pool at Wary or worse. Placeholders: see src/story/story_text.gd.",
+  "_note": "Our own writing. Line pools for dialogue scenes: '@pool' in a scene picks one (never the same twice in a row). 'pool_<personality>' lines are added for NPCs with that personality; 'pool_friendly' lines are added at Friendly standing or better; 'pool_hostile' lines replace the pool at Wary or worse. Placeholders: see src/story/story_text.gd. '<pool>_<culture kit>' lines are added at hubs of that kit.",
   "pools": {
     "describe_npc": [
       "{npc}, {npc_title}, {npc_quirk}.",
@@ -368,6 +368,251 @@
     "debrief_twist": [
       "Looking back, nothing was what the briefing said. {twist_reveal}",
       "The part nobody planned for: {twist_reveal}"
+    ],
+    "greet_company_rep_old_west": [
+      "Howdy, pilots. Company office is open, but the coffee's from Tuesday.",
+      "You'll be the new lancers. Wipe your boots."
+    ],
+    "greet_quartermaster_old_west": [
+      "Printer's out back in the old freight shed. Mind the tumbleweeds.",
+      "Ammo, armor, rations. Sign the ledger, partner."
+    ],
+    "greet_bartender_old_west": [
+      "Sit down, dust off. First one's on the house, second one's on your tab.",
+      "Pilots in my saloon again. Keep the mechs off the hitching rail."
+    ],
+    "greet_fixer_old_west": [
+      "Lookin' for something the general store don't carry?",
+      "Everything out here's for trade. Even me, for the right favor."
+    ],
+    "greet_faction_agent_old_west": [
+      "The railroad's got work, and the railroad doesn't take no for an answer.",
+      "Marshal's office could use some iron on its side."
+    ],
+    "greet_local_old_west": [
+      "Howdy. You're the ones with the big walkers.",
+      "Mind your step. Snakes this time of year, and worse."
+    ],
+    "greet_mechanic_old_west": [
+      "Dust gets in everything. Your actuators too.",
+      "Bring her in, I'll get the grit out of her joints."
+    ],
+    "rumor_old_west": [
+      "Somebody's been jumping claims out by {place}. Leaves no tracks.",
+      "The rail company bought the water rights. Nobody voted on it.",
+      "Ghost lights on the mesa again. The old-timers won't ride out after dark.",
+      "There's a bounty posted on the general store door. No name, just a mech's paint job."
+    ],
+    "farewell_old_west": [
+      "Ride safe.",
+      "Watch the horizon, pilot."
+    ],
+    "greet_company_rep_medieval_tech": [
+      "Well met, lancers. The house recognizes your license, if not your manners.",
+      "Approach. The steward has told me of you."
+    ],
+    "greet_quartermaster_medieval_tech": [
+      "The armoury is open to licensed pilots. Touch nothing with a crest on it.",
+      "Your kit, as the steward ordered. And a ration of bread, by custom."
+    ],
+    "greet_bartender_medieval_tech": [
+      "Welcome to the inn, travelers. Mind the hounds.",
+      "Ale or wine? We've no fancier drink, and no fancier guests usually."
+    ],
+    "greet_fixer_medieval_tech": [
+      "Not here. The Baron's men drink at that table. Follow me.",
+      "You'll find nothing for sale on the Market Cross that I can't find for you cheaper."
+    ],
+    "greet_faction_agent_medieval_tech": [
+      "My lord has need of lancers. Kneel, if it pleases you. It would please him.",
+      "The house remembers those who serve it. And those who do not."
+    ],
+    "greet_local_medieval_tech": [
+      "Begging your pardon. Are you knights?",
+      "You came through the gate in those machines? The whole town's talking."
+    ],
+    "greet_mechanic_medieval_tech": [
+      "Steel and servos, same as any forge. Bring it here.",
+      "The castle smiths can't fix what you've got. I can."
+    ],
+    "rumor_medieval_tech": [
+      "The old baron's heir hasn't been seen at court in a month.",
+      "They say the river bridge was built by the first settlers, and something's buried under it.",
+      "There'll be a tourney at midsummer. Lancers too, this year.",
+      "The serfs on the east fields have stopped paying the grain tax."
+    ],
+    "farewell_medieval_tech": [
+      "Go with honor.",
+      "May your banner fly."
+    ],
+    "greet_company_rep_cyberpunk": [
+      "You're on the visitor roster. Badge stays visible at all times.",
+      "Lancers. Good. My quarterly targets thank you."
+    ],
+    "greet_quartermaster_cyberpunk": [
+      "Kit's on the rack, feed's on the screen, rain's on everything.",
+      "Printer queue's long. I can bump you, if your standing's good."
+    ],
+    "greet_bartender_cyberpunk": [
+      "Sit. The noise keeps the drones from listening.",
+      "What are you drinking? And who sent you?"
+    ],
+    "greet_fixer_cyberpunk": [
+      "Off the grid or on it? Pick fast, I've got three other calls.",
+      "I can get you anything. Nothing comes clean."
+    ],
+    "greet_faction_agent_cyberpunk": [
+      "My employer would prefer this meeting never happened.",
+      "You've got a clean record. Let's see how long it stays clean."
+    ],
+    "greet_local_cyberpunk": [
+      "Don't look up at the ads. They look back.",
+      "You lost? Nobody comes this low on purpose."
+    ],
+    "greet_mechanic_cyberpunk": [
+      "Pull it into the chop shop. No questions, no receipts.",
+      "Rain gets in the seals. Let me look."
+    ],
+    "rumor_cyberpunk": [
+      "Somebody wiped a whole floor of the Archive Tower last night. No alarms.",
+      "The undercity lost power again. Third time this week. Corporate says it's maintenance.",
+      "There's a street doc on Level Nine who can fix anything, for a favor.",
+      "The ads went quiet for one minute at midnight. Everyone saw the same face."
+    ],
+    "farewell_cyberpunk": [
+      "Stay off the cameras.",
+      "Keep your head down, pilot."
+    ],
+    "greet_company_rep_retrofuturistic": [
+      "Welcome, welcome! The future is here, and it's licensed!",
+      "Pilots! Just like the posters. Come in, come in."
+    ],
+    "greet_quartermaster_retrofuturistic": [
+      "Ration packs, chrome-plated. Don't ask me why.",
+      "Everything you need for tomorrow, today!"
+    ],
+    "greet_bartender_retrofuturistic": [
+      "Malt, float or something stronger? The jukebox only plays one song.",
+      "Pull up a stool, the robot will take your order. Eventually."
+    ],
+    "greet_fixer_retrofuturistic": [
+      "Psst. Prototype parts, straight off the line.",
+      "The world's fair left a lot behind. I collect it."
+    ],
+    "greet_faction_agent_retrofuturistic": [
+      "The Bureau of Tomorrow has a proposal for you.",
+      "Progress needs protecting, pilots."
+    ],
+    "greet_local_retrofuturistic": [
+      "Are you from the future too? Everyone here says they are.",
+      "My granddad built that monorail. Nobody remembers how it works."
+    ],
+    "greet_mechanic_retrofuturistic": [
+      "Tubes, coils and tail fins. Your rig'll look swell.",
+      "Atomic age tech, new age problems. What's broken?"
+    ],
+    "rumor_retrofuturistic": [
+      "The weather-control dome hasn't worked in years. Someone's been fixing it at night.",
+      "The monorail runs one extra car after midnight. Nobody gets on.",
+      "The old rocket at the fairground is fueled. Someone checked.",
+      "They're tearing down the Civic Dome. Half the town's protesting."
+    ],
+    "farewell_retrofuturistic": [
+      "Keep it atomic!",
+      "See you tomorrow, today."
+    ],
+    "greet_company_rep_east_asian": [
+      "Welcome. Please, sit. Business is better over tea.",
+      "Your arrival was expected. The prefecture extends its courtesy."
+    ],
+    "greet_quartermaster_east_asian": [
+      "Your kit is ready. It has been blessed, by custom. It doesn't hurt.",
+      "Rations, rope, rain capes. The terraces are steep."
+    ],
+    "greet_bartender_east_asian": [
+      "Noodles first. Then talk.",
+      "Lanterns are lit, kettle is on. Sit wherever there's a cushion."
+    ],
+    "greet_fixer_east_asian": [
+      "Not in the market. In the alley behind the lantern seller.",
+      "What you want can be found. What you owe will be remembered."
+    ],
+    "greet_faction_agent_east_asian": [
+      "The clan elders asked for you by name. That is an honor, and a warning.",
+      "My prefect values discretion above all."
+    ],
+    "greet_local_east_asian": [
+      "Mind the steps, they're older than the town.",
+      "Are you here for the festival? Or for the trouble?"
+    ],
+    "greet_mechanic_east_asian": [
+      "The gantry temple has fixed mechs for two hundred years.",
+      "Bring it under the gate. We'll see what it needs."
+    ],
+    "rumor_east_asian": [
+      "The shrine bell rang on its own three nights ago.",
+      "The upper terraces have been bought by someone nobody's met.",
+      "The ferry pilots won't cross the lake after dark anymore.",
+      "The festival is in a week. Someone wants it cancelled."
+    ],
+    "farewell_east_asian": [
+      "Walk safely.",
+      "May the lanterns guide you home."
+    ],
+    "greet_company_rep_union_core": [
+      "Your credentials check out. Welcome to the core, pilots.",
+      "Everything here runs to schedule. Please don't change that."
+    ],
+    "greet_quartermaster_union_core": [
+      "Standard issue, quality assured. Anything you need is a request away.",
+      "Your allocation's been prepared. You won't find the frontier's shortages here."
+    ],
+    "greet_bartender_union_core": [
+      "Welcome to the commons. Everything's on the house: it's always on the house here.",
+      "Long way from the frontier, aren't you?"
+    ],
+    "greet_fixer_union_core": [
+      "You'd be surprised what the core wants that it can't officially have.",
+      "Even utopia has a back door."
+    ],
+    "greet_faction_agent_union_core": [
+      "The Committee has an interest in your squad's work.",
+      "Union thanks you for your service. Now, about the next one."
+    ],
+    "greet_local_union_core": [
+      "You've been out there? What's it actually like?",
+      "We see the frontier on the omninet. It looks so far away."
+    ],
+    "greet_mechanic_union_core": [
+      "Clean bay, clean tools, clean work.",
+      "Your mech's seen some real dirt. I'll treat it gently."
+    ],
+    "rumor_union_core": [
+      "There's a delegation leaving for a world nobody's heard of.",
+      "A committee seat has been empty for a month. Nobody will say why.",
+      "The orbital elevator closed for 'maintenance' twice this week.",
+      "Someone in the archives is asking about old colony records."
+    ],
+    "farewell_union_core": [
+      "Safe travels, pilots.",
+      "Union goes with you."
+    ],
+    "greet_local_frontier_colony": [
+      "Welcome to the colony. Population: not enough.",
+      "You're the first new faces since the last supply drop."
+    ],
+    "rumor_frontier_colony": [
+      "The water recycler's been making a new noise.",
+      "Half the colony charter expires next year. Nobody knows what happens then."
+    ],
+    "farewell_frontier_colony": [
+      "Come back when you can. We could use you."
+    ],
+    "greet_instructor": [
+      "Rookie. Good to see you on your feet.",
+      "There's my new squad. Questions? I've got time.",
+      "Back from the range in one piece. That's the first lesson.",
+      "At ease. What do you need?"
     ]
   }
 }

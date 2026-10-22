@@ -44,7 +44,7 @@ static func make(story: StoryState, campaign: Campaign, template_id: String, opt
 		"enemy": _pick(rng, data().get("enemies", ["raiders"])),
 		"cargo": names.cargo(), "operation": names.operation(),
 		"sitrep": _pick(rng, t.get("sitreps", ["sitrep_standardcombat"])),
-		"seed": rng.randi(),
+		"seed": rng.randi(), "culture": str(story.hub.get("culture", "")),
 	}
 	var ctx := {"hook": hook, "npc": patron_id, "vars": {"place": hook["place"], "enemy": hook["enemy"], "cargo": hook["cargo"],
 		"patron": hook["patron"], "hub": story.hub.get("name", "the settlement"), "rival": rival}}
@@ -128,19 +128,29 @@ static func _has_template_from(story: StoryState, tid: String, patron: String) -
 	return false
 
 
+## A board job by weight; the hub's culture kit makes its own jobs likelier and keeps
+## culture-only jobs (e.g. a train job) to the kits they belong to.
 static func _weighted(story: StoryState, templates: Dictionary) -> String:
+	var culture := str(story.hub.get("culture", ""))
+	var liked: Array = NpcGen.cultures().get(culture, {}).get("hooks", [])
 	var ids: Array = []
+	var w := {}
 	var total := 0
 	for tid: String in templates:
-		if bool(templates[tid].get("board", false)):
-			ids.append(tid)
-			total += int(templates[tid].get("weight", 1))
+		var t: Dictionary = templates[tid]
+		if not bool(t.get("board", false)):
+			continue
+		if t.has("cultures") and not (t["cultures"] as Array).has(culture):
+			continue
+		ids.append(tid)
+		w[tid] = int(t.get("weight", 1)) * (3 if liked.has(tid) else 1)
+		total += int(w[tid])
 	ids.sort()
 	if ids.is_empty():
 		return ""
 	var roll := story.dice.die(maxi(total, 1))
 	for tid: String in ids:
-		roll -= int(templates[tid].get("weight", 1))
+		roll -= int(w[tid])
 		if roll <= 0:
 			return tid
 	return ids[0]

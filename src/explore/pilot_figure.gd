@@ -15,7 +15,7 @@ var _ring: MeshInstance3D
 
 
 func build(l: Dictionary, title: String = "", subtitle: String = "", pilot_suit: bool = false) -> PilotFigure:
-	look = l
+	look = PortraitSpec.flatten(l)
 	var skin := Color.html(str(look.get("skin", "#c68d66")))
 	var hair := Color.html(str(look.get("hair", "#3a2518")))
 	var outfit := Color.html(str(look.get("outfit", "#4a5a6a")))

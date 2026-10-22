@@ -17,16 +17,21 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
+## `l` = a v2 portrait (PortraitSpec) or a flat look; `expr` = any expression id from
+## portraits.json, drawn with its placeholder face until the real art exists.
 func set_look(l: Dictionary, expr: String = "neutral") -> void:
-	look = l
-	expression = expr if EXPRESSIONS.has(expr) else "neutral"
+	look = PortraitSpec.flatten(l)
+	var face := expr if EXPRESSIONS.has(expr) else PortraitSpec.draw_as(expr)
+	expression = face if EXPRESSIONS.has(face) else "neutral"
 	queue_redraw()
 
 
 ## A stable look for a pilot record (its own "look" if it has one).
 static func look_for_pilot(p: Dictionary) -> Dictionary:
+	if p.get("portrait") is Dictionary and not (p["portrait"] as Dictionary).is_empty():
+		return PortraitSpec.flatten(p["portrait"])
 	if p.get("look") is Dictionary and not (p["look"] as Dictionary).is_empty():
-		return p["look"]
+		return PortraitSpec.flatten(p["look"])
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(str(p.get("id", p.get("name", "pilot"))))
 	var looks: Dictionary = NpcGen.tables().get("looks", {})
