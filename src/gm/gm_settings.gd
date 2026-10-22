@@ -6,7 +6,7 @@ extends RefCounted
 const PRESETS_FILE := "res://data/game/gm/presets.json"
 const BEHAVIORS_FILE := "res://data/game/gm/behaviors.json"
 const MISSIONS_FILE := "res://data/game/gm/missions.json"
-const DIALS := ["aggression", "caution", "focus_fire", "reinforcements", "difficulty", "randomness", "environments"]
+const DIALS := ["aggression", "caution", "focus_fire", "reinforcements", "difficulty", "randomness", "environments", "approach"]
 
 var preset := "Standard"
 var aggression := 0.6
@@ -18,6 +18,9 @@ var randomness := 0.25
 ## Chance that weather or a world that suggests a rules environment (a sandstorm, low gravity)
 ## actually brings that environment's rules into the mission (MissionGenerator).
 var environments := 0.5
+## Basic Combat: the most rows between the two deployment zones (SitrepLayout), so first contact
+## comes by about the second turn; 0 = deploy at the map edges.
+var approach := 14.0
 ## Write a log line for every AI decision (always on for "Teaching").
 var explain := true
 
@@ -47,7 +50,7 @@ static func presets() -> Dictionary:
 
 func to_dict() -> Dictionary:
 	return {"preset": preset, "aggression": aggression, "caution": caution, "focus_fire": focus_fire,
-		"reinforcements": reinforcements, "difficulty": difficulty, "randomness": randomness, "environments": environments, "explain": explain}
+		"reinforcements": reinforcements, "difficulty": difficulty, "randomness": randomness, "environments": environments, "approach": approach, "explain": explain}
 
 
 static func from_dict(d: Dictionary) -> GmSettings:

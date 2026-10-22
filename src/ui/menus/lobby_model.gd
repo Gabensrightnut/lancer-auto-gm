@@ -27,7 +27,7 @@ var host: NetHost
 var mission: Mission
 var client: NetClient
 ## {"preset", "shape": "hex"/"square", "sitrep": "" (random), "seed": int, "fill_empty_with_ai": bool}
-var options: Dictionary = {"preset": "Standard", "shape": "hex", "sitrep": "", "seed": 0, "fill_empty_with_ai": false}
+var options: Dictionary = {"preset": "Standard", "shape": "hex", "sitrep": "", "seed": 0, "fill_empty_with_ai": false, "ai_squad_auto": true}
 ## seat -> mode (host)
 var modes: Dictionary = {}
 ## seat -> pilot id (host)

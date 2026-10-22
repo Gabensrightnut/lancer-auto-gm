@@ -248,7 +248,7 @@ them, and they disappear when the turn moves on.
 
 ### Living, themed battlefields
 - **Bigger maps:** sized for real Lancer fights with room to maneuver and flank (roughly
-  20x20 to 40x40 spaces depending on mission type and squad size), not small test boards.
+  30x30 to 60x60 spaces (wider and longer, per the user), depending on mission type and squad size; starting distance is set by the fight length dial, so the extra space is flanking room), not small test boards.
 - **Biomes drive both look and terrain:** grassy hills, desert, snow/tundra, urban ruins,
   industrial yard, forest, swamp, volcanic, space station, moon base... Each biome has its own
   height shapes (rolling hills vs. mesas vs. city blocks) and its own materials.
@@ -263,6 +263,15 @@ them, and they disappear when the turn moves on.
   Purely decorative details stay small and flat so they never look like cover they aren't.
   Destructible terrain visibly breaks when destroyed.
 - The grid stays readable on top of everything (toggle-able grid lines, clear tile edges).
+
+### Town fights and building toughness
+- A fight that breaks out in a town happens in that town: the battle map is built from the
+  hub's own layout and culture kit at mech scale, so the saloon you walked into is the cover
+  you fight behind.
+- Buildings follow the book's object rules (Core p.68): 5 Evasion and 10 HP per Size-1 section,
+  each section destroyed separately. Flimsy wood/prefab has no Armor and breaks easily; tough
+  stone or brick has 1-2 Armor; fortified bunkers, bulkheads and hulls have 3-4 Armor, so most
+  shots just chip them and it takes AP damage or breaching charges to bring them down.
 
 ### World art direction: beautiful but dangerous
 The feel to aim for (examples are inspiration only; nothing taken from them): the vast alien
@@ -480,6 +489,10 @@ differently without an AI. Each game has a **seed**: share it to replay the same
   protecting allies, retreating when damaged. Scored by a utility system, with randomness so
   enemies aren't predictable. Enemies only act on what *they* could know (they can't target
   someone Hidden).
+- **Fight length dial:** Short / Standard / Long. A tabletop fight takes about 1-3 hours;
+  with automation we aim for ~15-25 / 20-40 / 40-60+ minutes solo. It changes encounter
+  size, deployment distance and how early surrender or retreat becomes possible, never
+  rules like HP or damage.
 - **GM personality / difficulty dials:** aggression, caution, focus fire vs. spread damage,
   reinforcement rate, how often complications happen, overall difficulty. Presets (e.g.
   "Ruthless", "Cautious", "Chaotic", "Teaching") plus custom sliders.
@@ -685,6 +698,10 @@ until you decide to turn any of these on as your own campaign rules.
   lose and the deal is off, but you can come back and pay with scrap, a spare mech, manna or
   local money.
 - Buying food and water as a survival need.
+- A saving roll to see whether a hit building collapses (the book uses HP, Armor and AP
+  instead, Core p.68).
+- Being Stunned after falling, and a general "brace for the fall" reaction (the book gives
+  falls damage only, 3 AP per 3 spaces, max 9; only specific systems like flight avoid a fall).
 
 ## Rule differences: Lancer Tactics vs. the book
 
@@ -703,9 +720,9 @@ an option name can already be switched in the game's table rules (`state.rulings
 
 | Rule | Book | Lancer Tactics | Why LT might do it | Your pick |
 |---|---|---|---|---|
-| Firing two weapons (option `lt_split_barrage`) | Two weapons only as a Barrage, a full action with both shots together; Skirmish (one weapon) once per turn (Core p.60, p.64) | Two "action points" instead of quick/full actions; each mount costs 1, so two weapons are two separate shots and you can move between them | One simple action currency is easier to show on a video-game action bar, and moving between shots gives more positional play | |
-| Repeating a Quick Tech option (option `lt_repeat_quick_tech`) | Quick Tech can be taken twice, but each time a different option (Core p.69) | The same option can be used twice (e.g. two Invades) | Falls out of the action-point system; fewer "why is this greyed out?" moments | |
-| When Brace is offered (option `lt_brace_prompt`) | Brace whenever an attack hits and deals damage (Core p.73) | Only offered when the hit would structure or stress you, or deal more than half your HP | Stops a pop-up after every hit; Brace is mostly worth it on big hits anyway | |
+| Firing two weapons (option `lt_split_barrage`) | Two weapons only as a Barrage, a full action with both shots together; Skirmish (one weapon) once per turn (Core p.60, p.64) | Two "action points" instead of quick/full actions; each mount costs 1, so two weapons are two separate shots and you can move between them | One simple action currency is easier to show on a video-game action bar, and moving between shots gives more positional play | **Lancer Tactics** (on by default; fire, move, fire) |
+| Repeating a Quick Tech option (option `lt_repeat_quick_tech`) | Quick Tech can be taken twice, but each time a different option (Core p.69) | The same option can be used twice (e.g. two Invades) | Falls out of the action-point system; fewer "why is this greyed out?" moments | **Book** (no repeating the same option) |
+| When Brace is offered (option `lt_brace_prompt`) | Brace whenever an attack hits and deals damage (Core p.73) | Only offered when the hit would structure or stress you, or deal more than half your HP | Stops a pop-up after every hit; Brace is mostly worth it on big hits anyway | **Lancer Tactics** (on by default; only asked on big hits) |
 | Firing only the Aux weapon of a mount | A Skirmish's main attack can be an Auxiliary weapon and deals bonus damage as usual; only the extra Aux shot gets none (Core p.64, p.67) | Firing just the Aux on a mount that also has a Main counts as firing the mount, with no Aux bonus damage | Follows from attacking "per mount" instead of "per weapon" | |
 | Flying | Flyers choose their altitude freely as they move and must move at least 1 space each turn or fall (Core p.63) | Flying is an on/off state that puts you 3 spaces above the surface | Much simpler camera, targeting and pathing in 3D | |
 | NPCs | The core book's NPC classes, tiers and templates (Veteran, Elite, Ultra...) | Uses "NPC Rebake" (a community revision by Kai): no extra attacks from tier, reworked Veteran/Ultra options | Better balance for automated enemies; LT notes it is a deliberate divergence | |

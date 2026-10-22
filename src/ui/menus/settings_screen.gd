@@ -41,6 +41,12 @@ func _ready() -> void:
 	pb.add_child(_choice("Animation speed", GameSettings.ANIMATION, s.animation_speed, func(v: String) -> void: s.animation_speed = v,
 		{"cinematic": "Cinematic", "normal": "Normal", "fast": "Fast"}))
 	pb.add_child(_slider("Roll and damage pop-ups stay up", s.popup_duration, 0.5, 2.0, func(v: float) -> void: s.popup_duration = v, "×1 is normal; ×2 gives you twice as long to read them."))
+	var auto := CheckButton.new()
+	auto.text = "AI squadmates take their turns on their own (solo and hot-seat)"
+	auto.tooltip_text = "Once only AI squadmates are left to act, they go by themselves, best pick first. You can still send one earlier with \"I'll go\". Online games start with this off."
+	auto.button_pressed = s.ai_squad_auto
+	auto.toggled.connect(func(on: bool) -> void: s.ai_squad_auto = on)
+	pb.add_child(auto)
 	left.add_child(play)
 	# Story text (StorySettings: kept on this computer, applied right away).
 	var story_panel := MenuTheme.panel("Story text", MenuTheme.maker_color("SSC").lightened(0.2), "compendium")

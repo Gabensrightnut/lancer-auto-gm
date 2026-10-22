@@ -129,6 +129,7 @@ static func begin_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 	events.append_array(FrameSystems.host_turn_started(state, u))
 	events.append_array(CoreBonuses.turn_started(state, u))
 	events.append_array(Environments.turn_started(state, u))
+	events.append_array(GearSystems.fade_roll(state, u))
 	return events
 
 
@@ -164,6 +165,7 @@ static func finish_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 	var next := _next_side(state, u.side)
 	if next == "":
 		events.append_array(Environments.round_ending(state))
+		events.append_array(AttackActions.land_delayed(state))
 		events.append_array(_start_round(state, u.side))
 	else:
 		state.turn_side = next

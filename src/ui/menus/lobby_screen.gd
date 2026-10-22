@@ -10,6 +10,7 @@ var problems_box: VBoxContainer
 var ready_button: Button
 var start_button: Button
 var room_label: Label
+var squad_auto: CheckButton
 var _refreshing := false
 
 
@@ -46,6 +47,16 @@ func _ready() -> void:
 	fill.disabled = not lobby.is_host
 	fill.toggled.connect(func(on: bool) -> void: lobby.set_fill_empty(on))
 	sb.add_child(fill)
+	squad_auto = CheckButton.new()
+	squad_auto.text = "AI squadmates take their turns on their own (you can still pick them earlier)"
+	squad_auto.tooltip_text = "Once only AI squadmates are left to act, they go by themselves, best pick first. Off by default online, so friends see every choice."
+	if lobby.is_host and not lobby.options.has("_auto_set"):
+		lobby.options["ai_squad_auto"] = MenuSession.settings().ai_squad_auto
+		lobby.options["_auto_set"] = true
+	squad_auto.button_pressed = bool(lobby.options.get("ai_squad_auto", true))
+	squad_auto.disabled = not lobby.is_host
+	squad_auto.toggled.connect(func(on: bool) -> void: lobby.options["ai_squad_auto"] = on)
+	sb.add_child(squad_auto)
 	var online := HBoxContainer.new()
 	online.add_theme_constant_override("separation", 12)
 	room_label = MenuTheme.label("", 18, MenuTheme.MUTED)
@@ -308,6 +319,8 @@ func _host_online() -> void:
 		room_label.text = "Online play isn't available in this build."
 		return
 	net.host = lobby.host
+	lobby.options["ai_squad_auto"] = false  # online: friends see every choice
+	squad_auto.button_pressed = false
 	lobby.host.room_opened.connect(func(code: String) -> void:
 		room_label.text = "Room code:  %s   (friends pick Join online and type it)" % code
 		room_label.add_theme_color_override("font_color", MenuTheme.TEXT))

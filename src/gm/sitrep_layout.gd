@@ -17,9 +17,16 @@ extends RefCounted
 const DEPTH := 4
 
 
-static func layout(sitrep_id: String, w: int, h: int, shape: GridLayout.Shape, rng: RandomNumberGenerator) -> Dictionary:
+## `approach` (GM dial, GmSettings.approach): for Basic Combat, the most rows between the two
+## deployment zones (0 = deploy at the map edges). Closer zones mean first contact by about the
+## second turn for Speed 4 mechs instead of two turns of walking. Sitreps with zones keep their
+## edges (their zones are laid out from them).
+static func layout(sitrep_id: String, w: int, h: int, shape: GridLayout.Shape, rng: RandomNumberGenerator, approach: int = 0) -> Dictionary:
+	var inset := 0
+	if sitrep_id == "sitrep_standardcombat" and approach > 0:
+		inset = maxi(0, (h - 2 * DEPTH - approach) / 2)
 	var out := {
-		"deployment": {Mission.PLAYERS: rect(2, h - DEPTH, w - 4, DEPTH, w, h, shape), Mission.ENEMIES: rect(2, 0, w - 4, DEPTH, w, h, shape)},
+		"deployment": {Mission.PLAYERS: rect(2, h - DEPTH - inset, w - 4, DEPTH, w, h, shape), Mission.ENEMIES: rect(2, inset, w - 4, DEPTH, w, h, shape)},
 		"zones": {}, "clear": [], "first_side": "", "sitrep": sitrep_id,
 	}
 	match sitrep_id:

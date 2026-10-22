@@ -229,6 +229,8 @@ class UseObject:
 			return RuleResult.deny("Choose an object you can use.", Abilities.REF)
 		if o.side != u.side:
 			return RuleResult.deny("Only allied characters can use it.", Abilities.REF)
+		if not o.counters.get("primed", true):
+			return RuleResult.deny("It primes at the end of its owner's turn.", "systems: Restock Drone")
 		if Sight.unit_distance(state, u, o) > 1:
 			return RuleResult.deny("It must be adjacent.", Abilities.REF)
 		if int(o.counters.get("used_round", -1)) == state.round_number:

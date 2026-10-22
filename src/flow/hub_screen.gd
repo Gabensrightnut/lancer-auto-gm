@@ -181,7 +181,7 @@ func _my_seat() -> String:
 func _on_mission_requested(_hook: Dictionary) -> void:
 	if story_client != null:
 		return  # The host starts the battle; everyone follows.
-	var s := GameFlow.start_story_mission(campaign, MenuSession.content(), MenuSession.store, [_seat])
+	var s := GameFlow.start_story_mission(campaign, MenuSession.content(), MenuSession.store, [_seat], MenuSession.settings().ai_squad_auto)
 	if s == null:
 		hub.hud.toast("The mission couldn't start.", StoryStyle.RED)
 		return

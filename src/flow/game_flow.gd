@@ -323,7 +323,7 @@ static func save_story(campaign: Campaign, store: SaveStore) -> void:
 ## The job the squad took at the hub, as a battle (CampaignLoop.build_mission): the story's
 ## seats, AI squadmates flown by the AI, friends online in their own seats (on the same
 ## NetHost, so they move into the battle with everyone), everyone else at this screen.
-static func start_story_mission(campaign: Campaign, db: ContentDB, store: SaveStore, local: Array = []) -> BattleSession:
+static func start_story_mission(campaign: Campaign, db: ContentDB, store: SaveStore, local: Array = [], squad_auto: bool = true) -> BattleSession:
 	open_story(campaign, db)
 	var table: Dictionary = story_host.seat_table() if story_host != null else {}
 	var modes := {}
@@ -341,6 +341,7 @@ static func start_story_mission(campaign: Campaign, db: ContentDB, store: SaveSt
 	var lobby := LobbyModel.for_mission(campaign, db, modes, pilots, func(opts: Dictionary) -> Dictionary:
 		return CampaignLoop.build_mission(campaign, the_story, db, {"shape": opts.get("shape", "hex")}), story_host)
 	lobby.set_fill_empty(true)  # a friend who dropped out: the AI flies until they're back
+	lobby.options["ai_squad_auto"] = squad_auto and story_host == null  # off online
 	for seat: String in modes:
 		lobby.ready[seat] = true  # the squad deployed together at the hub
 	story.save_to(campaign)
@@ -376,6 +377,7 @@ static func start_mission(lobby: LobbyModel, store: SaveStore) -> BattleSession:
 			local_seats.append(seat)
 	local_seats.sort()
 	session = BattleSession.for_host(r["host"], r["director"], r["mission"], local_seats, save)
+	(r["host"] as NetHost).ai_squad_auto = bool(lobby.options.get("ai_squad_auto", true))
 	save.save_now()  # Even quitting before the first turn ends can be continued.
 	return session
 
@@ -391,6 +393,7 @@ static func resume_mission(store: SaveStore, campaign: Campaign, db: ContentDB =
 	var save := MissionAutosave.new(host, r["mission"], store, campaign.id, r["settings"])
 	local_seats = Array(host.local_seats)
 	session = BattleSession.for_host(host, director, r["mission"], local_seats, save)
+	host.ai_squad_auto = (host.export_seats()["tokens"] as Dictionary).is_empty()  # off if friends played
 	host.hold_until_back()
 	if is_story(campaign) and db != null:
 		apply_squad_orders(session, campaign, db)

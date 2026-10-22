@@ -42,6 +42,8 @@ var dlg_story: StoryState
 var dlg_campaign: Campaign
 ## Sitrep actions the turn UI doesn't offer (SitrepActions): Extract, Survey this zone.
 var sitrep_box: VBoxContainer
+## "Let the AI go": the AI squadmates may act before the people's own mechs.
+var ai_go_button: Button
 var _sitrep_sig := ""
 var _objectives_sig := ""
 ## The campaign's story (host), for the tutorial's lessons and which tips were shown. A friend
@@ -174,6 +176,7 @@ func _process(delta: float) -> void:
 		_nhp_asked = nkey
 		_show_nhp(nq)
 	_update_sitrep_buttons()
+	ai_go_button.visible = not session.ai_squadmates_waiting().is_empty() and not turn.active
 	_update_status()
 
 
@@ -467,15 +470,6 @@ func _refresh_hud() -> void:
 	var active: Dictionary = v.get("units", {}).get(v.get("active_unit", ""), {})
 	order_bar.set_data({"round": maxi(1, int(v.get("round", 1))), "picking_side": v.get("turn_side", ""),
 		"local_side": my_side if session.my_pick() else "", "active_name": str(active.get("name", "")), "units": list})
-	# Workaround (docs/qa/milestone1.md): the bar centers itself while its old portraits are
-	# still counted, sliding it off the left edge; center it again once they're gone.
-	if not get_tree().process_frame.is_connected(_recenter_order_bar):
-		get_tree().process_frame.connect(_recenter_order_bar, CONNECT_ONE_SHOT)
-
-
-func _recenter_order_bar() -> void:
-	if is_instance_valid(order_bar) and order_bar.has_method("_center_box"):
-		order_bar._center_box()
 
 
 func _render_portraits(v: Dictionary) -> void:
@@ -745,6 +739,16 @@ func _build_ui() -> void:
 	bubbles = BattleBarks.new()
 	ui.add_child(bubbles)
 	ui.move_child(bubbles, 0)
+	ai_go_button = Button.new()
+	ai_go_button.theme = MenuTheme.theme()
+	ai_go_button.text = "Let the AI go"
+	ai_go_button.focus_mode = Control.FOCUS_NONE
+	ai_go_button.tooltip_text = "An AI squadmate takes its turn now (the AI picks which). Or click \"I'll go\" on the one you want."
+	ai_go_button.position = Vector2(1920 / 2.0 - 90, 192)
+	ai_go_button.custom_minimum_size = Vector2(180, 40)
+	ai_go_button.visible = false
+	ai_go_button.pressed.connect(func() -> void: session.let_ai_go())
+	ui.add_child(ai_go_button)
 	sitrep_box = VBoxContainer.new()
 	sitrep_box.add_theme_constant_override("separation", 8)
 	sitrep_box.position = Vector2(1920 - 320, 1080 - 330)
@@ -826,6 +830,12 @@ func _open_menu() -> void:
 					session.host.set_seat_ai(seat, not ai_now)
 					menu_layer.visible = false)
 				b.add_child(b2)
+	if session.is_host:
+		var auto := CheckButton.new()
+		auto.text = "AI squadmates take their turns on their own"
+		auto.button_pressed = session.host.ai_squad_auto
+		auto.toggled.connect(func(on: bool) -> void: session.host.ai_squad_auto = on)
+		b.add_child(auto)
 	if campaign != null:
 		var hints := CheckButton.new()
 		hints.text = "Teaching hints (explain each rule the first time)"
