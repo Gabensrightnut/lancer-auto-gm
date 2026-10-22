@@ -13,7 +13,7 @@ extends RefCounted
 
 ## Landscapes the generator can build, with their weight when picked at random.
 const LANDSCAPES := {"grassy_hills": 4, "desert_mesas": 2, "tundra": 2, "volcanic": 1, "alien_wilds": 1, "crystal_fields": 1,
-	"toxic_marsh": 1, "molten_world": 1, "toxic_swamp": 1, "city": 3, "station": 1, "starship": 1, "moon": 1, "asteroid": 1, "ocean": 1, "jungle": 2}
+	"toxic_marsh": 1, "molten_world": 1, "toxic_swamp": 1, "city": 3, "station": 1, "starship": 1, "moon": 1, "asteroid": 1, "ocean": 1, "jungle": 2, "boarding": 1, "boarding_defend": 0, "boarding_assault": 0}
 ## Cultures that fit each landscape ("" = wilderness, no settlement).
 const CULTURES := {
 	"grassy_hills": ["", "", "medieval", "old_west", "east_asian", "union", "retro"],
@@ -27,6 +27,9 @@ const CULTURES := {
 	"toxic_swamp": ["", "", "medieval"],
 	"station": [""],
 	"starship": [""],
+	"boarding": [""],
+	"boarding_defend": [""],
+	"boarding_assault": [""],
 	"moon": ["", "", "union", "retro"],
 	"asteroid": [""],
 	"ocean": ["", "east_asian", "retro", "union"],
@@ -58,7 +61,7 @@ static func cover_tags(landscape: String) -> Array:
 	match landscape:
 		"city":
 			return ["wall"]
-		"station", "starship":
+		"station", "starship", "boarding", "boarding_defend", "boarding_assault":
 			return ["container"]
 		"alien_wilds", "crystal_fields":
 			return ["crystal"]
@@ -141,6 +144,12 @@ static func generate(rng: RandomNumberGenerator, w: int, h: int, shape: GridLayo
 			g._station(6)
 		"starship":
 			g._station(4)
+		"boarding":
+			g._boarding()
+		"boarding_defend":
+			g._ship_interior(true)
+		"boarding_assault":
+			g._ship_interior(false)
 		"moon":
 			g._moon(false)
 		"asteroid":
@@ -184,7 +193,9 @@ const MATERIALS := {
 ## [material, armor] for a column with these look tags in this world.
 static func material_for(col: BattleMap.Column, landscape: String, culture: String) -> Array:
 	if col.has_tag("bulkhead"):
-		return ["hull", 4] if landscape == "starship" else ["fortified", 3]
+		if col.has_tag("hull") or landscape in ["starship", "boarding"]:
+			return ["hull", 4]
+		return ["fortified", 3]
 	if col.has_tag("machinery"):
 		return ["fortified", 2]
 	if col.has_tag("container"):
@@ -328,6 +339,8 @@ var h := 0
 var shape: GridLayout.Shape
 var blocked: Dictionary
 var map: BattleMap
+## Share of inner bulkheads that can be broken through (ships' partitions are lighter).
+var breakable_walls := 0.3
 var cells: Array[Vector2i] = []
 
 
@@ -802,6 +815,192 @@ func _station(min_room: int) -> void:
 		# else: hangar or plain room, left open.
 
 
+## Two ships docked side by side for a boarding fight: each side fights from its own ship's
+## outer hull (armor ridges, turret housings, clamped cargo: cover), behind the armored hull
+## rim along the edge, with open space between the hulls (impassable) crossed by boarding
+## tubes. The far ship is the near one turned around, so both sides get the same ground.
+func _boarding() -> void:
+	_fill(func(_c: int, _r: int) -> int: return 0)
+	var gap := 4 if h % 2 == 0 else 3  # centered, so the mirror lands on the far ship
+	var g0 := (h - gap) / 2
+	# One ship's hull (rows 0 .. g0-1), built in a local scratch and mirrored onto the other.
+	var plan := {}  # Vector2i(col, row) -> [ground, tags]
+	var rim := g0 - 1
+	var tubes: Array[int] = []
+	var n_tubes := 2 + (1 if w >= 36 else 0)
+	for i in range(n_tubes):
+		tubes.append(clampi(int(w * (i + 1) / float(n_tubes + 1)) + rng.randi_range(-2, 1), 1, w - 3))
+	for c in range(w):
+		var in_tube := false
+		for t in tubes:
+			in_tube = in_tube or (c >= t and c < t + 2) or (w - 1 - c >= t and w - 1 - c < t + 2)
+		# The hull rim: armored plating one level high, open where a tube docks and at a few
+		# hatches.
+		if not in_tube and c % 7 != 3:
+			plan[Vector2i(c, rim)] = [1, ["bulkhead"]]
+	# Armor ridges along the hull (straight runs), turret housings and clamped cargo.
+	var row := rim - 3
+	while row >= 2:
+		var c := rng.randi_range(0, 3)
+		while c < w - 2:
+			var pick := rng.randf()
+			if pick < 0.35:
+				var run := rng.randi_range(3, 5)
+				for k in range(run):
+					if c + k < w:
+						plan[Vector2i(c + k, row)] = [1, ["bulkhead", BattleMap.TAG_DESTRUCTIBLE]]
+				c += run + rng.randi_range(2, 4)
+			elif pick < 0.55:
+				for dr in range(2):
+					for dc in range(2):
+						plan[Vector2i(c + dc, row - dr)] = [2, ["machinery"]]
+				c += 2 + rng.randi_range(3, 5)
+			elif pick < 0.75:
+				var high := 1 if rng.randf() < 0.6 else 2
+				for dc in range(2):
+					plan[Vector2i(c + dc, row)] = [high, ["container", BattleMap.TAG_DESTRUCTIBLE]]
+				c += 2 + rng.randi_range(3, 5)
+			else:
+				c += rng.randi_range(2, 4)
+		row -= rng.randi_range(3, 5)
+	# A boarding torpedo that punched through the hull: a hole in the rim, the torpedo's body
+	# lodged in the deck, wreckage strewn around it (difficult).
+	var bc := rng.randi_range(2, w - 5)
+	for i in range(8):
+		var clear := true
+		for t in tubes:
+			clear = clear and (bc + 2 < t - 1 or bc > t + 3) and (bc + 2 < w - t - 3 or bc > w - t)
+		if clear:
+			break
+		bc = rng.randi_range(2, w - 5)
+	for dc in range(3):
+		plan[Vector2i(bc + dc, rim)] = [0, [BattleMap.TAG_DIFFICULT, "rubble"]]
+		plan[Vector2i(bc + dc, rim - 2)] = [0, [BattleMap.TAG_DIFFICULT, "rubble"]]
+	plan[Vector2i(bc, rim - 1)] = [0, [BattleMap.TAG_DIFFICULT, "rubble"]]
+	plan[Vector2i(bc + 1, rim - 1)] = [1, ["machinery"]]  # the torpedo's body
+	plan[Vector2i(bc + 2, rim - 1)] = [0, [BattleMap.TAG_DIFFICULT, "rubble"]]
+	for cr: Vector2i in plan:
+		var e: Array = plan[cr]
+		for q: Vector2i in [cr, Vector2i(w - 1 - cr.x, h - 1 - cr.y)]:
+			_put(q.x, q.y, int(e[0]), e[1])
+	# Open space between the hulls; the tubes cross it.
+	for r in range(g0, g0 + gap):
+		for c in range(w):
+			var tube := false
+			for t in tubes:
+				tube = tube or (c >= t and c < t + 2) or (w - 1 - c >= t and w - 1 - c < t + 2)
+			if tube:
+				_put(c, r, 0, ["deck"])
+			else:
+				_put(c, r, 0, [BattleMap.TAG_IMPASSABLE, "chasm", "void"])
+
+
+## A ship's interior for a boarding fight. The outer hull (Armor 4) runs down both side edges;
+## the enemy holds the top of the map, the squad the bottom. `defend` (the squad's own ship,
+## boarded by pirates): boarding torpedoes have punched through the hull near the top, the
+## breaches strewn with wreckage. Otherwise (the squad boards an enemy ship): they come in
+## through a docking airlock in the hull near the bottom. Rooms by role: the bridge and control
+## at the defenders' end, quarters, engineering and the mess in the middle, cargo holds and the
+## airlock bay at the boarders' end. Inner bulkheads are often breakable; bunks and crates too.
+func _ship_interior(defend: bool) -> void:
+	_fill(func(_c: int, _r: int) -> int: return 0)
+	breakable_walls = 0.55
+	var rooms: Array[Rect2i] = []
+	_split(Rect2i(1, 0, w - 2, h), 5, rooms, 0)
+	# Rooms by how deep they lie from the boarders' edge (the top when pirates board the
+	# squad's ship, the bottom when the squad boards): 0 at the breach, 1 at the far end.
+	for room in rooms:
+		var inner := room.grow(-1)
+		if inner.size.x < 2 or inner.size.y < 2:
+			continue
+		var depth := float(room.get_center().y) / float(h)
+		if not defend:
+			depth = 1.0 - depth
+		if depth > 0.7:
+			_ship_room(inner, "bridge")
+		elif depth > 0.35:
+			_ship_room(inner, ["quarters", "engineering", "mess"][rng.randi_range(0, 2)])
+		else:
+			_ship_room(inner, "cargo")
+	# The outer hull down both sides.
+	for r in range(h):
+		for c: int in [0, w - 1]:
+			var cell := _cell(c, r)
+			if map.has_cell(cell) and not blocked.has(cell):
+				var col := map.column(cell)
+				col.ground = 3
+				col.tags = PackedStringArray(["bulkhead", "hull"])
+	var band_r := 3 if defend else h - 4  # near the boarders' edge
+	if defend:
+		# Two torpedo breaches, one in each side hull, near the boarders' end.
+		for side: int in [0, w - 1]:
+			var r := clampi(band_r + rng.randi_range(0, 4), 1, h - 3)
+			var inward := 1 if side == 0 else -1
+			for dr in range(2):
+				_put(side, r + dr, 0, ["breach", BattleMap.TAG_DIFFICULT, "rubble"])
+				_put(side + inward * 2, r + dr, 0, [BattleMap.TAG_DIFFICULT, "rubble"])
+			_put(side + inward, r, 1, ["machinery", "torpedo"])
+			_put(side + inward, r + 1, 0, [BattleMap.TAG_DIFFICULT, "rubble"])
+	else:
+		# The docking airlock: a 2-wide opening in one side hull with a short passage in.
+		var side := 0 if rng.randf() < 0.5 else w - 1
+		var inward := 1 if side == 0 else -1
+		var r := clampi(band_r - rng.randi_range(0, 3), 2, h - 3)
+		for dr in range(2):
+			_put(side, r + dr, 0, ["deck", "airlock"])
+			for k in range(1, 4):
+				var cell := _cell(side + inward * k, r + dr)
+				if map.has_cell(cell) and not blocked.has(cell) and map.column(cell).ground > 0:
+					_put(side + inward * k, r + dr, 0, ["deck"])
+
+
+## Furnishes a ship room by its role: real cover, much of it breakable.
+func _ship_room(inner: Rect2i, role: String) -> void:
+	match role:
+		"bridge":
+			# Console banks in rows facing forward, a command dais (one level) in the middle.
+			for r in range(inner.position.y + 1, inner.end.y - 1, 3):
+				for c in range(inner.position.x + 1, inner.end.x - 1):
+					if (c - inner.position.x) % 4 != 3:
+						_raise(_cell(c, r), 1, ["machinery", "console", BattleMap.TAG_DESTRUCTIBLE])
+		"quarters":
+			# Bunk rows along the walls, lockers between.
+			for r in range(inner.position.y, inner.end.y, 3):
+				for c in range(inner.position.x, inner.end.x - 1, 3):
+					for k in range(2):
+						_raise(_cell(c + k, r), 1, ["platform", "bunk", BattleMap.TAG_DESTRUCTIBLE])
+		"engineering":
+			# Reactor housings and pumps (two levels), with coolant leaking from some.
+			for i in range(maxi(1, inner.get_area() / 20)):
+				var at := Vector2i(rng.randi_range(inner.position.x, inner.end.x - 2), rng.randi_range(inner.position.y, inner.end.y - 2))
+				for dr in range(2):
+					for dc in range(2):
+						_raise(_cell(at.x + dc, at.y + dr), 2, ["machinery"])
+				if rng.randf() < 0.5:
+					var leak := _cell(at.x + 2, at.y)
+					if _free(leak):
+						_tag(map.column(leak), [BattleMap.TAG_DANGEROUS, "dangerous_energy"])
+		"mess":
+			# Tables in a grid (low, breakable) and a galley counter along one wall.
+			for r in range(inner.position.y + 1, inner.end.y - 1, 3):
+				for c in range(inner.position.x + 1, inner.end.x - 1, 3):
+					_raise(_cell(c, r), 1, ["platform", "table", BattleMap.TAG_DESTRUCTIBLE])
+			for c in range(inner.position.x, inner.end.x):
+				_raise(_cell(c, inner.position.y), 1, ["machinery", "galley", BattleMap.TAG_DESTRUCTIBLE])
+		_:
+			# Cargo: rows of crates and containers (1-2 high) with aisles, some spilled.
+			for r in range(inner.position.y, inner.end.y, 3):
+				for c in range(inner.position.x, inner.end.x - 1, 3):
+					if rng.randf() < 0.7:
+						var high := 1 if rng.randf() < 0.6 else 2
+						for k in range(2):
+							_raise(_cell(c + k, r), high, ["container", BattleMap.TAG_DESTRUCTIBLE])
+					elif rng.randf() < 0.5:
+						var spill := _cell(c, r)
+						if _free(spill):
+							_tag(map.column(spill), [BattleMap.TAG_DIFFICULT, "rubble"])
+
+
 ## Binary space partition into rooms; walls are drawn on each split line with doorways.
 func _split(r: Rect2i, min_room: int, rooms: Array[Rect2i], depth: int) -> void:
 	var can_x := r.size.x >= min_room * 2 + 1
@@ -810,7 +1009,7 @@ func _split(r: Rect2i, min_room: int, rooms: Array[Rect2i], depth: int) -> void:
 		rooms.append(r)
 		return
 	var vertical := can_x and (not can_y or r.size.x > r.size.y or (r.size.x == r.size.y and rng.randf() < 0.5))
-	var destructible := rng.randf() < 0.3
+	var destructible := rng.randf() < breakable_walls
 	if vertical:
 		var x := rng.randi_range(r.position.x + min_room, r.end.x - min_room - 1)
 		_wall_line(Vector2i(x, r.position.y), Vector2i(0, 1), r.size.y, destructible)
@@ -1192,6 +1391,13 @@ func _field(c0: int, r0: int, fw: int, fh: int, dry: bool) -> bool:
 func _castle(cc: int, cr: int, _culture: String, gate_dir: int) -> void:
 	var iw := rng.randi_range(8, 10)
 	var ih := rng.randi_range(6, 8)
+	# Walls and moat must stand whole: shrink to stay clear of deployment and objective zones,
+	# or build no castle at all.
+	while ih >= 4 and _rect_blocked(Rect2i(cc - iw / 2 - 2, cr - ih / 2 - 2, iw + 4, ih + 4)):
+		ih -= 2
+		iw -= 2
+	if ih < 4:
+		return
 	var c0 := cc - iw / 2 - 1
 	var r0 := cr - ih / 2 - 1
 	var cw := iw + 2
@@ -1241,6 +1447,14 @@ func _castle(cc: int, cr: int, _culture: String, gate_dir: int) -> void:
 				break  # the second lane only runs over the field of fire
 			_road([Vector2i(c, rr)], "road_x")
 			c += gate_dir
+
+
+func _rect_blocked(r: Rect2i) -> bool:
+	for rr in range(r.position.y, r.end.y):
+		for c in range(r.position.x, r.end.x):
+			if c < 0 or rr < 0 or c >= w or rr >= h or blocked.has(_cell(c, rr)):
+				return true
+	return false
 
 
 ## Rock outcrops in believable clusters: a tall core with lower stones around it, only on

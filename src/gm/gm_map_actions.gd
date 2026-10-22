@@ -13,7 +13,8 @@ const RULES_TAGS := ["difficult", "dangerous", "impassable", "destructible", "so
 	"dangerous_energy", "dangerous_explosive", "dangerous_burn"]
 const LOOK_TAGS := ["rock", "woods", "building", "wall", "water", "ice", "lava", "toxic", "crystal",
 	"rubble", "chasm", "bulkhead", "container", "machinery", "platform", "deck",
-	"road", "road_x", "road_z", "crossing", "farm", "dry", "house", "keep"]
+	"road", "road_x", "road_z", "crossing", "farm", "dry", "house", "keep", "void",
+	"hull", "breach", "torpedo", "airlock", "console", "bunk", "table", "galley"]
 const MAX_GROUND := 10
 const REF := "GM: battlefield edit (human GM seat)"
 
