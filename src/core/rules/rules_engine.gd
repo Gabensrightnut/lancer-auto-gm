@@ -30,6 +30,7 @@ func _init() -> void:
 		PilotActions.DropPrepared.new(), SystemActions.CorePower.new(), MoveActions.BonusMove.new(),
 		Rulings.SetRuling.new(), CloseCombat.GrappleContest.new(), AbilityActions.Activate.new(),
 		RestActions.Rest.new(), GearActions.AIControl.new(), GearActions.ClimbOn.new(), GearActions.Board.new(), GearActions.Disembark.new(), GearActions.CutCable.new(), GearActions.PullStake.new(), GearActions.UseObject.new(), GearActions.ShakeOff.new(),
+		EnvironmentActions.BreakIce.new(), EnvironmentActions.DigOut.new(),
 	]:
 		register(h)
 
@@ -51,6 +52,7 @@ func action_types() -> Array:
 func validate(state: GameState, action: Dictionary) -> RuleResult:
 	TurnRules._state_ref = weakref(state)
 	Combat.state_for_presence = weakref(state)
+	Environments.sync(state)  # standing environment effects (resistances, cover...)
 	var handler: ActionHandler = _handlers.get(action.get("type", ""))
 	if handler == null:
 		return RuleResult.deny("Unknown action '%s'." % action.get("type", ""), "")

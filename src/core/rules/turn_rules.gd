@@ -36,7 +36,7 @@ static func takes_turns(u: Unit) -> bool:
 	var st := state_of(u)
 	if st != null and FrameSystems.riding(st, u):
 		return false  # Goblin Symbiosis: acts during its host's turn instead
-	return Combat.is_present(u) and u.kind != Unit.KIND_DEPLOYABLE and not u.counters.get("empty", false)
+	return Combat.is_present(u) and u.kind != Unit.KIND_DEPLOYABLE and not u.counters.get("empty", false) and not u.counters.get("flora", false)
 
 
 static func sides(state: GameState) -> Array[String]:
@@ -63,6 +63,7 @@ static func start_combat(state: GameState, first_side: String) -> Array[Dictiona
 	state.phase = GameState.PHASE_COMBAT
 	state.first_side = first_side
 	state.round_number = 0
+	Environments.sync(state)
 	var events: Array[Dictionary] = [{"type": "combat_started", "first_side": first_side}]
 	events.append_array(Combat.refresh_engagement(state))
 	events.append_array(_start_round(state, ""))
@@ -127,6 +128,7 @@ static func begin_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 	events.append_array(Zones.turn_started(state, u))
 	events.append_array(FrameSystems.host_turn_started(state, u))
 	events.append_array(CoreBonuses.turn_started(state, u))
+	events.append_array(Environments.turn_started(state, u))
 	return events
 
 
@@ -137,6 +139,7 @@ static func finish_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 		events.append_array(FrameSystems.host_turn_ending(state, u))
 		events.append_array(Effects.turn_ending(state, u))
 		events.append_array(Combat.end_of_turn_checks(state, u))
+		events.append_array(Environments.turn_ending(state, u))
 	events.append_array(Combat.fall_all(state, u))
 	events.append_array(Combat.expire_statuses(state, u))
 	events.append_array(Abilities.expire(state, u, "end"))
@@ -158,6 +161,7 @@ static func finish_turn(state: GameState, u: Unit) -> Array[Dictionary]:
 	events.append({"type": "turn_ended", "unit": u.id})
 	var next := _next_side(state, u.side)
 	if next == "":
+		events.append_array(Environments.round_ending(state))
 		events.append_array(_start_round(state, u.side))
 	else:
 		state.turn_side = next

@@ -67,7 +67,7 @@ class Activate:
 			"detail": a.get("detail", ""), "rule_ref": Abilities.REF}]
 		var self_heat := Abilities.heat_self(state, u, a)
 		if self_heat > 0:
-			events.append_array(Combat.apply_heat(state, u, self_heat, "Heat (Self): " + String(a.get("source_name", ""))))
+			events.append_array(Combat.apply_heat(state, u, Environments.gear_heat(state, self_heat), "Heat (Self): " + String(a.get("source_name", ""))))
 		match a.get("kind", "action"):
 			"deploy":
 				for c: Vector2i in AbilityActions.spots(params):
@@ -574,10 +574,11 @@ const BASIC := [
 	["end_grapple", "Let Go", "other"], ["break_free", "Break Free", "other"], ["grapple_contest", "Grapple Contest", "other"],
 	["climb_on", "Climb On", "move"], ["board", "Board", "other"], ["disembark", "Climb Out", "other"], ["cut_cable", "Cut Cable", "attack"],
 	["pull_stake", "Pull Out Stake", "other"], ["use_object", "Use Object", "other"], ["ai_control", "Hand Over to AI", "other"],
+	["break_ice", "Break Free of the Ice", "other"], ["dig_out", "Dig Out of the Mud", "other"],
 ]
 ## Actions whose own check needs no target, so the bar can show exactly whether they work.
 const NO_TARGET := ["stand_up", "bonus_move", "disengage", "hide", "overcharge", "shut_down", "boot_up",
-	"core_power", "end_grapple", "break_free", "grapple_contest", "self_destruct", "pull_stake"]
+	"core_power", "end_grapple", "break_free", "grapple_contest", "self_destruct", "pull_stake", "break_ice"]
 
 
 ## Everything `u` might do now, for the action bar. See RulesQueries.available_actions.

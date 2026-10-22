@@ -460,7 +460,7 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, target: Unit
 		var dtype := String((w.get("damage", [{}]) as Array)[0].get("type", "Kinetic")) if not (w.get("damage", []) as Array).is_empty() else "Kinetic"
 		var parts := [{"type": dtype, "amount": Weapons.tag_value(w, "tg_reliable")}]
 		events.append({"type": "reliable_damage", "attacker": attacker.id, "target": target.id, "amount": Weapons.tag_value(w, "tg_reliable"), "rule_ref": "tags: Reliable"})
-		events.append_array(_apply(state, attacker, target, parts, Weapons.has_tag(w, "tg_ap"), opts.has("area_origin"), false, pre["resist_all"]))
+		events.append_array(_apply(state, attacker, target, parts, Weapons.has_tag(w, "tg_ap") or Environments.weapons_ap(state), opts.has("area_origin"), false, pre["resist_all"]))
 	if p["lock_on"]:
 		events.append_array(Combat.remove_status(target, "Lock On", "consumed by " + attacker.id))
 	if attacker.has_status("Hidden"):
@@ -485,7 +485,7 @@ static func _spend_weapon(state: GameState, attacker: Unit, w: Dictionary) -> Ar
 		ws["charged"] = false
 	var self_heat := Weapons.tag_value(w, "tg_heat_self")
 	if self_heat > 0:
-		events.append_array(Combat.apply_heat(state, attacker, self_heat, "Heat (Self): " + String(w.get("name", ""))))
+		events.append_array(Combat.apply_heat(state, attacker, Environments.gear_heat(state, self_heat), "Heat (Self): " + String(w.get("name", ""))))
 	return events
 
 
@@ -496,7 +496,7 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 	var total := 0
 	var shared: Dictionary = opts.get("shared_damage", {})
 	var damage: Array = w.get("damage", [])
-	var ap := Weapons.has_tag(w, "tg_ap")
+	var ap := Weapons.has_tag(w, "tg_ap") or Environments.weapons_ap(state)  # corrosive atmosphere
 	var obj := FrameSystems.object_damage(attacker, w, target)
 	if not obj.is_empty():
 		damage = obj  # Sherman COREBURN against objects and deployables
@@ -571,7 +571,7 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 		parts.append({"type": "Heat", "amount": heat})
 	if overkill_heat > 0 and not shared.get("overkill_paid", false):
 		shared["overkill_paid"] = true
-		events.append_array(Combat.apply_heat(state, attacker, overkill_heat, "Overkill"))
+		events.append_array(Combat.apply_heat(state, attacker, Environments.gear_heat(state, overkill_heat), "Overkill"))
 	if pv.get("tomorrow", false):
 		attacker.counters.erase("tomorrow")
 	events.append_array(_apply(state, attacker, target, parts, ap, opts.has("area_origin"), pv.get("seeking_payload", false) or Weapons.has_tag(w, "tg_irreducible") or pv.get("tomorrow", false), opts.get("resist_all", false), opts.get("half_damage", false)))
