@@ -118,6 +118,13 @@ static func room_info(spot_kind: String, room: String) -> Dictionary:
 	return data().get("rooms", {}).get(spot_kind, {}).get(room, {"name": room, "public": false, "lock": 1})
 
 
+## A room's name here: the hub can rename its rooms (aboard a ship, the back office is the
+## captain's quarters: hub["room_names"] = {spot kind: {room: name}}).
+static func room_name(story: StoryState, spot: String, room: String) -> String:
+	var k := spot_kind(story, spot)
+	return str(story.hub.get("room_names", {}).get(k, {}).get(room, room_info(k, room).get("name", room)))
+
+
 static func spot_kind(story: StoryState, spot: String) -> String:
 	for s: Dictionary in story.hub.get("spots", []):
 		if str(s["id"]) == spot:
@@ -397,7 +404,7 @@ static func _place(story: StoryState, spot: String, room: String) -> String:
 	for s: Dictionary in story.hub.get("spots", []):
 		if str(s["id"]) == spot:
 			sname = str(s.get("name", spot))
-	return "%s at %s" % [room_info(spot_kind(story, spot), room).get("name", room), sname]
+	return "%s at %s" % [room_name(story, spot, room), sname]
 
 
 static func _cs(campaign: Campaign, pid: String) -> String:

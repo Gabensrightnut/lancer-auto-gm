@@ -35,6 +35,20 @@
       "source": "Your idea",
       "label": "Your idea, not a book rule",
       "text": "The squad needs food and water: one of each per pilot per night. On a mission the supplies ride in the mech's cockpit storage, packed for the mission's planned length; pilots carry only a grab bag (one night's worth) when they get out. Lose the mech or run from it and the rest is out of reach. (What a pilot carries still follows the book's limits: one armor, two weapons, three other gear, Core p.28, p.108.) When the squad is hosted (a room at an inn, a patron's quarters, a ship's passage, the communal Union Core) meals come with the stay. Restaurants and stalls are cheap, but a dish may not sit right with someone from far away (+1 Difficulty until they rest) or become a favourite (+1 Accuracy on their next skill check). Without food pilots go hungry: +1 Difficulty on skill checks out of the mech until they eat, and 1 damage after a second hungry night in a row. By the book there's no survival meter."
+    },
+    {
+      "id": "hr_clone_ll_penalty",
+      "name": "Clones lose a License Level",
+      "source": "Your idea",
+      "label": "Your idea, not a book rule",
+      "text": "A pilot brought back as a clone loses one License Level. By the book a clone keeps all LL advancement (Core p.83)."
+    },
+    {
+      "id": "hr_own_ship",
+      "name": "The squad's own ship",
+      "source": "Your idea",
+      "label": "Your idea, not a book rule",
+      "text": "The squad has a ship of its own with upgrade slots: hull, engines, printer, cargo and boarding gear, bought with money (with the tracked wallet) or with loot from raids. With the tracked wallet on, loot sells for money. By the book there's no money to count: a raid's haul is a reserve, like Supplies (Core p.48)."
     }
   ],
   "wallet": {
@@ -229,5 +243,52 @@
       "fine",
       "fresh"
     ]
+  },
+  "own_ship": {
+    "_note": "Our own numbers. Costs are per level (1, 2, 3), in manna with the wallet on, else in loot.",
+    "slots": {
+      "hull": {
+        "name": "Hull plating",
+        "text": "Pirates are less likely to try boarding you on the way.",
+        "cost": [
+          300,
+          600,
+          900
+        ]
+      },
+      "engines": {
+        "name": "Engines",
+        "text": "You outrun more of the ships that try to catch you.",
+        "cost": [
+          300,
+          600,
+          900
+        ]
+      },
+      "printer": {
+        "name": "Printer capacity",
+        "text": "A printer aboard: wrecked mechs can be reprinted on the ship.",
+        "cost": [
+          500
+        ]
+      },
+      "cargo": {
+        "name": "Cargo space",
+        "text": "Each raid's haul is worth a quarter more.",
+        "cost": [
+          250,
+          500,
+          750
+        ]
+      },
+      "boarding_gear": {
+        "name": "Boarding gear",
+        "text": "Grapples, breaching charges and a boarding crew that joins you on boarding actions.",
+        "cost": [
+          400,
+          800
+        ]
+      }
+    }
   }
 }

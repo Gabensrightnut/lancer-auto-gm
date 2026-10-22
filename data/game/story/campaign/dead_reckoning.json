@@ -1,0 +1,3669 @@
+{
+ "_note": "Our own writing: the pirate career for AI-GM play. Canon-consistent: pirates and boarding (Core p.42, p.126, p.139), NHPs and cascade (p.107), cloning and flash cloning (p.83-84), Union DoJ/HR. Nothing from Massif's modules. All text here is easy to edit; the engine (CampaignScript) reads it. Branches: b1 the mutiny, b2 MERIDIAN, b3 the start, b4 the first raid, b5 Hask's cut, b6 the Gallowglass, b6r Vosk's fate, b7 the breach, b8 Ruslan Dey, b9 the amnesty, b10 Saltmarrow, b11 the crews, b12 MERIDIAN's fate, b13 the captaincy, b14 Hask's fate, b15 the big score, b16 betrayal, b17 the final site, b18 the ending. Splits (decisions): the mutiny and the captaincy.",
+ "id": "dead_reckoning",
+ "name": "Dead Reckoning",
+ "premise": "You're the lance aboard the Saint Cadence, an IPS-N long-hauler stalled on a fringe run. Her NHP is failing, the company says wait four months, and the crew has stopped waiting. Before long the Cadence will fly under a pirate captain who counts pilots like ammunition. Getting paid by Corvo Hask is easy. Not getting killed by him is the hard part.",
+ "enemy_mixes": {
+  "drones": [
+   "ph_controller",
+   "ph_support",
+   "ph_artillery"
+  ],
+  "officers": [
+   "ph_assault",
+   "ph_support",
+   "ph_grunt"
+  ],
+  "mutineers": [
+   "ph_grunt",
+   "ph_brawler",
+   "ph_assault"
+  ],
+  "freighter": [
+   "ph_grunt",
+   "ph_support",
+   "ph_assault"
+  ],
+  "gallowglass": [
+   "ph_assault",
+   "ph_brawler",
+   "ph_artillery"
+  ],
+  "hunters": [
+   "ph_assault",
+   "ph_artillery",
+   "ph_controller"
+  ],
+  "ipsn": [
+   "ph_assault",
+   "ph_artillery",
+   "ph_support"
+  ],
+  "loyalists": [
+   "ph_brawler",
+   "ph_grunt",
+   "ph_assault"
+  ],
+  "colonists": [
+   "ph_grunt",
+   "ph_brawler"
+  ],
+  "duel": [
+   "ph_brawler"
+  ]
+ },
+ "factions": {
+  "ipsn": "IPS-N",
+  "hask": "Hask's crew",
+  "crew": "The old Cadence hands",
+  "ship": "The Saint Cadence",
+  "union": "Union DoJ/HR",
+  "gallows": "Gallows Reach",
+  "colony": "Saltmarrow colony"
+ },
+ "worlds": {
+  "cadence": {
+   "name": "The Saint Cadence",
+   "culture": "retrofuturistic",
+   "kind": "station",
+   "landscape": "starship",
+   "hub": "The Saint Cadence",
+   "spot_names": {
+    "plaza": "the crew deck",
+    "bar": "the mess",
+    "office": "the bridge",
+    "market": "the cargo bay",
+    "workshop": "the mech hangar",
+    "printer": "engineering",
+    "landing": "the docking ring"
+   },
+   "room_names": {
+    "bar": {
+     "main": "the mess hall",
+     "back": "the galley",
+     "upstairs": "the crew bunks"
+    },
+    "office": {
+     "front": "the bridge",
+     "back": "the captain's quarters",
+     "safe": "the captain's safe"
+    },
+    "market": {
+     "floor": "the cargo bay",
+     "store": "the locked hold"
+    },
+    "printer": {
+     "floor": "engineering",
+     "control": "MERIDIAN's core room"
+    },
+    "workshop": {
+     "floor": "the hangar deck",
+     "loft": "the gantry"
+    }
+   },
+   "hub_flags": {
+    "flash_vat": true
+   }
+  },
+  "gallows": {
+   "name": "Gallows Reach",
+   "culture": "cyberpunk",
+   "kind": "station",
+   "landscape": "station",
+   "hub": "Gallows Reach"
+  },
+  "colony": {
+   "name": "Saltmarrow",
+   "culture": "frontier_colony",
+   "kind": "town",
+   "landscape": "tundra",
+   "hub": "Saltmarrow"
+  }
+ },
+ "npcs": {
+  "kell": {
+   "name": "Captain Idris Kell",
+   "title": "IPS-N master of the Saint Cadence",
+   "role": "company_rep",
+   "faction": "ipsn",
+   "personality": "formal",
+   "world": "cadence",
+   "spot": "office",
+   "replaces": "company_rep",
+   "if": {
+    "not": {
+     "flag": "dr_hask_aboard"
+    }
+   },
+   "schedule": {
+    "dawn": [
+     "office",
+     "front"
+    ],
+    "day": [
+     "office",
+     "front"
+    ],
+    "evening": [
+     "bar",
+     "main"
+    ],
+    "night": [
+     "office",
+     "back",
+     "asleep"
+    ]
+   }
+  },
+  "hask": {
+   "scene": "dr_hask",
+   "name": "Corvo Hask",
+   "title": "Captain of the Saint Cadence",
+   "role": "faction_agent",
+   "faction": "hask",
+   "personality": "sly",
+   "world": "cadence",
+   "spot": "office",
+   "replaces": "faction_agent",
+   "if": [
+    {
+     "flag": "dr_hask_aboard"
+    },
+    {
+     "not": {
+      "any": [
+       {
+        "flag": "dr_hask_marooned"
+       },
+       {
+        "flag": "dr_hask_killed"
+       }
+      ]
+     }
+    }
+   ],
+   "schedule": {
+    "dawn": [
+     "office",
+     "back",
+     "asleep"
+    ],
+    "day": [
+     "office",
+     "front"
+    ],
+    "evening": [
+     "bar",
+     "main"
+    ],
+    "night": [
+     "office",
+     "back",
+     "asleep"
+    ]
+   }
+  },
+  "tamsin": {
+   "scene": "dr_tamsin",
+   "name": "Tamsin Reyes",
+   "title": "Bosun of the Saint Cadence",
+   "role": "fixer",
+   "faction": "crew",
+   "personality": "zealous",
+   "world": "cadence",
+   "spot": "workshop",
+   "replaces": "fixer",
+   "if": {
+    "not": {
+     "flag": "dr_tamsin_dead"
+    }
+   },
+   "schedule": {
+    "dawn": [
+     "workshop",
+     "floor"
+    ],
+    "day": [
+     "workshop",
+     "floor"
+    ],
+    "evening": [
+     "bar",
+     "main"
+    ],
+    "night": [
+     "bar",
+     "upstairs",
+     "asleep"
+    ]
+   }
+  },
+  "bede": {
+   "name": "Bede Okonkwo",
+   "title": "Quartermaster",
+   "role": "trader",
+   "faction": "crew",
+   "personality": "weary",
+   "world": "cadence",
+   "spot": "market",
+   "replaces": "trader",
+   "schedule": {
+    "dawn": [
+     "market",
+     "floor"
+    ],
+    "day": [
+     "market",
+     "floor"
+    ],
+    "evening": [
+     "bar",
+     "main"
+    ],
+    "night": [
+     "market",
+     "store",
+     "asleep"
+    ]
+   }
+  },
+  "meridian": {
+   "name": "MERIDIAN",
+   "title": "The ship's NHP",
+   "role": "local",
+   "faction": "ship",
+   "personality": "nervous",
+   "world": "cadence",
+   "spot": "printer",
+   "if": {
+    "not": {
+     "any": [
+      {
+       "flag": "dr_m_cut"
+      },
+      {
+       "flag": "dr_m_failed"
+      }
+     ]
+    }
+   }
+  },
+  "dey": {
+   "name": "Ruslan Dey",
+   "title": "Union DoJ/HR bounty hunter",
+   "role": "local",
+   "faction": "union",
+   "personality": "patient",
+   "world": "gallows",
+   "spot": "bar"
+  },
+  "halloran": {
+   "name": "Commander Ines Halloran",
+   "title": "IPS-N recovery",
+   "role": "company_rep",
+   "faction": "ipsn",
+   "personality": "formal",
+   "world": "gallows",
+   "spot": "office",
+   "replaces": "company_rep"
+  },
+  "marchetti": {
+   "name": "Lio Marchetti",
+   "title": "Fence",
+   "role": "trader",
+   "faction": "gallows",
+   "personality": "sly",
+   "world": "gallows",
+   "spot": "market",
+   "replaces": "trader"
+  },
+  "pell": {
+   "name": "Elder Yusra Pell",
+   "title": "Speaker of Saltmarrow",
+   "role": "faction_agent",
+   "faction": "colony",
+   "personality": "warm",
+   "world": "colony",
+   "spot": "plaza",
+   "replaces": "faction_agent"
+  }
+ },
+ "commanders": {
+  "hask_cmd": {
+   "callsign": "Hask",
+   "rank": "Captain",
+   "personality": "cunning",
+   "faction": "Hask's loyalists"
+  },
+  "tamsin_cmd": {
+   "callsign": "Reyes",
+   "rank": "Bosun",
+   "personality": "zealous",
+   "faction": "the old Cadence hands"
+  },
+  "vosk": {
+   "callsign": "Vosk",
+   "rank": "Commodore",
+   "personality": "proud",
+   "faction": "the Gallowglass"
+  },
+  "dey_cmd": {
+   "callsign": "Dey",
+   "rank": "Hunter",
+   "personality": "patient",
+   "faction": "Dey's hunters"
+  },
+  "halloran_cmd": {
+   "callsign": "Halloran",
+   "rank": "Commander",
+   "personality": "ruthless",
+   "faction": "IPS-N recovery"
+  }
+ },
+ "items": [
+  {
+   "id": "dr_ledger",
+   "name": "Hask's ledger",
+   "owner": "hask",
+   "kept": "room",
+   "spot": "office",
+   "room": "back",
+   "lock": 2,
+   "value": 50,
+   "effects": [
+    {
+     "set_flag": "dr_ledger"
+    },
+    {
+     "set_flag": "dr_moved"
+    }
+   ]
+  },
+  {
+   "id": "dr_governor",
+   "name": "the reactor governor's safety key",
+   "owner": "bede",
+   "kept": "room",
+   "spot": "printer",
+   "room": "control",
+   "lock": 1,
+   "value": 10,
+   "effects": [
+    {
+     "set_flag": "dr_sabotage"
+    },
+    {
+     "set_flag": "dr_moved"
+    }
+   ]
+  },
+  {
+   "id": "dr_core",
+   "name": "a blank NHP casket",
+   "owner": "marchetti",
+   "kept": "room",
+   "spot": "market",
+   "room": "store",
+   "lock": 2,
+   "value": 400,
+   "effects": [
+    {
+     "set_flag": "dr_core_stolen"
+    }
+   ]
+  }
+ ],
+ "allies": [
+  {
+   "if": {
+    "any": [
+     {
+      "flag": "dr_tamsin_captain"
+     },
+     {
+      "flag": "dr_side_tamsin"
+     }
+    ]
+   },
+   "name": "Tamsin's crew",
+   "template": "ph_brawler",
+   "count": 2
+  },
+  {
+   "if": {
+    "flag": "dr_colony_protected"
+   },
+   "name": "Saltmarrow militia",
+   "template": "ph_grunt",
+   "count": 2
+  },
+  {
+   "if": {
+    "flag": "dr_m_freed"
+   },
+   "name": "MERIDIAN's drones",
+   "template": "ph_controller",
+   "count": 1
+  },
+  {
+   "if": {
+    "flag": "dr_dey_deal"
+   },
+   "name": "Ruslan Dey",
+   "template": "ph_artillery",
+   "count": 1
+  },
+  {
+   "if": {
+    "flag": "dr_amnesty"
+   },
+   "name": "IPS-N recovery frames",
+   "template": "ph_assault",
+   "count": 2
+  },
+  {
+   "if": {
+    "flag": "dr_gallow_deal"
+   },
+   "name": "Gallowglass raiders",
+   "template": "ph_assault",
+   "count": 1
+  }
+ ],
+ "lines": {
+  "pro": [
+   {
+    "flag": "dr_ransomed"
+   },
+   {
+    "flag": "dr_took_cut"
+   },
+   {
+    "flag": "dr_skimmed"
+   },
+   {
+    "flag": "dr_gallow_deal"
+   },
+   {
+    "flag": "dr_sold_hask"
+   },
+   {
+    "flag": "dr_colony_bargained"
+   },
+   {
+    "trust": "hask",
+    "min": 3
+   }
+  ],
+  "folk": [
+   {
+    "flag": "dr_spared"
+   },
+   {
+    "flag": "dr_argued_cut"
+   },
+   {
+    "flag": "dr_breach_saved"
+   },
+   {
+    "flag": "dr_colony_protected"
+   },
+   {
+    "flag": "dr_m_freed"
+   },
+   {
+    "trust": "tamsin",
+    "min": 3
+   }
+  ],
+  "monster": [
+   {
+    "flag": "dr_spaced"
+   },
+   {
+    "flag": "dr_breach_obeyed"
+   },
+   {
+    "flag": "dr_colony_squeezed"
+   },
+   {
+    "flag": "dr_dey_lied"
+   }
+  ]
+ },
+ "line_act": 3,
+ "final_foe": [],
+ "first": "p1_cascade",
+ "chapters": {
+  "p1_cascade": {
+   "act": 1,
+   "act_name": "Prologue: The Cadence",
+   "world": "cadence",
+   "title": "Cascade",
+   "intro": [
+    "Day forty-one, adrift. The Saint Cadence is an IPS-N long-hauler on a fringe run, and her NHP, MERIDIAN, has started repeating itself: the same sentence, again and again, a little different each time.",
+    "IPS-N's orders: hold position and wait four months for a recovery tug. The crew has stopped waiting. You're the lance they hired to keep the cargo safe."
+   ],
+   "briefing": [
+    "Lancers. MERIDIAN has lost the maintenance frames in the cargo spine. They're cutting through bulkheads, and they're heading for the reactor.",
+    "Stop them. Then come to the bridge. We have another problem."
+   ],
+   "hook": {
+    "template": "secure_site",
+    "title": "Cascade",
+    "objective": "Stop MERIDIAN's runaway maintenance frames in the cargo spine before they reach the reactor.",
+    "stakes": "If they reach the reactor, nobody goes home.",
+    "question": "Is it the NHP, or someone using it?",
+    "place": "the cargo spine",
+    "enemy": "runaway maintenance frames",
+    "patron": "kell",
+    "npc_templates": [
+     "ph_controller",
+     "ph_support",
+     "ph_artillery"
+    ],
+    "sitrep": "sitrep_standardcombat",
+    "boarding": {
+     "kind": "defend",
+     "map": "own_ship"
+    }
+   },
+   "aftermath_scene": {
+    "scene": "dr_bridge",
+    "npc": "tamsin"
+   },
+   "branch": "b1",
+   "outcomes": [
+    {
+     "if": {
+      "flag": "dr_stood_aside"
+     },
+     "set": "stood_aside"
+    },
+    {
+     "if": {
+      "flag": "dr_mutineers"
+     },
+     "set": "mutineers"
+    },
+    {
+     "set": "officers"
+    }
+   ],
+   "next": [
+    {
+     "chapter": "p2_meridian"
+    }
+   ]
+  },
+  "p2_meridian": {
+   "act": 1,
+   "world": "cadence",
+   "title": "MERIDIAN",
+   "intro": [
+    "{p2_line}",
+    "Down in engineering, MERIDIAN's core room has sealed itself. The lights spell out the same word, over and over: STAY."
+   ],
+   "intro_vars": {
+    "p2_line": [
+     {
+      "if": {
+       "flag": "dr_mutineers"
+      },
+      "text": "The bridge belongs to Tamsin Reyes now. Captain Kell and his officers hold engineering, and they won't come out."
+     },
+     {
+      "text": "The mutiny broke on the bridge, but Tamsin Reyes and her people got away down the spine. They're holding engineering, and the core."
+     }
+    ]
+   },
+   "briefing": [
+    "Whoever holds MERIDIAN's core holds the ship. Get in there.",
+    "And when you're in front of it, you'll have to decide what to do with it."
+   ],
+   "hook": {
+    "template": "destroy_infrastructure",
+    "title": "The Core Room",
+    "objective": "Fight through engineering to MERIDIAN's core room.",
+    "stakes": "The NHP is failing, and whoever reaches it decides what happens to it.",
+    "question": "Stabilise it, cut it loose, or carry it out?",
+    "place": "engineering",
+    "enemy": "{p2_enemy}",
+    "patron": "{p2_patron}",
+    "foes_var": "{p2_foes}",
+    "sitrep": "sitrep_control",
+    "boarding": {
+     "kind": "defend",
+     "map": "own_ship"
+    }
+   },
+   "aftermath_scene": {
+    "scene": "dr_core",
+    "npc": "meridian"
+   },
+   "branch": "b2",
+   "outcomes": [
+    {
+     "if": {
+      "flag": "dr_m_cut"
+     },
+     "set": "cut_loose"
+    },
+    {
+     "if": {
+      "flag": "dr_m_boxed"
+     },
+     "set": "boxed"
+    },
+    {
+     "set": "stabilised"
+    }
+   ],
+   "next": [
+    {
+     "chapter": "p3_answer"
+    }
+   ]
+  },
+  "p3_answer": {
+   "act": 1,
+   "world": "cadence",
+   "title": "Someone Answers",
+   "intro": [
+    "Somebody heard the Cadence's distress call. Not IPS-N. A raider with a broken-nosed hull and a voice on the comms like warm honey: Captain Corvo Hask.",
+    "\"Saint Cadence, you sound like you've had a hard month. Let's talk about what you've got that I want.\""
+   ],
+   "briefing": [
+    "Hask's boarding party is coming through the docking ring. Whatever we decide about him, we decide it standing up.",
+    "Hold the ring."
+   ],
+   "hook": {
+    "template": "repel_boarders",
+    "title": "Someone Answers",
+    "objective": "Hold the docking ring against Hask's boarding party.",
+    "stakes": "If they take the ring, they take the ship.",
+    "question": "Do you fight Hask, or deal with him?",
+    "place": "the docking ring",
+    "enemy": "Hask's boarders",
+    "patron": "tamsin",
+    "npc_templates": [
+     "ph_brawler",
+     "ph_grunt",
+     "ph_assault"
+    ],
+    "sitrep": "sitrep_holdout",
+    "boarding": {
+     "kind": "defend",
+     "map": "own_ship"
+    },
+    "commander": "hask_cmd"
+   },
+   "aftermath_scene": {
+    "scene": "dr_lifeboat",
+    "npc": "hask"
+   },
+   "branch": "b3",
+   "outcomes": [
+    {
+     "if": [
+      {
+       "flag": "dr_lifeboat"
+      },
+      {
+       "flag": "dr_officers"
+      }
+     ],
+     "set": "stranded"
+    },
+    {
+     "if": {
+      "flag": "dr_lifeboat"
+     },
+     "set": "alone"
+    },
+    {
+     "set": "pirates"
+    }
+   ],
+   "on_resolve": {
+    "pirates": [
+     {
+      "set_flag": "dr_hask_aboard"
+     },
+     {
+      "trust": "hask",
+      "add": 1
+     }
+    ],
+    "stranded": [
+     {
+      "set_flag": "dr_hask_aboard"
+     },
+     {
+      "set_flag": "dr_lifeboat_officers"
+     },
+     {
+      "trust": "tamsin",
+      "add": -1
+     }
+    ],
+    "alone": [
+     {
+      "set_flag": "dr_hask_aboard"
+     },
+     {
+      "trust": "hask",
+      "add": -1
+     }
+    ]
+   },
+   "next": [
+    {
+     "chapter": "c4_raid"
+    }
+   ]
+  },
+  "c4_raid": {
+   "act": 2,
+   "act_name": "The Trade",
+   "world": "cadence",
+   "title": "First Blood",
+   "intro": [
+    "{start_line}",
+    "Hask has given the Cadence a new name on her transponder and a new trade. \"We take what the Union doesn't miss,\" he says. \"And you, my lancers, are how we take it.\""
+   ],
+   "intro_vars": {
+    "start_line": [
+     {
+      "if": {
+       "flag": "dr_lifeboat_officers"
+      },
+      "text": "Nine days in a lifeboat with Captain Kell's officers, and then a broken-nosed hull blotting out the stars: Hask came back for you. \"Pilots are pilots,\" he said. \"I can always use more.\""
+     },
+     {
+      "if": {
+       "flag": "dr_lifeboat"
+      },
+      "text": "You reached Gallows Reach in a lifeboat that smelled of fear and coolant. The Cadence was docked there a week later, under Hask's colours. He was hiring."
+     },
+     {
+      "text": "Hask and Tamsin shook on it over Captain Kell's empty chair: Hask's guns, the Cadence's hull, one crew."
+     }
+    ]
+   },
+   "briefing": [
+    "A Harrison Armory supply freighter, the Brightwater, running light on escorts. Board her, take the hold.",
+    "Oh, and before you go: there's a vat in the medical bay. Everyone on my crew gets a template in it. One pilot dies, so what? We wake another."
+   ],
+   "hook": {
+    "template": "seize_ship",
+    "title": "First Blood",
+    "objective": "Board the freighter Brightwater and take her hold.",
+    "stakes": "Her crew are armed and frightened. How this goes is up to you.",
+    "question": "What happens to the freighter's crew?",
+    "place": "the Brightwater",
+    "enemy": "the Brightwater's guards",
+    "patron": "hask",
+    "npc_templates": [
+     "ph_grunt",
+     "ph_support",
+     "ph_assault"
+    ],
+    "sitrep": "sitrep_control",
+    "boarding": {
+     "kind": "seize",
+     "map": "enemy_ship"
+    },
+    "loot": {
+     "name": "the Brightwater's cargo of reactor parts",
+     "value": 300,
+     "reserve": "reserve_supplies"
+    }
+   },
+   "aftermath": {
+    "npc": "hask",
+    "lines": [
+     {
+      "who": "narrator",
+      "text": "The Brightwater's crew are on their knees in her cargo bay, twenty of them. Somebody's crying."
+     },
+     {
+      "who": "npc",
+      "text": "Your prize, your call. Though I'll say: a crew that talks is a crew that tells the Union where we went."
+     }
+    ],
+    "choices": [
+     {
+      "text": "Put them in their lifeboats. They're no threat to anyone now.",
+      "tone": "courteous",
+      "tags": [
+       "kind"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_spared"
+       },
+       {
+        "trust": "tamsin",
+        "add": 1
+       },
+       {
+        "trust": "hask",
+        "add": -1
+       }
+      ]
+     },
+     {
+      "text": "Hold them for ransom. Harrison Armory pays for its people.",
+      "tone": "blunt",
+      "tags": [
+       "practical",
+       "greedy"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_ransomed"
+       },
+       {
+        "trust": "hask",
+        "add": 1
+       }
+      ]
+     },
+     {
+      "text": "Space them. No witnesses.",
+      "tone": "threaten",
+      "tags": [
+       "aggressive"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_spaced"
+       },
+       {
+        "trust": "hask",
+        "add": 2
+       },
+       {
+        "trust": "tamsin",
+        "add": -3
+       }
+      ]
+     }
+    ]
+   },
+   "branch": "b4",
+   "outcomes": [
+    {
+     "if": {
+      "flag": "dr_spaced"
+     },
+     "set": "spaced"
+    },
+    {
+     "if": {
+      "flag": "dr_ransomed"
+     },
+     "set": "ransomed"
+    },
+    {
+     "set": "spared"
+    }
+   ],
+   "next": [
+    {
+     "chapter": "c5_cut"
+    }
+   ]
+  },
+  "c5_cut": {
+   "act": 2,
+   "world": "cadence",
+   "title": "Hask's Cut",
+   "intro": [
+    "{raid_line}",
+    "Hask divides the take in the mess, in front of everyone. The captain's share is half. The lancers' share is a tenth."
+   ],
+   "intro_vars": {
+    "raid_line": [
+     {
+      "if": {
+       "flag": "dr_spaced"
+      },
+      "text": "Nobody in the mess talks about the Brightwater's crew. Nobody looks at you, either."
+     },
+     {
+      "if": {
+       "flag": "dr_spared"
+      },
+      "text": "Word gets around: the Cadence's lancers let a freighter crew go. Some of Hask's people think you've gone soft. Tamsin buys you a drink."
+     },
+     {
+      "text": "Harrison Armory paid the ransom inside a week. Hask is in a very good mood."
+     }
+    ]
+   },
+   "briefing": [
+    "Next job: an ore barge with a manna safe aboard. In and out.",
+    "And then we'll talk about shares, if you're unhappy with yours. I hear some of you are."
+   ],
+   "hook": {
+    "template": "raid_depot",
+    "title": "The Ore Barge",
+    "objective": "Hit the ore barge Kettle Creek and crack its manna safe.",
+    "stakes": "Half the crew is counting on this score.",
+    "question": "Who gets what from the take?",
+    "place": "the ore barge",
+    "enemy": "barge security",
+    "patron": "hask",
+    "npc_templates": [
+     "ph_grunt",
+     "ph_support",
+     "ph_assault"
+    ],
+    "sitrep": "sitrep_extraction",
+    "loot": {
+     "name": "the barge's manna safe",
+     "value": 400,
+     "reserve": "reserve_supplies"
+    }
+   },
+   "aftermath": {
+    "npc": "hask",
+    "lines": [
+     {
+      "who": "npc",
+      "text": "Half for the captain. A tenth for the lance. That's how it's always been on my ships."
+     },
+     {
+      "who": "npc",
+      "text": "Unless one of you would like to tell the crew why it should be different."
+     }
+    ],
+    "choices": [
+     {
+      "text": "Fine. Your ship, your cut.",
+      "tone": "courteous",
+      "tags": [
+       "practical"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_took_cut"
+       },
+       {
+        "trust": "hask",
+        "add": 1
+       },
+       {
+        "agenda": {
+         "pilot": "speaker",
+         "kind": "grievance",
+         "why": "Hask's half while the pilots bleed for a tenth"
+        }
+       }
+      ]
+     },
+     {
+      "text": "The lance takes the hits. Every pilot gets a full crew share, or we stop flying.",
+      "tone": "blunt",
+      "tags": [
+       "bold",
+       "honest"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_argued_cut"
+       },
+       {
+        "trust": "hask",
+        "add": -1
+       },
+       {
+        "trust": "tamsin",
+        "add": 2
+       }
+      ]
+     },
+     {
+      "text": "Whatever you say, captain.",
+      "tone": "courteous",
+      "tags": [
+       "deceptive"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_skimmed"
+       },
+       {
+        "trust": "bede",
+        "add": -1
+       }
+      ]
+     }
+    ]
+   },
+   "branch": "b5",
+   "outcomes": [
+    {
+     "if": {
+      "flag": "dr_argued_cut"
+     },
+     "set": "argued"
+    },
+    {
+     "if": {
+      "flag": "dr_skimmed"
+     },
+     "set": "skimmed"
+    },
+    {
+     "set": "took"
+    }
+   ],
+   "next": [
+    {
+     "chapter": "c6_gallowglass"
+    }
+   ]
+  },
+  "c6_gallowglass": {
+   "act": 2,
+   "world": "gallows",
+   "title": "The Gallowglass",
+   "intro": [
+    "Gallows Reach is a station built out of a dead mining hub, where nobody asks where a ship's been. It's also the Gallowglass's port: twelve raider ships under Commodore Vosk, and Vosk doesn't like newcomers.",
+    "Vosk wants a word with the Cadence. The word, it turns out, is a fleet."
+   ],
+   "briefing": [
+    "Vosk's ships have the Cadence pinned at the station's outer moorings. They want a tithe, or a fight.",
+    "Break their hold on the moorings, or make them a better offer."
+   ],
+   "hook": {
+    "template": "hunt_rivals",
+    "title": "The Gallowglass",
+    "objective": "Break the Gallowglass's hold on the outer moorings.",
+    "stakes": "If Vosk wins here, the Cadence pays him forever.",
+    "question": "Fight Vosk, deal with him, or sell Hask to him?",
+    "place": "the outer moorings",
+    "enemy": "the Gallowglass",
+    "patron": "hask",
+    "npc_templates": [
+     "ph_assault",
+     "ph_brawler",
+     "ph_artillery"
+    ],
+    "sitrep": "sitrep_standardcombat",
+    "landscape": "station",
+    "commander": "vosk"
+   },
+   "aftermath": {
+    "npc": "hask",
+    "lines": [
+     {
+      "who": "narrator",
+      "text": "Vosk's lieutenant finds you afterwards in a Gallows bar, alone. She slides a datachip across the table."
+     },
+     {
+      "who": "Vosk's lieutenant",
+      "text": "The Commodore has an offer. Join the Gallowglass, take a share of the Reach. Or tell us where Hask sleeps. Your choice."
+     }
+    ],
+    "choices": [
+     {
+      "text": "Tell Vosk the Cadence answers to nobody. We'll see him on the moorings again.",
+      "tone": "blunt",
+      "tags": [
+       "bold"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_gallow_fought"
+       },
+       {
+        "trust": "hask",
+        "add": 1
+       }
+      ]
+     },
+     {
+      "text": "We'll fly with the Gallowglass when it suits us. Draw up the terms.",
+      "tone": "courteous",
+      "tags": [
+       "diplomatic",
+       "practical"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_gallow_deal"
+       }
+      ]
+     },
+     {
+      "text": "Hask sleeps in the captain's quarters. Midnight, station time.",
+      "tone": "courteous",
+      "tags": [
+       "deceptive",
+       "greedy"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_sold_hask"
+       },
+       {
+        "trust": "hask",
+        "add": -3
+       },
+       {
+        "set_flag": "dr_moved"
+       }
+      ]
+     }
+    ]
+   },
+   "branch": "b6",
+   "outcomes": [
+    {
+     "if": {
+      "flag": "dr_sold_hask"
+     },
+     "set": "sold_hask"
+    },
+    {
+     "if": {
+      "flag": "dr_gallow_deal"
+     },
+     "set": "dealt"
+    },
+    {
+     "set": "fought"
+    }
+   ],
+   "rival_branches": {
+    "b6r": "vosk"
+   },
+   "next": [
+    {
+     "chapter": "c7_breach"
+    }
+   ]
+  },
+  "c7_breach": {
+   "act": 2,
+   "world": "cadence",
+   "title": "The Breach",
+   "intro": [
+    "{sold_line}",
+    "Hask has a job that pays more than all the others put together: an IPS-N courier carrying the Cadence's own recovery orders, and every crew roster IPS-N has for her."
+   ],
+   "intro_vars": {
+    "sold_line": [
+     {
+      "if": {
+       "flag": "dr_sold_hask"
+      },
+      "text": "Somebody came for Hask at midnight. He wasn't in his bunk. He's been smiling at you ever since."
+     },
+     {
+      "text": "The Gallowglass are watching the Cadence from every dock on the Reach."
+     }
+    ]
+   },
+   "briefing": [
+    "We take the courier, we wipe her records, and nobody ever knows who we were.",
+    "If her escort comes back before we're done, someone holds the breach while the Cadence pulls away. That's what lancers are for."
+   ],
+   "hook": {
+    "template": "data_heist",
+    "title": "The Breach",
+    "objective": "Take the IPS-N courier, wipe her records, and get back aboard before her escort returns.",
+    "stakes": "Hask has already said who stays behind if it goes wrong.",
+    "question": "Who holds the breach?",
+    "place": "the IPS-N courier",
+    "enemy": "the courier's escort",
+    "patron": "hask",
+    "npc_templates": [
+     "ph_assault",
+     "ph_artillery",
+     "ph_support"
+    ],
+    "sitrep": "sitrep_extraction",
+    "boarding": {
+     "kind": "seize",
+     "map": "enemy_ship"
+    }
+   },
+   "aftermath": {
+    "npc": "hask",
+    "lines": [
+     {
+      "who": "narrator",
+      "text": "The escort came back early. Hask was already pulling the Cadence away from the courier, with the breach still open."
+     },
+     {
+      "who": "npc",
+      "text": "Lancer! Hold the breach. We'll come back for you. Probably."
+     }
+    ],
+    "choices": [
+     {
+      "text": "Go. I'll hold it.",
+      "tone": "courteous",
+      "tags": [
+       "bold"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_breach_obeyed"
+       },
+       {
+        "trust": "hask",
+        "add": 2
+       },
+       {
+        "harm": 3,
+        "to": "speaker"
+       },
+       {
+        "agenda": {
+         "pilot": "speaker",
+         "kind": "grievance",
+         "why": "Hask left them holding the breach"
+        }
+       }
+      ]
+     },
+     {
+      "text": "Nobody stays behind. Bring the ship back, Hask, or I'll come and get it.",
+      "tone": "threaten",
+      "tags": [
+       "aggressive"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_breach_refused"
+       },
+       {
+        "trust": "hask",
+        "add": -2
+       },
+       {
+        "trust": "tamsin",
+        "add": 1
+       }
+      ]
+     },
+     {
+      "text": "Tamsin, blow the courier's cargo hatch. We'll all come out that way.",
+      "tone": "blunt",
+      "tags": [
+       "practical"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_breach_saved"
+       },
+       {
+        "trust": "tamsin",
+        "add": 2
+       }
+      ]
+     }
+    ]
+   },
+   "branch": "b7",
+   "outcomes": [
+    {
+     "if": {
+      "flag": "dr_breach_obeyed"
+     },
+     "set": "obeyed"
+    },
+    {
+     "if": {
+      "flag": "dr_breach_saved"
+     },
+     "set": "another_way"
+    },
+    {
+     "set": "refused"
+    }
+   ],
+   "next": [
+    {
+     "chapter": "c8_dey"
+    }
+   ]
+  },
+  "c8_dey": {
+   "act": 3,
+   "act_name": "The Price",
+   "world": "gallows",
+   "title": "The Hunter",
+   "intro": [
+    "{rep_line}",
+    "A Union DoJ/HR bounty hunter has come to Gallows Reach asking about the Cadence. His name is Ruslan Dey, and he's never yet gone home without the people he came for."
+   ],
+   "intro_vars": {
+    "rep_line": [
+     {
+      "if": {
+       "flag": "dr_spaced"
+      },
+      "text": "The Brightwater's lifeboats were found empty. Union news calls the Cadence's crew murderers, and it shows your mechs."
+     },
+     {
+      "if": {
+       "flag": "dr_spared"
+      },
+      "text": "The Brightwater's crew told everyone the Cadence's lancers let them go. In the fringe bars, people drink to you."
+     },
+     {
+      "text": "The Cadence has a name now, on the Union's lists and in the fringe bars both."
+     }
+    ]
+   },
+   "briefing": [
+    "Dey has hired local guns and he's waiting for us at the Reach's cargo locks.",
+    "Lure him in and take him, cut a deal, or run. Just don't let him take us."
+   ],
+   "hook": {
+    "template": "standoff",
+    "title": "The Hunter",
+    "objective": "Face Ruslan Dey's hired guns at Gallows Reach's cargo locks.",
+    "stakes": "Dey has warrants for every one of you.",
+    "question": "Take him, deal with him, or run?",
+    "place": "the cargo locks",
+    "enemy": "Dey's hunters",
+    "patron": "hask",
+    "npc_templates": [
+     "ph_assault",
+     "ph_artillery",
+     "ph_controller"
+    ],
+    "sitrep": "sitrep_standardcombat",
+    "landscape": "station",
+    "commander": "dey_cmd"
+   },
+   "aftermath": {
+    "npc": "dey",
+    "lines": [
+     {
+      "who": "npc",
+      "text": "You're better than your warrants say. So let's be honest with each other."
+     },
+     {
+      "who": "npc",
+      "text": "Help me take someone worse than you, and when it's over, you come in quietly. You'll get a fair trial. That's more than most people on my list get."
+     }
+    ],
+    "choices": [
+     {
+      "text": "Deal. When this is over, we come in.",
+      "tone": "courteous",
+      "tags": [
+       "honest"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_dey_deal"
+       },
+       {
+        "trust": "dey",
+        "add": 2
+       }
+      ]
+     },
+     {
+      "text": "Get off this station, Dey. Next time we won't let you walk.",
+      "tone": "threaten",
+      "tags": [
+       "aggressive"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_dey_run"
+       },
+       {
+        "trust": "dey",
+        "add": -2
+       }
+      ]
+     },
+     {
+      "text": "Sure. Whatever you say.",
+      "tone": "courteous",
+      "tags": [
+       "deceptive"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_dey_lied"
+       },
+       {
+        "trust": "dey",
+        "add": -3
+       }
+      ]
+     }
+    ]
+   },
+   "branch": "b8",
+   "outcomes": [
+    {
+     "if": {
+      "flag": "dr_dey_deal"
+     },
+     "set": "dealt"
+    },
+    {
+     "if": {
+      "rival": "dey_cmd",
+      "fate": "captured"
+     },
+     "set": "trapped"
+    },
+    {
+     "set": "ran"
+    }
+   ],
+   "next": [
+    {
+     "chapter": "c9_halloran"
+    }
+   ]
+  },
+  "c9_halloran": {
+   "act": 3,
+   "world": "gallows",
+   "title": "Amnesty",
+   "intro": [
+    "IPS-N's recovery tug arrived at last, four months late and three systems behind you. Commander Ines Halloran followed the Cadence's trail to the Reach.",
+    "She doesn't want a fight. She wants her ship back, and the NHP that was in it."
+   ],
+   "briefing": [
+    "Before we talk, prove you can still do honest work. Gallowglass raiders are stripping an IPS-N relay out past the Reach.",
+    "Clear them off, and I'll make you an offer."
+   ],
+   "hook": {
+    "template": "clear_raiders",
+    "title": "Amnesty",
+    "objective": "Clear the Gallowglass raiders off the IPS-N relay.",
+    "stakes": "Halloran is watching how you fight.",
+    "question": "Do you take IPS-N's offer?",
+    "place": "the relay platform",
+    "enemy": "Gallowglass raiders",
+    "patron": "halloran",
+    "npc_templates": [
+     "ph_assault",
+     "ph_brawler",
+     "ph_artillery"
+    ],
+    "sitrep": "sitrep_standardcombat",
+    "landscape": "station"
+   },
+   "aftermath": {
+    "npc": "halloran",
+    "lines": [
+     {
+      "who": "npc",
+      "text": "Bring me the Saint Cadence and MERIDIAN, and I'll sign a full amnesty for every pilot aboard. IPS-N will even keep you on."
+     },
+     {
+      "who": "npc",
+      "text": "Refuse, and the next ship you see from us will be a recovery squadron."
+     }
+    ],
+    "choices": [
+     {
+      "text": "We'll bring her home. Draw up the amnesty.",
+      "tone": "courteous",
+      "tags": [
+       "honest",
+       "cautious"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_amnesty"
+       },
+       {
+        "trust": "halloran",
+        "add": 2
+       },
+       {
+        "trust": "hask",
+        "add": -2
+       }
+      ]
+     },
+     {
+      "text": "The Cadence isn't yours any more. Send your squadron.",
+      "tone": "blunt",
+      "tags": [
+       "bold"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_amnesty_refused"
+       },
+       {
+        "trust": "halloran",
+        "add": -2
+       }
+      ]
+     },
+     {
+      "text": "Give me the papers. I'll need time to bring the crew round.",
+      "tone": "courteous",
+      "tags": [
+       "deceptive"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_amnesty_faked"
+       },
+       {
+        "trust": "halloran",
+        "add": -1
+       }
+      ]
+     }
+    ]
+   },
+   "branch": "b9",
+   "outcomes": [
+    {
+     "if": {
+      "flag": "dr_amnesty"
+     },
+     "set": "took"
+    },
+    {
+     "if": {
+      "flag": "dr_amnesty_faked"
+     },
+     "set": "faked"
+    },
+    {
+     "set": "refused"
+    }
+   ],
+   "next": [
+    {
+     "chapter": "c10_colony"
+    }
+   ]
+  },
+  "c10_colony": {
+   "act": 3,
+   "world": "colony",
+   "title": "Saltmarrow",
+   "intro": [
+    "Saltmarrow is a frozen colony at the edge of nowhere, a few thousand people and one water plant. The Cadence needs supplies. So does the Gallowglass, and they got here first.",
+    "Elder Yusra Pell meets you on the landing ice with her hands open."
+   ],
+   "briefing": [
+    "The Gallowglass are taking our winter stores. If they take the water plant, we won't see spring.",
+    "Please. We can't pay you much."
+   ],
+   "hook": {
+    "template": "defend_town",
+    "title": "Saltmarrow",
+    "objective": "Drive the Gallowglass away from Saltmarrow's water plant.",
+    "stakes": "A few thousand people need that plant to see the spring.",
+    "question": "Do you protect Saltmarrow, or squeeze it yourself?",
+    "place": "the water plant",
+    "enemy": "Gallowglass raiders",
+    "patron": "pell",
+    "npc_templates": [
+     "ph_assault",
+     "ph_brawler",
+     "ph_artillery"
+    ],
+    "sitrep": "sitrep_holdout",
+    "in_town": true
+   },
+   "aftermath": {
+    "npc": "pell",
+    "lines": [
+     {
+      "who": "npc",
+      "text": "You saved the plant. We'll give what we can spare."
+     },
+     {
+      "who": "Hask",
+      "text": "What they can spare? Lancers, take the stores. All of them. We have a ship to feed."
+     }
+    ],
+    "choices": [
+     {
+      "text": "We take what they can spare, and we keep the Gallowglass off them.",
+      "tone": "warm",
+      "tags": [
+       "kind"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_colony_protected"
+       },
+       {
+        "trust": "pell",
+        "add": 2
+       },
+       {
+        "trust": "hask",
+        "add": -1
+       }
+      ]
+     },
+     {
+      "text": "Take the stores. All of them.",
+      "tone": "blunt",
+      "tags": [
+       "greedy",
+       "aggressive"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_colony_squeezed"
+       },
+       {
+        "trust": "pell",
+        "add": -3
+       },
+       {
+        "trust": "hask",
+        "add": 1
+       },
+       {
+        "world": {
+         "set": {
+          "supply": "short"
+         }
+        }
+       }
+      ]
+     },
+     {
+      "text": "Half. And Saltmarrow owes the Cadence a favour.",
+      "tone": "courteous",
+      "tags": [
+       "practical"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_colony_bargained"
+       },
+       {
+        "trust": "pell",
+        "add": -1
+       }
+      ]
+     }
+    ]
+   },
+   "branch": "b10",
+   "outcomes": [
+    {
+     "if": {
+      "flag": "dr_colony_protected"
+     },
+     "set": "protected"
+    },
+    {
+     "if": {
+      "flag": "dr_colony_squeezed"
+     },
+     "set": "squeezed"
+    },
+    {
+     "set": "bargained"
+    }
+   ],
+   "next": [
+    {
+     "chapter": "c11_factions"
+    }
+   ]
+  },
+  "c11_factions": {
+   "act": 3,
+   "world": "cadence",
+   "title": "Two Crews",
+   "intro": [
+    "The Cadence has two crews now: the old hands, who came aboard under IPS-N and follow Tamsin Reyes, and Hask's people, who came aboard with Hask.",
+    "{grudge_line}"
+   ],
+   "intro_vars": {
+    "grudge_line": [
+     {
+      "if": {
+       "agenda": "grievance"
+      },
+      "text": "And everyone knows {aggrieved} has had enough. They've been saying it in the mess, loudly."
+     },
+     {
+      "text": "Fights in the mess have stopped being about cards."
+     }
+    ]
+   },
+   "briefing": [
+    "A Gallowglass gunship is shadowing us. Hask wants it gone before it calls the rest of the fleet.",
+    "Take it down. And afterwards, Tamsin wants to talk to you. Privately."
+   ],
+   "hook": {
+    "template": "clear_raiders",
+    "title": "The Shadow",
+    "objective": "Destroy the Gallowglass gunship shadowing the Cadence.",
+    "stakes": "If it calls the fleet, the Cadence is surrounded.",
+    "question": "Which crew are you?",
+    "place": "the gunship",
+    "enemy": "the Gallowglass",
+    "patron": "hask",
+    "npc_templates": [
+     "ph_assault",
+     "ph_brawler",
+     "ph_artillery"
+    ],
+    "sitrep": "sitrep_standardcombat",
+    "landscape": "starship"
+   },
+   "speaker_agenda": "grievance",
+   "aftermath": {
+    "npc": "tamsin",
+    "lines": [
+     {
+      "who": "npc",
+      "text": "Hask counts pilots like ammunition. One spent, another in the vat. I didn't take this ship from Kell to give it to a man like that."
+     },
+     {
+      "who": "npc",
+      "text": "When it comes to it, and it will, whose side are you on?"
+     }
+    ],
+    "choices": [
+     {
+      "text": "Yours. When you move, we move with you.",
+      "tone": "warm",
+      "tags": [
+       "bold"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_side_tamsin"
+       },
+       {
+        "set_flag": "dr_moved"
+       },
+       {
+        "trust": "tamsin",
+        "add": 2
+       },
+       {
+        "trust": "hask",
+        "add": -1
+       }
+      ]
+     },
+     {
+      "text": "Hask keeps us paid and alive. I'm not starting a war in the mess.",
+      "tone": "blunt",
+      "tags": [
+       "practical"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_side_hask"
+       },
+       {
+        "trust": "hask",
+        "add": 2
+       },
+       {
+        "trust": "tamsin",
+        "add": -2
+       }
+      ]
+     },
+     {
+      "text": "I'm keeping my head down until I know who's going to win.",
+      "tone": "courteous",
+      "tags": [
+       "cautious"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_kept_out"
+       }
+      ]
+     },
+     {
+      "condition": {
+       "agenda": "grievance",
+       "pilot": "speaker"
+      },
+      "text": "I've eaten scraps and bled for a tenth while he takes half. I'm done waiting. I'll lead it.",
+      "tone": "blunt",
+      "tags": [
+       "bold"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_driver"
+       },
+       {
+        "set_flag": "dr_side_tamsin"
+       },
+       {
+        "set_flag": "dr_moved"
+       },
+       {
+        "trust": "tamsin",
+        "add": 3
+       }
+      ]
+     }
+    ]
+   },
+   "branch": "b11",
+   "outcomes": [
+    {
+     "if": {
+      "flag": "dr_driver"
+     },
+     "set": "driver"
+    },
+    {
+     "if": {
+      "flag": "dr_side_tamsin"
+     },
+     "set": "tamsin"
+    },
+    {
+     "if": {
+      "flag": "dr_side_hask"
+     },
+     "set": "hask"
+    },
+    {
+     "set": "kept_out"
+    }
+   ],
+   "next": [
+    {
+     "chapter": "c12_meridian"
+    }
+   ]
+  },
+  "c12_meridian": {
+   "act": 3,
+   "world": "gallows",
+   "title": "MERIDIAN Fails",
+   "intro": [
+    "{m_line}"
+   ],
+   "intro_vars": {
+    "m_line": [
+     {
+      "if": {
+       "flag": "dr_m_cut"
+      },
+      "text": "Hask salvaged MERIDIAN's core from where you cut it loose. It's been drifting in a cargo crate, talking to itself. It's getting worse."
+     },
+     {
+      "if": {
+       "flag": "dr_m_boxed"
+      },
+      "text": "MERIDIAN's core has been in a crate in your bunk since the Cadence. Lately it hums at night, and the lights flicker when it does."
+     },
+     {
+      "text": "MERIDIAN is getting worse. Doors open on their own. Twice, the Cadence's guns tracked Hask's own shuttle."
+     }
+    ]
+   },
+   "briefing": [
+    "There's a parts broker on Gallows Reach with everything an NHP needs to hold together, and a fence called Marchetti with a blank casket in his locked hold.",
+    "Raid the broker's warehouse for parts. What you do with MERIDIAN after that is up to you."
+   ],
+   "hook": {
+    "template": "recover_cargo",
+    "title": "Parts",
+    "objective": "Raid the broker's warehouse on Gallows Reach for NHP parts.",
+    "stakes": "Without them, MERIDIAN won't last the month.",
+    "question": "Fix it, free it, replace it, or let it go?",
+    "place": "the broker's warehouse",
+    "enemy": "the broker's guards",
+    "patron": "bede",
+    "npc_templates": [
+     "ph_assault",
+     "ph_artillery",
+     "ph_controller"
+    ],
+    "sitrep": "sitrep_extraction",
+    "landscape": "station",
+    "loot": {
+     "name": "a crate of NHP casket parts",
+     "value": 250,
+     "reserve": "reserve_nhp_assistant"
+    }
+   },
+   "aftermath": {
+    "npc": "meridian",
+    "mode": "radio",
+    "channel": "Ship channel",
+    "lines": [
+     {
+      "who": "npc",
+      "text": "I can feel myself coming apart. I remember the Cadence's first voyage and I can't remember your names."
+     },
+     {
+      "who": "npc",
+      "text": "What are you going to do with me?"
+     }
+    ],
+    "choices": [
+     {
+      "text": "Hold still. We've got the parts. We're fixing you.",
+      "tone": "warm",
+      "tags": [
+       "kind"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_m_fixed"
+       },
+       {
+        "trust": "meridian",
+        "add": 2
+       }
+      ]
+     },
+     {
+      "text": "You've been in a box long enough. You're free: go where you like.",
+      "tone": "warm",
+      "tags": [
+       "bold",
+       "kind"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_m_freed"
+       },
+       {
+        "trust": "meridian",
+        "add": 3
+       },
+       {
+        "trust": "hask",
+        "add": -2
+       }
+      ]
+     },
+     {
+      "text": "I'm sorry. We're letting you go.",
+      "tone": "courteous",
+      "tags": [
+       "cautious"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_m_failed"
+       }
+      ]
+     },
+     {
+      "condition": {
+       "flag": "dr_core_stolen"
+      },
+      "text": "We have a new casket. We're replacing you, MERIDIAN. I'm sorry.",
+      "tone": "courteous",
+      "tags": [
+       "practical"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_m_replaced"
+       },
+       {
+        "trust": "halloran",
+        "add": 1
+       }
+      ]
+     }
+    ]
+   },
+   "branch": "b12",
+   "outcomes": [
+    {
+     "if": {
+      "flag": "dr_m_freed"
+     },
+     "set": "freed"
+    },
+    {
+     "if": {
+      "flag": "dr_m_replaced"
+     },
+     "set": "replaced"
+    },
+    {
+     "if": {
+      "flag": "dr_m_failed"
+     },
+     "set": "failed"
+    },
+    {
+     "set": "fixed"
+    }
+   ],
+   "next": [
+    {
+     "chapter": "c13_captaincy"
+    }
+   ]
+  },
+  "c13_captaincy": {
+   "act": 4,
+   "act_name": "Dead Reckoning",
+   "world": "cadence",
+   "title": "The Captaincy",
+   "intro": [
+    "{cap_line}"
+   ],
+   "intro_vars": {
+    "cap_line": [
+     {
+      "if": {
+       "flag": "dr_challenge"
+      },
+      "text": "You said it in front of the whole mess: you challenge Corvo Hask for the captain's chair. By the old law of the fringe ships, he has to answer it."
+     },
+     {
+      "if": {
+       "flag": "dr_ledger"
+      },
+      "text": "Hask's ledger is going round the crew deck: every pilot he's ever lost, and what he sold their templates for afterwards. The crew has gone very quiet."
+     },
+     {
+      "if": {
+       "flag": "dr_driver"
+      },
+      "text": "{aggrieved} isn't waiting any longer. Tonight the old hands move on the bridge."
+     },
+     {
+      "if": {
+       "flag": "dr_moved"
+      },
+      "text": "Tonight the old hands move on the bridge. You're with them."
+     },
+     {
+      "text": "Tamsin Reyes has made her move without you. Her people have the hangar and they're coming for the bridge, and Hask is calling for his lancers."
+     }
+    ]
+   },
+   "briefing": [
+    "This is it. Whatever happens tonight, the Cadence has one captain by morning."
+   ],
+   "hook": {
+    "template": "secure_site",
+    "title": "Mutiny",
+    "objective": "Take the bridge from Hask's loyalists.",
+    "stakes": "Whoever holds the bridge by morning holds the Cadence.",
+    "question": "Who commands the Saint Cadence?",
+    "place": "the bridge",
+    "enemy": "Hask's loyalists",
+    "patron": "tamsin",
+    "npc_templates": [
+     "ph_brawler",
+     "ph_grunt",
+     "ph_assault"
+    ],
+    "sitrep": "sitrep_control",
+    "boarding": {
+     "kind": "defend",
+     "map": "own_ship"
+    },
+    "commander": "hask_cmd",
+    "environments_if": [
+     {
+      "if": {
+       "flag": "dr_sabotage"
+      },
+      "ids": [
+       "env_zero_g"
+      ]
+     }
+    ],
+    "variants": [
+     {
+      "if": {
+       "flag": "dr_challenge"
+      },
+      "template": "champion_duel",
+      "title": "The Challenge",
+      "objective": "Beat Corvo Hask in single combat, in front of the crew.",
+      "stakes": "Win, and the chair is yours by the old law. Lose, and it's his forever.",
+      "enemy": "Corvo Hask",
+      "npc_templates": [
+       "ph_brawler"
+      ],
+      "place": "the hangar deck"
+     },
+     {
+      "if": {
+       "not": {
+        "flag": "dr_moved"
+       }
+      },
+      "title": "Tamsin's Mutiny",
+      "objective": "Hold the bridge for Hask against Tamsin's mutineers.",
+      "enemy": "the old Cadence hands",
+      "npc_templates": [
+       "ph_grunt",
+       "ph_brawler",
+       "ph_assault"
+      ],
+      "commander": "tamsin_cmd",
+      "patron": "hask"
+     }
+    ]
+   },
+   "aftermath_scene": {
+    "scene": "dr_captaincy",
+    "npc": "tamsin"
+   },
+   "branch": "b13",
+   "outcomes": [
+    {
+     "if": [
+      {
+       "flag": "dr_moved"
+      },
+      {
+       "won": false
+      }
+     ],
+     "set": "crushed"
+    },
+    {
+     "if": [
+      {
+       "not": {
+        "flag": "dr_moved"
+       }
+      },
+      {
+       "won": false
+      }
+     ],
+     "set": "mutiny_won"
+    },
+    {
+     "if": {
+      "flag": "dr_pilot_captain"
+     },
+     "set": "pilot_captain"
+    },
+    {
+     "if": {
+      "flag": "dr_tamsin_captain"
+     },
+     "set": "tamsin_captain"
+    },
+    {
+     "if": {
+      "flag": "dr_bede_captain"
+     },
+     "set": "bede_captain"
+    },
+    {
+     "set": "loyal"
+    }
+   ],
+   "on_resolve": {
+    "crushed": [
+     {
+      "set_flag": "dr_hask_rules"
+     }
+    ],
+    "loyal": [
+     {
+      "set_flag": "dr_hask_rules"
+     }
+    ],
+    "mutiny_won": [
+     {
+      "set_flag": "dr_tamsin_captain"
+     },
+     {
+      "set_flag": "dr_new_captain"
+     }
+    ],
+    "pilot_captain": [
+     {
+      "set_flag": "dr_new_captain"
+     }
+    ],
+    "tamsin_captain": [
+     {
+      "set_flag": "dr_new_captain"
+     }
+    ],
+    "bede_captain": [
+     {
+      "set_flag": "dr_new_captain"
+     }
+    ]
+   },
+   "rival_branches": {
+    "b14": "hask_cmd"
+   },
+   "next": [
+    {
+     "chapter": "c14_score"
+    }
+   ]
+  },
+  "c14_score": {
+   "act": 4,
+   "world": "gallows",
+   "title": "The Big Score",
+   "intro": [
+    "{captain_line}",
+    "{score_line}"
+   ],
+   "intro_vars": {
+    "captain_line": [
+     {
+      "if": {
+       "flag": "dr_hask_rules"
+      },
+      "text": "Hask sits in the captain's chair as if he never left it. \"No hard feelings,\" he says. He means it, which is worse."
+     },
+     {
+      "if": {
+       "flag": "dr_pilot_captain"
+      },
+      "text": "The captain's chair is a pilot's now. The crew salutes it, mostly."
+     },
+     {
+      "if": {
+       "flag": "dr_tamsin_captain"
+      },
+      "text": "Captain Tamsin Reyes walks the Cadence's decks like she's been doing it for years."
+     },
+     {
+      "text": "Captain Bede Okonkwo runs the Cadence like a ledger: carefully, and in the black."
+     }
+    ],
+    "score_line": [
+     {
+      "if": {
+       "flag": "dr_score_convoy"
+      },
+      "text": "The score: a Union-impounded convoy of printers, parked at Gallows Reach's customs dock while DoJ/HR argues over the paperwork."
+     },
+     {
+      "text": "The score: the Gallowglass treasury, in Commodore Vosk's strongroom at the heart of Gallows Reach."
+     }
+    ]
+   },
+   "briefing": [
+    "One last job, and everyone aboard can stop running.",
+    "Take it."
+   ],
+   "hook": {
+    "template": "raid_depot",
+    "title": "The Big Score",
+    "objective": "Hit the Gallowglass treasury in Vosk's strongroom.",
+    "stakes": "This is the score that ends the running, one way or another.",
+    "question": "Does the Cadence get away with it?",
+    "place": "Vosk's strongroom",
+    "enemy": "the Gallowglass",
+    "patron": "tamsin",
+    "npc_templates": [
+     "ph_assault",
+     "ph_brawler",
+     "ph_artillery"
+    ],
+    "sitrep": "sitrep_extraction",
+    "landscape": "station",
+    "commander": "vosk",
+    "loot": {
+     "name": "the Gallowglass treasury",
+     "value": 1200,
+     "reserve": "reserve_backing"
+    },
+    "variants": [
+     {
+      "if": {
+       "flag": "dr_score_convoy"
+      },
+      "title": "The Big Score",
+      "objective": "Steal the impounded printer convoy from Gallows Reach's customs dock.",
+      "place": "the customs dock",
+      "enemy": "Union customs marshals",
+      "npc_templates": [
+       "ph_assault",
+       "ph_artillery",
+       "ph_controller"
+      ],
+      "commander": "",
+      "loot": {
+       "name": "an impounded convoy of printers",
+       "value": 1200,
+       "reserve": "reserve_backing"
+      }
+     }
+    ]
+   },
+   "aftermath": {
+    "npc": "bede",
+    "lines": [
+     {
+      "who": "npc",
+      "text": "It's done. It's in the hold. I've counted it twice and I still don't believe it."
+     }
+    ],
+    "choices": [
+     {
+      "text": "Count it a third time. Then we'll see who comes for it.",
+      "tone": "warm",
+      "tags": [
+       "practical"
+      ],
+      "effects": [
+       {
+        "trust": "bede",
+        "add": 1
+       }
+      ]
+     },
+     {
+      "text": "Shares for everyone aboard. Full shares.",
+      "tone": "warm",
+      "tags": [
+       "kind"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_full_shares"
+       },
+       {
+        "trust": "tamsin",
+        "add": 1
+       }
+      ]
+     }
+    ]
+   },
+   "branch": "b15",
+   "outcomes": [
+    {
+     "if": {
+      "flag": "dr_score_convoy"
+     },
+     "set": "convoy"
+    },
+    {
+     "set": "treasury"
+    }
+   ],
+   "on_resolve": {
+    "treasury": [
+     {
+      "set_flag": "dr_score_treasury"
+     }
+    ]
+   },
+   "betrayal": "b16",
+   "next": [
+    {
+     "if": [
+      {
+       "line": "monster"
+      },
+      {
+       "not": {
+        "flag": "dr_dey_deal"
+       }
+      }
+     ],
+     "chapter": "c15_final_hunt"
+    },
+    {
+     "if": {
+      "not": {
+       "any": [
+        {
+         "flag": "dr_amnesty"
+        },
+        {
+         "flag": "dr_dey_deal"
+        }
+       ]
+      }
+     },
+     "chapter": "c15_final_recovery"
+    },
+    {
+     "chapter": "c15_final_gallow"
+    }
+   ]
+  },
+  "c15_final_hunt": {
+   "act": 4,
+   "world": "gallows",
+   "title": "Warrants",
+   "final": true,
+   "intro": [
+    "Ruslan Dey has come back to Gallows Reach with Union marshals and a warrant with every one of your names on it. The station's docks are sealed.",
+    "There's no talking your way out of this one."
+   ],
+   "briefing": [
+    "They've sealed the docks. Fight through to the Cadence or don't leave at all."
+   ],
+   "hook": {
+    "template": "hold_the_line",
+    "title": "Warrants",
+    "objective": "Fight through Dey's hunters and the Union marshals to the Cadence's berth.",
+    "stakes": "Everything you've done is on that warrant.",
+    "question": "Does anyone get off Gallows Reach?",
+    "place": "the station's docks",
+    "enemy": "Dey's hunters and Union marshals",
+    "patron": "tamsin",
+    "npc_templates": [
+     "ph_assault",
+     "ph_artillery",
+     "ph_controller"
+    ],
+    "sitrep": "sitrep_gauntlet",
+    "landscape": "station",
+    "commander": "dey_cmd"
+   },
+   "branch": "b17",
+   "outcomes": [
+    {
+     "set": "hunted"
+    }
+   ],
+   "next": [
+    {
+     "ending": true
+    }
+   ]
+  },
+  "c15_final_recovery": {
+   "act": 4,
+   "world": "cadence",
+   "title": "Recovery",
+   "final": true,
+   "intro": [
+    "{rec_line}"
+   ],
+   "intro_vars": {
+    "rec_line": [
+     {
+      "if": {
+       "flag": "dr_amnesty_faked"
+      },
+      "text": "Commander Halloran has read the papers you never signed. Her recovery squadron is alongside, and her boarders are cutting through the hull."
+     },
+     {
+      "text": "Commander Halloran keeps her promises. An IPS-N recovery squadron has the Cadence surrounded, and her boarders are cutting through the hull."
+     }
+    ]
+   },
+   "briefing": [
+    "They're aboard. This is our ship. Hold her."
+   ],
+   "hook": {
+    "template": "repel_boarders",
+    "title": "Recovery",
+    "objective": "Hold the Saint Cadence against IPS-N's recovery boarders.",
+    "stakes": "Lose, and the Cadence goes home without you.",
+    "question": "Who does the Saint Cadence belong to?",
+    "place": "the Cadence's decks",
+    "enemy": "IPS-N recovery",
+    "patron": "tamsin",
+    "npc_templates": [
+     "ph_assault",
+     "ph_artillery",
+     "ph_support"
+    ],
+    "sitrep": "sitrep_holdout",
+    "boarding": {
+     "kind": "defend",
+     "map": "own_ship"
+    },
+    "commander": "halloran_cmd",
+    "environments_if": [
+     {
+      "if": {
+       "any": [
+        {
+         "flag": "dr_m_failed"
+        },
+        {
+         "flag": "dr_m_cut"
+        },
+        {
+         "flag": "dr_sabotage"
+        }
+       ]
+      },
+      "ids": [
+       "env_zero_g"
+      ]
+     }
+    ]
+   },
+   "branch": "b17",
+   "outcomes": [
+    {
+     "set": "recovery"
+    }
+   ],
+   "next": [
+    {
+     "ending": true
+    }
+   ]
+  },
+  "c15_final_gallow": {
+   "act": 4,
+   "world": "gallows",
+   "title": "The Gallowglass Fleet",
+   "final": true,
+   "intro": [
+    "{gal_line}"
+   ],
+   "intro_vars": {
+    "gal_line": [
+     {
+      "if": {
+       "flag": "dr_score_treasury"
+      },
+      "text": "Commodore Vosk wants his treasury back, and he's brought all twelve ships to ask for it. His flagship has the Cadence grappled."
+     },
+     {
+      "text": "With the Cadence going straight, the Gallowglass mean to take her before IPS-N can. Vosk's flagship has her grappled."
+     }
+    ]
+   },
+   "briefing": [
+    "We go across to Vosk's flagship and end this on his deck."
+   ],
+   "hook": {
+    "template": "seize_ship",
+    "title": "The Gallowglass Fleet",
+    "objective": "Board Commodore Vosk's flagship and break the Gallowglass.",
+    "stakes": "If Vosk's flagship falls, the Gallowglass fall with it.",
+    "question": "Who rules the Reach?",
+    "place": "Vosk's flagship",
+    "enemy": "the Gallowglass",
+    "patron": "tamsin",
+    "npc_templates": [
+     "ph_assault",
+     "ph_brawler",
+     "ph_artillery"
+    ],
+    "sitrep": "sitrep_control",
+    "commander": "vosk",
+    "boarding": {
+     "kind": "seize",
+     "map": "enemy_ship"
+    }
+   },
+   "branch": "b17",
+   "outcomes": [
+    {
+     "set": "gallowglass"
+    }
+   ],
+   "next": [
+    {
+     "ending": true
+    }
+   ]
+  }
+ },
+ "endings": [
+  {
+   "id": "lost_with_the_cadence",
+   "if": {
+    "final_lost": true
+   },
+   "kind": "defeat",
+   "title": "Lost with the Cadence",
+   "text": "The last fight went the wrong way. The Saint Cadence drifts dark at the edge of the Reach, and the fringe bars tell three different stories about how her lancers died. None of them are true. All of them are better than the truth."
+  },
+  {
+   "id": "hasks_expendables",
+   "if": {
+    "flag": "dr_hask_rules"
+   },
+   "kind": "bittersweet",
+   "title": "Hask's Expendables",
+   "text": "Corvo Hask takes the score and keeps the ship. At Gallows Reach he cuts the lance loose with their mechs, a handshake and nothing else. \"One pilot dies, so what,\" he says, not unkindly. \"I'll find others.\" He already has."
+  },
+  {
+   "id": "brought_to_trial",
+   "if": {
+    "flag": "dr_dey_deal"
+   },
+   "kind": "bittersweet",
+   "title": "Brought to Trial",
+   "text": "Ruslan Dey keeps his word, and so do you. The trial on a Union court world lasts a month. You testify against the Gallowglass, against Hask, against yourselves. The sentence is lighter than anyone expected. Dey is in the gallery every day."
+  },
+  {
+   "id": "the_monster",
+   "if": {
+    "line": "monster"
+   },
+   "kind": "defeat",
+   "title": "The Monster the Union Had to Stop",
+   "text": "They tell stories about the Cadence's lancers now: the crew of the Brightwater, the stores of Saltmarrow. Union DoJ/HR put your faces on every gate in the region. Whether the Union caught you or not, the story ends the same way: as a warning."
+  },
+  {
+   "id": "go_legit",
+   "if": {
+    "flag": "dr_amnesty"
+   },
+   "kind": "triumph",
+   "title": "Go Legit",
+   "text": "Commander Halloran signs the amnesty on the Cadence's bridge. IPS-N takes back its ship, and takes on its lancers. A year later, you're flying escort on a fringe run like the one where it all started. Sometimes you see the Reach on the scopes."
+  },
+  {
+   "id": "meridians_children",
+   "if": [
+    {
+     "flag": "dr_m_freed"
+    },
+    {
+     "flag": "dr_new_captain"
+    }
+   ],
+   "kind": "triumph",
+   "title": "MERIDIAN's Children",
+   "text": "MERIDIAN chose to stay. The Saint Cadence is a ship with a mind of her own now, and she picks her crew: the frightened, the hunted, the ones nobody else will take. Nobody owns her. She's the first free ship on the Reach, and not the last."
+  },
+  {
+   "id": "free_fleet",
+   "if": [
+    {
+     "flag": "dr_new_captain"
+    },
+    {
+     "flag": "dr_score_treasury"
+    }
+   ],
+   "kind": "triumph",
+   "title": "Captains of a Free Fleet",
+   "text": "With the Gallowglass treasury and the Gallowglass broken, the Reach's ships needed someone to follow. They chose the Cadence. There's a free fleet on the fringe now, with a charter and a vote and no captain who counts pilots like ammunition."
+  },
+  {
+   "id": "legend_of_the_fringe",
+   "if": {
+    "line": "folk"
+   },
+   "kind": "triumph",
+   "title": "Legend of the Fringe",
+   "text": "Saltmarrow named its new water plant after the Cadence. The Brightwater's crew still drink to you. On the fringe, where the Union's law is thin, people say the Cadence's lancers will come if you call. Sometimes, you do."
+  },
+  {
+   "id": "retire_rich",
+   "if": [],
+   "kind": "bittersweet",
+   "title": "Retire Rich",
+   "text": "The score was enough. More than enough. The lance scatters across the fringe with new names and full accounts: a bar on a quiet moon, a ranch, a small ship of your own. Nobody ever finds out who you were. That was the point."
+  }
+ ],
+ "scenes": {
+  "dr_bridge": {
+   "start": "open",
+   "nodes": {
+    "open": {
+     "speaker": "narrator",
+     "line": [
+      "When you get back to the bridge, it's already happening. Tamsin Reyes and twenty of the crew have the hatch. Captain Kell has a sidearm and four officers."
+     ],
+     "next": "tamsin"
+    },
+    "tamsin": {
+     "speaker": "npc",
+     "expression": "angry",
+     "line": [
+      "Four months waiting on a tug, with an NHP that's losing its mind? I'm taking us to Gallows Reach. Lancers: you with us, or with him?"
+     ],
+     "next": "kell"
+    },
+    "kell": {
+     "speaker": "Captain Kell",
+     "line": [
+      "This is mutiny, Reyes. IPS-N hangs mutineers. Lancers, you're under contract to me. Do your job."
+     ],
+     "next": "ask"
+    },
+    "ask": {
+     "speaker": "npc",
+     "line": [
+      "Well?"
+     ],
+     "choices": [
+      {
+       "id": "mutiny",
+       "text": "Tamsin's right. Nobody's dying out here for a cargo manifest.",
+       "tone": "blunt",
+       "tags": [
+        "bold"
+       ],
+       "effects": [
+        {
+         "decision": {
+          "id": "mutiny",
+          "prompt": "Back Tamsin's mutiny against Captain Kell",
+          "accept": [
+           {
+            "set_flag": "dr_mutineers"
+           },
+           {
+            "trust": "tamsin",
+            "add": 2
+           },
+           {
+            "trust": "kell",
+            "add": -2
+           }
+          ],
+          "decline": [
+           {
+            "set_flag": "dr_officers"
+           },
+           {
+            "trust": "kell",
+            "add": 1
+           },
+           {
+            "trust": "tamsin",
+            "add": -2
+           }
+          ],
+          "fight": {
+           "place": "the Saint Cadence's bridge",
+           "map": "own_ship"
+          }
+         }
+        }
+       ],
+       "next": "after_mutiny"
+      },
+      {
+       "id": "loyal",
+       "text": "The captain gives the orders. Put it down, Reyes.",
+       "tone": "courteous",
+       "tags": [
+        "honest"
+       ],
+       "effects": [
+        {
+         "decision": {
+          "id": "loyal",
+          "prompt": "Stand with Captain Kell against the mutiny",
+          "accept": [
+           {
+            "set_flag": "dr_officers"
+           },
+           {
+            "trust": "kell",
+            "add": 1
+           },
+           {
+            "trust": "tamsin",
+            "add": -2
+           }
+          ],
+          "decline": [
+           {
+            "set_flag": "dr_mutineers"
+           },
+           {
+            "trust": "tamsin",
+            "add": 2
+           },
+           {
+            "trust": "kell",
+            "add": -2
+           }
+          ],
+          "fight": {
+           "place": "the Saint Cadence's bridge",
+           "map": "own_ship"
+          }
+         }
+        }
+       ],
+       "next": "after_loyal"
+      },
+      {
+       "id": "aside",
+       "text": "We're not shooting anyone over this. Sort it out yourselves.",
+       "tone": "courteous",
+       "tags": [
+        "cautious"
+       ],
+       "effects": [
+        {
+         "set_flag": "dr_stood_aside"
+        },
+        {
+         "set_flag": "dr_mutineers"
+        },
+        {
+         "trust": "kell",
+         "add": -1
+        }
+       ],
+       "next": "after_aside"
+      }
+     ]
+    },
+    "after_mutiny": {
+     "speaker": "narrator",
+     "line": [
+      "The officers look at your mechs, and at each other. It's over before anyone fires."
+     ],
+     "end": true
+    },
+    "after_loyal": {
+     "speaker": "narrator",
+     "line": [
+      "Tamsin swears, and her people fall back down the spine. They'll be back."
+     ],
+     "end": true
+    },
+    "after_aside": {
+     "speaker": "narrator",
+     "line": [
+      "Without the lance, Kell's officers don't stand a chance. Tamsin takes the bridge. She doesn't thank you."
+     ],
+     "end": true
+    }
+   }
+  },
+  "dr_core": {
+   "start": "open",
+   "mode": "radio",
+   "channel": "Core room",
+   "nodes": {
+    "open": {
+     "speaker": "npc",
+     "line": [
+      "Stay. Stay. I am sorry. I am trying to stop saying it. Stay."
+     ],
+     "next": "ask"
+    },
+    "ask": {
+     "speaker": "npc",
+     "line": [
+      "Whatever you do, do it soon. I can feel the next loop coming."
+     ],
+     "choices": [
+      {
+       "id": "stable",
+       "text": "Talk to me, MERIDIAN. Keep talking while I lock your governors down.",
+       "tone": "warm",
+       "tags": [
+        "kind"
+       ],
+       "effects": [
+        {
+         "set_flag": "dr_m_stable"
+        },
+        {
+         "trust": "meridian",
+         "add": 2
+        }
+       ],
+       "next": "stable"
+      },
+      {
+       "id": "cut",
+       "text": "I'm pulling your core. You'll be safe in the dark. So will we.",
+       "tone": "courteous",
+       "tags": [
+        "cautious"
+       ],
+       "effects": [
+        {
+         "set_flag": "dr_m_cut"
+        },
+        {
+         "trust": "meridian",
+         "add": -2
+        }
+       ],
+       "next": "cut"
+      },
+      {
+       "id": "box",
+       "text": "We're taking you with us. In a box, if we have to.",
+       "tone": "blunt",
+       "tags": [
+        "bold"
+       ],
+       "effects": [
+        {
+         "set_flag": "dr_m_boxed"
+        },
+        {
+         "trust": "meridian",
+         "add": 1
+        }
+       ],
+       "next": "box"
+      }
+     ]
+    },
+    "stable": {
+     "speaker": "npc",
+     "line": [
+      "...Thank you. It's quieter. It won't stay quiet."
+     ],
+     "end": true
+    },
+    "cut": {
+     "speaker": "narrator",
+     "line": [
+      "The core comes out with a sound like a held breath. The Cadence's lights go dim and stay dim."
+     ],
+     "end": true
+    },
+    "box": {
+     "speaker": "narrator",
+     "line": [
+      "MERIDIAN fits in a crate the size of a coffin. It hums all the way to your bunk."
+     ],
+     "end": true
+    }
+   }
+  },
+  "dr_lifeboat": {
+   "start": "open",
+   "nodes": {
+    "open": {
+     "speaker": "npc",
+     "line": [
+      "Good fight. Truly. You lot are wasted on a freight run."
+     ],
+     "next": "offer"
+    },
+    "offer": {
+     "speaker": "npc",
+     "line": [
+      "Here's how it is: I'm taking this ship. The crew can come with her. The lifeboats are still there for anyone who'd rather take their chances."
+     ],
+     "choices": [
+      {
+       "id": "stay",
+       "text": "We stay with the Cadence. Wherever she goes.",
+       "tone": "blunt",
+       "tags": [
+        "bold"
+       ],
+       "effects": [
+        {
+         "set_flag": "dr_stayed"
+        },
+        {
+         "trust": "hask",
+         "add": 1
+        }
+       ],
+       "next": "stay"
+      },
+      {
+       "id": "boat",
+       "text": "We'll take our chances in the lifeboat.",
+       "tone": "courteous",
+       "tags": [
+        "cautious"
+       ],
+       "effects": [
+        {
+         "set_flag": "dr_lifeboat"
+        }
+       ],
+       "next": "boat"
+      }
+     ]
+    },
+    "stay": {
+     "speaker": "npc",
+     "line": [
+      "Welcome to my crew. You'll like it. Most do."
+     ],
+     "end": true
+    },
+    "boat": {
+     "speaker": "npc",
+     "line": [
+      "Suit yourselves. The fringe is small. We'll meet again."
+     ],
+     "end": true
+    }
+   }
+  },
+  "dr_captaincy": {
+   "start": "open",
+   "nodes": {
+    "open": {
+     "speaker": "narrator",
+     "line": [
+      "By morning the bridge is quiet. There's blood on the deck plates and the crew is waiting to hear who's in charge."
+     ],
+     "branch": [
+      {
+       "if": {
+        "all": [
+         {
+          "not": {
+           "flag": "dr_moved"
+          }
+         },
+         {
+          "last_outcome": "defeat"
+         }
+        ]
+       },
+       "next": "tamsin_won"
+      },
+      {
+       "if": {
+        "not": {
+         "flag": "dr_moved"
+        }
+       },
+       "next": "loyal"
+      },
+      {
+       "if": {
+        "last_outcome": "defeat"
+       },
+       "next": "crushed"
+      }
+     ],
+     "next": "chair"
+    },
+    "tamsin_won": {
+     "speaker": "npc",
+     "line": [
+      "Hask's in the brig. The Cadence is mine. You fought for him, and you fought well. Fly for me now, or get off at the Reach."
+     ],
+     "effects": [
+      {
+       "set_flag": "dr_hask_brig"
+      }
+     ],
+     "next": "target"
+    },
+    "loyal": {
+     "speaker": "Hask",
+     "line": [
+      "You held. I won't forget it. And Tamsin... well. We'll see what she's good for in the brig."
+     ],
+     "effects": [
+      {
+       "set_flag": "dr_hask_rules"
+      },
+      {
+       "set_flag": "dr_tamsin_brig"
+      }
+     ],
+     "next": "target"
+    },
+    "crushed": {
+     "speaker": "Hask",
+     "line": [
+      "Brave. Stupid, but brave. Back to work, lancers. You'll fly the next one for a twentieth."
+     ],
+     "end": true
+    },
+    "chair": {
+     "speaker": "npc",
+     "line": [
+      "The chair's empty. Somebody has to sit in it."
+     ],
+     "choices": [
+      {
+       "id": "pilot",
+       "text": "I'll take it. The lance has bled for this ship longer than anyone.",
+       "tone": "blunt",
+       "tags": [
+        "bold"
+       ],
+       "effects": [
+        {
+         "decision": {
+          "id": "captain",
+          "prompt": "Put a pilot in the captain's chair",
+          "accept": [
+           {
+            "set_flag": "dr_pilot_captain"
+           }
+          ],
+          "decline": [
+           {
+            "set_flag": "dr_tamsin_captain"
+           }
+          ],
+          "fight": {
+           "place": "the Saint Cadence's bridge",
+           "map": "own_ship"
+          }
+         }
+        }
+       ],
+       "next": "hask"
+      },
+      {
+       "id": "tamsin",
+       "text": "It's yours, Tamsin. It always should have been.",
+       "tone": "warm",
+       "tags": [
+        "kind"
+       ],
+       "effects": [
+        {
+         "decision": {
+          "id": "captain",
+          "prompt": "Make Tamsin Reyes captain",
+          "accept": [
+           {
+            "set_flag": "dr_tamsin_captain"
+           }
+          ],
+          "decline": [
+           {
+            "set_flag": "dr_pilot_captain"
+           }
+          ],
+          "fight": {
+           "place": "the Saint Cadence's bridge",
+           "map": "own_ship"
+          }
+         }
+        }
+       ],
+       "next": "hask"
+      },
+      {
+       "id": "bede",
+       "text": "Bede keeps the books straight. Let the quartermaster run the ship.",
+       "tone": "courteous",
+       "tags": [
+        "practical"
+       ],
+       "effects": [
+        {
+         "decision": {
+          "id": "captain",
+          "prompt": "Make Bede Okonkwo captain",
+          "accept": [
+           {
+            "set_flag": "dr_bede_captain"
+           }
+          ],
+          "decline": [
+           {
+            "set_flag": "dr_tamsin_captain"
+           }
+          ],
+          "fight": {
+           "place": "the Saint Cadence's bridge",
+           "map": "own_ship"
+          }
+         }
+        }
+       ],
+       "next": "hask"
+      }
+     ]
+    },
+    "hask": {
+     "speaker": "narrator",
+     "line": [
+      "Corvo Hask is on his knees in the airlock, still smiling."
+     ],
+     "choices": [
+      {
+       "id": "maroon",
+       "text": "Put him off at Gallows Reach with nothing. Let him start over.",
+       "tone": "courteous",
+       "tags": [
+        "cautious"
+       ],
+       "effects": [
+        {
+         "set_flag": "dr_hask_marooned"
+        }
+       ],
+       "next": "target"
+      },
+      {
+       "id": "brig",
+       "text": "The brig. He stays where we can see him.",
+       "tone": "blunt",
+       "tags": [
+        "practical"
+       ],
+       "effects": [
+        {
+         "set_flag": "dr_hask_brig"
+        }
+       ],
+       "next": "target"
+      },
+      {
+       "id": "kill",
+       "text": "Cycle the airlock.",
+       "tone": "threaten",
+       "tags": [
+        "aggressive"
+       ],
+       "effects": [
+        {
+         "set_flag": "dr_hask_killed"
+        }
+       ],
+       "next": "target"
+      },
+      {
+       "id": "vat",
+       "text": "And smash the vat. Nobody owns us again.",
+       "tone": "blunt",
+       "tags": [
+        "bold"
+       ],
+       "effects": [
+        {
+         "clone_template": {
+          "pilot": "squad",
+          "state": "destroyed"
+         }
+        },
+        {
+         "set_flag": "dr_vat_smashed"
+        }
+       ],
+       "next": "hask_after",
+       "once": true
+      }
+     ]
+    },
+    "hask_after": {
+     "speaker": "narrator",
+     "line": [
+      "Glass and growth fluid across the medical bay. Whoever dies now stays dead."
+     ],
+     "next": "hask"
+    },
+    "target": {
+     "speaker": "npc",
+     "line": [
+      "One last job, then. One that ends the running. Where do we hit?"
+     ],
+     "choices": [
+      {
+       "id": "treasury",
+       "text": "The Gallowglass treasury. Vosk has had it coming.",
+       "tone": "blunt",
+       "tags": [
+        "bold"
+       ],
+       "effects": [
+        {
+         "set_flag": "dr_score_treasury_pick"
+        }
+       ],
+       "next": "end"
+      },
+      {
+       "id": "convoy",
+       "text": "The impounded printer convoy at the customs dock.",
+       "tone": "courteous",
+       "tags": [
+        "practical"
+       ],
+       "effects": [
+        {
+         "set_flag": "dr_score_convoy"
+        }
+       ],
+       "next": "end"
+      }
+     ]
+    },
+    "end": {
+     "speaker": "narrator",
+     "line": [
+      "The Cadence turns for Gallows Reach."
+     ],
+     "end": true
+    }
+   }
+  },
+  "dr_hask": {
+   "start": "greet",
+   "nodes": {
+    "greet": {
+     "speaker": "npc",
+     "line": [
+      "My favourite lancers. What do you need?",
+      "Ah. Trouble or business?"
+     ],
+     "next": "menu"
+    },
+    "menu": {
+     "speaker": "npc",
+     "line": [
+      "Go on.",
+      "Ask."
+     ],
+     "choices": [
+      {
+       "id": "vat",
+       "text": "About that vat in the medical bay...",
+       "tone": "courteous",
+       "tags": [
+        "curious"
+       ],
+       "effects": [
+        {
+         "clone_template": {
+          "pilot": "speaker",
+          "store": "flash"
+         }
+        }
+       ],
+       "next": "vat",
+       "once": true
+      },
+      {
+       "id": "cut",
+       "text": "The lance's share is too small.",
+       "tone": "blunt",
+       "tags": [
+        "bold"
+       ],
+       "next": "cut",
+       "once": true
+      },
+      {
+       "id": "challenge",
+       "text": "I'm challenging you for the chair, Hask. By the old law.",
+       "tone": "threaten",
+       "tags": [
+        "aggressive"
+       ],
+       "effects": [
+        {
+         "set_flag": "dr_challenge"
+        },
+        {
+         "set_flag": "dr_moved"
+        },
+        {
+         "trust": "hask",
+         "add": -3
+        }
+       ],
+       "next": "challenged",
+       "once": true,
+       "condition": [
+        {
+         "flag": "dr_hask_aboard"
+        },
+        {
+         "not": {
+          "flag": "dr_challenge"
+         }
+        }
+       ]
+      },
+      {
+       "id": "insult",
+       "text": "Does anyone on this ship actually like you?",
+       "tone": "insult",
+       "tags": [
+        "insult"
+       ],
+       "next": "bristle",
+       "once": true
+      },
+      {
+       "id": "leave",
+       "text": "Later.",
+       "tone": "leave",
+       "tags": [
+        "leave"
+       ],
+       "next": "farewell",
+       "pinned": true
+      }
+     ]
+    },
+    "vat": {
+     "speaker": "npc",
+     "line": [
+      "Flash-grown, quick, quiet. Quite unlawful, so don't tell the Union. One pilot dies, so what? We wake another. There: you're in it now."
+     ],
+     "next": "menu"
+    },
+    "cut": {
+     "speaker": "npc",
+     "line": [
+      "Then fly better and live longer. Shares go up with seniority. Nobody's very senior on a lance."
+     ],
+     "next": "menu"
+    },
+    "challenged": {
+     "speaker": "npc",
+     "expression": "smug",
+     "line": [
+      "The old law. How sweet. Fine. When the time comes, in front of everyone."
+     ],
+     "end": true
+    },
+    "bristle": {
+     "speaker": "npc",
+     "expression": "angry",
+     "line": [
+      "Everyone who matters. Careful."
+     ],
+     "next": "menu"
+    },
+    "farewell": {
+     "speaker": "npc",
+     "line": [
+      "Fly safe. Or at least profitably."
+     ],
+     "end": true
+    }
+   }
+  },
+  "dr_tamsin": {
+   "start": "greet",
+   "nodes": {
+    "greet": {
+     "speaker": "npc",
+     "line": [
+      "Lancer.",
+      "You again. Pull up a crate."
+     ],
+     "next": "menu"
+    },
+    "menu": {
+     "speaker": "npc",
+     "line": [
+      "What is it?"
+     ],
+     "choices": [
+      {
+       "id": "crew",
+       "text": "How's the crew holding up?",
+       "tone": "warm",
+       "tags": [
+        "curious"
+       ],
+       "next": "crew",
+       "once": true
+      },
+      {
+       "id": "rally",
+       "text": "If we moved on Hask, who'd stand with us?",
+       "tone": "courteous",
+       "tags": [
+        "diplomatic"
+       ],
+       "next": "rally",
+       "once": true,
+       "condition": {
+        "flag": "dr_hask_aboard"
+       },
+       "check": {
+        "skills": [
+         "sk_charm",
+         "sk_lead_or_inspire"
+        ],
+        "goal": "dr_rally",
+        "consequence": "Tamsin shakes her head. \"Not yet. They don't trust you enough.\"",
+        "success": "rallied",
+        "fail": "menu",
+        "success_effects": [
+         {
+          "set_flag": "dr_crew_rallied"
+         },
+         {
+          "set_flag": "dr_moved"
+         },
+         {
+          "trust": "tamsin",
+          "add": 1
+         }
+        ]
+       }
+      },
+      {
+       "id": "leave",
+       "text": "Nothing. Carry on.",
+       "tone": "leave",
+       "tags": [
+        "leave"
+       ],
+       "next": "farewell",
+       "pinned": true
+      }
+     ]
+    },
+    "crew": {
+     "speaker": "npc",
+     "line": [
+      "The old hands are tired and scared. Hask's people are tired and greedy. One of those lasts longer than the other."
+     ],
+     "next": "menu"
+    },
+    "rallied": {
+     "speaker": "npc",
+     "expression": "smiling",
+     "line": [
+      "Half the old hands. More, if someone gives them a reason. Leave it with me."
+     ],
+     "next": "menu"
+    },
+    "farewell": {
+     "speaker": "npc",
+     "line": [
+      "Watch your back."
+     ],
+     "end": true
+    }
+   }
+  }
+ },
+ "clone_beats": [
+  {
+   "if": {
+    "flag": "dr_hask_rules"
+   },
+   "npc": "hask",
+   "lines": [
+    {
+     "text": "There's our {name}. See? Nobody stays dead on my ship. That's the deal."
+    },
+    {
+     "who": "narrator",
+     "text": "Hask is smiling. It doesn't reach his eyes. He's already counting what the next one will cost."
+    }
+   ]
+  },
+  {
+   "if": {
+    "flag": "dr_hask_aboard"
+   },
+   "npc": "tamsin",
+   "lines": [
+    {
+     "text": "Welcome back, {name}. You don't remember the fight, do you? Good. It wasn't worth remembering."
+    },
+    {
+     "who": "narrator",
+     "text": "The vat hisses as it starts the next one. Somebody in the medical bay has started a tally on the wall. Nobody's laughing."
+    }
+   ]
+  },
+  {
+   "npc": "meridian",
+   "lines": [
+    {
+     "text": "{name}. Your heartbeat is slightly different. I will not tell anyone."
+    }
+   ]
+  }
+ ],
+ "vars": {
+  "p2_enemy": [
+   {
+    "if": {
+     "flag": "dr_mutineers"
+    },
+    "text": "Captain Kell's officers"
+   },
+   {
+    "text": "Tamsin's mutineers"
+   }
+  ],
+  "p2_foes": [
+   {
+    "if": {
+     "flag": "dr_mutineers"
+    },
+    "text": "officers"
+   },
+   {
+    "text": "mutineers"
+   }
+  ],
+  "p2_patron": [
+   {
+    "if": {
+     "flag": "dr_mutineers"
+    },
+    "text": "tamsin"
+   },
+   {
+    "text": "kell"
+   }
+  ]
+ }
+}

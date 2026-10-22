@@ -20,6 +20,11 @@ extends RefCounted
 ##   {"downtime": "dt_get_connected", "subject": "$npc"}  takes that downtime action now for the speaker
 ##   {"ui": "downtime", "action": "dt_get_a_damn_drink"}   asks the UI to open a panel (downtime
 ##     action with a subject to name, pilot gear picker "pilot_gear", job board "hooks")
+##   {"world": {"set": {fact: value}}}             what the squad did to this place (WorldState)
+##   {"agenda": {"pilot": "speaker", "kind", "why", "add"}}  a pilot's own grudge or goal (Agendas)
+##   {"clone_template": {"pilot": id | "speaker" | "squad", "state": "corrupted" | "tampered" | "destroyed"}}
+##   {"clone_template": {"pilot": ..., "store": "flash" | "facsimile"}}  store a template here (Cloning)
+##   {"decision": {id, prompt, accept: [effects], decline: [effects]}}  a squad decision (Decisions)
 ##   {"trust": "$npc" | npc id, "add": 1}         how much this person trusts the squad (-5..5)
 ##   {"give_item": item id, "to": "speaker"}       hand over something kept in town (TownLife)
 ##   {"rival_fate": "captured" | "withdrew" | "won"}   what becomes of the enemy commander (parley)
@@ -126,6 +131,34 @@ static func apply(e: Dictionary, story: StoryState, campaign: Campaign, ctx: Dic
 			story.npcs[npc]["dead"] = true
 			return [{"type": "npc_died", "npc": npc}]
 		return []
+	if e.has("world"):
+		var vals: Dictionary = {}
+		for k: String in (e["world"] as Dictionary).get("set", {}):
+			vals[k] = StoryText.fill(str(e["world"]["set"][k]), story, campaign, ctx)
+		return WorldState.set_facts(story, vals)
+	if e.has("agenda"):
+		var ag: Dictionary = e["agenda"]
+		var who := str(ag.get("pilot", "speaker"))
+		if who == "speaker":
+			who = str(ctx.get("speaker", ""))
+		return Agendas.add(story, campaign, who, str(ag.get("kind", "grievance")), StoryText.fill(str(ag.get("why", "")), story, campaign, ctx), int(ag.get("add", 1)))
+	if e.has("clone_template"):
+		var ct: Dictionary = e["clone_template"]
+		var whose: Array = [str(ct.get("pilot", ctx.get("speaker", "")))]
+		if whose[0] == "squad":
+			whose = campaign.pilots.keys().filter(func(x: String) -> bool: return story.is_alive(x) or story.dead.has(x))
+		elif whose[0] == "speaker":
+			whose = [str(ctx.get("speaker", ""))]
+		var cev: Array = []
+		for w: String in whose:
+			if ct.has("store"):
+				if story.is_alive(w) and Cloning.template(story, w).is_empty():
+					cev.append_array(Cloning.store(story, campaign, w, str(ct["store"])))
+			else:
+				cev.append_array(Cloning.damage(story, w, str(ct.get("state", "corrupted"))))
+		return cev
+	if e.has("decision"):
+		return Decisions.open(story, e["decision"], campaign, story.seat_of(str(ctx.get("speaker", ""))))
 	if e.has("trust"):
 		var who := str(R.call(e["trust"]))
 		if not story.npcs.has(who):

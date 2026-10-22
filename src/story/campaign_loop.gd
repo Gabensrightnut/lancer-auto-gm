@@ -136,7 +136,10 @@ static func build_mission(campaign: Campaign, story: StoryState, db: ContentDB, 
 					manual.append({"pilot": pid, "callsign": p.get("callsign", ""), "reserve": r.duplicate()})
 	mission.flavor["reserves"] = manual
 	# Allies who came because of what the squad did (the main campaign's finales).
-	_add_allies(state, mission, hook.get("allies", []), int(hook.get("seed", 0)))
+	var allies: Array = (hook.get("allies", []) as Array).duplicate()
+	if hook.has("boarding"):
+		allies.append_array(Plunder.boarders(story, campaign))
+	_add_allies(state, mission, allies, int(hook.get("seed", 0)))
 	# Someone leads the enemy force (Rivals): mission.flavor["commander"].
 	Rivals.setup_battle(story, campaign, state, mission)
 	return gen

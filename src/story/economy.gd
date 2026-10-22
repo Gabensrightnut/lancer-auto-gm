@@ -369,7 +369,7 @@ static func printer_refusal(story: StoryState, campaign: Campaign, pid: String) 
 		return "Printers are everywhere (the printer scarcity house rule is off)."
 	if not wrecked(story, campaign).has(pid):
 		return "That pilot's mech isn't wrecked."
-	if not has_printer(story):
+	if not has_printer(story) and not Plunder.has_printer(story, campaign):
 		return "There's no printer on this world. Travel somewhere with one (the map shows which)."
 	if StoryHouseRules.on(campaign, R_WALLET):
 		var p := price(story, campaign, "printer")
@@ -380,7 +380,9 @@ static func printer_refusal(story: StoryState, campaign: Campaign, pid: String) 
 
 static func use_printer(story: StoryState, campaign: Campaign, pid: String) -> Array:
 	var events: Array = []
-	if StoryHouseRules.on(campaign, R_WALLET):
+	if Plunder.has_printer(story, campaign):
+		pass  # The squad's own printer, aboard their ship.
+	elif StoryHouseRules.on(campaign, R_WALLET):
 		events.append_array(pay(story, campaign, price(story, campaign, "printer"), "printer access"))
 	else:
 		events.append_array(StoryEffects.apply({"obligation": {"to": str(story.hub.get("faction", "")), "what": "Printer time at %s" % story.hub.get("name", "")}}, story, campaign, {}))
@@ -490,6 +492,10 @@ static func eat(story: StoryState, campaign: Campaign, nights: int = 1, cut_off:
 		else:
 			fed = mini(int(sv["rations"]), need)
 			sv["rations"] = int(sv["rations"]) - fed
+			# A pilot with no mech of their own is last in line for the stores.
+			if wrecked(story, campaign).has(pid) and fed > 0:
+				fed = maxi(0, fed - ceili(need / 2.0))
+				events.append_array(Agendas.add(story, campaign, pid, "grievance", "short rations since their mech was wrecked"))
 		if fed >= need:
 			hun.erase(pid)
 		else:

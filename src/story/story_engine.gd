@@ -28,6 +28,10 @@ extends RefCounted
 ##   wait / go / follow / sneak / pick_lock / break_in / pickpocket / take_out / take / slip_away
 ##                                                    doing things yourself in town (TownLife)
 ##   set_origin {pilot, origin: {homeworld, upbringing, employer, specialty, perks}}  (Origin)
+##   store_template {pilot, kind} / wake_clone {pilot} / add_second_pilot {seat, name, callsign, relation}
+##   set_active_pilot {seat, pilot}                     death, cloning and a second pilot (Cloning)
+##   buy_upgrade {slot}                                   the squad's own ship (house rule; Plunder)
+##   decide {accept}  / split_resolved {winner}           squad decisions and party splits (Decisions)
 ##   travel {world}                                   go to another world of the sector (between missions; Sector)
 ## "seat" "gm" (the host / procedural GM) may act for anyone.
 
@@ -232,6 +236,39 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 		"battle_events":
 			if seat != "gm":
 				return _no("The host reports the battle.")
+		"store_template":
+			var why_c := Cloning.store_refusal(story, campaign, str(p.get("pilot", me)), str(p.get("kind", "facsimile")))
+			if why_c != "":
+				return _no(why_c, Cloning.REF)
+		"wake_clone":
+			var why_w := Cloning.wake_refusal(story, campaign, str(p.get("pilot", "")))
+			if why_w != "":
+				return _no(why_w, Cloning.REF)
+		"add_second_pilot":
+			var sseat := str(p.get("seat", seat))
+			if seat != "gm" and seat != sseat:
+				return _no("That isn't your seat.")
+			var why_s := Cloning.second_refusal(story, campaign, sseat, p)
+			if why_s != "":
+				return _no(why_s)
+		"set_active_pilot":
+			var aseat := str(p.get("seat", seat))
+			var choices := [story.pilot_of_seat(aseat), str(story.seats.get(aseat, {}).get("second", ""))]
+			if (seat != "gm" and seat != aseat) or not choices.has(str(p.get("pilot", ""))) or story.phase == "mission":
+				return _no("Pick one of your pilots, between missions.")
+		"decide":
+			var why_d := Decisions.refusal(story, seat)
+			if why_d != "":
+				return _no(why_d)
+		"buy_upgrade":
+			if story.phase == "mission":
+				return _no("Not in the middle of a mission.")
+			var why_u := Plunder.upgrade_refusal(story, campaign, str(p.get("slot", "")))
+			if why_u != "":
+				return _no(why_u)
+		"split_resolved":
+			if seat != "gm" or not Decisions.current(story).has("split"):
+				return _no("There's no split to settle.")
 		"set_origin":
 			var opid := str(p.get("pilot", me))
 			if not campaign.pilots.has(opid) or (seat != "gm" and not _controls(story, seat, opid)):
@@ -292,6 +329,8 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 			if not story.all_choices().is_empty():
 				var who: String = campaign.pilots.get(str(story.all_choices()[0].get("pilot", "")), {}).get("callsign", "Someone")
 				return _no("A downtime result is still waiting for %s's choice." % who)
+			if not Decisions.current(story).is_empty():
+				return _no("The squad still has to settle this: %s." % Decisions.current(story).get("prompt", "a decision"))
 		_:
 			return _no("Unknown story action '%s'." % type)
 	return {}
@@ -442,6 +481,22 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 		"travel":
 			var paid := Economy.pay_passage(story, campaign, Sector.world(story, str(p["world"])))
 			return paid + Sector.travel(story, campaign, str(p["world"]))
+		"store_template":
+			return Cloning.store(story, campaign, str(p.get("pilot", me)), str(p.get("kind", "facsimile")))
+		"wake_clone":
+			var woke := Cloning.wake(story, campaign, str(p["pilot"]))
+			woke.append_array(CampaignScript.on_clone(story, campaign, str(p["pilot"])))
+			return woke
+		"add_second_pilot":
+			return Cloning.add_second(story, campaign, str(p.get("seat", seat)), p)
+		"set_active_pilot":
+			return Cloning.set_active(story, campaign, str(p.get("seat", seat)), str(p["pilot"]))
+		"decide":
+			return Decisions.vote(story, campaign, seat, bool(p.get("accept", true)))
+		"buy_upgrade":
+			return Plunder.buy_upgrade(story, campaign, str(p["slot"]))
+		"split_resolved":
+			return Decisions.resolve_split(story, campaign, str(p.get("winner", "accept")))
 		"set_origin":
 			var op: Dictionary = campaign.pilots[str(p.get("pilot", me))]
 			op["origin"] = (p.get("origin", {}) as Dictionary).duplicate(true)
@@ -526,6 +581,8 @@ func _finish_mission(story: StoryState, campaign: Campaign, p: Dictionary) -> Ar
 	for pid: Variant in p.get("dead", []):
 		if campaign.pilots.has(str(pid)) and story.is_alive(str(pid)):
 			events.append_array(StoryEffects.kill(story, str(pid), str(p.get("death_cause", "Killed in action."))))
+			events.append_array(Cloning.on_death(story, campaign, str(pid)))
+	Cloning.tick(story)
 	for pid: Variant in p.get("down", []):
 		if campaign.pilots.has(str(pid)) and story.is_alive(str(pid)):
 			story.down_and_out[str(pid)] = true
@@ -569,8 +626,12 @@ func _finish_mission(story: StoryState, campaign: Campaign, p: Dictionary) -> Ar
 	events.append_array(Rivals.after_mission(story, outcome, hook))
 	# The main campaign remembers the chapter's mission (CampaignScript).
 	events.append_array(CampaignScript.after_mission(story, campaign, hook, won))
+	# What the mission did to the place, and what that leads to (WorldState).
+	events.append_array(WorldState.after_mission(story, campaign, hook, won))
 	# House rules that are on: pay, salvage, rations, wrecked mechs (Economy).
 	events.append_array(Economy.after_mission(story, campaign, hook, won, p.get("summary", {})))
+	# A raid's haul: money, loot for the ship, or a reserve by the book (Plunder).
+	events.append_array(Plunder.after_mission(story, campaign, hook, won))
 	# The GM's bond rewards were for this mission only (Core p.50).
 	story.flags.erase(Bonds.REWARDS)
 	# Has the campaign told its story? It ends after the level up (or now, if nobody's left).

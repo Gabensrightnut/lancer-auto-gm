@@ -32,7 +32,7 @@ func test_all_off_by_default_and_nothing_shows() -> void:
 	var s: StoryState = t["story"]
 	var c: Campaign = t["campaign"]
 	var defs := StoryHouseRules.definitions()
-	expect_eq(defs.size(), 5)
+	expect(defs.size() >= 5, "the house rules")
 	for r: Dictionary in defs:
 		expect(not StoryHouseRules.on(c, str(r["id"])), "%s is off" % r["id"])
 		expect_eq(str(r["label"]), "Your idea, not a book rule")
@@ -46,7 +46,7 @@ func test_all_off_by_default_and_nothing_shows() -> void:
 	expect(not _rule(t, "hr_wallet", true)["ok"] == false, "the host can switch one on")
 	expect(not _sub(t, "house_rule", {"id": "hr_wallet", "on": true}, "p1")["ok"], "players can't")
 	var house: Array = Codex.search("", "House rules", 99)
-	expect_eq(house.size(), 5, "the codex lists them")
+	expect_eq(house.size(), defs.size(), "the codex lists them")
 	expect(house.all(func(e: Dictionary) -> bool: return str(e["source"]) == "Your idea, not a book rule"))
 
 

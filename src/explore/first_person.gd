@@ -163,7 +163,7 @@ func show(story: StoryState, me_pid: String, near_room: String) -> void:
 			return not bool(TownLife.room_info(TownLife.spot_kind(story, spot), r).get("public", false)))
 		t = "[E] Go into %s" % target["name"]
 		if sneaking and not priv.is_empty():
-			t = "[E] Slip into %s, %s   [R] Force the door" % [target["name"], TownLife.room_info(TownLife.spot_kind(story, spot), str(priv[0])).get("name", "")]
+			t = "[E] Slip into %s, %s   [R] Force the door" % [target["name"], TownLife.room_name(story, spot, str(priv[0]))]
 	_prompt.text = t
 	_prompt.reset_size()
 	_prompt.position = Vector2((vp.x - _prompt.size.x) / 2.0, vp.y * 0.5 + 34)
