@@ -154,6 +154,31 @@ scaled with the window). Each frame they are laid out in screen space:
 - Overlay labels made with `screen_px` (move cost, terrain flags, cover, NO LOS) are also fixed
   size and in group `GROUP_PRIORITY`: plates make room for them, and they step past each other.
 
+## Mech paint and the customizer preview (`MechPaint`, `MechPreview`)
+
+Paint is cosmetic and stored with the mech, e.g. `mech["paint"]` (every key optional; missing
+means the frame's factory look):
+
+    {"primary": "#rrggbb", "secondary": "#rrggbb", "glow": "#rrggbb", "markings": "#rrggbb",
+     "decals": {"chest": "chevron", "shoulder_l": "roundel", "shoulder_r": "number:07",
+                "leg_l": "stripes", "leg_r": ""}}
+
+Decal ids: chevron, stripes, roundel, star, hazard, bars, diamond, number:NN. Primary and
+secondary are the model's two biggest painted color groups (imported frames name them); dark
+trim and bare metal keep their color. `MechPaint.apply(model, paint)` repaints a built model
+(inside the tree, for decals); `MechView` applies `unit["paint"]` when present.
+
+Builder hookup (the builder's `preview_area`):
+
+    var pv := MechPreview.new()          # turntable + paint controls; show_paint_controls = false for the turntable only
+    preview_area.add_child(pv)
+    pv.set_mech(model.db, m["frame"], m.get("loadout", {}), m.get("paint", {}))   # again on frame/loadout change
+    pv.paint_changed.connect(func(p: Dictionary) -> void: m["paint"] = p)
+
+Presets: `data/game/paint_presets.json` plus the player's saved ones in
+`user://paint_presets.json`. Screenshot scene: `scenes/customizer.tscn` (tags paint_factory,
+paint_preset, paint_random, paint_everest).
+
 ## Cameras
 
 `BattleView.set_camera_mode("tactical")` or `set_camera_mode("cockpit", unit_id, target_id)`.

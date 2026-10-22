@@ -44,6 +44,8 @@ func setup(unit_dict: Dictionary, view: BattleView) -> void:
 		frame = {"id": unit.get("content_id", ""), "source": "GMS", "mechtype": ["Balanced"], "stats": {"size": unit.get("size", 1)}}
 	model = MechBuilder.build(frame, unit.get("loadout", {}), view.content, float(unit.get("size", -1)))
 	add_child(model)
+	if unit.get("paint") is Dictionary:
+		MechPaint.apply(model, unit["paint"])  # cosmetic scheme from the customizer
 	# Nameplate: fixed size on screen; LabelDeclutter scales, nudges and fades it.
 	_label = _make_label(NAME_PX, Vector3.ZERO)
 	_bars = _make_label(BARS_PX, Vector3.ZERO)

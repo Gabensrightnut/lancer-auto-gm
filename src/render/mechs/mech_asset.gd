@@ -97,5 +97,6 @@ static func _paint(src: Material, frame_id: String) -> Material:
 	m.set_shader_parameter("vertex_wear", 0.0 if role in ["glow", "rope", "hose", "cloth"] else 1.0)
 	if MeshKit.outlines:
 		m.next_pass = MeshKit.paint(Color.WHITE).next_pass
+	m.set_meta("paint_role", role)
 	_mat_cache[key] = m
 	return m
