@@ -31,6 +31,13 @@ extends RefCounted
 static func check(cond: Variant, story: StoryState, campaign: Campaign, ctx: Dictionary) -> bool:
 	if cond == null:
 		return true
+	if cond is Dictionary and (cond as Dictionary).has("world"):
+		var fv := str(WorldState.facts(story).get(str(cond["world"]), ""))
+		return fv == str(cond["eq"]) if (cond as Dictionary).has("eq") else fv != ""
+	if cond is Dictionary and (cond as Dictionary).has("agenda"):
+		if str((cond as Dictionary).get("pilot", "")) == "speaker":
+			return str(Agendas.of(story, str(ctx.get("speaker", ""))).get("kind", "")) == str(cond["agenda"])
+		return Agendas.anyone(story, str(cond["agenda"])) != ""
 	if cond is Dictionary and (cond as Dictionary).has("trust"):
 		var who := str((cond as Dictionary)["trust"])
 		if who == "$npc":

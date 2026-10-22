@@ -1,0 +1,22 @@
+{
+  "_note": "Death and cloning (Core p.83-84) and the user's design on top. By the book: facsimile clones are natural-life, lawful and common but subjectivity override (bringing the pilot back) is rare, expensive, scrutinised and only for sanctioned organisations; flash clones are fast and broadly unlawful; override always brings complications; the clone remembers nothing from the start of the session where the pilot died but keeps all LL; cloned characters can't join a mission in progress; flash clones always come back with a quirk and each further cloning adds one. The book's quirk table stays in the book: these quirks are our own. Our design: ships and cities hold genetic templates; a usable clone takes years to grow (counted here in missions), and the next one starts growing when the last one wakes; templates can be corrupted, tampered with or destroyed; friends have to go to the template to wake the clone; the clone has a slightly different backstory (non-genetic origin details shift).",
+  "growth": {"facsimile": 8, "flash": 2},
+  "sanctioned_patrons": ["company", "union", "officer", "noble"],
+  "flash_cultures": ["cyberpunk", "retrofuturistic"],
+  "quirks": [
+    "A long scar runs where the old body had none, and nobody can say where it came from.",
+    "Your hands remember things your head doesn't: you catch yourself doing someone else's habits.",
+    "You flinch at the sound of the vat room's pumps. Every time.",
+    "There's a serial mark under your hairline. Someone, somewhere, keeps a list.",
+    "Your reflection is a half-second behind you. Probably your imagination.",
+    "You dream of the moment you died, in perfect detail, most nights.",
+    "Your voice came out a little different. Old friends keep asking you to say things again.",
+    "You crave a food you've never tasted in your life.",
+    "Some people who knew the old you won't look you in the eye.",
+    "You keep a list of things you don't remember doing. It keeps getting longer.",
+    "One eye sees a little further into the dark than it should.",
+    "You aren't sure, some days, that you're the person they think you are."
+  ],
+  "woke": ["{name} opens their eyes in the vat bay, gasping. The last thing they remember is the start of a day that, for everyone else, ended in their death.",
+           "The tank drains. {name} is back, the same and not the same, missing everything since the start of that last mission."]
+}

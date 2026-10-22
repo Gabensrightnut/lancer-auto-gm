@@ -1307,6 +1307,159 @@
           "to": "squad"
         }
       ]
+    },
+    "make_it_right_water": {
+      "weight": 1,
+      "board": false,
+      "sitreps": [
+        "sitrep_holdout",
+        "sitrep_standardcombat"
+      ],
+      "title": [
+        "Make It Right",
+        "Water for {hub}",
+        "Dig Deep"
+      ],
+      "objective": [
+        "Guard the crews repairing {what}, or cutting a new well, until the water flows again.",
+        "Keep {enemy} off the well-diggers until {hub} has water again."
+      ],
+      "stakes": [
+        "People in {hub} are going thirsty because of what happened at {what}.",
+        "You broke it. Nobody else is going to fix it."
+      ],
+      "question": [
+        "Can you give {hub} its water back?"
+      ],
+      "success": [
+        {
+          "world": {
+            "set": {
+              "water": "",
+              "what": ""
+            }
+          }
+        },
+        {
+          "standing": "$hub.faction",
+          "add": 1
+        }
+      ],
+      "failure": []
+    },
+    "make_it_right_power": {
+      "weight": 1,
+      "board": false,
+      "sitreps": [
+        "sitrep_holdout",
+        "sitrep_standardcombat"
+      ],
+      "title": [
+        "Lights Back On",
+        "Make It Right"
+      ],
+      "objective": [
+        "Protect the engineers bringing {hub}'s power back after {what}.",
+        "Hold the line at the relay while the grid comes back up."
+      ],
+      "stakes": [
+        "The clinic can't run on candles.",
+        "{hub} has been dark since {what}."
+      ],
+      "question": [
+        "Can you get the power back on?"
+      ],
+      "success": [
+        {
+          "world": {
+            "set": {
+              "power": "",
+              "what": ""
+            }
+          }
+        },
+        {
+          "standing": "$hub.faction",
+          "add": 1
+        }
+      ],
+      "failure": []
+    },
+    "make_it_right_supply": {
+      "weight": 1,
+      "board": false,
+      "sitreps": [
+        "sitrep_standardcombat",
+        "sitrep_standardcombat"
+      ],
+      "title": [
+        "Fill the Shelves",
+        "Make It Right"
+      ],
+      "objective": [
+        "Escort the relief convoy into {hub}.",
+        "Bring in the supplies {hub} lost with {what}."
+      ],
+      "stakes": [
+        "Families are going hungry since {what}.",
+        "Prices have doubled. People blame you."
+      ],
+      "question": [
+        "Can you get supplies through?"
+      ],
+      "success": [
+        {
+          "world": {
+            "set": {
+              "supply": "",
+              "what": ""
+            }
+          }
+        },
+        {
+          "standing": "$hub.faction",
+          "add": 1
+        }
+      ],
+      "failure": []
+    },
+    "rebuild_town": {
+      "weight": 1,
+      "board": false,
+      "sitreps": [
+        "sitrep_holdout",
+        "sitrep_standardcombat"
+      ],
+      "title": [
+        "Rebuild",
+        "Clean Up"
+      ],
+      "objective": [
+        "Help {hub} rebuild after the fighting, and keep the scavengers off the wreckage.",
+        "Hold off the looters while {hub} patches its walls."
+      ],
+      "stakes": [
+        "Some of those holes are yours.",
+        "People are sleeping in the street."
+      ],
+      "question": [
+        "Will {hub} forgive the mess?"
+      ],
+      "success": [
+        {
+          "world": {
+            "set": {
+              "repairs": "",
+              "what": ""
+            }
+          }
+        },
+        {
+          "standing": "$hub.faction",
+          "add": 1
+        }
+      ],
+      "failure": []
     }
   }
 }
