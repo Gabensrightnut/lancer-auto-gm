@@ -1,0 +1,32 @@
+{
+  "_about": "Default battle keybinds (our data). Action ids are Godot InputMap actions used by the battle code (BattleKeys loads this file). Keys are Godot key names (OS.find_keycode_from_string); the Settings screen rebinds any of them. Mouse controls are fixed and listed for the help screen.",
+  "actions": [
+    {"id": "cam_pan_up", "label": "Camera: pan forward", "keys": ["W", "Up"]},
+    {"id": "cam_pan_down", "label": "Camera: pan back", "keys": ["S", "Down"]},
+    {"id": "cam_pan_left", "label": "Camera: pan left", "keys": ["A", "Left"]},
+    {"id": "cam_pan_right", "label": "Camera: pan right", "keys": ["D", "Right"]},
+    {"id": "cam_rotate_left", "label": "Camera: rotate left", "keys": ["Q"]},
+    {"id": "cam_rotate_right", "label": "Camera: rotate right", "keys": ["E"]},
+    {"id": "cam_zoom_in", "label": "Camera: zoom in", "keys": ["Equal", "Kp Add"]},
+    {"id": "cam_zoom_out", "label": "Camera: zoom out", "keys": ["Minus", "Kp Subtract"]},
+    {"id": "cam_focus", "label": "Camera: focus your unit", "keys": ["F", "Home"]},
+    {"id": "tactical_view", "label": "Hold: tactical view (threat, ranges, stats)", "keys": ["Space"]},
+    {"id": "first_person", "label": "First person (cockpit) on/off", "keys": ["V"]},
+    {"id": "next_target", "label": "Next target", "keys": ["Tab"]},
+    {"id": "reload", "label": "Reload (Stabilize, or a reload system)", "keys": ["R"]},
+    {"id": "brace", "label": "Brace (when offered)", "keys": ["B"]},
+    {"id": "confirm", "label": "Confirm", "keys": ["Enter", "Kp Enter"]},
+    {"id": "cancel", "label": "Cancel / back", "keys": ["Escape"]},
+    {"id": "fly_toggle", "label": "Take off / land", "keys": ["T"]},
+    {"id": "sky_up", "label": "Flying: higher", "keys": ["PageUp"]},
+    {"id": "sky_down", "label": "Flying: lower", "keys": ["PageDown"]},
+    {"id": "action_1", "label": "Action bar slot 1 (1-0 for slots 1-10)", "keys": ["1"], "fixed": true}
+  ],
+  "mouse": [
+    ["Left click / drag", "Select, target; press-drag-release to plan a move"],
+    ["Right click", "Context menu (cancel while picking)"],
+    ["Middle drag", "Orbit the camera (Shift: pan)"],
+    ["Wheel", "Zoom"],
+    ["Screen edges", "Pan the camera"]
+  ]
+}
