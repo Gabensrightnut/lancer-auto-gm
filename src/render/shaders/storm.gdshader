@@ -36,5 +36,6 @@ void fragment() {
 	float bx = fract(UV.x * 7.0) - 0.5 + (noise(vec2(UV.y * 20.0, cell + floor(TIME / period))) - 0.5) * 0.15;
 	float bolt = smoothstep(0.012, 0.0, abs(bx)) * step(UV.y, 0.55) * flash;
 	ALBEDO = col + flash_color * bolt * 3.0;
-	ALPHA = clamp(shape * 0.95 + bolt, 0.0, 1.0);
+	float ends = smoothstep(0.0, 0.2, UV.x) * smoothstep(1.0, 0.8, UV.x);
+	ALPHA = clamp(shape * 0.95 + bolt, 0.0, 1.0) * ends;
 }

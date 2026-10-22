@@ -1,0 +1,505 @@
+{
+ "_note": "Our own writing. Townsfolk: rumors, needs that become mission hooks, Gather Information (Core p.53).",
+ "id": "local",
+ "start": "greet",
+ "nodes": {
+  "greet": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@greet_local",
+   "effects": [
+    {
+     "set_flag": "met:{npc_id}"
+    }
+   ],
+   "next": "describe",
+   "branch": [
+    {
+     "if": [
+      {
+       "deal": "$npc",
+       "state": "lost"
+      },
+      {
+       "not": {
+        "flag": "deal_off_said:{npc_id}"
+       }
+      }
+     ],
+     "next": "deal_off"
+    },
+    {
+     "if": {
+      "flag": "met:{npc_id}"
+     },
+     "next": "greet_again"
+    }
+   ]
+  },
+  "greet_again": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": "@greet_local",
+   "next": "menu",
+   "branch": [
+    {
+     "if": [
+      {
+       "deal": "$npc",
+       "state": "lost"
+      },
+      {
+       "not": {
+        "flag": "deal_off_said:{npc_id}"
+       }
+      }
+     ],
+     "next": "deal_off"
+    }
+   ]
+  },
+  "describe": {
+   "speaker": "narrator",
+   "line": "@describe_npc",
+   "next": "menu"
+  },
+  "farewell": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@farewell",
+   "end": true
+  },
+  "check_ok": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": "@check_success",
+   "next": "menu"
+  },
+  "check_bad": {
+   "speaker": "npc",
+   "expression": "angry",
+   "line": "@check_fail",
+   "next": "menu"
+  },
+  "favor": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@rep_favor_intro",
+   "effects": [
+    {
+     "downtime": "dt_get_connected",
+     "subject": "$npc"
+    }
+   ],
+   "next": "menu"
+  },
+  "deal_offer": {
+   "speaker": "npc",
+   "line": "@deal_offer",
+   "choices": [
+    {
+     "id": "deal_yes",
+     "text": [
+      "Deal. We'll do the job.",
+      "You've got yourself a squad."
+     ],
+     "tags": [
+      "practical",
+      "greedy",
+      "bold"
+     ],
+     "effects": [
+      {
+       "deal": {
+        "template": "$npc.want_hook",
+        "fallback": "clear_raiders"
+       }
+      },
+      {
+       "log": "Deal with {npc}: a job for {npc_deal_reward}."
+      }
+     ],
+     "next": "deal_done"
+    },
+    {
+     "id": "deal_no",
+     "text": [
+      "Not right now.",
+      "We'll think about it."
+     ],
+     "tags": [
+      "cautious",
+      "leave"
+     ],
+     "pinned": true,
+     "next": "menu"
+    }
+   ]
+  },
+  "deal_done": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": [
+    "Good. It's on the board. Don't let me down.",
+    "Then we have an understanding."
+   ],
+   "next": "menu"
+  },
+  "deal_waiting": {
+   "speaker": "npc",
+   "line": "@deal_waiting",
+   "next": "menu"
+  },
+  "deal_off": {
+   "speaker": "npc",
+   "expression": "worried",
+   "line": "@deal_off",
+   "effects": [
+    {
+     "set_flag": "deal_off_said:{npc_id}"
+    }
+   ],
+   "next": "menu"
+  },
+  "pay_favor": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": [
+    "Good. Here's what we need from you.",
+    "I was hoping you'd remember. There's a job.",
+    "A favor for a favor. Here's the job."
+   ],
+   "effects": [
+    {
+     "hook": "favor_owed",
+     "patron": "$npc"
+    },
+    {
+     "log": "{npc} called in the favor: a new job is on the board."
+    }
+   ],
+   "next": "menu"
+  },
+  "menu": {
+   "speaker": "npc",
+   "line": "@menu_prompt",
+   "choices": [
+    {
+     "id": "need",
+     "text": [
+      "Is there anything you need?",
+      "Anything we can help with?",
+      "What's troubling {hub}?"
+     ],
+     "tags": [
+      "kind",
+      "curious"
+     ],
+     "condition": {
+      "not": {
+       "flag": "asked_need:{npc_id}"
+      }
+     },
+     "effects": [
+      {
+       "set_flag": "asked_need:{npc_id}"
+      }
+     ],
+     "next": "want"
+    },
+    {
+     "id": "rumors",
+     "text": [
+      "Heard anything strange lately?",
+      "What's the gossip?"
+     ],
+     "tags": [
+      "curious"
+     ],
+     "next": "rumor"
+    },
+    {
+     "id": "gather",
+     "text": [
+      "I'm looking into something. Mind if I ask around? (Gather Information: your downtime action)",
+      "Ask around town. (Gather Information)"
+     ],
+     "condition": [
+      {
+       "phase": "downtime"
+      },
+      {
+       "downtime_left": true
+      }
+     ],
+     "tags": [
+      "curious",
+      "practical"
+     ],
+     "effects": [
+      {
+       "ui": "downtime",
+       "action": "dt_gather_information"
+      }
+     ],
+     "next": "menu"
+    },
+    {
+     "id": "patch",
+     "text": "That cut on your arm looks bad. Let me see it.",
+     "trigger": "sk_patch",
+     "tags": [
+      "kind"
+     ],
+     "check": {
+      "skills": [
+       "sk_patch"
+      ],
+      "goal": "patch:{npc_id}",
+      "consequence": "It takes the rest of the afternoon, and it still might scar.",
+      "success": "check_ok",
+      "fail": "check_bad",
+      "success_effects": [
+       {
+        "standing": "$hub.faction",
+        "add": 1
+       },
+       {
+        "set_flag": "helped_local"
+       },
+       {
+        "set_flag": "patch:{npc_id}"
+       }
+      ],
+      "fail_effects": [],
+      "tags": [
+       "medicine",
+       "wounded"
+      ]
+     },
+     "condition": [
+      {
+       "not": {
+        "flag": "patch:{npc_id}"
+       }
+      }
+     ]
+    },
+    {
+     "id": "read",
+     "text": "Something's off about them. Read them.",
+     "trigger": "sk_read_a_situation",
+     "tags": [
+      "curious",
+      "cautious"
+     ],
+     "check": {
+      "skills": [
+       "sk_read_a_situation",
+       "sk_spot"
+      ],
+      "goal": "read:{npc_id}",
+      "consequence": "They notice you staring and clam up.",
+      "success": "secret",
+      "fail": "check_bad",
+      "success_effects": [
+       {
+        "reserve": "reserve_knowledge",
+        "name": "What {npc} isn't saying",
+        "source": "$npc.name"
+       },
+       {
+        "set_flag": "secret_known:{npc_id}"
+       },
+       {
+        "set_flag": "read:{npc_id}"
+       }
+      ],
+      "fail_effects": [],
+      "tags": [
+       "colonists",
+       "streets"
+      ]
+     },
+     "condition": [
+      {
+       "not": {
+        "flag": "read:{npc_id}"
+       }
+      }
+     ]
+    },
+    {
+     "id": "favor",
+     "text": "Can you help us out for the next mission? (Get Connected: your downtime action)",
+     "condition": [
+      {
+       "phase": "downtime"
+      },
+      {
+       "downtime_left": true
+      },
+      {
+       "standing": "$npc.faction",
+       "min": -2
+      }
+     ],
+     "tags": [
+      "practical",
+      "greedy"
+     ],
+     "next": "favor"
+    },
+    {
+     "id": "deal",
+     "text": [
+      "Is there something we could do for you, in exchange for {npc_deal_reward}?",
+      "What would it take to get {npc_deal_reward} from you?"
+     ],
+     "condition": [
+      {
+       "deal": "$npc",
+       "state": "none"
+      },
+      {
+       "not": {
+        "phase": "mission"
+       }
+      }
+     ],
+     "tags": [
+      "greedy",
+      "practical",
+      "kind"
+     ],
+     "next": "deal_offer"
+    },
+    {
+     "id": "deal_wait",
+     "text": "About our deal...",
+     "condition": {
+      "deal": "$npc",
+      "state": "accepted"
+     },
+     "tags": [
+      "honest"
+     ],
+     "next": "deal_waiting"
+    },
+    {
+     "id": "leave",
+     "text": [
+      "That's all for now.",
+      "I should go.",
+      "Thanks. See you around.",
+      "We'll talk later."
+     ],
+     "tags": [
+      "leave"
+     ],
+     "pinned": true,
+     "next": "farewell"
+    }
+   ]
+  },
+  "rumor": {
+   "speaker": "npc",
+   "line": "@rumor",
+   "next": "menu"
+  },
+  "secret": {
+   "speaker": "narrator",
+   "line": "@secret_revealed",
+   "next": "menu"
+  },
+  "want": {
+   "speaker": "npc",
+   "expression": "worried",
+   "line": "@local_want_line",
+   "choices": [
+    {
+     "id": "promise",
+     "text": [
+      "We'll see what we can do.",
+      "Leave it with us.",
+      "Consider it done."
+     ],
+     "tags": [
+      "kind",
+      "honest"
+     ],
+     "effects": [
+      {
+       "hook": "$npc.want_hook",
+       "patron": "$npc"
+      },
+      {
+       "standing": "$hub.faction",
+       "add": 1
+      }
+     ],
+     "next": "thanks"
+    },
+    {
+     "id": "maybe",
+     "text": [
+      "No promises. But we'll keep it in mind.",
+      "Maybe. We've got our own orders."
+     ],
+     "tags": [
+      "cautious",
+      "honest"
+     ],
+     "next": "menu"
+    },
+    {
+     "id": "price",
+     "text": [
+      "And what do we get out of it?",
+      "What's it worth to you?"
+     ],
+     "tags": [
+      "greedy"
+     ],
+     "next": "price"
+    },
+    {
+     "id": "no",
+     "text": [
+      "Not our problem.",
+      "Sorry. Can't help."
+     ],
+     "tags": [
+      "practical"
+     ],
+     "effects": [
+      {
+       "standing": "$hub.faction",
+       "add": -1
+      }
+     ],
+     "next": "farewell"
+    }
+   ]
+  },
+  "thanks": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": [
+    "Thank you. Really. I'll tell the others.",
+    "I knew you were different. Thank you.",
+    "Bless you. Come back safe."
+   ],
+   "next": "menu"
+  },
+  "price": {
+   "speaker": "npc",
+   "expression": "worried",
+   "line": [
+    "We don't have much. But people here remember who helped.",
+    "Nothing you'd call payment. A place to sleep. Friends, maybe."
+   ],
+   "next": "want"
+  }
+ }
+}

@@ -19,9 +19,9 @@ extends RefCounted
 ##   mechs always pass through pilots on foot (p.74); no one ends a move in an occupied space.
 ## - Flying ignores obstructions when physically possible (p.63); flyers more than 10 spaces
 ##   above any surface can only move and Boost, and can't climb past that after acting.
-## PROVISIONAL (docs/RULES_TODO.md "Movement"): a step up or down d levels costs 1 + 2d;
-## climbing down costs the same as up; a big mech on uneven ground is a table ruling;
-## flying ignores difficult terrain; a footprint needs room for `Size` levels of height.
+## Table rulings (Rulings): climbing cost, flight over difficult terrain, big mechs on uneven
+## ground, Prone with "ignore difficult terrain". A footprint needs room for Size levels of
+## height (Core p.59: N spaces high).
 
 const MODE_MOVE := "move"
 const MODE_BOOST := "boost"
@@ -105,7 +105,10 @@ static func _others(state: GameState, u: Unit) -> Array[Dictionary]:
 		var wreck: bool = o.destroyed and o.kind == Unit.KIND_MECH and not o.counters.get("vaporized", false)
 		if not Combat.is_present(o) and not wreck:
 			continue
-		var object: bool = wreck or o.kind == Unit.KIND_DEPLOYABLE
+		var dtype := String(o.counters.get("deploy_type", ""))
+		if dtype == "Mine":
+			continue  # mines lie on the ground
+		var object: bool = wreck or (o.kind == Unit.KIND_DEPLOYABLE and dtype != "Drone")
 		var blocks: bool = (object or o.side != u.side) and o.size >= u.size
 		if o.kind == Unit.KIND_PILOT and u.kind != Unit.KIND_PILOT:
 			blocks = false  # mechs can always move through unmounted humans (Core p.62)
@@ -243,6 +246,9 @@ static func plan(state: GameState, u: Unit, dest: Vector2i, level: int = -1, mod
 		out["reason"] = "You're already there."
 		return out
 	out["warnings"] = _warnings(state, u, path, result, fly)
+	for id: String in result.get("rulings", []):
+		if not Rulings.decided(state, id) and out["grey_area"] == "":
+			out["grey_area"] = id
 	if result.get("uneven", false):
 		var choice := uneven_choice(state)
 		if choice == "":
@@ -267,9 +273,9 @@ static func plan(state: GameState, u: Unit, dest: Vector2i, level: int = -1, mod
 ## and ending on a surface the unit can normally move on (non-flyers can't teleport into the
 ## air); ignores obstructions, line of sight and engagement, doesn't provoke; counts as moving
 ## 1 space; affected by Immobilized; an occupied destination makes it fail.
-## PROVISIONAL (RULES_TODO "Teleport moves"): a teleporting standard move or Boost uses all of
-## that move.
-static func plan_teleport(state: GameState, u: Unit, dest: Vector2i, level: int = -1, mode: String = MODE_MOVE) -> Dictionary:
+## How much movement it uses is the table's "teleport_move_cost" ruling.
+## `reach_override` >= 0: a teleport granted by another rule, up to that many spaces.
+static func plan_teleport(state: GameState, u: Unit, dest: Vector2i, level: int = -1, mode: String = MODE_MOVE, reach_override: int = -1) -> Dictionary:
 	var out := {"ok": false, "reason": "", "rule_ref": REF_TELEPORT, "path": [], "cost": 1,
 		"budget": budget(u, mode), "remaining": 0, "needs_boost": false, "stopped_by": "",
 		"warnings": [], "grey_area": "", "teleport": true}
@@ -279,13 +285,20 @@ static func plan_teleport(state: GameState, u: Unit, dest: Vector2i, level: int 
 	else:
 		levels = surface_levels(state, u.size, dest)
 	var others := _others(state, u)
+	# Range: the move's remaining budget, or (if a teleport only uses 1 space of movement)
+	# your Speed while you have any movement left. Table ruling "teleport_move_cost".
+	var reach := int(out["budget"])
+	if Rulings.choice_or_suggested(state, "teleport_move_cost") == "one_space" and reach > 0:
+		reach = u.speed + (Effects.value(u, "boost_bonus") if mode == MODE_BOOST else 0)
+	if reach_override >= 0:
+		reach = reach_override
 	for lv in levels:
 		var place := placement(state, u.size, dest, lv)
 		if not place["ok"] or (place["airborne"] and not can_fly(u, mode)):
 			continue
 		var body := Sight.make_body(state, dest, lv, u.size)
-		if Sight.distance(state, Sight.body_of(state, u), body) > int(out["budget"]):
-			out["reason"] = "Too far to teleport: up to %d spaces." % out["budget"]
+		if Sight.distance(state, Sight.body_of(state, u), body) > reach:
+			out["reason"] = "Too far to teleport: up to %d spaces." % reach
 			continue
 		if _blocked_by_unit(body, others, true):
 			out["reason"] = "That space is occupied, so the teleport would fail."
@@ -336,10 +349,15 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool) -> Dictionar
 	var prone := u.has_status("Prone")
 	var wreck_cells := _wreck_cells(others)
 	# Bulwark Mods / Kai Bioplating: ignore difficult terrain. Kai Bioplating / High-Stress Mag
-	# Clamps: climb at normal speed. PROVISIONAL: ignoring difficult terrain also covers
-	# Prone's "counts as moving in difficult terrain".
+	# Clamps: climb at normal speed. Whether ignoring difficult terrain also covers Prone is
+	# the table's "prone_ignore_difficult" ruling.
 	var ignore_difficult := Effects.has(u, "ignore_difficult")
 	var climb_cost := 1 if Effects.has(u, "climb_normal") else 2
+	# Table rulings (Rulings): the readings the book allows. Previews use the suggested one
+	# until the table decides; the action itself asks.
+	var climb_rule := Rulings.choice_or_suggested(state, "climb_cost")
+	var fly_diff_rule := Rulings.choice_or_suggested(state, "flight_difficult")
+	var prone_rule := Rulings.choice_or_suggested(state, "prone_ignore_difficult")
 	while not open.is_empty():
 		var best := 0
 		for i in range(1, open.size()):
@@ -384,11 +402,27 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool) -> Dictionar
 				difficult = difficult or col.has_tag(BattleMap.TAG_DIFFICULT) or wreck_cells.has(c)
 				dangerous = dangerous or col.has_tag(BattleMap.TAG_DANGEROUS)
 			difficult = difficult and not ignore_difficult
+			var flags: Array = (node.get("rulings", []) as Array).duplicate()
+			var prone_double := prone and not (ignore_difficult and prone_rule == "cancels")
+			if prone and ignore_difficult and not flags.has("prone_ignore_difficult"):
+				flags.append("prone_ignore_difficult")
 			var cost := 1
+			var climb := absi(lv - k.z)
 			if not fly:
-				if difficult or (prone and not ignore_difficult):
+				if difficult or prone_double:
 					cost = 2
-				cost += climb_cost * absi(lv - k.z)
+				if climb > 0:
+					if not flags.has("climb_cost"):
+						flags.append("climb_cost")
+					if climb_rule == "climb_only":
+						cost = maxi(cost, climb_cost * climb)
+					else:
+						cost += climb_cost * climb
+			elif difficult:
+				if not flags.has("flight_difficult"):
+					flags.append("flight_difficult")
+				if fly_diff_rule == "pay":
+					cost = 2
 			var total: int = node["cost"] + cost
 			if total > cap:
 				continue
@@ -398,7 +432,7 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool) -> Dictionar
 			nodes[nk] = {"cost": total, "parent": k, "stop": stopper.id if stopper else "",
 				"can_end": not _blocked_by_unit(body, others, true),
 				"uneven": node["uneven"] or place["uneven"], "difficult": difficult and not fly,
-				"dangerous": dangerous, "climb": absi(lv - k.z) if not fly else 0}
+				"dangerous": dangerous, "climb": absi(lv - k.z) if not fly else 0, "rulings": flags}
 			open.append(nk)
 	return {"nodes": nodes}
 
@@ -455,11 +489,16 @@ static func _pick(state: GameState, u: Unit, search: Dictionary, dest: Vector2i,
 		path.push_front([k.x, k.y, k.z])
 		k = nodes[k]["parent"]
 	var n: Dictionary = nodes[best]
-	return {"found": true, "path": path, "cost": n["cost"], "stopped_by": n["stop"], "uneven": n["uneven"], "nodes": nodes}
+	return {"found": true, "path": path, "cost": n["cost"], "stopped_by": n["stop"], "uneven": n["uneven"], "nodes": nodes,
+		"rulings": n.get("rulings", [])}
 
 
 static func _why_not(state: GameState, u: Unit, dest: Vector2i, level: int) -> String:
-	var levels: Array[int] = [level] if level >= 0 else surface_levels(state, u.size, dest)
+	var levels: Array[int] = []
+	if level >= 0:
+		levels.append(level)
+	else:
+		levels = surface_levels(state, u.size, dest)
 	if levels.is_empty():
 		return "Off the map."
 	for lv in levels:
@@ -545,7 +584,7 @@ static func threatened_by(state: GameState, u: Unit) -> Array[String]:
 			continue
 		var reach := 0
 		for w: Dictionary in o.loadout.get("weapons", []):
-			reach = maxi(reach, Weapons.threat(w))
+			reach = maxi(reach, Weapons.threat_for(o, w))
 		if reach > 0 and Sight.unit_distance(state, o, u) <= reach:
 			out.append(o.id)
 	return out

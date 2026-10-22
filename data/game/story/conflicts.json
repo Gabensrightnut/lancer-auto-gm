@@ -1,0 +1,167 @@
+{
+  "_note": "Our own writing. The situation at a hub: two sides in tension, with the squad in between (patterns from the core book's setting, Core p.10-11, p.21, p.126, and from published campaigns: see docs/research/lancer_campaigns.md). Side A is the hub's own faction; side B is a generated outside faction. Helping one side costs standing with the other (our bookkeeping, see src/story/README.md). Hooks are the job templates each side tends to offer. 'cultures' = only at hubs of those kits (data/game/story/cultures.json).",
+  "conflicts": [
+    {
+      "id": "charter_vs_colonists",
+      "weight": 3,
+      "a_role": "the colonists",
+      "b_role": "the charter company",
+      "summary": [
+        "{b} holds the charter for {planet}, and the colonists of {hub} say it's squeezing them dry.",
+        "{b} wants the land around {hub} for a new project. The people living on it disagree."
+      ],
+      "a_hooks": [
+        "clear_raiders",
+        "hold_the_line",
+        "rescue",
+        "cover_evacuation"
+      ],
+      "b_hooks": [
+        "secure_site",
+        "recover_cargo",
+        "raid_depot"
+      ]
+    },
+    {
+      "id": "corpro_vs_local_government",
+      "weight": 3,
+      "a_role": "the local government",
+      "b_role": "a corpro-state",
+      "summary": [
+        "{b} has more security in {hub} than the local government has police. Everyone's waiting to see who blinks first.",
+        "The governor of {hub} signed a deal with {b}. Half the town thinks it was a sellout."
+      ],
+      "a_hooks": [
+        "investigate_tip",
+        "escort_vip",
+        "hold_the_line"
+      ],
+      "b_hooks": [
+        "secure_site",
+        "destroy_infrastructure",
+        "recover_cargo"
+      ]
+    },
+    {
+      "id": "raiders_vs_shipping",
+      "weight": 3,
+      "a_role": "the shippers",
+      "b_role": "a raider band",
+      "summary": [
+        "Raiders have been hitting every convoy out of {hub}. {b} takes a cut of everything that moves.",
+        "The trade lanes around {planet} are bleeding cargo, and {b} is getting rich."
+      ],
+      "a_hooks": [
+        "escort_convoy",
+        "hunt_rivals",
+        "clear_raiders"
+      ],
+      "b_hooks": [
+        "smuggle_cargo",
+        "raid_depot"
+      ]
+    },
+    {
+      "id": "reconnection_split",
+      "weight": 2,
+      "a_role": "those who want to rejoin the wider galaxy",
+      "b_role": "the isolationists",
+      "summary": [
+        "{planet} was cut off for generations. Now that the gates are open, {hub} is split down the middle about what comes next.",
+        "{b} says outsiders bring nothing but debt and guns. They might not be entirely wrong."
+      ],
+      "a_hooks": [
+        "escort_vip",
+        "answer_sos",
+        "cover_evacuation"
+      ],
+      "b_hooks": [
+        "destroy_infrastructure",
+        "investigate_tip"
+      ]
+    },
+    {
+      "id": "noble_feud",
+      "weight": 2,
+      "a_role": "one noble house",
+      "b_role": "a rival house",
+      "summary": [
+        "Two houses claim {hub}, and both have hired lancers. Nobody says 'war' out loud yet.",
+        "{b} wants a duel, a marriage or a massacre. It hasn't decided which."
+      ],
+      "a_hooks": [
+        "escort_vip",
+        "hunt_rivals",
+        "hold_the_line"
+      ],
+      "b_hooks": [
+        "extract_person",
+        "raid_depot",
+        "create_diversion"
+      ]
+    },
+    {
+      "id": "insurgency",
+      "weight": 2,
+      "a_role": "the authorities",
+      "b_role": "an insurgent movement",
+      "summary": [
+        "{b} has been hitting {hub_faction} targets for months. Some call them terrorists, some call them the only ones fighting back.",
+        "The roads out of {hub} are checkpoints now. {b} owns the night."
+      ],
+      "a_hooks": [
+        "secure_site",
+        "investigate_tip",
+        "escort_convoy"
+      ],
+      "b_hooks": [
+        "destroy_infrastructure",
+        "extract_person",
+        "create_diversion"
+      ]
+    },
+    {
+      "id": "salvage_rush",
+      "weight": 2,
+      "a_role": "the claim-holders",
+      "b_role": "claim-jumpers",
+      "summary": [
+        "Something valuable came down near {hub}, and everyone with a mech wants a piece of it.",
+        "{b} has been jumping salvage claims all season. The claim-holders want it stopped."
+      ],
+      "a_hooks": [
+        "explore_derelict",
+        "recover_cargo",
+        "secure_site"
+      ],
+      "b_hooks": [
+        "explore_derelict",
+        "raid_depot"
+      ]
+    },
+    {
+      "id": "claim_war",
+      "weight": 1,
+      "cultures": [
+        "old_west",
+        "frontier_colony"
+      ],
+      "a_role": "the old claim-holders",
+      "b_role": "the rail company",
+      "summary": [
+        "{b} is laying track through claims the families of {hub} have worked for three generations.",
+        "The rail is coming to {hub}, and {b} doesn't care whose land it crosses."
+      ],
+      "a_hooks": [
+        "hold_the_line",
+        "train_job",
+        "investigate_tip"
+      ],
+      "b_hooks": [
+        "secure_site",
+        "escort_convoy",
+        "train_job"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,739 @@
+{
+  "_note": "Our own writing. Line pools for dialogue scenes: '@pool' in a scene picks one (never the same twice in a row). 'pool_<personality>' lines are added for NPCs with that personality; 'pool_friendly' lines are added at Friendly standing or better; 'pool_hostile' lines replace the pool at Wary or worse. Placeholders: see src/story/story_text.gd. '<pool>_<culture kit>' lines are added at hubs of that kit.",
+  "pools": {
+    "describe_npc": [
+      "{npc}, {npc_title}, {npc_quirk}.",
+      "{npc_title} {npc} looks up as you approach, and {npc_quirk}.",
+      "This is {npc}, {npc_title} for {npc_faction}. First impression: someone who {npc_quirk}.",
+      "{npc} ({npc_title}) {npc_quirk}.",
+      "You'd guess {npc} has been {npc_role_lower} here a long time. The kind of person who {npc_quirk}."
+    ],
+    "greet_company_rep": [
+      "{npc}, {npc_faction}. You're the new lancers? Good. Let's talk about what your license gets you.",
+      "Welcome to {hub}. {npc_faction} keeps an office here for pilots like you.",
+      "Callsign {callsign}, isn't it? I've read your file. Short file.",
+      "If it's licensed, I can get it printed. If it isn't, we can talk about how you get there.",
+      "{npc_faction} looks after the pilots who look after {npc_faction}. That's the arrangement.",
+      "Take a seat. Coffee's terrible, but it's hot."
+    ],
+    "greet_company_rep_gruff": [
+      "Make it quick, pilot. I've got forty requisitions and one working printer.",
+      "You want something. Everybody wants something."
+    ],
+    "greet_company_rep_cheerful": [
+      "There they are! Our favorite new pilots! Sit, sit.",
+      "Oh, perfect timing. I was just thinking about you lot."
+    ],
+    "greet_company_rep_formal": [
+      "Good day. {npc}, {npc_title}. How may {npc_faction} assist you?",
+      "Please. State your business and I'll see what the contract allows."
+    ],
+    "greet_company_rep_friendly": [
+      "{callsign}! Good work out there. People upstairs noticed.",
+      "My favorite customers. What do you need?"
+    ],
+    "greet_company_rep_hostile": [
+      "You've got some nerve coming back here after the last job.",
+      "{npc_faction} remembers, pilot. Say what you need and go.",
+      "I'm only talking to you because the contract says I have to."
+    ],
+    "greet_quartermaster": [
+      "Printer's warm. Gear's on the racks. What do you need, pilot?",
+      "Sign here, here and here. No, I don't care what it says either.",
+      "Everything you're licensed for, I can print. Everything else, don't ask.",
+      "You break it, the printer makes you a new one. That's the beauty of it.",
+      "Kit check? Good. Most pilots forget until they're bleeding."
+    ],
+    "greet_quartermaster_gruff": [
+      "What.",
+      "Don't touch the printer. Tell me what you want and I'll touch the printer."
+    ],
+    "greet_quartermaster_weary": [
+      "Third shift in a row. Go on, what is it.",
+      "Sure. Why not. Everyone else has asked for something today."
+    ],
+    "greet_quartermaster_friendly": [
+      "Saved you the good hardsuit. Don't tell anyone.",
+      "For you lot? Anything that's on the license."
+    ],
+    "greet_quartermaster_hostile": [
+      "Requisition form. In triplicate. Then we'll talk.",
+      "I heard what you did. Gear's on the racks. Help yourself, and be quick."
+    ],
+    "greet_bartender": [
+      "What'll it be?",
+      "Pilots drink half price. Kidding. Nobody pays here anyway, it's all on the ledger.",
+      "Sit anywhere that isn't sticky.",
+      "You look like you need one.",
+      "First one's for showing up alive.",
+      "If you're here for gossip, you'll have to drink something first."
+    ],
+    "greet_bartender_warm": [
+      "Come in, come in. Out of the dust.",
+      "There's a stool with your name on it. Not literally. Well, once, but we sanded it off."
+    ],
+    "greet_bartender_sly": [
+      "I hear things. You buy a drink, maybe you hear things too.",
+      "Everybody talks at my bar. Sooner or later."
+    ],
+    "greet_bartender_friendly": [
+      "The usual, {callsign}?",
+      "Your table's free. I kept it free."
+    ],
+    "greet_bartender_hostile": [
+      "We're full.",
+      "One drink. Then you find somewhere else to be.",
+      "Last time you lot were in, I lost three chairs."
+    ],
+    "greet_fixer": [
+      "Looking for something? Everything's for sale, if the price is right.",
+      "Manna, favors, who owes who: I deal in all of it. Mostly the last two.",
+      "I don't ask where things come from. Don't ask where they go.",
+      "You've got the look of someone who needs a thing they can't print.",
+      "Talk quiet. The walls in {hub} have ears, and most of them are mine."
+    ],
+    "greet_fixer_sly": [
+      "Well, well. Lancers. Let's see what you're worth.",
+      "I knew you'd come by. People always do."
+    ],
+    "greet_fixer_nervous": [
+      "Not so loud! Inside. Quick.",
+      "You weren't followed? Tell me you weren't followed."
+    ],
+    "greet_fixer_hostile": [
+      "You owe me, and you know it.",
+      "I don't deal with people who burn their contacts."
+    ],
+    "greet_faction_agent": [
+      "{npc}, {npc_faction}. We've been watching your squad. In a good way, mostly.",
+      "{npc_faction} has interests in this region. Interests that could use a few mechs.",
+      "Sit. I'll get straight to it: we have work, if you want it.",
+      "You're the ones {hub} won't stop talking about.",
+      "Lancers. Good. I was told to find lancers."
+    ],
+    "greet_faction_agent_formal": [
+      "On behalf of {npc_faction}, thank you for meeting with me.",
+      "Please, be seated. This conversation is, of course, confidential."
+    ],
+    "greet_faction_agent_zealous": [
+      "{npc_faction} is the only future this world has. Will you help build it?",
+      "Every day we wait, people suffer. Are you ready to act?"
+    ],
+    "greet_faction_agent_friendly": [
+      "Our friends return. {npc_faction} doesn't forget its friends.",
+      "Good to see you, {callsign}. I've kept something back for you."
+    ],
+    "greet_faction_agent_hostile": [
+      "You have a lot of explaining to do.",
+      "{npc_faction} is not pleased with your squad, pilot.",
+      "Give me one reason not to report you."
+    ],
+    "greet_local": [
+      "Oh! You're one of the pilots. From the big machines.",
+      "Morning. Or whatever it is. The sun's been weird all week.",
+      "You're not from around here. Nobody walks like that around here.",
+      "Are you here to help, or just passing through?",
+      "Careful on the main road. Potholes big enough to lose a boot.",
+      "Hello. Sorry. I don't talk to many pilots."
+    ],
+    "greet_local_nervous": [
+      "Please don't let the big machines step on the well again.",
+      "I- yes? Is something wrong?"
+    ],
+    "greet_local_warm": [
+      "Welcome! Have you eaten? You look like you haven't eaten.",
+      "Ah, a new face. Sit with me a while."
+    ],
+    "greet_local_weary": [
+      "More soldiers. Wonderful.",
+      "If you're here to tell us to evacuate again, we're not going."
+    ],
+    "greet_local_friendly": [
+      "It's you! Everyone's talking about what you did.",
+      "My kids have been playing 'lancers' all week. You're very popular."
+    ],
+    "greet_local_hostile": [
+      "You've done enough. Leave us be.",
+      "My cousin's farm was under that fight of yours.",
+      "We don't want your kind here."
+    ],
+    "greet_mechanic": [
+      "Mind the coolant, it eats boots.",
+      "Your frame's tougher than it looks. It's also dirtier than it looks.",
+      "If you've come to complain about the actuators, join the queue.",
+      "Hand me that spanner. No, the other spanner. Thanks. What do you want?",
+      "Printer makes the parts. I make them work together."
+    ],
+    "greet_mechanic_gruff": [
+      "Talk while I work.",
+      "What'd you break?"
+    ],
+    "greet_mechanic_cheerful": [
+      "Oh, I love your mech. Can I take the leg apart? Just a little?",
+      "Hey! Come look at this, it's beautiful. It's a valve."
+    ],
+    "greet_mechanic_hostile": [
+      "You wrecked it, you fix it.",
+      "My bay, my rules. You're not on my list."
+    ],
+    "menu_prompt": [
+      "So. What can I do for you?",
+      "What do you need?",
+      "Anything else?",
+      "Go on.",
+      "What'll it be, pilot?",
+      "I'm listening."
+    ],
+    "farewell": [
+      "Stay alive out there.",
+      "Come back in one piece.",
+      "Good hunting.",
+      "Don't be a stranger.",
+      "Watch your back.",
+      "See you around, pilot.",
+      "Off you go, then."
+    ],
+    "farewell_hostile": [
+      "Don't come back.",
+      "Door's that way.",
+      "Finally."
+    ],
+    "farewell_friendly": [
+      "Take care of yourself, {callsign}. I mean it.",
+      "Anytime. You know where I am."
+    ],
+    "rumor": [
+      "They say something big crashed out past {place} last month. Nobody who went to look came back.",
+      "{hub_faction} is pulling people off the perimeter. Nobody knows why.",
+      "There's a freighter captain in the docks selling 'medical supplies'. They're not medical supplies.",
+      "Someone's been buying up every water filter in {hub}. Every single one.",
+      "Old-timers say the mines out east go deeper than anyone mapped.",
+      "A courier came in yesterday, babbling about mechs with no pilots, walking in a line.",
+      "The administrator has a second office no one's allowed in.",
+      "The weather sats keep going dark over the same valley.",
+      "My sister says {npc_faction} is about to sign something big. Big enough to change who runs this place.",
+      "There's a bounty on a pilot callsigned 'Lantern'. Nobody's ever seen them.",
+      "Raiders have been hitting {place}. They're getting bolder.",
+      "Half the farms on the north side haven't paid their water share. Something's coming to a head."
+    ],
+    "license_explain": [
+      "Manna won't buy you a frame, pilot. Your License Level is what you've earned: every mission you finish, win or lose, it goes up by one. Each level gives you a license rank to spend on one of a manufacturer's frame licenses; rank I opens some of its gear, rank II the frame itself, rank III the best parts. Until then, it's GMS: the Everest and the standard gear, which every pilot is licensed for.",
+      "Licenses are the currency that matters. You don't buy a frame, you're licensed for it. Finish a mission and you go up a License Level; spend that level's license rank with a manufacturer and their gear opens up, rank by rank. Once you're licensed for something, you never lose it.",
+      "You want a new mech? Fly missions. After each one your License Level goes up and you get a license rank to put toward a manufacturer: IPS-Northstar, Smith-Shimano, HORUS, Harrison Armory. Ranks are bought in order, I, II, III; at rank II of a frame's license you can fly that frame, and the gear from every rank you hold mixes freely between your mechs. Until then, GMS has you covered."
+    ],
+    "printing_explain": [
+      "Anything you're licensed for, the printer can make. Your mech gets wrecked, we print a new one when you've got ten hours and somewhere safe: that's a full repair. But you can only have one mech printed at a time. Print a new one and the old one stops working.",
+      "Printers are everywhere Union is. Give me ten quiet hours and the licenses, and you'll walk out with a mech fresh off the line. Gear too. What I can't print is something you're not licensed for."
+    ],
+    "gear_explain": [
+      "Pilot gear isn't licensed. Take what you need: one set of armor, up to two weapons, up to three other pieces. That's the limit for a mission, because that's what you can actually carry.",
+      "Armor, two weapons, three other bits of kit. More than that and you're a pack mule, not a pilot."
+    ],
+    "reserves_explain": [
+      "Reserves are whatever extra you bring to the next mission: spare repairs, a favor, a map, a ride out. They last one mission. Use them or lose them.",
+      "Think of reserves as an edge for the next job. Some help your mech, some help the story: a keycard, a contact, a distraction. After the mission, they're gone."
+    ],
+    "rep_favor_intro": [
+      "If you're in good with {npc_faction}, I can make a call. Repairs, rented gear, maybe even a spare battery. No promises.",
+      "I could put in a word. It'll cost you a favor down the line, probably.",
+      "Let me see what the account will stand."
+    ],
+    "drink_offer": [
+      "Something to take the edge off? Or are you here to make friends?",
+      "Drink, or just company?",
+      "On the house tonight. Mostly."
+    ],
+    "barter_intro": [
+      "Name what you're after. I'll tell you what it'll cost. Sometimes manna, usually a favor.",
+      "Everything's got a price. Even here. Especially here.",
+      "You want it, I can find it. Maybe."
+    ],
+    "agent_job_intro": [
+      "We have a job. It's not pleasant, but it matters.",
+      "{npc_faction} needs something done, and your squad is close.",
+      "There's work. Paid in favors, as always."
+    ],
+    "local_want_line": [
+      "Honestly? What I'd want is {npc_want}.",
+      "If you really want to help... {npc_want}. That's what we need.",
+      "You'd do that? Then: {npc_want}."
+    ],
+    "mechanic_creative": [
+      "Want to build something? Bring me an idea and some time, and we'll see.",
+      "Bay three's free if you want to tinker. Don't weld anything to the ceiling again.",
+      "I've got tools, you've got ideas. Let's make something."
+    ],
+    "check_success": [
+      "...All right. You've convinced me.",
+      "Fine. Fine! You win.",
+      "Huh. Didn't think you had it in you.",
+      "That's... actually fair.",
+      "Well played, pilot."
+    ],
+    "check_fail": [
+      "Nice try.",
+      "No. Absolutely not.",
+      "You'll have to do better than that.",
+      "I don't think so.",
+      "That's not going to happen."
+    ],
+    "briefing_open": [
+      "{patron} here. I'll keep this short. {objective}",
+      "Thank you for coming. {objective}",
+      "Here's the situation: {objective}",
+      "This is {operation}. {objective}",
+      "Pilots. We've got a job. {objective}"
+    ],
+    "briefing_stakes": [
+      "{stakes}",
+      "And understand this: {stakes}",
+      "I won't lie to you. {stakes}"
+    ],
+    "briefing_close": [
+      "Get your reserves in order. You deploy soon.",
+      "Gear up. We go when you're ready.",
+      "That's the job. Questions, now, or never.",
+      "Boots on the ground in a few hours."
+    ],
+    "debrief_victory": [
+      "It's done. Good work, all of you.",
+      "We got it done. {hub} owes you.",
+      "Clean. Mostly. Well flown.",
+      "You came through. I'll remember that."
+    ],
+    "debrief_defeat": [
+      "We lost that one. It's not the end, but it hurts.",
+      "Not every mission goes our way. We regroup.",
+      "That went badly. We'll have to live with it.",
+      "Get some rest. We'll talk about what went wrong."
+    ],
+    "debrief_draw": [
+      "Neither side got what it wanted. That's something, I suppose.",
+      "A stalemate. We live to try again."
+    ],
+    "debrief_level": [
+      "Whatever happened out there, you learned from it. Every pilot's License Level goes up after a mission, win or lose.",
+      "You're all a License Level higher now. That means new triggers, talents and license ranks. Spend them well."
+    ],
+    "supplies_explain": [
+      "Everyday food, water and a bunk come with the job; nobody counts rations for you. What you plan for is the extra: kit for crossing hostile ground, spare repair materials for your mech, and what you carry yourself.",
+      "The printer covers the basics. For a mission you want more: Supplies for bad ground, repair stock for the mech (that's two more repairs in the field), and your own kit: rations, a survival kit, patches.",
+      "You carry what you can carry: armor, two weapons, three bits of kit. Rations and a survival kit count. Anything bigger, you bring as reserves: get it through a contact, or go scrounging."
+    ],
+    "supplies_how": [
+      "Two ways to get it before you deploy: I can put in a word if you're in good standing (that's calling in a favor), or you go dig it up yourself at the market. Either way it's your downtime.",
+      "Ask me nicely and I'll requisition it, if your standing holds up. Or hit the salvage yards and barter. Pick one: you've only got so much downtime."
+    ],
+    "deal_offer": [
+      "Tell you what. Help me with {npc_want}, and I'll see you get {npc_deal_reward} for your next drop.",
+      "There is something. {npc_want}. Do that, and {npc_deal_reward} is yours for the next mission.",
+      "A trade, then. You handle {npc_want}; I come through with {npc_deal_reward}."
+    ],
+    "deal_waiting": [
+      "The job's on the board. Do it, and we're square.",
+      "Still waiting on that job, pilot.",
+      "You know where to find the work. I'll keep my end ready."
+    ],
+    "deal_thanks": [
+      "You came through. Here's my end, as promised.",
+      "Job done, and I don't forget. Take it.",
+      "That's a debt paid. Good work."
+    ],
+    "deal_off": [
+      "The job went bad, so the deal's off. If you want something from me now, you'll have to find another way.",
+      "That didn't work out. No hard feelings, but the offer's gone. Come back when you've got something else."
+    ],
+    "secret_revealed": [
+      "You read it in the way they hold themselves: {npc_secret}",
+      "It's there between the lines: {npc_secret}",
+      "They don't say it, but you're sure of it now: {npc_secret}"
+    ],
+    "journey_start": [
+      "Getting to {place} means crossing hostile ground.",
+      "Between {hub} and {place} is a long stretch of country nobody would cross for fun.",
+      "The route to {place} is bad: broken ground, no cover, nothing friendly."
+    ],
+    "journey_supplied": [
+      "You brought the right kit. The crossing is long and dull, which is exactly what you wanted.",
+      "Your supplies get the squad across without trouble."
+    ],
+    "journey_ok": [
+      "You make it across, tired but in one piece.",
+      "A hard crossing, but nobody's hurt and nothing's lost."
+    ],
+    "journey_bad": [
+      "The crossing takes everything you had. You arrive spent, battered and late.",
+      "It goes badly: a rockslide, a wrong turn, a long cold night. You get there, barely."
+    ],
+    "debrief_twist": [
+      "Looking back, nothing was what the briefing said. {twist_reveal}",
+      "The part nobody planned for: {twist_reveal}"
+    ],
+    "greet_company_rep_old_west": [
+      "Howdy, pilots. Company office is open, but the coffee's from Tuesday.",
+      "You'll be the new lancers. Wipe your boots."
+    ],
+    "greet_quartermaster_old_west": [
+      "Printer's out back in the old freight shed. Mind the tumbleweeds.",
+      "Ammo, armor, rations. Sign the ledger, partner."
+    ],
+    "greet_bartender_old_west": [
+      "Sit down, dust off. First one's on the house, second one's on your tab.",
+      "Pilots in my saloon again. Keep the mechs off the hitching rail."
+    ],
+    "greet_fixer_old_west": [
+      "Lookin' for something the general store don't carry?",
+      "Everything out here's for trade. Even me, for the right favor."
+    ],
+    "greet_faction_agent_old_west": [
+      "The railroad's got work, and the railroad doesn't take no for an answer.",
+      "Marshal's office could use some iron on its side."
+    ],
+    "greet_local_old_west": [
+      "Howdy. You're the ones with the big walkers.",
+      "Mind your step. Snakes this time of year, and worse."
+    ],
+    "greet_mechanic_old_west": [
+      "Dust gets in everything. Your actuators too.",
+      "Bring her in, I'll get the grit out of her joints."
+    ],
+    "rumor_old_west": [
+      "Somebody's been jumping claims out by {place}. Leaves no tracks.",
+      "The rail company bought the water rights. Nobody voted on it.",
+      "Ghost lights on the mesa again. The old-timers won't ride out after dark.",
+      "There's a bounty posted on the general store door. No name, just a mech's paint job."
+    ],
+    "farewell_old_west": [
+      "Ride safe.",
+      "Watch the horizon, pilot."
+    ],
+    "greet_company_rep_medieval_tech": [
+      "Well met, lancers. The house recognizes your license, if not your manners.",
+      "Approach. The steward has told me of you."
+    ],
+    "greet_quartermaster_medieval_tech": [
+      "The armoury is open to licensed pilots. Touch nothing with a crest on it.",
+      "Your kit, as the steward ordered. And a ration of bread, by custom."
+    ],
+    "greet_bartender_medieval_tech": [
+      "Welcome to the inn, travelers. Mind the hounds.",
+      "Ale or wine? We've no fancier drink, and no fancier guests usually."
+    ],
+    "greet_fixer_medieval_tech": [
+      "Not here. The Baron's men drink at that table. Follow me.",
+      "You'll find nothing for sale on the Market Cross that I can't find for you cheaper."
+    ],
+    "greet_faction_agent_medieval_tech": [
+      "My lord has need of lancers. Kneel, if it pleases you. It would please him.",
+      "The house remembers those who serve it. And those who do not."
+    ],
+    "greet_local_medieval_tech": [
+      "Begging your pardon. Are you knights?",
+      "You came through the gate in those machines? The whole town's talking."
+    ],
+    "greet_mechanic_medieval_tech": [
+      "Steel and servos, same as any forge. Bring it here.",
+      "The castle smiths can't fix what you've got. I can."
+    ],
+    "rumor_medieval_tech": [
+      "The old baron's heir hasn't been seen at court in a month.",
+      "They say the river bridge was built by the first settlers, and something's buried under it.",
+      "There'll be a tourney at midsummer. Lancers too, this year.",
+      "The serfs on the east fields have stopped paying the grain tax."
+    ],
+    "farewell_medieval_tech": [
+      "Go with honor.",
+      "May your banner fly."
+    ],
+    "greet_company_rep_cyberpunk": [
+      "You're on the visitor roster. Badge stays visible at all times.",
+      "Lancers. Good. My quarterly targets thank you."
+    ],
+    "greet_quartermaster_cyberpunk": [
+      "Kit's on the rack, feed's on the screen, rain's on everything.",
+      "Printer queue's long. I can bump you, if your standing's good."
+    ],
+    "greet_bartender_cyberpunk": [
+      "Sit. The noise keeps the drones from listening.",
+      "What are you drinking? And who sent you?"
+    ],
+    "greet_fixer_cyberpunk": [
+      "Off the grid or on it? Pick fast, I've got three other calls.",
+      "I can get you anything. Nothing comes clean."
+    ],
+    "greet_faction_agent_cyberpunk": [
+      "My employer would prefer this meeting never happened.",
+      "You've got a clean record. Let's see how long it stays clean."
+    ],
+    "greet_local_cyberpunk": [
+      "Don't look up at the ads. They look back.",
+      "You lost? Nobody comes this low on purpose."
+    ],
+    "greet_mechanic_cyberpunk": [
+      "Pull it into the chop shop. No questions, no receipts.",
+      "Rain gets in the seals. Let me look."
+    ],
+    "rumor_cyberpunk": [
+      "Somebody wiped a whole floor of the Archive Tower last night. No alarms.",
+      "The undercity lost power again. Third time this week. Corporate says it's maintenance.",
+      "There's a street doc on Level Nine who can fix anything, for a favor.",
+      "The ads went quiet for one minute at midnight. Everyone saw the same face."
+    ],
+    "farewell_cyberpunk": [
+      "Stay off the cameras.",
+      "Keep your head down, pilot."
+    ],
+    "greet_company_rep_retrofuturistic": [
+      "Welcome, welcome! The future is here, and it's licensed!",
+      "Pilots! Just like the posters. Come in, come in."
+    ],
+    "greet_quartermaster_retrofuturistic": [
+      "Ration packs, chrome-plated. Don't ask me why.",
+      "Everything you need for tomorrow, today!"
+    ],
+    "greet_bartender_retrofuturistic": [
+      "Malt, float or something stronger? The jukebox only plays one song.",
+      "Pull up a stool, the robot will take your order. Eventually."
+    ],
+    "greet_fixer_retrofuturistic": [
+      "Psst. Prototype parts, straight off the line.",
+      "The world's fair left a lot behind. I collect it."
+    ],
+    "greet_faction_agent_retrofuturistic": [
+      "The Bureau of Tomorrow has a proposal for you.",
+      "Progress needs protecting, pilots."
+    ],
+    "greet_local_retrofuturistic": [
+      "Are you from the future too? Everyone here says they are.",
+      "My granddad built that monorail. Nobody remembers how it works."
+    ],
+    "greet_mechanic_retrofuturistic": [
+      "Tubes, coils and tail fins. Your rig'll look swell.",
+      "Atomic age tech, new age problems. What's broken?"
+    ],
+    "rumor_retrofuturistic": [
+      "The weather-control dome hasn't worked in years. Someone's been fixing it at night.",
+      "The monorail runs one extra car after midnight. Nobody gets on.",
+      "The old rocket at the fairground is fueled. Someone checked.",
+      "They're tearing down the Civic Dome. Half the town's protesting."
+    ],
+    "farewell_retrofuturistic": [
+      "Keep it atomic!",
+      "See you tomorrow, today."
+    ],
+    "greet_company_rep_east_asian": [
+      "Welcome. Please, sit. Business is better over tea.",
+      "Your arrival was expected. The prefecture extends its courtesy."
+    ],
+    "greet_quartermaster_east_asian": [
+      "Your kit is ready. It has been blessed, by custom. It doesn't hurt.",
+      "Rations, rope, rain capes. The terraces are steep."
+    ],
+    "greet_bartender_east_asian": [
+      "Noodles first. Then talk.",
+      "Lanterns are lit, kettle is on. Sit wherever there's a cushion."
+    ],
+    "greet_fixer_east_asian": [
+      "Not in the market. In the alley behind the lantern seller.",
+      "What you want can be found. What you owe will be remembered."
+    ],
+    "greet_faction_agent_east_asian": [
+      "The clan elders asked for you by name. That is an honor, and a warning.",
+      "My prefect values discretion above all."
+    ],
+    "greet_local_east_asian": [
+      "Mind the steps, they're older than the town.",
+      "Are you here for the festival? Or for the trouble?"
+    ],
+    "greet_mechanic_east_asian": [
+      "The gantry temple has fixed mechs for two hundred years.",
+      "Bring it under the gate. We'll see what it needs."
+    ],
+    "rumor_east_asian": [
+      "The shrine bell rang on its own three nights ago.",
+      "The upper terraces have been bought by someone nobody's met.",
+      "The ferry pilots won't cross the lake after dark anymore.",
+      "The festival is in a week. Someone wants it cancelled."
+    ],
+    "farewell_east_asian": [
+      "Walk safely.",
+      "May the lanterns guide you home."
+    ],
+    "greet_company_rep_union_core": [
+      "Your credentials check out. Welcome to the core, pilots.",
+      "Everything here runs to schedule. Please don't change that."
+    ],
+    "greet_quartermaster_union_core": [
+      "Standard issue, quality assured. Anything you need is a request away.",
+      "Your allocation's been prepared. You won't find the frontier's shortages here."
+    ],
+    "greet_bartender_union_core": [
+      "Welcome to the commons. Everything's on the house: it's always on the house here.",
+      "Long way from the frontier, aren't you?"
+    ],
+    "greet_fixer_union_core": [
+      "You'd be surprised what the core wants that it can't officially have.",
+      "Even utopia has a back door."
+    ],
+    "greet_faction_agent_union_core": [
+      "The Committee has an interest in your squad's work.",
+      "Union thanks you for your service. Now, about the next one."
+    ],
+    "greet_local_union_core": [
+      "You've been out there? What's it actually like?",
+      "We see the frontier on the omninet. It looks so far away."
+    ],
+    "greet_mechanic_union_core": [
+      "Clean bay, clean tools, clean work.",
+      "Your mech's seen some real dirt. I'll treat it gently."
+    ],
+    "rumor_union_core": [
+      "There's a delegation leaving for a world nobody's heard of.",
+      "A committee seat has been empty for a month. Nobody will say why.",
+      "The orbital elevator closed for 'maintenance' twice this week.",
+      "Someone in the archives is asking about old colony records."
+    ],
+    "farewell_union_core": [
+      "Safe travels, pilots.",
+      "Union goes with you."
+    ],
+    "greet_local_frontier_colony": [
+      "Welcome to the colony. Population: not enough.",
+      "You're the first new faces since the last supply drop."
+    ],
+    "rumor_frontier_colony": [
+      "The water recycler's been making a new noise.",
+      "Half the colony charter expires next year. Nobody knows what happens then."
+    ],
+    "farewell_frontier_colony": [
+      "Come back when you can. We could use you."
+    ],
+    "greet_instructor": [
+      "Rookie. Good to see you on your feet.",
+      "There's my new squad. Questions? I've got time.",
+      "Back from the range in one piece. That's the first lesson.",
+      "At ease. What do you need?"
+    ],
+    "downtime_intro": [
+      "The squad has a few days at {hub} before the next job. Time to rest, repair, and see who owes who.",
+      "Downtime at {hub}. The mechs go into the printer bay for a full repair; the pilots go looking for whatever they need.",
+      "A breather at {hub}. Ten hours in a bunk, a fresh print of every mech, and a little time to call your own."
+    ],
+    "dt_buy_some_time_low": [
+      "{callsign} stalls as hard as they can, but it only buys a little time, and only by doing something drastic.",
+      "{callsign}'s delay works, barely. Whatever's coming is still coming soon."
+    ],
+    "dt_buy_some_time_mid": [
+      "{callsign} buys enough time, but it's getting precarious.",
+      "{callsign} keeps things from boiling over. For now. It won't hold forever."
+    ],
+    "dt_buy_some_time_high": [
+      "{callsign} buys all the time the squad needs.",
+      "Whatever was coming, {callsign} has pushed it well past the next mission."
+    ],
+    "dt_gather_information_low": [
+      "{callsign} digs too deep and has to choose between the answer and a clean getaway.",
+      "{callsign}'s questions get noticed."
+    ],
+    "dt_gather_information_mid": [
+      "{callsign} finds it: {subject}. Not without leaving a mess behind.",
+      "{callsign} gets the answer, and pays for it."
+    ],
+    "dt_gather_information_high": [
+      "{callsign} comes back with everything: {subject}, clean.",
+      "Nobody even noticed {callsign} looking."
+    ],
+    "dt_get_a_damn_drink_low": [
+      "{callsign} wakes up in a gutter with a headache and only one thing they're sure they still have.",
+      "Nobody's sure what happened to {callsign} last night. Least of all {callsign}."
+    ],
+    "dt_get_a_damn_drink_mid": [
+      "{callsign} has a night to remember: something gained, something lost.",
+      "{callsign} makes a friend, a scene, and a mistake, not necessarily in that order."
+    ],
+    "dt_get_a_damn_drink_high": [
+      "{callsign} has the best night anyone's had at {hub} in years, and walks out ahead.",
+      "Drinks with {callsign} turn into stories people will tell for a while."
+    ],
+    "dt_get_connected_low": [
+      "{callsign}'s contact will help, but only if the favor gets done right now.",
+      "{subject} can help {callsign}, but wants something first."
+    ],
+    "dt_get_connected_mid": [
+      "{subject} comes through for {callsign}. There'll be a favor to repay.",
+      "{callsign} gets the help, and a debt to go with it."
+    ],
+    "dt_get_connected_high": [
+      "{subject} helps {callsign}, no strings attached.",
+      "{callsign} asks; {subject} delivers. Just like that."
+    ],
+    "dt_get_creative_low": [
+      "{callsign}'s project, {subject}, goes nowhere this time.",
+      "{callsign} stares at the workbench for days. Nothing."
+    ],
+    "dt_get_creative_mid": [
+      "{callsign} makes real progress on {subject}. It needs a little more to be done.",
+      "{subject} is half-built on {callsign}'s bench, and looking promising."
+    ],
+    "dt_get_creative_high": [
+      "{callsign} finishes {subject} before the next mission.",
+      "It works. {callsign}'s {subject} is ready."
+    ],
+    "dt_get_focused": [
+      "{callsign} spends the downtime training: {subject}.",
+      "Hours of practice. {callsign} is better at {subject} now."
+    ],
+    "dt_get_organized": [
+      "{callsign} starts something: {subject}.",
+      "{callsign} puts people together around an idea: {subject}."
+    ],
+    "dt_power_at_a_cost": [
+      "{callsign} gets {subject}. The price is still to be paid.",
+      "{subject}: done. {callsign} knew it would cost something."
+    ],
+    "dt_scrounge_and_barter_low": [
+      "{callsign} finds {subject}, but there's a catch.",
+      "{callsign} comes back with {subject}, and a problem."
+    ],
+    "dt_scrounge_and_barter_mid": [
+      "{callsign} gets {subject}, and pays for it one way or another.",
+      "{subject}, acquired. {callsign} won't say what it cost."
+    ],
+    "dt_scrounge_and_barter_high": [
+      "{callsign} turns up {subject} without a hitch.",
+      "A good trade: {callsign} has {subject}."
+    ],
+    "downtime_recap_header": [
+      "Before the next briefing:",
+      "What the squad did with the time:"
+    ],
+    "arc_after_win": [
+      "Last time went your way, and {b} noticed.",
+      "{b} lost ground last time. They won't let it happen twice.",
+      "You won the last round against {b}. Word travels."
+    ],
+    "arc_after_loss": [
+      "Last time cost you, and {b} smells blood.",
+      "{b} came out ahead last time. Now they're bolder.",
+      "The last job against {b} went badly. This one has to count."
+    ],
+    "debrief_detail": [
+      "{rounds} rounds. {kills} of theirs down. {lost_line}",
+      "It took {rounds} rounds. You put down {kills}. {lost_line}",
+      "{kills} enemy units destroyed in {rounds} rounds. {lost_line}"
+    ],
+    "briefing_callback": [
+      "After {last_title}, {last_outcome_line}. People here remember.",
+      "Last time, at {last_place}, {last_outcome_line}. This one's different.",
+      "You all know how {last_title} went: {last_outcome_line}. Now, the next job."
+    ],
+    "briefing_recap": [
+      "{downtime_recap}"
+    ],
+    "debrief_fallen": [
+      "Before anything else: {fallen} didn't come back. We remember them.",
+      "{fallen} is gone. Take a moment.",
+      "We lost {fallen} out there. Nothing about this job was worth that."
+    ]
+  }
+}

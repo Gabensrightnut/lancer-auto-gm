@@ -30,11 +30,43 @@ book in a way that changes the setting; parked.
 | Pilots walk around, talk to NPCs, get favors as Reserves | Consistent | Reserves and downtime (p.40, p.53-55) |
 | Mech movement visuals by body type (quads, hover-looks) | Canon | Look has no gameplay effect (p.32); movement rules only from text |
 | Planets with medieval, Old West, retrofuturistic, cyberpunk, East Asian-inspired looks | Consistent | Diaspora cultures vary widely (p.10, p.21); look only, no new factions |
+| Castles and walled towns on medieval-tech worlds | Consistent | Karrakin Trade Baronies are aristocratic (p.92); look only |
+| Core-world landmarks (white towers, space elevator) and frontier ones (water towers, mine headframes, monorails, pagodas) | Consistent | Core and frontier worlds differ greatly (p.21); unnamed scenery, no lore |
+| Alien worlds: giant drifting sky creatures, colossal unnamed ruins, crystal fields, toxic seas | Consistent | Diaspora worlds vary widely (p.10, p.21); unnamed horizon scenery only; ruins never named or explained |
 | Tracked wallet with prices | Not canon | Book doesn't track currency (p.18). Parked. |
 | Scarce printers / paying for printer access | Not canon | Printers ubiquitous, access never lost (p.31, p.82). Parked. |
 | Paid passage vs free company rides | Not canon (not stated) | Parked. |
 | Fight-for-it deals paid in scrap/spare mechs/money | Not canon | Parked. Jobs paying out Reserves is canon. |
 | Food and water as a survival need | Not canon | Parked. |
+| **Story session additions** | | |
+| Narrative skill checks: one trigger, background +1, difficult/risky/heroic, push it, teamwork, skill challenges | Canon | Core p.20, p.25, p.45-47 |
+| No-mech fights resolved as skill checks; harm 1-2/3-5/6+, Armor, 0 HP 1d6 Down and Out, rest = half HP | Canon | Core p.48-49 |
+| All nine downtime actions with their 9-/10-19/20+ results, "choose" lists and "next time treat as" | Canon | Core p.53-55; lancer-data downtime_actions.json |
+| Reserves last one mission; the d20 reserve tables | Canon | Core p.51-52 |
+| Pilot gear limits: one armor, two weapons, three other items; pilot gear isn't licensed | Canon | Core p.108 |
+| Supplies = pilot gear (Extra Rations, Wilderness Survival Kit, Patch...) plus reserves (Supplies, Extra repairs +2 Repair Cap, Ammo), got by Get Connected or Scrounge and Barter | Canon | Core p.43, p.51, p.55, p.108 (Supplies: "gear allowing easy crossing of a hazardous or hostile area") |
+| Everyday food and water aren't tracked (rations exist only as pilot gear) | Consistent | No rule tracks them; Extra Rations is pilot gear (p.108). A survival need stays parked. |
+| Hazardous crossing: a skill challenge unless the squad brought Supplies; failure costs 1 harm each, or take the long way (time) | Consistent | Core p.46 (consequences: harm, time), p.47 (challenge example "traversing the wastes"), p.51 (Supplies) |
+| Manna and local money mentioned in dialogue only ("manna for your trouble", bribes as talk) | Canon | Core p.10, p.18, p.126 |
+| Briefing states the goal, then the stakes as a question | Canon | Core p.42-43 |
+| Mission hook templates (escort, SOS, retrieve, investigate, derelict, demolition, diversion, secure, smuggle, hunt rival pilots, evacuation, extraction, defend) | Canon | Core p.42 goal table (our wording) |
+| Hidden twists revealed at the debrief (patron lied, defector, third party, civilians...) | Consistent | Core p.43 ("a mission's goal can change mid-mission") |
+| Side-job deals: an NPC's job pays a named reserve if won; a lost deal is withdrawn, other routes (downtime) stay open | Consistent | Core p.40-43 (reserves from patrons), p.50 (GM grants reserves), p.55 (Get Connected) |
+| Faction standing (-3..+3) as GM bookkeeping that gates dialogue and offers, never rolls | Consistent | GM remembers relationships; Reputation/Backing reserves (p.51); no book number |
+| Hub conflicts between two sides (colonists vs charter company, corpro vs local government, raiders vs shippers, reconnection split, noble feud, insurgency, salvage rush) | Consistent | Core p.10-11 (rebellions, piracy, wars outside the Core), p.21 (frontier vs core), p.92 (Baronies), p.126 (IPS-N and piracy) |
+| Multi-mission arcs (escalation, investigation, rival squad, siege, two masters); every mission advances the arc, win or lose | Consistent | Core p.40 (missions can fail and the story goes on; LL rises either way) |
+| NPC archetypes with secrets, revealed by Read a Situation | Consistent | Skill triggers (p.26-27); NPCs don't roll in narrative play (p.47) |
+| Every pilot levels up after a mission; +2 trigger, +1 mech skill, talent, license; core bonus at 3/6/9/12 | Canon | Core p.18 |
+| Long Rim's optional manna advancement system | Official optional (supplement), not built | The Long Rim (Massif); core rules don't track currency (p.18). Parked with the wallet. |
+| Culture/era hub kits (frontier colony, Old West, medieval-tech, cyberpunk, retrofuturistic, East Asian-inspired, Union core): names, titles, lines, conflicts, jobs | Consistent | Diaspora worlds differ greatly (p.10, p.21); feudal baronies (p.92); the Core is communal and post-capital (p.10). Flavor only: no new canon factions or rules |
+| Culture-only jobs: train job (frontier), champions' duel (feudal/East Asian), data heist (megacity), festival shrine guard | Consistent | Goal table kinds (p.42: escort, defend, retrieve) in local dress |
+| Tutorial opening: training base, briefing first, drill vs. training drones, lessons in order, then debrief, level up, first downtime | Canon order, Consistent setting | Order of play p.40-44; first session starts with the brief (p.40); every lesson's rule text cites its page (p.18, p.31, p.43, p.50-55, p.60-81) |
+| Teaching prompts and first-time tips with page refs; hints can be switched off | Consistent | DESIGN.md section 8; rules text paraphrased from the book |
+| Portrait parts, colors and expressions as data (builder hooks) | Canon (look only) | Custom look has no gameplay effect (p.32) |
+| Downtime screen: every pilot's actions narrated, then the next briefing recaps them | Consistent | Downtime is narrative and structured actions (p.50, p.53-55); our own narration |
+| Teamwork helpers opt in, give +1 and share the consequences | Canon | Core p.45 ("If people want to help... everyone helping suffers any complications") |
+| Multiplayer: the speaking pilot's player chooses, or a squad vote; AI squadmates choose in character; clients never see NPC secrets or hidden twists | Consistent | DESIGN.md section 10; secrets stay on the host (CLAUDE.md) |
+| Debrief recounts the fight (rounds, enemies down, mechs wrecked and reprinted at the full repair, who fell) | Canon / Consistent | Debrief: talk about the mission (p.44); wrecked mechs reprinted (p.31, p.82); pilot death (p.49, p.83) |
 
 ## When canon allows more than one answer
 

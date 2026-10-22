@@ -93,6 +93,27 @@ static func tech_preview(state: GameState, attacker_id: String, target_id: Strin
 	return p
 
 
+## Every open question the book leaves to the table, with its readings and the current
+## choice: [{id, question, options {id: text}, suggested, rule_ref, choice}].
+static func rulings(state: GameState) -> Array:
+	var out := Rulings.catalog()
+	for r: Dictionary in out:
+		r["choice"] = Rulings.choice(state, r["id"])
+	return out
+
+
+## Everything the unit might do now, for the action bar: basic actions, weapons, abilities
+## (systems, core, traits, talents, deployables), reactions and Core Power. Each entry:
+## {id, type (action to submit), params (template), name, group, available, reason, rule_ref,
+##  and where relevant: cost, activation, uses_left, uses_max, frequency, used, loading
+##  {has, loaded}, recharge {value, charged}, destroyed, automated, detail, policy}.
+static func available_actions(state: GameState, unit_id: String) -> Array:
+	var u := state.unit(unit_id)
+	if u == null:
+		return []
+	return AbilityActions.listing(state, u)
+
+
 ## Hostiles that could react (Overwatch) if the unit starts moving now.
 static func threatened_by(state: GameState, unit_id: String) -> Array[String]:
 	return Movement.threatened_by(state, state.unit(unit_id))

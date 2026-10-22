@@ -2,6 +2,7 @@ extends SceneTree
 ## Headless test runner:
 ##   godot --headless --path . -s res://tests/run_tests.gd
 ## Runs every test_* method in every tests/unit/*.gd file. Exit code 1 on any failure.
+## Only some: ... -s res://tests/run_tests.gd -- <text>  (files or tests containing it).
 
 const UNIT_DIR := "res://tests/unit/"
 
@@ -9,6 +10,7 @@ const UNIT_DIR := "res://tests/unit/"
 func _init() -> void:
 	var total := 0
 	var failed: Array[String] = []
+	var only := " ".join(OS.get_cmdline_user_args())
 	var files := DirAccess.get_files_at(UNIT_DIR)
 	files.sort()
 	for file in files:
@@ -18,6 +20,8 @@ func _init() -> void:
 		for method in script.get_script_method_list():
 			var name: String = method["name"]
 			if not name.begins_with("test_"):
+				continue
+			if only != "" and not (file + "." + name).contains(only):
 				continue
 			var test: TestCase = script.new()
 			test.run_test(name)

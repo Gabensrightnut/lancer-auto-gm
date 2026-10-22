@@ -4,6 +4,8 @@ render_mode blend_mix, depth_draw_always, cull_back;
 
 uniform vec3 deep : source_color = vec3(0.05, 0.18, 0.05);
 uniform vec3 glow : source_color = vec3(0.45, 1.0, 0.25);
+// 1 = molten rock: a dark crust drifting over bright magma.
+uniform float lava = 0.0;
 
 varying vec3 wpos;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -27,4 +29,11 @@ void fragment() {
 	EMISSION = glow * (0.25 + 0.6 * smoothstep(0.55, 0.8, swirl) + 2.0 * bubbles);
 	ROUGHNESS = 0.15;
 	ALPHA = 0.9;
+	if (lava > 0.5) {
+		float crust = smoothstep(0.42, 0.6, noise(p * 1.6 + vec2(t * 0.6, t * 0.2)) * 0.7 + noise(p * 5.0 - t) * 0.3);
+		ALBEDO = mix(glow * 0.6, vec3(0.05, 0.035, 0.03), crust);
+		EMISSION = glow * (1.0 - crust) * (3.0 + 1.5 * swirl) + glow * bubbles;
+		ROUGHNESS = mix(0.4, 0.95, crust);
+		ALPHA = 1.0;
+	}
 }

@@ -22,6 +22,9 @@ var selected: Dictionary = {}
 var pending: Dictionary = {}
 var busy := false
 var active := false
+## Optional coroutine (action -> RuleResult) that submits and plays an action, handling any
+## reactions the rules offer (DemoBattle.submit). Without it the engine is used directly.
+var submitter: Callable
 
 var _prompt: PanelContainer
 var _prompt_text: RichTextLabel
@@ -95,7 +98,7 @@ func refresh() -> void:
 
 func _set_hint() -> void:
 	var vp := _hint.get_viewport_rect().size
-	_hint.position = Vector2(0, vp.y * 0.86 - 40)
+	_hint.position = Vector2(0, vp.y * 0.115)  # under the turn-order bar, clear of hover cards
 	_hint.size = Vector2(vp.x, 30)
 	match mode:
 		"target":
@@ -338,13 +341,18 @@ func confirm() -> void:
 	var action := pending
 	cancel()
 	busy = true
-	var out := engine.submit(state, action)
-	var res: RuleResult = out["result"]
+	var res: RuleResult
+	if submitter.is_valid():
+		res = await submitter.call(action)
+	else:
+		var out := engine.submit(state, action)
+		res = out["result"]
+		if res.ok:
+			await player.play(out["events"])
 	if not res.ok:
 		busy = false
 		_ask("[color=#ff8877]Not allowed:[/color] %s  [color=#8899aa](%s)[/color]" % [res.reason, res.rule_ref], {})
 		return
-	await player.play(out["events"])
 	busy = false
 	acted.emit()
 	refresh()

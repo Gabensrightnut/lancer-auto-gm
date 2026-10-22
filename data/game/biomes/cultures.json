@@ -1,0 +1,689 @@
+{
+	"_about": "Cultures/eras for WorldStyle. Each one overrides landscape fields (deep merge) and adds `architecture` for CityBuilder (src/render/world/city_builder.gd): materials (concrete, brick, plaster, metal, stone, wood, glass, timber), wall palette, floors per level, window bays, storefronts, lights, damage, signs, awnings, neon, holo ads and rooftop props.",
+	"ruins": {
+		"name": "war-torn ruins",
+		"architecture": {
+			"materials": [
+				"concrete",
+				"concrete",
+				"brick",
+				"plaster"
+			],
+			"walls": [
+				"#8a8072",
+				"#76726c",
+				"#8a5e4a",
+				"#9a9080",
+				"#6a6660",
+				"#8c7660",
+				"#7a5040"
+			],
+			"trim": "#5e5a54",
+			"glass": "#1a2024",
+			"window_light": "#ffb86a",
+			"lit_windows": 0.02,
+			"roof": "#6e695f",
+			"floors": 3,
+			"bay": 0.3,
+			"window_w": 0.55,
+			"window_h": 0.55,
+			"ruined": 0.6,
+			"storefront": 1,
+			"signs": 0.25,
+			"awnings": 0.1,
+			"sign_colors": [
+				"#d8c8a0",
+				"#a03a2a",
+				"#3a5a80",
+				"#c8a040"
+			],
+			"awning_colors": [
+				"#6a2a22",
+				"#2a3a4a"
+			]
+		},
+		"flora": {
+			"rough": "rubble"
+		},
+		"particles": "dust"
+	},
+	"cyberpunk": {
+		"name": "neon megacity",
+		"ground": {
+			"top_a": "#4a4a56",
+			"top_b": "#5a5a66",
+			"top_dry": "#24242c",
+			"wall": "#4a4a54",
+			"wetness": 1.0,
+			"hazard": "#ff3a8a",
+			"rim": "#7ee8ff",
+			"rim_strength": 0.5,
+			"rim_glow": 0.9,
+			"backdrop_fade": 0.8
+		},
+		"architecture": {
+			"materials": [
+				"metal",
+				"glass",
+				"concrete",
+				"metal"
+			],
+			"walls": [
+				"#3a3e48",
+				"#2e3038",
+				"#4a4450",
+				"#363a44",
+				"#50505a",
+				"#2a3440"
+			],
+			"trim": "#1e2028",
+			"glass": "#10141c",
+			"window_light": "#7896d0",
+			"shop_light": "#ff7ad0",
+			"lit_windows": 0.22,
+			"roof": "#2a2a30",
+			"floors": 4,
+			"bay": 0.25,
+			"window_w": 0.7,
+			"window_h": 0.5,
+			"ruined": 0.0,
+			"storefront": 1,
+			"signs": 0.7,
+			"awnings": 0.3,
+			"neon": 0.8,
+			"holo": 0.4,
+			"wet": 1.0,
+			"neon_a": "#ff2aa8",
+			"neon_b": "#20e8ff",
+			"sign_colors": [
+				"#ff2aa8",
+				"#20e8ff",
+				"#ffcc22",
+				"#9a4aff",
+				"#30ff90"
+			],
+			"neon_colors": [
+				"#ff2aa8",
+				"#20e8ff",
+				"#ffcc22",
+				"#9a4aff"
+			],
+			"awning_colors": [
+				"#1a1a22",
+				"#2a0a20"
+			],
+			"skyline": {
+				"near": [
+					2.0,
+					6.0
+				],
+				"far": [
+					18.0,
+					90.0
+				],
+				"density": 0.85,
+				"look": {
+					"lit_windows": 0.12,
+					"neon": 0.3
+				}
+			},
+			"rim": "#ff5ac8",
+			"rim_strength": 0.5,
+			"rim_glow": 1.2
+		},
+		"sky": {
+			"top": "#05040c",
+			"horizon": "#3a1a4a",
+			"ground": "#0a0810",
+			"haze_color": "#ff4aa0",
+			"haze": 0.3,
+			"clouds": 0.75,
+			"cloud_color": "#5a2a60",
+			"cloud_shade": "#120a1a",
+			"sun_glow": 0.2,
+			"stars": 0.2
+		},
+		"light": {
+			"sun_color": "#7a8cff",
+			"sun_energy": 0.6,
+			"sun_pitch": -55.0,
+			"sun_yaw": 30.0,
+			"ambient": 0.9,
+			"ambient_color": "#4a3a70",
+			"fill_color": "#ff3aa0",
+			"fill_energy": 0.35,
+			"fog_color": "#2a1838",
+			"fog_density": 0.006,
+			"fog_aerial": 0.2,
+			"sun_scatter": 0.0,
+			"volumetric": 0.005,
+			"volumetric_albedo": "#a080c0",
+			"volumetric_emission": "#1a0a2a",
+			"volumetric_emission_energy": 0.4,
+			"glow": 0.85,
+			"bloom": 0.05,
+			"glow_threshold": 1.0,
+			"saturation": 1.15,
+			"contrast": 1.08,
+			"exposure": 1.5,
+			"ssr": true,
+			"sky_ambient": 0.5
+		},
+		"particles": [
+			"rain"
+		],
+		"flora": {
+			"rough": "rubble"
+		},
+		"horizon": {
+			"far": "skyline",
+			"traffic": true
+		},
+		"grid_color": [
+			0.75,
+			0.88,
+			1.0,
+			0.2
+		]
+	},
+	"burning": {
+		"name": "burning city",
+		"ground": {
+			"top_a": "#4a4440",
+			"top_b": "#5a544c",
+			"top_dry": "#24201e",
+			"wall": "#6a625a",
+			"wetness": 0.1,
+			"hazard": "#ff5a10",
+			"rim": "#ffd0a0",
+			"rim_strength": 0.45,
+			"rim_glow": 0.25,
+			"backdrop_fade": 0.7
+		},
+		"architecture": {
+			"materials": [
+				"concrete",
+				"brick",
+				"concrete",
+				"plaster"
+			],
+			"walls": [
+				"#6a6258",
+				"#5a5650",
+				"#6e4a3a",
+				"#7a7064",
+				"#4e4a46"
+			],
+			"trim": "#3a3632",
+			"glass": "#141414",
+			"window_light": "#ff9a4a",
+			"lit_windows": 0.0,
+			"roof": "#3e3a36",
+			"floors": 3,
+			"bay": 0.3,
+			"window_w": 0.55,
+			"window_h": 0.55,
+			"ruined": 0.85,
+			"burning": 0.22,
+			"fire": "#ff6a1a",
+			"storefront": 1,
+			"signs": 0.15,
+			"awnings": 0.05,
+			"sign_colors": [
+				"#8a7a60",
+				"#6a2a22"
+			],
+			"skyline": {
+				"near": [
+					1.0,
+					4.0
+				],
+				"far": [
+					6.0,
+					35.0
+				],
+				"density": 0.6,
+				"fires": 9,
+				"look": {
+					"burning": 0.06
+				}
+			},
+			"rim": "#ffd8b0",
+			"rim_strength": 0.45,
+			"rim_glow": 0.2
+		},
+		"sky": {
+			"top": "#2a2026",
+			"horizon": "#9a5a3e",
+			"ground": "#1e1814",
+			"haze_color": "#ff8040",
+			"haze": 0.6,
+			"clouds": 0.7,
+			"cloud_color": "#6a5048",
+			"cloud_shade": "#221a18",
+			"sun_glow": 1.0
+		},
+		"light": {
+			"sun_color": "#ffb488",
+			"sun_energy": 1.5,
+			"sun_pitch": -14.0,
+			"sun_yaw": -70.0,
+			"ambient": 0.5,
+			"fill_color": "#ff7040",
+			"fill_energy": 0.25,
+			"fog_color": "#4e3e36",
+			"fog_density": 0.0065,
+			"fog_aerial": 0.4,
+			"sun_scatter": 0.4,
+			"volumetric": 0.008,
+			"volumetric_albedo": "#8a7a70",
+			"volumetric_emission": "#2a0c02",
+			"volumetric_emission_energy": 0.6,
+			"glow": 1.0,
+			"bloom": 0.08,
+			"saturation": 0.95,
+			"contrast": 1.08,
+			"exposure": 1.1
+		},
+		"particles": [
+			"ash",
+			"embers"
+		],
+		"flora": {
+			"rough": "rubble"
+		},
+		"horizon": {
+			"far": "skyline"
+		}
+	},
+	"medieval": {
+		"name": "medieval-tech barony",
+		"architecture": {
+			"materials": [
+				"stone",
+				"timber",
+				"stone",
+				"plaster"
+			],
+			"walls": [
+				"#9a9082",
+				"#a89c88",
+				"#8a8070",
+				"#c8bca0",
+				"#b0a48c"
+			],
+			"trim": "#4a3a2a",
+			"glass": "#1a1c18",
+			"window_light": "#ffb060",
+			"lit_windows": 0.05,
+			"roof": "#6a3a2a",
+			"roof_surface": "tiles",
+			"roof_edge": "battlement",
+			"roof_props": "medieval",
+			"floors": 2,
+			"bay": 0.4,
+			"window_w": 0.35,
+			"window_h": 0.5,
+			"arched": 1,
+			"storefront": 0,
+			"signs": 0.15,
+			"awnings": 0.15,
+			"sign_colors": [
+				"#a02a2a",
+				"#2a4a8a",
+				"#c8a040"
+			],
+			"awning_colors": [
+				"#8a2a2a",
+				"#2a4a6a",
+				"#c8a040"
+			],
+			"banner": "#9a1e1e",
+			"landmark_stone": "#8e8678",
+			"street": {
+				"lamps": 0.35,
+				"lamp_style": "torch",
+				"lamp_color": "#ffaa50",
+				"barrels": 0.25,
+				"crates": 0.2
+			},
+			"skyline": {
+				"near": [
+					0.6,
+					1.6
+				],
+				"far": [
+					1.0,
+					3.0
+				],
+				"density": 0.35
+			}
+		},
+		"horizon": {
+			"landmarks": [
+				"castle",
+				"windmill"
+			]
+		}
+	},
+	"old_west": {
+		"name": "frontier boomtown",
+		"architecture": {
+			"materials": [
+				"wood",
+				"wood",
+				"plaster",
+				"brick"
+			],
+			"walls": [
+				"#8a6a4a",
+				"#a07850",
+				"#c8b090",
+				"#7a5a40",
+				"#b09070",
+				"#d0c0a0"
+			],
+			"trim": "#3a2a1e",
+			"glass": "#1e1a16",
+			"window_light": "#ffc080",
+			"lit_windows": 0.03,
+			"roof": "#6a6058",
+			"roof_surface": "metal",
+			"roof_edge": "parapet",
+			"roof_props": "western",
+			"floors": 2,
+			"bay": 0.35,
+			"window_w": 0.4,
+			"window_h": 0.5,
+			"storefront": 1,
+			"signs": 0.6,
+			"awnings": 0.5,
+			"sign_colors": [
+				"#e8d8b0",
+				"#c8a060",
+				"#8a3a2a"
+			],
+			"awning_colors": [
+				"#7a5a3a",
+				"#5a4a3a",
+				"#8a3a2a"
+			],
+			"street": {
+				"lamps": 0.15,
+				"lamp_style": "lantern",
+				"lamp_color": "#ffc070",
+				"barrels": 0.45,
+				"crates": 0.35,
+				"barrel_color": "#6a4a2a"
+			},
+			"skyline": {
+				"near": [
+					0.6,
+					1.4
+				],
+				"far": [
+					1.0,
+					2.5
+				],
+				"density": 0.25
+			}
+		},
+		"horizon": {
+			"landmarks": [
+				"water_tower",
+				"windmill",
+				"headframe"
+			]
+		}
+	},
+	"retro": {
+		"name": "atomic-age colony",
+		"architecture": {
+			"materials": [
+				"plaster",
+				"metal",
+				"glass",
+				"plaster"
+			],
+			"walls": [
+				"#e8e0d0",
+				"#7ac8c0",
+				"#f0b8a0",
+				"#e8d080",
+				"#d8e0e8"
+			],
+			"trim": "#c8ccd0",
+			"glass": "#2a4a58",
+			"window_light": "#fff0c0",
+			"lit_windows": 0.05,
+			"roof": "#d8d4cc",
+			"roof_surface": "panels",
+			"roof_edge": "chrome",
+			"roof_props": "modern",
+			"floors": 3,
+			"bay": 0.45,
+			"window_w": 0.75,
+			"window_h": 0.45,
+			"storefront": 1,
+			"signs": 0.5,
+			"awnings": 0.35,
+			"neon": 0.25,
+			"neon_a": "#ff6a5a",
+			"neon_b": "#40e0d0",
+			"sign_colors": [
+				"#ff6a5a",
+				"#40e0d0",
+				"#ffd040"
+			],
+			"neon_colors": [
+				"#ff6a5a",
+				"#40e0d0",
+				"#ffd040"
+			],
+			"awning_colors": [
+				"#40c0b0",
+				"#ff8a6a",
+				"#f0d060"
+			],
+			"accent": "#40e0d0",
+			"landmark_color": "#f0ece0",
+			"street": {
+				"lamps": 0.3,
+				"lamp_style": "post",
+				"lamp_color": "#fff0d0"
+			},
+			"skyline": {
+				"near": [
+					1.0,
+					3.0
+				],
+				"far": [
+					2.0,
+					10.0
+				],
+				"density": 0.45
+			}
+		},
+		"horizon": {
+			"landmarks": [
+				"domes",
+				"saucer_tower",
+				"monorail"
+			]
+		},
+		"sky": {
+			"top": "#4a88d0",
+			"horizon": "#f8e0c8",
+			"haze_color": "#ffc8a0",
+			"clouds": 0.35
+		}
+	},
+	"east_asian": {
+		"name": "lantern-lit terraces",
+		"architecture": {
+			"materials": [
+				"plaster",
+				"wood",
+				"plaster",
+				"metal"
+			],
+			"walls": [
+				"#e8dcc8",
+				"#d8ccb4",
+				"#a83a2a",
+				"#3a3430",
+				"#c8b898"
+			],
+			"trim": "#2a2420",
+			"glass": "#2a2018",
+			"window_light": "#ffc890",
+			"lit_windows": 0.08,
+			"roof": "#3a4448",
+			"roof_surface": "tiles",
+			"roof_edge": "eaves_up",
+			"eave_reach": 0.13,
+			"roof_props": "none",
+			"floors": 2,
+			"bay": 0.3,
+			"window_w": 0.7,
+			"window_h": 0.55,
+			"storefront": 1,
+			"signs": 0.55,
+			"awnings": 0.3,
+			"neon": 0.15,
+			"neon_a": "#ff4a3a",
+			"neon_b": "#ffc040",
+			"sign_colors": [
+				"#c8281e",
+				"#e8c060",
+				"#1e1a18"
+			],
+			"neon_colors": [
+				"#ff4a3a",
+				"#ffc040"
+			],
+			"awning_colors": [
+				"#8a1e18",
+				"#1e2a3a"
+			],
+			"landmark_color": "#9a2a1e",
+			"street": {
+				"lamps": 0.45,
+				"lamp_style": "lantern",
+				"lamp_color": "#ff7a40",
+				"crates": 0.1
+			},
+			"skyline": {
+				"near": [
+					0.8,
+					2.5
+				],
+				"far": [
+					2.0,
+					12.0
+				],
+				"density": 0.5
+			}
+		},
+		"flora": {
+			"woods": [
+				"cherry",
+				"bamboo",
+				"cherry"
+			],
+			"leaf_colors": [
+				"#f0a8c0",
+				"#e890b0",
+				"#f8c8d8",
+				"#5a8a3a"
+			]
+		},
+		"horizon": {
+			"landmarks": [
+				"pagoda",
+				"torii",
+				"pagoda"
+			]
+		}
+	},
+	"union": {
+		"name": "Union core world",
+		"architecture": {
+			"materials": [
+				"glass",
+				"plaster",
+				"metal",
+				"glass"
+			],
+			"walls": [
+				"#f2f4f6",
+				"#e4e8ec",
+				"#d0d8e0",
+				"#f8f8f8"
+			],
+			"trim": "#b8c4cc",
+			"glass": "#28485a",
+			"window_light": "#e0f0ff",
+			"lit_windows": 0.04,
+			"roof": "#e8ecf0",
+			"roof_surface": "panels",
+			"roof_edge": "chrome",
+			"roof_props": "modern",
+			"floors": 4,
+			"bay": 0.35,
+			"window_w": 0.8,
+			"window_h": 0.55,
+			"storefront": 1,
+			"signs": 0.2,
+			"awnings": 0.0,
+			"neon": 0.2,
+			"neon_a": "#7ad8ff",
+			"neon_b": "#ffffff",
+			"holo": 0.15,
+			"sign_colors": [
+				"#3a7ad8",
+				"#f0f4f8"
+			],
+			"neon_colors": [
+				"#7ad8ff"
+			],
+			"accent": "#7ad8ff",
+			"landmark_color": "#f4f6f8",
+			"street": {
+				"lamps": 0.3,
+				"lamp_style": "post",
+				"lamp_color": "#d8f0ff"
+			},
+			"skyline": {
+				"near": [
+					1.0,
+					4.0
+				],
+				"far": [
+					10.0,
+					60.0
+				],
+				"density": 0.6
+			}
+		},
+		"horizon": {
+			"landmarks": [
+				"white_towers",
+				"space_elevator"
+			]
+		},
+		"sky": {
+			"top": "#3a78d8",
+			"horizon": "#d8e8f8",
+			"haze_color": "#ffe8d0",
+			"clouds": 0.3,
+			"moon_a": 0.6,
+			"moon_a_dir": [
+				0.4,
+				0.5,
+				-0.75
+			],
+			"moon_a_size": 0.035
+		}
+	}
+}

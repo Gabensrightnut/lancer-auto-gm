@@ -8,9 +8,9 @@ extends RefCounted
 ## Damage and Overheating tables (tables.json), Falling, Flight, Engaged, Hidden, Stunned.
 ## Core p.12 (always round up), p.63 (falling), p.67 (damage order, Armor once per source),
 ## p.80-81 (structure, overheating, meltdown), p.13 (checks succeed on 10+).
-## PROVISIONAL (docs/RULES_TODO.md): saves nobody forces need 10+; heat overflow reading;
-## dangerous terrain damage type. System Trauma picks the first valid mount/system until the
-## UI offers the choice (a UI gap, not a rule).
+## Table rulings (Rulings): heat overflow, unforced save targets. The map gives the dangerous
+## terrain type. System Trauma picks the first valid mount/system until the UI offers the
+## choice (a UI gap, not a rule).
 
 const REF_HARM := "glossary: Harm/Calculating Damage"
 const REF_STRUCTURE := "tables: Structure Damage"
@@ -27,13 +27,15 @@ const DOUBLED_BY_EXPOSED := ["Kinetic", "Explosive", "Energy"]
 # --- Statuses -------------------------------------------------------------------------
 
 ## Adds a status. `next_turn_end_of` = a unit whose "end of next turn" ends it ("" = lasts).
-static func add_status(state: GameState, u: Unit, status: String, source: String, next_turn_end_of: String = "") -> Array[Dictionary]:
+static func add_status(state: GameState, u: Unit, status: String, source: String, next_turn_end_of: String = "", until_start_of: String = "") -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if status == "Prone" and u.flying:
 		return events  # Flying characters have IMMUNITY to PRONE (glossary: Flight/Hover).
 	if Effects.immune_to_status(u, status):
 		return [{"type": "status_blocked", "unit": u.id, "status": status, "reason": "Immune.", "rule_ref": "glossary: Immunity"}] as Array[Dictionary]
 	var entry := {"source": source}
+	if until_start_of != "":
+		entry["turn_start_of"] = until_start_of
 	if next_turn_end_of != "":
 		entry["turn_of"] = next_turn_end_of
 		# "Until the end of your next turn": if it's that unit's turn now, not this one.
@@ -60,6 +62,16 @@ static func remove_status(u: Unit, status: String, source: String = "") -> Array
 		return [] as Array[Dictionary]
 	u.statuses.erase(status)
 	return [{"type": "status_removed", "unit": u.id, "status": status, "source": source}] as Array[Dictionary]
+
+
+## Ends statuses that last "until the start of <u>'s next turn".
+static func expire_at_turn_start(state: GameState, u: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for x: Unit in state.units.values():
+		for status: String in x.statuses.keys():
+			if x.statuses[status].get("turn_start_of", "") == u.id:
+				events.append_array(remove_status(x, status, "expired"))
+	return events
 
 
 ## Ends statuses that last "until the end of <ended>'s next turn".
@@ -124,17 +136,20 @@ static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dict
 		return events
 	var source: String = opts.get("source", "")
 	var shredded := target.has_status("Shredded")
-	var armor_left := 0 if shredded or opts.get("ap", false) else target.armor
+	# "Can't be reduced in any way" (Monarch Seeking Payload, Pegasus Omnigun): no Armor,
+	# Resistance or other reduction; "bypasses Immunity" (Omnigun) skips Immunity too.
+	var unreducible: bool = opts.get("unreducible", false)
+	var armor_left := 0 if shredded or unreducible or opts.get("ap", false) else target.armor
 	for part: Dictionary in parts:
 		var dtype: String = part.get("type", "Kinetic")
 		var amount: int = part.get("amount", 0)
 		if dtype == "Variable":
 			dtype = "Kinetic"  # PROVISIONAL: weapons with a chosen damage type default to Kinetic.
-		if Effects.immune_to_damage(target, dtype):
+		if Effects.immune_to_damage(target, dtype) and not opts.get("bypass_immunity", false):
 			events.append({"type": "damage_dealt", "target": target.id, "source": source, "amount": 0, "damage_type": dtype,
 				"roll": amount, "immune": true, "hp": target.hp, "rule_ref": "glossary: Immunity"})
 			continue
-		var resist_here: bool = opts.get("resist_all", false) or Effects.resists(target, dtype, opts.get("area", false), int(opts.get("distance", -1)))
+		var resist_here: bool = opts.get("resist_all", false) or Effects.resists(target, dtype, opts.get("area", false), int(opts.get("distance", -1))) or Effects.shepherded(state, target)
 		if dtype == "Heat":
 			events.append_array(apply_heat(state, target, amount, source, resist_here))
 			continue
@@ -151,12 +166,19 @@ static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dict
 			amount -= armor_used
 		# 3) Resistance halves what's left, rounding the damage taken up (Core p.12).
 		var resisted := 0
-		if not shredded and amount > 0 and (resist_here or _resists(target, dtype)):
+		if not shredded and not unreducible and amount > 0 and (resist_here or _resists(target, dtype)):
 			resisted = amount / 2
 			amount -= resisted
 		var ev := {"type": "damage_dealt", "target": target.id, "source": source, "amount": amount,
 			"damage_type": dtype, "roll": rolled, "exposed": exposed, "armor_reduced": armor_used,
 			"resisted": resisted, "rule_ref": REF_HARM}
+		if opts.get("damage_to_one", false) and amount > 0 and not unreducible:
+			# Napoleon Flash Aegis: Bracing reduces the incoming damage to 1 (instead of Resistance).
+			ev["reduced_to_one"] = true
+			ev["resisted"] = int(ev["resisted"]) + amount - (0 if opts.get("one_used", false) else 1)
+			amount = 0 if opts.get("one_used", false) else 1
+			opts["one_used"] = true
+			ev["amount"] = amount
 		events.append(ev)
 		if dtype == "Burn" and not opts.get("no_mark_burn", false) and part.get("mark", true):
 			target.burn += int(part.get("amount", 0))
@@ -206,7 +228,7 @@ static func lose_hp(state: GameState, u: Unit, amount: int, source: String) -> A
 			return events
 		u.hp = u.max_hp - excess
 		events.append({"type": "hp_changed", "unit": u.id, "hp": maxi(u.hp, 0), "overshield": u.overshield, "source": "structure reset"})
-		events.append_array(_flyer_save(state, u, "structure damage"))
+		events.append_array(_flyer_save(state, u, "structure damage", source))
 	return events
 
 
@@ -290,6 +312,7 @@ static func _system_trauma(state: GameState, u: Unit) -> Array[Dictionary]:
 			var sys: Dictionary = u.counters.get("systems", {})
 			sys[system] = {"destroyed": true}
 			u.counters["systems"] = sys
+			Abilities.source_state(u, system)["destroyed"] = true
 			events.append({"type": "equipment_destroyed", "unit": u.id, "system": system})
 		_:
 			events.append_array(_direct_hit(state, u))
@@ -344,9 +367,11 @@ static func apply_heat(state: GameState, u: Unit, amount: int, source: String, r
 	events.append({"type": "heat_changed", "unit": u.id, "amount": amount, "total": u.heat, "source": source})
 	# Over HEAT CAP: 1 stress, an overheating check, clear all heat, then take the heat beyond
 	# what it took to exceed the cap, which can overheat again (Core p.81).
-	# PROVISIONAL (RULES_TODO "Heat overflow"): it takes cap + 1 heat to exceed the cap.
+	# How much carries over is the table's "heat_overflow" ruling.
 	while u.heat > u.heat_cap and not u.destroyed:
 		var excess := u.heat - u.heat_cap - 1
+		if Rulings.ask(state, "heat_overflow") == "beyond_cap":
+			excess = u.heat - u.heat_cap
 		u.heat = 0
 		u.stress -= 1
 		events.append({"type": "stress_lost", "unit": u.id, "stress": u.stress, "rule_ref": "Core p.81 Overheating"})
@@ -455,14 +480,16 @@ static func destroy(state: GameState, u: Unit, why: String) -> Array[Dictionary]
 	u.destroyed = true
 	u.hp = 0
 	var events: Array[Dictionary] = [{"type": "unit_destroyed", "unit": u.id, "reason": why}]
+	if Effects.has(u, "unstable_system") and not u.counters.get("vaporized", false):
+		# Manticore Unstable System: explodes as a reactor meltdown at the end of its next turn
+		# (its pilot's turn inside the wreck).
+		var pilot := Pilots.ensure_pilot(state, u)
+		u.counters["unstable_explosion"] = 2 if state.active_unit in [u.id, pilot.id] else 1
+		events.append({"type": "meltdown_started", "unit": u.id, "turns": u.counters["unstable_explosion"], "rule_ref": "frames: Manticore, Unstable System"})
 	for status: String in u.statuses.keys():
 		events.append_array(remove_status(u, status, "destroyed"))
-	# PROVISIONAL (RULES_TODO "Pilots"): the pilot of a destroyed mech climbs out next to it.
-	var pilot := Pilots.pilot_of(state, u)
-	if pilot != null and not pilot.destroyed and pilot.counters.get("mounted_in", "") == u.id:
-		var spot: Variant = Pilots.free_adjacent(state, u)
-		if spot != null:
-			events.append_array(Pilots.unseat(state, pilot, u, spot[0], spot[1]))
+	# The pilot stays in the wreck, no longer protected by it, and "may still exit it as normal"
+	# (Core p.74, 80): it takes its own turns and can Dismount.
 	events.append_array(refresh_engagement(state))
 	return events
 
@@ -477,11 +504,15 @@ static func begin_falling(u: Unit, why: String) -> Array[Dictionary]:
 
 
 ## Flying characters that take structure damage or stress must pass an AGILITY save or begin
-## falling (glossary: Flight/Hover). PROVISIONAL: save target 10.
-static func _flyer_save(state: GameState, u: Unit, what: String) -> Array[Dictionary]:
+## falling (Core p.63). Target: the table's "unforced_save_target" ruling.
+static func _flyer_save(state: GameState, u: Unit, what: String, source: String = "") -> Array[Dictionary]:
 	if not u.flying:
 		return [] as Array[Dictionary]
-	var check := skill_check(state, u, "agility", "Agility save after %s while flying" % what, CHECK_TARGET, 0, 0, [], true)
+	var target := CHECK_TARGET
+	var by := state.unit(source)
+	if by != null and by.save_target != CHECK_TARGET and Rulings.ask(state, "unforced_save_target") == "attacker":
+		target = by.save_target
+	var check := skill_check(state, u, "agility", "Agility save after %s while flying" % what, target, 0, 0, [], true)
 	var events: Array[Dictionary] = [{"type": "skill_check", "unit": u.id, "check": check, "rule_ref": "glossary: Flight/Hover"}]
 	if not check["success"]:
 		events.append_array(begin_falling(u, "Failed the Agility save after %s." % what))
@@ -559,8 +590,8 @@ static func end_of_turn_checks(state: GameState, u: Unit) -> Array[Dictionary]:
 
 
 ## Dangerous terrain: Engineering check or 5 damage, once per round per character
-## (glossary: Dangerous Terrain). PROVISIONAL: the damage is Kinetic unless the column is
-## tagged "dangerous_energy", "dangerous_explosive" or "dangerous_burn".
+## (Core p.62). The map says which hazard: Kinetic unless the column is also tagged
+## "dangerous_energy", "dangerous_explosive" or "dangerous_burn".
 static func dangerous_terrain_check(state: GameState, u: Unit) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	if u.counters.get("dangerous_checked", false) or u.flying:
@@ -599,7 +630,18 @@ static func _is_character(u: Unit) -> bool:
 
 ## On the battlefield: not destroyed, and not a pilot riding inside a mech.
 static func is_present(u: Unit) -> bool:
-	return u != null and not u.destroyed and String(u.counters.get("mounted_in", "")) == ""
+	if u == null or u.destroyed:
+		return false
+	var inside := String(u.counters.get("mounted_in", ""))
+	if inside == "":
+		return true
+	# A pilot inside a destroyed mech can be targeted and affected (Core p.74).
+	var mech: Unit = state_for_presence.get_ref().unit(inside) if state_for_presence != null and state_for_presence.get_ref() != null else null
+	return mech != null and mech.destroyed
+
+
+## Set by the engine so presence checks can see a pilot's mech.
+static var state_for_presence: WeakRef = null
 
 
 ## Recomputes ENGAGED for everyone: adjacent to a hostile character, neither Hidden

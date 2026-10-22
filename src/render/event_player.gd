@@ -8,6 +8,10 @@ extends Node
 
 signal event_started(event: Dictionary)
 signal event_finished(event: Dictionary)
+## Emitted when an attack's animation starts (the shot or swing begins).
+signal firing(event: Dictionary)
+## Emitted when an attack's hit (or miss) lands, for staging screenshots and sound later.
+signal impact(event: Dictionary)
 
 const SPEED_FULL := 1.0
 const SPEED_QUICK := 2.5
@@ -92,6 +96,17 @@ func play_event(e: Dictionary) -> void:
 			await Fx.wait(self, 0.8)
 		"next_side", "combat_started":
 			pass
+		"reaction_offered":
+			_log("%s can react: %s?" % [_name(e.get("unit", "")), String(e.get("reaction", "")).capitalize()])
+		"reaction":
+			var rmv := _view(e.get("unit", ""))
+			var what := String(e.get("reaction", "")).capitalize()
+			_log("%s reacts: %s." % [_name(e.get("unit", "")), what])
+			if rmv and Fx.speed > 0.0:
+				if e.get("reaction") == "brace":
+					Fx.shield_flash(battle.fx_root, rmv.body_center(), rmv.model.height * 0.6, Color(0.5, 0.8, 1.0))
+				Fx.float_text(battle.fx_root, rmv.body_center() + Vector3.UP * 0.2, what.to_upper(), Color(0.95, 0.55, 0.95), 56)
+				await Fx.wait(self, 0.5)
 		"damage_rolled":
 			# Rolled instantly; shown with the damage_dealt pop-up that follows.
 			_last_damage_roll[String(e.get("target", ""))] = e.get("roll", {})
@@ -117,7 +132,7 @@ func play_event(e: Dictionary) -> void:
 			_log("%s is marked with %d burn." % [_name(e.get("unit", "")), int(e.get("amount", 0))])
 		"movement_stopped":
 			_log("%s stops: %s" % [_name(e.get("unit", "")), e.get("reason", "")])
-		"overcharged", "stabilized", "reloaded", "scanned", "tech_action", "reaction", "disengaged", "searched", "equipment_destroyed", "system_trauma", "falling":
+		"overcharged", "stabilized", "reloaded", "scanned", "tech_action", "disengaged", "searched", "equipment_destroyed", "system_trauma", "falling":
 			_log("%s: %s" % [_name(e.get("unit", e.get("attacker", ""))), String(e["type"]).replace("_", " ")])
 		"moved":
 			await _moved(e)
@@ -157,7 +172,9 @@ func _follow(e: Dictionary) -> void:
 	if a == null:
 		return
 	if b and b != a:
-		camera.frame_pair(a.global_position, b.global_position, 6.0)
+		# Close fights (melee range) get a tighter shot.
+		var near := a.global_position.distance_to(b.global_position) < 2.5
+		camera.frame_pair(a.global_position, b.global_position, 3.2 if near else 6.0, _occlusion.bind(a.body_center(), b.body_center()))
 	elif e.get("type") == "moved":
 		var path: Array = e.get("path", [])
 		if not path.is_empty():
@@ -166,6 +183,18 @@ func _follow(e: Dictionary) -> void:
 			camera.frame_pair(a.global_position, end, 6.0)
 	elif e.get("type") in ["turn_started", "heat_changed", "status_added", "structure_check", "stress_check", "unit_destroyed", "destroyed"]:
 		camera.look_at_point(a.global_position + Vector3.UP * 0.6, 7.0)
+
+
+## How much terrain stands between a camera position and two points (0 = clear view).
+func _occlusion(cam: Vector3, p1: Vector3, p2: Vector3) -> float:
+	var hidden := 0.0
+	for p: Vector3 in [p1, p2]:
+		for i in range(1, 12):
+			var q := p.lerp(cam, i / 12.0)
+			var c := battle.map.grid.from_world(q)
+			if battle.map.has_cell(c) and battle.map.ground_height(c) * GridLayout.LEVEL_HEIGHT > q.y:
+				hidden += 1.0
+	return hidden
 
 
 ## Where roll pop-ups appear: just above a unit's nameplate.
@@ -314,9 +343,11 @@ func _attack(e: Dictionary) -> void:
 	if not is_instance_valid(att) or not is_instance_valid(tgt):
 		return
 	if Fx.speed > 0.0:
+		firing.emit(e)
 		await _attack_anim(att, tgt, wid, w, style, hit, result == "crit")
 	if not is_instance_valid(tgt) or not is_instance_valid(att):
 		return
+	impact.emit(e)
 	if popups and not check.is_empty():
 		popups.show_check(_above(tgt), check, result)
 	if arm != "":
@@ -454,7 +485,8 @@ func _damage(e: Dictionary) -> void:
 	var amount := int(e.get("amount", 0))
 	var dtype := String(e.get("damage_type", "Kinetic"))
 	var de := e.duplicate()
-	if not de.has("roll") or (de["roll"] as Dictionary).is_empty():
+	# `roll` may be a Dice.roll record or a plain total.
+	if not (de.get("roll") is Dictionary) or (de["roll"] as Dictionary).is_empty():
 		de["roll"] = _last_damage_roll.get(String(e["target"]), {})
 	_last_damage_roll.erase(String(e["target"]))
 	var breakdown := RollDisplay.damage_bbcode(de)
@@ -626,10 +658,12 @@ func _tech(e: Dictionary) -> void:
 	await Fx.wait(self, pre_attack_pause)
 	var color := Color(0.35, 1.0, 0.55)
 	if Fx.speed > 0.0:
+		firing.emit(e)
 		var from := att.model.eye.global_position if att.model.eye else att.body_center()
 		await Fx.data_link(battle.fx_root, from, tgt.body_center(), color, 1.0)
 	if not is_instance_valid(tgt) or not is_instance_valid(att):
 		return
+	impact.emit(e)
 	if popups and not check.is_empty():
 		popups.show_check(_above(tgt), check, result)
 	if hit:

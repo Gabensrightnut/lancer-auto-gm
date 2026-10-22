@@ -19,6 +19,9 @@ var order_bar: TurnOrderBar
 var bar: ActionBar
 var turn: PlayerTurn
 var banner: Label
+var reaction_prompt: ReactionPrompt
+## Staging/tests: answer reaction prompts automatically with the suggested answer.
+var auto_react := false
 ## Set by screenshot staging to pick units without clicks.
 var auto_pick := ""
 var running := false
@@ -46,6 +49,9 @@ func setup(db: ContentDB, battle_view: BattleView, events: EventPlayer, layer: C
 	banner.modulate.a = 0.0
 	ui.add_child(banner)
 	player.on_banner = show_banner
+	reaction_prompt = ReactionPrompt.new()
+	reaction_prompt.db = content
+	ui.add_child(reaction_prompt)
 	player.camera = view.tactical
 	turn = PlayerTurn.new()
 	turn.bar = bar
@@ -54,6 +60,7 @@ func setup(db: ContentDB, battle_view: BattleView, events: EventPlayer, layer: C
 	turn.db = content
 	add_child(turn)
 	turn.setup(ui)
+	turn.submitter = submit
 	turn.acted.connect(sync_views)
 
 
@@ -156,41 +163,85 @@ func _winner() -> String:
 
 
 func _next() -> void:
+	# A loop, not recursion: enemy turns follow each other until it's the players' pick.
+	while true:
+		sync_views()
+		var w := _winner()
+		if w != "":
+			show_banner("%s win" % ("Players" if w == "players" else "Enemies"))
+			running = false
+			battle_over.emit(w)
+			return
+		if state.turn_side == "players":
+			# The players choose who goes next: wait for "I'll go" (or the staged pick).
+			if auto_pick != "":
+				var id := auto_pick
+				auto_pick = ""
+				_on_i_will_go(id)
+			return
+		var waiting := TurnRules.waiting(state, "enemies")
+		if waiting.is_empty():
+			return
+		var uid := waiting[0].id
+		var before := state.acted.size()
+		var started: bool = await _start_turn(uid)
+		if not started:
+			push_warning("DemoBattle: %s couldn't start its turn; stopping enemy play." % uid)
+			return
+		# One action at a time until the AI ends its turn (reactions are asked in between).
+		for step in range(8):
+			var action := DemoAI.next_action(state, engine, uid)
+			var res: RuleResult = await submit(action)
+			if action["type"] == "end_turn" or not res.ok:
+				break
+		if state.active_unit == uid or state.acted.size() == before:
+			push_warning("DemoBattle: %s's turn didn't end; stopping enemy play." % uid)
+			return
+
+
+## Submits an action and plays what happens. If the engine pauses to offer a reaction, the
+## unit's controller answers (the player through the prompt; GM units with the engine's
+## suggested answer) and the action replays with that answer. Returns the first result.
+func submit(action: Dictionary) -> RuleResult:
+	var out := engine.submit(state, action)
+	var res: RuleResult = out["result"]
+	if not res.ok:
+		push_warning("%s refused: %s" % [action.get("type", "?"), res.reason])
+		return res
+	await player.play(out["events"])
+	var guard := 0
+	while not state.pending.is_empty() and guard < 6:
+		guard += 1
+		var p := state.pending
+		var u := state.unit(String(p.get("unit", "")))
+		var params: Dictionary
+		if u == null or u.controller == "gm" or auto_react:
+			params = Reactions.suggested_answer(state)
+		else:
+			sync_views()
+			params = await reaction_prompt.ask(state, p)
+		out = engine.submit(state, {"type": "react", "actor": p["unit"], "params": params})
+		await player.play(out["events"])
 	sync_views()
-	var w := _winner()
-	if w != "":
-		show_banner("%s win" % ("Players" if w == "players" else "Enemies"))
-		running = false
-		battle_over.emit(w)
-		return
-	if state.turn_side == "players":
-		# The players choose who goes next: wait for "I'll go" (or the staged pick).
-		if auto_pick != "":
-			var id := auto_pick
-			auto_pick = ""
-			_on_i_will_go(id)
-		return
-	var waiting := TurnRules.waiting(state, "enemies")
-	if waiting.is_empty():
-		return
-	var uid := waiting[0].id
-	await _start_turn(uid)
-	var events := DemoAI.take_turn(state, engine, uid)
-	await player.play(events)
-	_next()
+	return res
 
 
-func _start_turn(uid: String) -> void:
+func _start_turn(uid: String) -> bool:
 	var out := engine.submit(state, {"type": "start_turn", "actor": uid})
+	if not (out["result"] as RuleResult).ok:
+		push_warning("start_turn refused: " + (out["result"] as RuleResult).reason)
+		return false
 	_update_order()
 	await player.play(out["events"])
 	_update_order()
+	return true
 
 
 func _on_i_will_go(uid: String) -> void:
 	if state.turn_side != "players" or state.active_unit != "":
 		return
-	await _start_turn(uid)
+	if not await _start_turn(uid):
+		return
 	turn.begin(uid)
 	await turn.finished
 	_next()

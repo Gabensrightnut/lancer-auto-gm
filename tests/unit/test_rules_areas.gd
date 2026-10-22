@@ -106,3 +106,19 @@ func test_burst_does_not_hit_the_user() -> void:
 	expect_eq(F.events_of(out, "area_attack")[0]["targets"], ["x"])
 	expect_eq(x.hp, 8)
 	expect_eq(a.hp, 10)
+
+
+func test_line_with_a_listed_range_starts_at_a_point_in_range() -> void:
+	var s := F.state()
+	var e := RulesEngine.new()
+	var a := F.mech(s, "a", "players", Vector2i(0, 0))
+	var w := F.weapon("1:0", "Arc Projector", "Main", "Nexus", "2", 0)
+	w["range"] = [{"type": "Line", "val": 3}, {"type": "Range", "val": 5}]
+	a.loadout["weapons"].append(w)
+	var x := F.mech(s, "x", "enemies", Vector2i(6, 0))
+	F.begin(e, s, a)
+	var p := Areas.plan(s, a, w, Vector2i(9, 0), -1, Vector2i(4, 0))
+	expect(p["ok"], p["reason"])
+	expect_eq(p["origin"], [4, 0, 0], "drawn from a point within Range 5 (Core p.64)")
+	expect_eq(p["targets"], ["x"])
+	expect(not Areas.plan(s, a, w, Vector2i(9, 0), -1, Vector2i(7, 0))["ok"], "origin out of Range")

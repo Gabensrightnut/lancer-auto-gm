@@ -26,6 +26,17 @@ extends RefCounted
 ##   maze            hostiles must stop when Engaged with it, whatever their Size
 ##   immobilize_shreds  Immobilize it inflicts also Shreds for the same duration
 ##   grapple_free    can Boost and take reactions while grappling
+##   bonus_damage    see BonusDamage (Nelson Momentum, Mourning Cloak Hunter, Tokugawa Limit
+##                   Break, Death's Head Mark for Death)
+##   bonus_to_burn   {weapon_damage}: in the Danger Zone, bonus damage becomes burn (Plasma Sheath)
+##   damage_type_swap {from, to, when: exposed} (Tokugawa Limit Break)
+##   reach_bonus     {range, threat, when?, damage_type?} (Limit Break, Tokugawa Radiance)
+##   reroll_first_ranged  rerolls a missed first ranged attack each round (Death's Head Neurolink)
+##   seeking_payload Launchers attack Locked On targets as if Seeking; damage can't be reduced
+##   avenger_silos   {damage, range}: 1/round on a ranged crit, damage another character (Monarch)
+##   average_damage_option  may deal average damage instead of rolling (Pegasus)
+##   mjolnir_chambers  Raleigh Thunder God chambers (counters.chambers)
+##   frequency_override {ability, count}: ability usable count/its period (Pegasus core: 3/round)
 ## Movement (each only because a trait/system/talent/core bonus says so, never the model):
 ##   ignore_difficult  ignores difficult terrain (Bulwark Mods, Kai Bioplating)
 ##   climb_normal      climbs at normal speed (Kai Bioplating, High-Stress Mag Clamps)
@@ -68,10 +79,12 @@ static func has(u: Unit, kind: String) -> bool:
 
 ## Accuracy/Difficulty sources for a roll. `on` lists the roll types this counts as, e.g.
 ## ["attack", "ranged_attack"] or ["save"]. Returns sources for Dice.check.
-static func accuracy_sources(u: Unit, on: Array, skill: String = "", reaction: bool = false) -> Array:
+static func accuracy_sources(u: Unit, on: Array, skill: String = "", reaction: bool = false, weapon_type: String = "") -> Array:
 	var out: Array = []
 	for e: Dictionary in of(u, "accuracy"):
 		if not on.has(e.get("on", "")):
+			continue
+		if e.has("weapon_type") and e["weapon_type"] != weapon_type:
 			continue
 		if e.has("skill") and e["skill"] != skill:
 			continue
@@ -105,6 +118,16 @@ static func resists(u: Unit, dtype: String, area: bool, distance: int) -> bool:
 		if e.has("within") and (distance < 0 or distance > int(e["within"])):
 			continue
 		return true
+	return false
+
+
+## Hydra Shepherd Field: drones, deployables and objects next to a Hydra resist all damage.
+static func shepherded(state: GameState, u: Unit) -> bool:
+	if u.kind != Unit.KIND_DEPLOYABLE:
+		return false
+	for o: Unit in state.units.values():
+		if o != u and Combat.is_present(o) and has(o, "shepherd_field") and Sight.unit_distance(state, o, u) <= 1:
+			return true
 	return false
 
 
@@ -168,12 +191,17 @@ static func use_grant(u: Unit, e: Dictionary) -> void:
 
 
 ## Adds effects for the rest of the scene (e.g. a core power), with their statuses.
-static func activate(state: GameState, u: Unit, effects: Array, source: String) -> Array[Dictionary]:
+## `duration`: "scene", "start_next_turn" or "end_next_turn" (of `u`).
+static func activate(state: GameState, u: Unit, effects: Array, source: String, duration: String = "scene") -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	var active: Array = u.counters.get("active_effects", [])
 	for e: Dictionary in effects:
 		var copy := e.duplicate(true)
 		copy["label"] = copy.get("label", source)
+		if duration == "start_next_turn":
+			copy["expires"] = {"unit": u.id, "when": "start", "count": 1}
+		elif duration == "end_next_turn":
+			copy["expires"] = {"unit": u.id, "when": "end", "count": 2 if state.active_unit == u.id else 1}
 		active.append(copy)
 		if copy.get("kind", "") == "status" and copy.get("when", "always") == "always":
 			events.append_array(Combat.add_status(state, u, String(copy["status"]), source))
@@ -188,6 +216,10 @@ static func moved(state: GameState, u: Unit, mode: String) -> Array[Dictionary]:
 		events.append_array(_drop_still_status(u, e))
 	if has(u, "afterimage") and (mode == "walk" or mode == "boost"):
 		u.counters["afterimage"] = true
+	if mode == "boost":
+		for e: Dictionary in of(u, "bonus_damage"):
+			if e.get("when", "") == "after_boost":
+				u.counters["momentum"] = true  # Nelson Momentum: the next melee attack gains it
 	if mode != "walk":
 		events.append_array(punish_movement(state, u))
 	return events
@@ -245,6 +277,16 @@ static func attacked(state: GameState, attacker: Unit, action: String) -> void:
 ## Start of the unit's turn: statuses it has "during its turn".
 static func turn_started(state: GameState, u: Unit) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
+	# Balor Scouring Swarm: characters of its choice (here: hostiles) that start their turn
+	# grappled by or adjacent to it take 2 kinetic.
+	for o: Unit in state.units.values():
+		if o == u or o.side == u.side or not Combat.is_present(o):
+			continue
+		for e: Dictionary in of(o, "start_turn_damage"):
+			var grappled := String(u.counters.get("grapple", {}).get("with", "")) == o.id
+			if grappled or Sight.unit_distance(state, o, u) <= 1:
+				events.append({"type": "effect_triggered", "unit": o.id, "effect": e.get("label", ""), "target": u.id})
+				events.append_array(Combat.deal_damage(state, u, [{"type": e.get("type", "Kinetic"), "amount": int(e.get("value", 2))}], {"source": o.id}))
 	for e: Dictionary in of(u, "status_if_still"):
 		events.append_array(_drop_still_status(u, e))
 	for e: Dictionary in of(u, "status"):
@@ -273,6 +315,11 @@ static func turn_ending(state: GameState, u: Unit) -> Array[Dictionary]:
 	for e: Dictionary in of(u, "status_if_still"):
 		if not u.turn.get("moved", false):
 			events.append_array(Combat.add_status(state, u, String(e["status"]), String(e.get("label", "trait"))))
+	if has(u, "mjolnir_chambers") and not u.turn.get("fired_mjolnir", false):
+		# Raleigh Thunder God: two rounds chambered at the end of a turn it didn't fire (max 6).
+		u.counters["chambers"] = mini(6, int(u.counters.get("chambers", 0)) + 2)
+		events.append({"type": "effect_triggered", "unit": u.id, "effect": of(u, "mjolnir_chambers")[0].get("label", ""),
+			"target": u.id, "chambers": u.counters["chambers"], "rule_ref": "frames: Raleigh core system"})
 	if has(u, "reload_if_idle") and not u.turn.get("attacked", false):
 		for w: Dictionary in u.loadout.get("weapons", []):
 			if Weapons.has_tag(w, "tg_loading"):

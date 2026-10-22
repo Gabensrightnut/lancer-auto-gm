@@ -1,0 +1,360 @@
+{
+ "_note": "Our own writing. The tutorial's drill instructor: explains narrative skill checks (Core p.45-46), reserves (p.51), downtime (p.53), standing (our bookkeeping) and jobs; includes a practice check.",
+ "id": "instructor",
+ "start": "greet",
+ "nodes": {
+  "greet": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@greet_instructor",
+   "effects": [
+    {
+     "set_flag": "met:{npc_id}"
+    }
+   ],
+   "next": "describe",
+   "branch": [
+    {
+     "if": [
+      {
+       "deal": "$npc",
+       "state": "lost"
+      },
+      {
+       "not": {
+        "flag": "deal_off_said:{npc_id}"
+       }
+      }
+     ],
+     "next": "deal_off"
+    },
+    {
+     "if": {
+      "flag": "met:{npc_id}"
+     },
+     "next": "greet_again"
+    }
+   ]
+  },
+  "greet_again": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": "@greet_instructor",
+   "next": "menu",
+   "branch": [
+    {
+     "if": [
+      {
+       "deal": "$npc",
+       "state": "lost"
+      },
+      {
+       "not": {
+        "flag": "deal_off_said:{npc_id}"
+       }
+      }
+     ],
+     "next": "deal_off"
+    }
+   ]
+  },
+  "describe": {
+   "speaker": "narrator",
+   "line": "@describe_npc",
+   "next": "menu"
+  },
+  "farewell": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@farewell",
+   "end": true
+  },
+  "check_ok": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": "@check_success",
+   "next": "menu"
+  },
+  "check_bad": {
+   "speaker": "npc",
+   "expression": "angry",
+   "line": "@check_fail",
+   "next": "menu"
+  },
+  "favor": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@rep_favor_intro",
+   "effects": [
+    {
+     "downtime": "dt_get_connected",
+     "subject": "$npc"
+    }
+   ],
+   "next": "menu"
+  },
+  "deal_offer": {
+   "speaker": "npc",
+   "line": "@deal_offer",
+   "choices": [
+    {
+     "id": "deal_yes",
+     "text": [
+      "Deal. We'll do the job.",
+      "You've got yourself a squad."
+     ],
+     "tags": [
+      "practical",
+      "greedy",
+      "bold"
+     ],
+     "effects": [
+      {
+       "deal": {
+        "template": "$npc.want_hook",
+        "fallback": "clear_raiders"
+       }
+      },
+      {
+       "log": "Deal with {npc}: a job for {npc_deal_reward}."
+      }
+     ],
+     "next": "deal_done"
+    },
+    {
+     "id": "deal_no",
+     "text": [
+      "Not right now.",
+      "We'll think about it."
+     ],
+     "tags": [
+      "cautious",
+      "leave"
+     ],
+     "pinned": true,
+     "next": "menu"
+    }
+   ]
+  },
+  "deal_done": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": [
+    "Good. It's on the board. Don't let me down.",
+    "Then we have an understanding."
+   ],
+   "next": "menu"
+  },
+  "deal_waiting": {
+   "speaker": "npc",
+   "line": "@deal_waiting",
+   "next": "menu"
+  },
+  "deal_off": {
+   "speaker": "npc",
+   "expression": "worried",
+   "line": "@deal_off",
+   "effects": [
+    {
+     "set_flag": "deal_off_said:{npc_id}"
+    }
+   ],
+   "next": "menu"
+  },
+  "pay_favor": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": [
+    "Good. Here's what we need from you.",
+    "I was hoping you'd remember. There's a job.",
+    "A favor for a favor. Here's the job."
+   ],
+   "effects": [
+    {
+     "hook": "favor_owed",
+     "patron": "$npc"
+    },
+    {
+     "log": "{npc} called in the favor: a new job is on the board."
+    }
+   ],
+   "next": "menu"
+  },
+  "menu": {
+   "speaker": "npc",
+   "line": [
+    "What do you want to know, rookie?",
+    "Questions are free. Mistakes in the field aren't.",
+    "Go on, ask."
+   ],
+   "choices": [
+    {
+     "id": "checks",
+     "text": "How do skill checks work out of the mech?",
+     "tags": [
+      "curious"
+     ],
+     "next": "checks"
+    },
+    {
+     "id": "practice",
+     "text": "Can I try one?",
+     "tags": [
+      "bold",
+      "curious"
+     ],
+     "condition": {
+      "not": {
+       "flag": "practiced:{npc_id}"
+      }
+     },
+     "check": {
+      "skills": [
+       "sk_get_somewhere_quickly",
+       "sk_show_off",
+       "sk_survive"
+      ],
+      "label": "Practice check: scale the training wall",
+      "consequence": "You slip and land on your pride. No harm done.",
+      "goal": "practice:{npc_id}",
+      "success": "practice_ok",
+      "fail": "practice_bad",
+      "success_effects": [
+       {
+        "set_flag": "practiced:{npc_id}"
+       }
+      ],
+      "fail_effects": [
+       {
+        "set_flag": "practiced:{npc_id}"
+       }
+      ]
+     }
+    },
+    {
+     "id": "reserves",
+     "text": "What are reserves, again?",
+     "tags": [
+      "curious"
+     ],
+     "next": "reserves"
+    },
+    {
+     "id": "downtime",
+     "text": "What should I do with my downtime?",
+     "tags": [
+      "curious",
+      "practical"
+     ],
+     "next": "downtime"
+    },
+    {
+     "id": "standing",
+     "text": "How do I get people on our side?",
+     "tags": [
+      "curious",
+      "diplomatic"
+     ],
+     "next": "standing"
+    },
+    {
+     "id": "favor",
+     "text": "Can you help us out for the next mission? (Get Connected: your downtime action)",
+     "condition": [
+      {
+       "phase": "downtime"
+      },
+      {
+       "downtime_left": true
+      },
+      {
+       "standing": "$npc.faction",
+       "min": -2
+      }
+     ],
+     "tags": [
+      "practical",
+      "greedy"
+     ],
+     "next": "favor"
+    },
+    {
+     "id": "jobs",
+     "text": "Where do we find work?",
+     "tags": [
+      "practical"
+     ],
+     "effects": [
+      {
+       "ui": "hooks"
+      }
+     ],
+     "next": "jobs"
+    },
+    {
+     "id": "leave",
+     "text": [
+      "That's all for now.",
+      "I should go.",
+      "Thanks. See you around.",
+      "We'll talk later."
+     ],
+     "tags": [
+      "leave"
+     ],
+     "pinned": true,
+     "next": "farewell"
+    }
+   ]
+  },
+  "checks": {
+   "speaker": "npc",
+   "line": [
+    "Out of the cockpit, when something could go wrong, you roll a skill check: d20 plus one trigger that fits what you're doing. Ten or more and you get what you wanted. Your background can help too, if it's relevant. Risky jobs bite you under twenty, even when you succeed."
+   ],
+   "next": "menu"
+  },
+  "practice_ok": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": [
+    "Over the top. Not bad. See the number? Hover it next time: it shows the math."
+   ],
+   "next": "menu"
+  },
+  "practice_bad": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": [
+    "Down you go. That's a failed check: you don't get what you wanted, and you take the consequence. You can't just roll again unless something changes, or you push it and make it risky."
+   ],
+   "next": "menu"
+  },
+  "reserves": {
+   "speaker": "npc",
+   "line": "@reserves_explain",
+   "next": "menu"
+  },
+  "downtime": {
+   "speaker": "npc",
+   "line": [
+    "One downtime action each, usually. Get connected with someone who can help, scrounge for gear, get a damn drink and see who you meet. Whatever you get is a reserve for the next mission. Press Tab to see them all."
+   ],
+   "next": "menu"
+  },
+  "standing": {
+   "speaker": "npc",
+   "line": [
+    "Do right by people and they remember. Do jobs for a faction and its rivals remember that too. Talk to everyone: a contact you've met is someone you can call on later."
+   ],
+   "next": "menu"
+  },
+  "jobs": {
+   "speaker": "npc",
+   "line": [
+    "Job board's on the wall. Pick one at the briefing. Every mission you finish, win or lose, makes you a better pilot."
+   ],
+   "next": "menu"
+  }
+ }
+}

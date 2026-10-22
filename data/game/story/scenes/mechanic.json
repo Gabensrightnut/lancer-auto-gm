@@ -1,0 +1,359 @@
+{
+ "_note": "Our own writing. The hub's mechanic: Get Creative (Core p.54), printing and full repairs (Core p.82).",
+ "id": "mechanic",
+ "start": "greet",
+ "nodes": {
+  "greet": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@greet_mechanic",
+   "effects": [
+    {
+     "set_flag": "met:{npc_id}"
+    }
+   ],
+   "next": "describe",
+   "branch": [
+    {
+     "if": [
+      {
+       "deal": "$npc",
+       "state": "lost"
+      },
+      {
+       "not": {
+        "flag": "deal_off_said:{npc_id}"
+       }
+      }
+     ],
+     "next": "deal_off"
+    },
+    {
+     "if": {
+      "flag": "met:{npc_id}"
+     },
+     "next": "greet_again"
+    }
+   ]
+  },
+  "greet_again": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": "@greet_mechanic",
+   "next": "menu",
+   "branch": [
+    {
+     "if": [
+      {
+       "deal": "$npc",
+       "state": "lost"
+      },
+      {
+       "not": {
+        "flag": "deal_off_said:{npc_id}"
+       }
+      }
+     ],
+     "next": "deal_off"
+    }
+   ]
+  },
+  "describe": {
+   "speaker": "narrator",
+   "line": "@describe_npc",
+   "next": "menu"
+  },
+  "farewell": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@farewell",
+   "end": true
+  },
+  "check_ok": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": "@check_success",
+   "next": "menu"
+  },
+  "check_bad": {
+   "speaker": "npc",
+   "expression": "angry",
+   "line": "@check_fail",
+   "next": "menu"
+  },
+  "favor": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": "@rep_favor_intro",
+   "effects": [
+    {
+     "downtime": "dt_get_connected",
+     "subject": "$npc"
+    }
+   ],
+   "next": "menu"
+  },
+  "deal_offer": {
+   "speaker": "npc",
+   "line": "@deal_offer",
+   "choices": [
+    {
+     "id": "deal_yes",
+     "text": [
+      "Deal. We'll do the job.",
+      "You've got yourself a squad."
+     ],
+     "tags": [
+      "practical",
+      "greedy",
+      "bold"
+     ],
+     "effects": [
+      {
+       "deal": {
+        "template": "$npc.want_hook",
+        "fallback": "clear_raiders"
+       }
+      },
+      {
+       "log": "Deal with {npc}: a job for {npc_deal_reward}."
+      }
+     ],
+     "next": "deal_done"
+    },
+    {
+     "id": "deal_no",
+     "text": [
+      "Not right now.",
+      "We'll think about it."
+     ],
+     "tags": [
+      "cautious",
+      "leave"
+     ],
+     "pinned": true,
+     "next": "menu"
+    }
+   ]
+  },
+  "deal_done": {
+   "speaker": "npc",
+   "expression": "smiling",
+   "line": [
+    "Good. It's on the board. Don't let me down.",
+    "Then we have an understanding."
+   ],
+   "next": "menu"
+  },
+  "deal_waiting": {
+   "speaker": "npc",
+   "line": "@deal_waiting",
+   "next": "menu"
+  },
+  "deal_off": {
+   "speaker": "npc",
+   "expression": "worried",
+   "line": "@deal_off",
+   "effects": [
+    {
+     "set_flag": "deal_off_said:{npc_id}"
+    }
+   ],
+   "next": "menu"
+  },
+  "pay_favor": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": [
+    "Good. Here's what we need from you.",
+    "I was hoping you'd remember. There's a job.",
+    "A favor for a favor. Here's the job."
+   ],
+   "effects": [
+    {
+     "hook": "favor_owed",
+     "patron": "$npc"
+    },
+    {
+     "log": "{npc} called in the favor: a new job is on the board."
+    }
+   ],
+   "next": "menu"
+  },
+  "menu": {
+   "speaker": "npc",
+   "line": "@mechanic_creative",
+   "choices": [
+    {
+     "id": "creative",
+     "text": [
+      "I've got a project. Can I use your bay? (Get Creative: your downtime action)",
+      "Let's build something. (Get Creative)"
+     ],
+     "condition": [
+      {
+       "phase": "downtime"
+      },
+      {
+       "downtime_left": true
+      }
+     ],
+     "tags": [
+      "curious",
+      "practical"
+     ],
+     "effects": [
+      {
+       "ui": "downtime",
+       "action": "dt_get_creative"
+      }
+     ],
+     "next": "menu"
+    },
+    {
+     "id": "printing",
+     "text": [
+      "How does printing a mech actually work?",
+      "Can you fix my mech?"
+     ],
+     "tags": [
+      "curious"
+     ],
+     "next": "printing"
+    },
+    {
+     "id": "fix",
+     "text": "Here, let me help with that jammed actuator.",
+     "trigger": "sk_hack_or_fix",
+     "tags": [
+      "kind",
+      "practical"
+     ],
+     "check": {
+      "skills": [
+       "sk_hack_or_fix",
+       "sk_invent_or_create"
+      ],
+      "goal": "fix:{npc_id}",
+      "consequence": "You make it worse and lose an afternoon.",
+      "success": "check_ok",
+      "fail": "check_bad",
+      "success_effects": [
+       {
+        "standing": "$npc.faction",
+        "add": 1
+       },
+       {
+        "set_flag": "helped_mechanic"
+       },
+       {
+        "set_flag": "fix:{npc_id}"
+       }
+      ],
+      "fail_effects": [],
+      "teamwork": true,
+      "tags": [
+       "machines",
+       "repair"
+      ]
+     },
+     "condition": [
+      {
+       "not": {
+        "flag": "fix:{npc_id}"
+       }
+      }
+     ]
+    },
+    {
+     "id": "favor",
+     "text": "Can you help us out for the next mission? (Get Connected: your downtime action)",
+     "condition": [
+      {
+       "phase": "downtime"
+      },
+      {
+       "downtime_left": true
+      },
+      {
+       "standing": "$npc.faction",
+       "min": -2
+      }
+     ],
+     "tags": [
+      "practical",
+      "greedy"
+     ],
+     "next": "favor"
+    },
+    {
+     "id": "pay_favor",
+     "text": "About the favor we owe {npc_faction}...",
+     "condition": {
+      "obligation": "$npc.faction"
+     },
+     "tags": [
+      "honest"
+     ],
+     "priority": 3,
+     "next": "pay_favor"
+    },
+    {
+     "id": "deal",
+     "text": [
+      "Is there something we could do for you, in exchange for {npc_deal_reward}?",
+      "What would it take to get {npc_deal_reward} from you?"
+     ],
+     "condition": [
+      {
+       "deal": "$npc",
+       "state": "none"
+      },
+      {
+       "not": {
+        "phase": "mission"
+       }
+      }
+     ],
+     "tags": [
+      "greedy",
+      "practical",
+      "kind"
+     ],
+     "next": "deal_offer"
+    },
+    {
+     "id": "deal_wait",
+     "text": "About our deal...",
+     "condition": {
+      "deal": "$npc",
+      "state": "accepted"
+     },
+     "tags": [
+      "honest"
+     ],
+     "next": "deal_waiting"
+    },
+    {
+     "id": "leave",
+     "text": [
+      "That's all for now.",
+      "I should go.",
+      "Thanks. See you around.",
+      "We'll talk later."
+     ],
+     "tags": [
+      "leave"
+     ],
+     "pinned": true,
+     "next": "farewell"
+    }
+   ]
+  },
+  "printing": {
+   "speaker": "npc",
+   "line": "@printing_explain",
+   "next": "menu"
+  }
+ }
+}

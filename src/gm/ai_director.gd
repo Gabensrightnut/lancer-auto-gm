@@ -110,6 +110,9 @@ func play_turn(u: Unit) -> void:
 		if u.destroyed or host.state.active_unit != u.id:
 			break
 		var out := host.submit(u.controller, action)
+		var asked := String((out["result"] as RuleResult).grey_area)
+		if asked != "" and not Rulings.decided(host.state, asked) and _make_ruling(asked):
+			out = host.submit(u.controller, action)  # the AI GM decided the open question; try again
 		while _answer_reaction():
 			pass
 		if not host.state.pending.is_empty():
@@ -135,10 +138,23 @@ static func _braced_steps(steps: Array) -> Array:
 ## Brace only when the hit would cost structure (same test as the GM's auto policy);
 ## Overwatch and prepared actions are always taken, Overwatch with the first weapon offered.
 ## Returns false if nothing was answered (no question, or a human is being asked).
+## When the AI plays the GM seat, it makes the table's call on an open rules question with the
+## suggested canon reading (Rulings), and logs it. A human GM decides for themselves.
+func _make_ruling(id: String) -> bool:
+	if not host.is_ai_seat(NetHost.GM_SEAT) or not Rulings.CATALOG.has(id):
+		return false
+	var out := host.submit(NetHost.GM_SEAT, {"type": "set_ruling", "params": {"id": id, "choice": Rulings.suggested(id)}})
+	if (out["result"] as RuleResult).ok:
+		_log("", "GM ruling: %s %s" % [Rulings.CATALOG[id]["question"], Rulings.CATALOG[id]["options"][Rulings.suggested(id)]])
+	return (out["result"] as RuleResult).ok
+
+
 func _answer_reaction() -> bool:
 	var p: Dictionary = host.state.pending
 	if p.is_empty():
 		return false
+	if p.has("ruling"):
+		return _make_ruling(String(p["ruling"]))
 	var u := host.state.unit(p.get("unit", ""))
 	if u == null or not host.is_ai_seat(u.controller):
 		return false

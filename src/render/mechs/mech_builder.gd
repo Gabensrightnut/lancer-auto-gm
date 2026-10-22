@@ -49,8 +49,10 @@ func _build(frame: Dictionary, loadout: Dictionary, content: ContentDB, size_ove
 	var body := Node3D.new()
 	body.name = "Body"
 	_m.add_child(body)
-	var sculpted := FrameSculpts.has(_m.frame_id)
-	if sculpted:
+	var sculpted := MechAsset.has(_m.frame_id) or FrameSculpts.has(_m.frame_id)
+	if MechAsset.has(_m.frame_id) and MechAsset.build(_m.frame_id, _m, body):
+		pass
+	elif FrameSculpts.has(_m.frame_id):
 		FrameSculpts.sculpt(_m.frame_id, _m, body)
 	else:
 		_legs(body)

@@ -5,7 +5,7 @@ section 9). Everything it does goes through `NetHost.submit()` -> `RulesEngine.s
 
 | File | What it does |
 |---|---|
-| `mission_generator.gd` | `MissionGenerator.generate(seed, opts)` -> `{state, mission}`: sitrep, grassy-hills map (20-40 spaces), zones, deployment, squad (core Everest builds) and enemies (NPC templates). Same seed, same mission. |
+| `mission_generator.gd` | `MissionGenerator.generate(seed, opts)` -> `{state, mission}`: sitrep, battlefield from `TerrainGen` (landscape + culture, 20-40 spaces; kit in `mission.flavor.kit`), zones, deployment, squad (core Everest builds) and enemies (NPC templates). Same seed, same mission. |
 | `mission.gd` | Sitrep rules and scoring (Basic Combat, Control, Holdout, Gauntlet); `observe(state, events)` sets `outcome`. Save with `to_dict()`. |
 | `tactics_ai.gd` | Utility AI: picks a whole turn for one unit (move, attacks, Lock On, Scan, Hide, Stabilize, Boost) and explains it in one line. |
 | `ai_knowledge.gd` | The planning copy of the battle for one side: Hidden enemies left out, unscanned stats unknown. |
