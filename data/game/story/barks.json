@@ -314,6 +314,16 @@
     "wounded_start": [
       "Still hurting from last time. Doesn't matter.",
       "Not fully healed. Let's be careful."
+    ],
+    "ally_cascade": [
+      "{ally}'s NHP is cascading! Shut it down, {ally}!",
+      "Something's wrong with {ally}'s mech. It's not them flying it!",
+      "{ally}, your NHP's loose! Power down!"
+    ],
+    "own_cascade": [
+      "It's not listening to me. Shutting down!",
+      "My NHP's cascading! Get clear of me!",
+      "It's got the controls. Somebody cover me while I shut it down!"
     ]
   },
   "chance": 0.45

@@ -250,7 +250,13 @@ static func battle_summary(state: GameState, _story: StoryState, events: Array =
 		if u.side == Mission.PLAYERS and u.kind == Unit.KIND_PILOT and not u.counters.has("mounted_in") and not u.destroyed:
 			ejected.append(u.name)
 	var dealt := {}
+	var cascades: Array = []
 	for e: Dictionary in events:
+		# An NHP that cascaded in the squad (Core p.107), for the debrief and the squad's memory.
+		if str(e.get("type", "")) == "cascade_check" and bool(e.get("cascade", false)):
+			var cu: Unit = state.unit(str(e.get("unit", "")))
+			if cu != null and cu.side == Mission.PLAYERS and not cascades.has(cu.name):
+				cascades.append(cu.name)
 		if str(e.get("type", "")) == "damage_dealt":
 			var src := str(e.get("source", ""))
 			var tgt: Unit = state.unit(str(e.get("target", "")))
@@ -263,7 +269,7 @@ static func battle_summary(state: GameState, _story: StoryState, events: Array =
 		if int(dealt[k]) > best:
 			best = int(dealt[k])
 			mvp = str(names.get(k, k))
-	return {"rounds": state.round_number, "kills": kills, "lost": lost, "ejected": ejected, "mvp": mvp, "mvp_damage": best}
+	return {"rounds": state.round_number, "kills": kills, "lost": lost, "ejected": ejected, "mvp": mvp, "mvp_damage": best, "cascades": cascades}
 
 
 static func finish_mission(campaign: Campaign, story: StoryState, engine: StoryEngine, state: GameState, mission: Mission, events: Array = []) -> Dictionary:

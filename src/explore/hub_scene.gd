@@ -52,6 +52,7 @@ var gear_panel: PilotGearPanel
 var tutorial_panel: TutorialPanel
 var epilogue: EpilogueScreen
 var codex: CodexPanel
+var map: CampaignMap
 
 
 func setup(e: StoryEngine, s: StoryState, c: Campaign, content: ContentDB, seat: String = "p1") -> void:
@@ -376,7 +377,7 @@ func _physics_process(delta: float) -> void:
 	var me: PilotFigure = avatars.get(local_seat)
 	if me == null:
 		return
-	var busy := dialogue.visible or downtime_screen.visible or hud.board_open() or level_panel.visible or gear_panel.visible or codex.visible
+	var busy := dialogue.visible or downtime_screen.visible or hud.board_open() or level_panel.visible or gear_panel.visible or codex.visible or map.visible
 	var dir := Vector3.ZERO
 	if not busy:
 		var f := Vector3(-sin(_yaw), 0, -cos(_yaw))
@@ -553,6 +554,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 			KEY_J:
 				if not dialogue.visible:
 					hud.toggle_board()
+			KEY_M:
+				if not dialogue.visible and not map.visible:
+					open_map()
 			KEY_ESCAPE:
 				codex.visible = false
 				downtime_screen.visible = false
@@ -614,6 +618,29 @@ func _build_ui() -> void:
 	tutorial_panel.bind(campaign)
 	tutorial_panel.codex_requested.connect(func(q: String) -> void: codex.open(q))
 	hud.codex_requested.connect(func() -> void: codex.open())
+	map = CampaignMap.new()
+	ui.add_child(map)
+	map.bind(engine, story, campaign)
+	map.travelled.connect(_travelled)
+	map.closed.connect(func() -> void: hud.set_busy(false))
+	hud.map_requested.connect(open_map)
+
+
+## The sector map (M): where the squad is, the worlds around it, standing, travel.
+func open_map() -> void:
+	map.open()
+	hud.set_busy(true)
+
+
+## The squad arrived somewhere else: a new town to walk around.
+func _travelled(events: Array) -> void:
+	hud.set_busy(false)
+	rebuild()
+	for e: Dictionary in events:
+		if str(e.get("type", "")) == "travelled":
+			hud.toast(str(e["text"]), StoryStyle.GOLD)
+	_handle(events)
+	story_events.emit(events)
 
 
 func _center(c: Control) -> void:
@@ -655,6 +682,8 @@ func _handle(events: Array) -> void:
 				hud.toast("%s: \"%s\"" % [who, e["text"]], StoryStyle.TEXT)
 			"bond_changed", "bond_reward":
 				hud.toast(str(e["text"]), StoryStyle.BLUE)
+			"story_hint":
+				hud.toast(str(e["text"]), StoryStyle.GOLD)
 			"campaign_ended":
 				epilogue.show_ending(e["ending"])
 			"pilot_rested":
@@ -716,6 +745,8 @@ func screenshot_setup(args: Array) -> Array:
 		return ["ending"]
 	if args.has("codex"):
 		return ["codex"]
+	if args.has("map"):
+		return ["map"]
 	if args.has("parley"):
 		StorySettings.persist = false
 		return ["parley", "log"]
@@ -756,6 +787,8 @@ func screenshot_stage(tag: String) -> void:
 	match tag:
 		"codex":
 			codex.open("engaged")
+		"map":
+			open_map()
 		"parley":
 			# Mid-battle terms with the enemy commander (Rivals), shown over the hub for the picture.
 			if Dialogue.is_open(story):
@@ -768,7 +801,7 @@ func screenshot_stage(tag: String) -> void:
 			CampaignLoop.build_mission(campaign, story, db)
 			var b := Rivals.battle(story)
 			story.npcs[b["rival"]]["personality"] = "honorable"
-			var evs: Array = []
+			var evs: Array = [{"type": "round_started", "round": 2}]
 			for id: String in b["enemy_ids"]:
 				if id != str(b["unit"]):
 					evs.append({"type": "unit_destroyed", "unit": id})

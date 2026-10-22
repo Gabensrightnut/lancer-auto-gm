@@ -132,6 +132,9 @@ static func observe(story: StoryState, campaign: Campaign, events: Array) -> voi
 					if (sm.get("lost", []) as Array).has(cs):
 						m["wrecks"] = int(m["wrecks"]) + 1
 						m["recent"]["wrecked"] = true
+					if (sm.get("cascades", []) as Array).has(cs) and SessionZero.allowed(campaign, "story", "nhp_cascade"):
+						m["cascades"] = int(m.get("cascades", 0)) + 1
+						m["recent"]["cascade"] = true
 					if str(sm.get("mvp", "")) == cs:
 						m["mvp"] = int(m["mvp"]) + 1
 						m["recent"]["mvp"] = true
@@ -174,6 +177,8 @@ static func topic(story: StoryState, pid: String) -> String:
 	var rc: Dictionary = m["recent"]
 	if str(rc.get("lost_friend", "")) != "":
 		return "lost_friend"
+	if bool(rc.get("cascade", false)):
+		return "cascade"
 	if bool(rc.get("wrecked", false)):
 		return "wrecked"
 	if bool(rc.get("wounded", false)):
@@ -202,7 +207,7 @@ static func banter(story: StoryState, campaign: Campaign, max_lines: int = 2) ->
 	if speakers.is_empty():
 		return events
 	# The squadmate with the most to say goes first.
-	var order := ["lost_friend", "wrecked", "wounded", "mvp", "won", "lost", "arc", "idle"]
+	var order := ["lost_friend", "cascade", "wrecked", "wounded", "mvp", "won", "lost", "arc", "idle"]
 	speakers.sort_custom(func(a: String, c: String) -> bool:
 		return order.find(topic(story, story.pilot_of_seat(a))) < order.find(topic(story, story.pilot_of_seat(c))))
 	for i in range(mini(max_lines, speakers.size())):
@@ -246,7 +251,7 @@ static func barks_for(story: StoryState, campaign: Campaign, e: Dictionary, unit
 		if seat == "" or pid == "" or not story.is_ai(seat) or rng.randf() > float(k.get("chance", 0.45)):
 			return
 		var persona := persona_of(story, seat)
-		var lines: Array = k.get("personas", {}).get(persona, {}).get(moment, [])
+		var lines: Array = k.get("personas", {}).get(persona, {}).get(moment, k.get("history", {}).get(moment, []))
 		var m := memory(story, pid)
 		if moment == "start":
 			if not (m["lost"] as Array).is_empty():
@@ -270,6 +275,16 @@ static func barks_for(story: StoryState, campaign: Campaign, e: Dictionary, unit
 			say.call(str(e.get("target", "")), "damaged", {})
 		"structure_lost":
 			say.call(str(e.get("unit", "")), "structure", {})
+		"cascade_check":
+			# An NHP cascading (Core p.107): its pilot and the squad react.
+			var cu := str(e.get("unit", ""))
+			if bool(e.get("cascade", false)) and unit_pilot.has(cu) and SessionZero.allowed(campaign, "story", "nhp_cascade"):
+				say.call(cu, "own_cascade", {})
+				var who := str(campaign.pilots.get(str(unit_pilot[cu]), {}).get("callsign", "them"))
+				for u: String in unit_pilot:
+					if u != cu:
+						say.call(u, "ally_cascade", {"ally": who})
+						break
 		"stress_lost":
 			say.call(str(e.get("unit", "")), "overheat", {})
 		"unit_destroyed":

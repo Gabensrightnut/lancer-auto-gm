@@ -3,7 +3,7 @@
   "entries": [
     {
       "title": "Standing",
-      "text": "How a faction feels about your squad, from Hostile to Allied. It's this game's way of remembering who you've helped or crossed. It changes who talks to you, how they greet you, and what a contact can offer when you Get Connected. It never changes a roll."
+      "text": "How a faction feels about your squad, from Hostile to Allied. It's this game's way of remembering who you've helped or crossed. It changes who talks to you, how they greet you, and what a contact can offer when you Get Connected. It never changes a roll. You can see it on the sector map (M) for every world you've been to, and in the hub's side panel for the factions there."
     },
     {
       "title": "Bonds",
@@ -31,7 +31,15 @@
     },
     {
       "title": "Talking terms",
-      "text": "The book says NPCs care about their own survival, surrender and retreat are perfectly good ways for a fight to end, and the GM can end a fight early once there's no question how it will turn out (Core p.60). So once half the enemy force is down, or their commander is on their last structure, you can call on them to stand down. Some commanders offer terms on their own, and some will offer to let your squad walk away if the fight is going badly for you. Accepting ends the battle there."
+      "text": "The book says NPCs care about their own survival, surrender and retreat are perfectly good ways for a fight to end, and the GM can end a fight early once there's no question how it will turn out (Core p.60). So from the second round on, once half the enemy force is down (or their commander is badly hurt and a quarter of their force is down), you can call on them to stand down. Some commanders offer terms on their own, and some will offer to let your squad walk away if the fight is going badly for you. Accepting ends the battle there."
+    },
+    {
+      "title": "Sector map",
+      "text": "The part of space your squad works in: a few star systems joined by blink gates, each with a few worlds, moons or stations. Each world has its own culture, landscape and hub, and its own situation. The map shows where you are, where you've been, the jobs and situation there, and how each world's factions feel about you. Open it with M in a hub. The map is this game's own feature; the setting's blink gates are from the book (Core p.10)."
+    },
+    {
+      "title": "Travel",
+      "text": "Between missions the squad can move to another world on the map, mechs and all. Inside a system that's a short flight; between systems it's a trip through a blink gate, which the book describes as fast and safe (Core p.10). Travel is part of the story: there's no cost and no travel time to track. Every world you leave keeps its people, jobs and situation for when you come back."
     }
   ]
 }

@@ -6,6 +6,7 @@ extends Control
 
 signal story_events(events: Array)
 signal codex_requested
+signal map_requested
 
 const PHASE_HELP := {
 	"briefing": "BRIEFING. Pick a job from the board (J). The briefing sets the goal and the stakes.",
@@ -61,6 +62,11 @@ func _init() -> void:
 	codex_btn.name = "CodexButton"
 	codex_btn.pressed.connect(func() -> void: codex_requested.emit())
 	add_child(codex_btn)
+	var map_btn := StoryStyle.button("Map (M)", 14)
+	map_btn.name = "MapButton"
+	map_btn.tooltip_text = "The sector: other worlds, who likes you where, and travel."
+	map_btn.pressed.connect(func() -> void: map_requested.emit())
+	add_child(map_btn)
 	_prompt = StoryStyle.label("", 20, Color.WHITE)
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_prompt.add_theme_constant_override("outline_size", 6)
@@ -125,13 +131,18 @@ func refresh() -> void:
 		t += _kit_line(p, res)
 		for r: Dictionary in res:
 			t += "   [color=#7fe0a0]+ %s[/color]\n" % r["name"]
+	# Standing (this game's own bookkeeping, Codex: Standing): this world's factions first, then
+	# anyone else the squad has dealt with.
 	var met := {}
 	for n: String in story.contacts:
 		met[str(story.npcs.get(n, {}).get("faction", ""))] = true
-	if not met.is_empty():
-		t += "\n[color=#ffd166]STANDING[/color]\n"
-		var fs := met.keys()
-		fs.sort()
+	met.erase("")
+	var local: Array = Sector.factions_of(story, Sector.current(story)) if not Sector.current(story).is_empty() else []
+	if not met.is_empty() or not local.is_empty():
+		t += "\n[color=#ffd166]STANDING[/color] [color=#9fb2c8](this game's own, not a book rule)[/color]\n"
+		var rest := met.keys().filter(func(f: String) -> bool: return not local.has(f))
+		rest.sort()
+		var fs: Array = local + rest
 		for f: String in fs:
 			var v := story.get_standing(f)
 			var col := "#7fb8ff" if v > 0 else ("#ff7b6b" if v < 0 else "#c8d0da")
@@ -156,6 +167,9 @@ func refresh() -> void:
 	var cb := get_node("CodexButton") as Button
 	cb.reset_size()
 	cb.position = Vector2(16, vp.y - cb.size.y - 16)
+	var mb := get_node("MapButton") as Button
+	mb.reset_size()
+	mb.position = Vector2(cb.position.x + cb.size.x + 8, cb.position.y)
 	_prompt.size = Vector2(vp.x, 30)
 	_prompt.position = Vector2(0, vp.y * 0.62)
 	_toasts.size = Vector2(440, 300)
