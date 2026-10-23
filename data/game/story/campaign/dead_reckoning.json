@@ -103,7 +103,8 @@
     }
    },
    "hub_flags": {
-    "flash_vat": true
+    "flash_vat": true,
+    "ship": true
    },
    "interiors": {
     "office": {

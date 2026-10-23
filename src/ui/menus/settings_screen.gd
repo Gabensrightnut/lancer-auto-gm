@@ -48,6 +48,8 @@ func _ready() -> void:
 	auto.button_pressed = s.ai_squad_auto
 	auto.toggled.connect(func(on: bool) -> void: s.ai_squad_auto = on)
 	pb.add_child(auto)
+	pb.add_child(_slider("Split vote: seconds before the fight", s.split_countdown, 15.0, 30.0, func(v: float) -> void: s.split_countdown = roundf(v),
+		"When a squad vote splits, the two sides fight it out after this countdown (host)."))
 	left.add_child(play)
 	# Story text (StorySettings: kept on this computer, applied right away).
 	var story_panel := MenuTheme.panel("Story text", MenuTheme.maker_color("SSC").lightened(0.2), "compendium")
@@ -59,6 +61,13 @@ func _ready() -> void:
 	skip.button_pressed = StorySettings.skip_seen()
 	skip.toggled.connect(func(on: bool) -> void: StorySettings.set_skip_seen(on))
 	sb.add_child(skip)
+	sb.add_child(_slider("Mouse look speed (walking, first person)", StorySettings.look_sensitivity(), 0.25, 3.0, func(v: float) -> void: StorySettings.set_look_sensitivity(v),
+		"How fast the view turns when you move the mouse while walking around in first person."))
+	var inv := CheckButton.new()
+	inv.text = "Invert mouse up/down (walking, first person)"
+	inv.button_pressed = StorySettings.invert_y()
+	inv.toggled.connect(func(on: bool) -> void: StorySettings.set_invert_y(on))
+	sb.add_child(inv)
 
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 20)
@@ -114,19 +123,32 @@ func _ready() -> void:
 func _refresh_keys() -> void:
 	for c in keys_box.get_children():
 		c.queue_free()
-	for a: String in GameSettings.actions():
-		var h := HBoxContainer.new()
-		var l := MenuTheme.label(str(GameSettings.actions()[a][0]), 17)
-		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		h.add_child(l)
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(200, 34)
-		b.text = "Press a key…" if waiting_for_key == a else GameSettings.key_name(int(s.keybinds[a]))
-		b.pressed.connect(func() -> void:
-			waiting_for_key = a
-			_refresh_keys())
-		h.add_child(b)
-		keys_box.add_child(h)
+	var table := GameSettings.actions()
+	var clash := s.conflicts()
+	for ctx: Array in [["battle", "IN BATTLE"], ["explore", "EXPLORING"], ["both", "EVERYWHERE"]]:
+		var ids := table.keys().filter(func(a: String) -> bool: return GameSettings.context_of(a) == ctx[0])
+		if ids.is_empty():
+			continue
+		keys_box.add_child(MenuTheme.label(ctx[1], 13, MenuTheme.MUTED))
+		for a: String in ids:
+			_key_row(a, table, clash)
+
+
+func _key_row(a: String, table: Dictionary, clash: Dictionary) -> void:
+	var h := HBoxContainer.new()
+	var l := MenuTheme.label(str(table[a][0]), 17, MenuTheme.BAD if clash.has(a) else MenuTheme.TEXT)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if clash.has(a):
+		l.tooltip_text = "Same key as: %s" % ", ".join(PackedStringArray((clash[a] as Array).map(func(o: String) -> String: return str(table[o][0]))))
+	h.add_child(l)
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(200, 34)
+	b.text = "Press a key…" if waiting_for_key == a else GameSettings.key_name(int(s.keybinds[a])) + ("  (clash)" if clash.has(a) else "")
+	b.pressed.connect(func() -> void:
+		waiting_for_key = a
+		_refresh_keys())
+	h.add_child(b)
+	keys_box.add_child(h)
 
 
 func _unhandled_key_input(event: InputEvent) -> void:

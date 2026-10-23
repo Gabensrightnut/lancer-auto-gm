@@ -60,6 +60,7 @@ func _ready() -> void:
 	hub.setup(StoryHostEngine.new(db, session), GameFlow.story, campaign, db, _seat)
 	hub.mission_requested.connect(_on_mission_requested)
 	hub.story_events.connect(_on_story_events)
+	session.updated.connect(func(_v: Dictionary, evs: Array) -> void: _on_squad_events(evs))  # every seat's actions
 	_hook_epilogue()
 	var pending := GameFlow.story_events
 	GameFlow.story_events = []
@@ -96,6 +97,11 @@ func _show_session_zero() -> void:
 
 func _on_story_events(events: Array) -> void:
 	GameFlow.save_story(campaign, MenuSession.store)
+	for e: Dictionary in events:
+		if str(e.get("type", "")) == "pvp_requested" and story_client == null:
+			# A story choice split the squad: the two groups fight it out (host).
+			_start_pvp(e)
+			return
 	if events.any(func(e: Dictionary) -> bool: return str(e.get("type", "")) == "campaign_ended"):
 		hub.tutorial_panel.visible = false
 
@@ -192,6 +198,97 @@ func _on_mission_requested(_hook: Dictionary) -> void:
 	MenuSession.go(self, "battle")
 
 
+# --- The squad together: gathering and split votes ---------------------------------------
+
+## A split vote: seconds left before the fight starts, and the party_split event.
+var _split_left := -1.0
+var _split_event: Dictionary = {}
+var _split_shown := -1
+
+
+## Story events that concern the whole squad (Decisions.gathering): everyone is pulled
+## together; a split vote (party_split) becomes a fight after the host's countdown.
+func _on_squad_events(events: Array) -> void:
+	var gather := Decisions.gathering(events)
+	if not gather.is_empty():
+		_gather(gather[0])
+	for e: Dictionary in events:
+		if str(e.get("type", "")) == "party_split":
+			_split_event = e
+			_split_left = MenuSession.settings().split_countdown if story_client == null else -1.0
+			hub.hud.toast("%s The fight starts in %d seconds." % [e.get("text", "The squad is split."), int(MenuSession.settings().split_countdown)], StoryStyle.RED)
+
+
+## Everyone gathers by the squad's lead (the first person's pilot): this screen moves its own
+## pilot there; friends do the same on theirs (positions sync as usual).
+func _gather(e: Dictionary) -> void:
+	var lead := ""
+	for seat: String in GameFlow.story.seats if story_client == null else story_client.story.seats:
+		var st: StoryState = GameFlow.story if story_client == null else story_client.story
+		if not st.is_ai(seat) and (lead == "" or seat < lead):
+			lead = seat
+	var me: Node3D = hub.avatars.get(_seat)
+	var to: Node3D = hub.avatars.get(lead)
+	if me != null and to != null and me != to:
+		var i := int(_seat.trim_prefix("p")) if _seat.trim_prefix("p").is_valid_int() else 1
+		hub.set_avatar_position(_seat, to.position + Vector3(1.6, 0, 0).rotated(Vector3.UP, TAU * i / 5.0), to.rotation.y)
+	var why := str(e.get("text", e.get("title", "")))
+	hub.hud.toast("The squad comes together%s" % (": " + why if why != "" else "."), StoryStyle.BLUE)
+
+
+func _split_tick(delta: float) -> void:
+	if _split_left < 0.0:
+		return
+	_split_left -= delta
+	if int(ceil(_split_left)) != _split_shown and _split_left > 0.0 and int(ceil(_split_left)) % 5 == 0:
+		_split_shown = int(ceil(_split_left))
+		hub.hud.toast("The fight between the two sides starts in %d seconds." % _split_shown, StoryStyle.RED)
+	if _split_left <= 0.0:
+		_split_left = -1.0
+		_start_split_fight(_split_event)
+
+
+## The vote's two sides fight it out on a compact arena where the squad stands: only the squad's
+## mechs, no enemies, nobody dies (knocked out instead), damage kept; the winning side's choice
+## stands (GameFlow.start_pvp_mission with the split; split_resolved when it's over).
+func _start_split_fight(e: Dictionary) -> void:
+	var sides: Dictionary = e.get("sides", {})
+	var local: Array = []
+	for seat: String in GameFlow.story.seats:
+		if not GameFlow.story.is_ai(seat) and (GameFlow.story_host == null or GameFlow.story_host.seat_table().get(seat, {}).get("where", "local") != "remote"):
+			local.append(seat)
+	var s := GameFlow.start_pvp_mission(campaign, MenuSession.content(), MenuSession.store, {"a": sides.get("accept", []), "b": sides.get("decline", [])},
+		{}, str(e.get("id", "")), local, {"fight": e.get("fight", {})})
+	if s == null:
+		hub.hud.toast("The fight between the two sides couldn't start.", StoryStyle.RED)
+		return
+	var net := MenuSession.net(self)
+	if net != null and GameFlow.story_host != null:
+		net.host = s.host
+		net.director = null
+	MenuSession.go(self, "battle")
+
+
+## Story event pvp_requested {id, a: [seats], b: [seats], allies: {a, b}}: a battle between the
+## squad's two groups (GameFlow.start_pvp_mission). Everyone at this screen plays their seat;
+## friends online follow the host into it as with any battle.
+func _start_pvp(e: Dictionary) -> void:
+	var local: Array = []
+	for seat: String in GameFlow.story.seats:
+		if not GameFlow.story.is_ai(seat) and (GameFlow.story_host == null or GameFlow.story_host.seat_table().get(seat, {}).get("where", "local") != "remote"):
+			local.append(seat)
+	var s := GameFlow.start_pvp_mission(campaign, MenuSession.content(), MenuSession.store, {"a": e.get("a", []), "b": e.get("b", [])},
+		e.get("allies", {}) if e.get("allies") is Dictionary else {}, str(e.get("id", "")), local)
+	if s == null:
+		hub.hud.toast("The fight between the two sides couldn't start.", StoryStyle.RED)
+		return
+	var net := MenuSession.net(self)
+	if net != null and GameFlow.story_host != null:
+		net.host = s.host
+		net.director = null
+	MenuSession.go(self, "battle")
+
+
 # --- A friend in the host's game -------------------------------------------------------------
 
 func _ready_as_friend(db: ContentDB) -> void:
@@ -233,6 +330,7 @@ func _on_friend_message(seat: String, msg: Dictionary) -> void:
 
 ## Everyone's pilots on the host's screen and the friends' (the host passes each one on).
 func _process(delta: float) -> void:
+	_split_tick(delta)
 	if hub == null or hub.avatars.is_empty() or (story_client == null and GameFlow.story_host == null):
 		return
 	_send_left -= delta
@@ -271,6 +369,7 @@ func _on_mirror(s: StoryState, c: Campaign, events: Array) -> void:
 	if where != JSON.stringify([hub.story.hub.get("name", ""), hub.story.hub.get("seed", "")]):
 		hub.rebuild()
 	hub._handle(events)
+	_on_squad_events(events)
 	if hub.story.phase == "ending":
 		hub.tutorial_panel.visible = false
 

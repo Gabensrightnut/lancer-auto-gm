@@ -342,6 +342,18 @@ func _follow_step() -> bool:
 		var d := state.map.grid.distance(u.cell, lead.cell)
 		if d <= 3:
 			continue
+		# Of the spaces the rules say it can reach (around cover, ramps, parked vehicles), the
+		# one closest to its lead, keeping a couple of spaces back.
+		var best := u.cell
+		var best_d := d
+		for sp: Dictionary in RulesQueries.reachable(state, u.id).get("spaces", []):
+			var c := Vector2i(int(sp["cell"][0]), int(sp["cell"][1]))
+			var dc := state.map.grid.distance(c, lead.cell)
+			if dc >= 2 and dc < best_d:
+				best = c
+				best_d = dc
+		if best != u.cell and (host.submit_ai({"type": "explore_move", "actor": u.id, "params": {"to": [best.x, best.y]}})["result"] as RuleResult).ok:
+			return true
 		var line := state.map.grid.line(u.cell, lead.cell)
 		for i in range(mini(u.speed, line.size() - 3), 0, -1):
 			if (host.submit_ai({"type": "explore_move", "actor": u.id, "params": {"to": [line[i].x, line[i].y]}})["result"] as RuleResult).ok:

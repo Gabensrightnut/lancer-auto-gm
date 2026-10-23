@@ -238,7 +238,8 @@ static func _weight(u: Unit) -> float:
 
 
 static func _counts(u: Unit) -> bool:
-	return not u.destroyed and u.kind != Unit.KIND_DEPLOYABLE and not u.counters.has("extracted")
+	# A mech knocked out of a non-lethal fight (PvP, the rules' knockout) is out of it too.
+	return not u.destroyed and u.kind != Unit.KIND_DEPLOYABLE and not u.counters.has("extracted") and not bool(u.counters.get("knocked_out", false))
 
 
 ## The Holdout's protected object (flavor.protect) is gone: its column lost its section.

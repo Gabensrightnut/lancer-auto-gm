@@ -327,3 +327,15 @@ func test_the_holds_can_drive_the_mutiny() -> void:
 	expect((t["offered"] as Array).any(func(x: String) -> bool: return x.contains("They want us")), "with the holds angry, the lance can say so")
 	expect_eq(str(CampaignScript.state(s)["branches"]["b11"]), "the_holds")
 	expect(CampaignScript.fill(s, c, "{cap_line}", CampaignScript.script(c)["chapters"]["c13_captaincy"]).contains("Siddiqui"), "the families move on the bridge with you")
+
+
+func test_fights_aboard_happen_on_her_decks() -> void:
+	var t := fresh(598)
+	var s: StoryState = t["story"]
+	var c: Campaign = t["campaign"]
+	var e: StoryEngine = t["engine"]
+	expect(bool(s.hub.get("ship", false)), "the Cadence is a ship")
+	e._combat_from_scene(s, c, {"hook": "standoff", "on_foot": true, "in_town": true, "reason": "caught in the captain's quarters"})
+	expect_eq(str(s.current_hook.get("boarding", {}).get("map", "")), "own_ship", "a fight aboard is fought on the Cadence's decks")
+	expect(not bool(s.current_hook.get("in_town", false)), "not in a street")
+	expect(not Decisions.gathering([{"type": "boarded"}, {"type": "combat_requested"}]).is_empty(), "a boarding or a fight pulls the whole squad together")

@@ -175,6 +175,9 @@ static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dict
 			moved.append_array(deal_damage(state, mate, parts, o2))
 			return moved
 	TalentRules.damaged_by(target, state.unit(source))  # Heavy Gunner: Covering Fire ends
+	if target.has_status("Invisible") and String(target.statuses["Invisible"].get("source", "")).contains("Stealth Hardsuit") \
+			and parts.any(func(p: Dictionary) -> bool: return int(p.get("amount", 0)) > 0 and String(p.get("type", "")) != "Heat"):
+		events.append_array(remove_status(target, "Invisible", "took damage"))  # pilot gear: Stealth Hardsuit
 	var shredded := target.has_status("Shredded")
 	# "Can't be reduced in any way" (Monarch Seeking Payload, Pegasus Omnigun): no Armor,
 	# Resistance or other reduction; "bypasses Immunity" (Omnigun) skips Immunity too.
@@ -689,8 +692,9 @@ static func fall_unit(state: GameState, u: Unit, max_drop: int = -1) -> Array[Di
 	u.counters.erase("fall_started")
 	u.counters.erase("fallen")
 	var dmg := mini(9, (total / 3) * 3)
-	if Environments.no_fall_damage(state):
-		dmg = 0  # low gravity
+	if Environments.no_fall_damage(state) or u.counters.get("soft_landing", false):
+		dmg = 0  # low gravity; Tesseract: sinks harmlessly to the ground
+	u.counters.erase("soft_landing")
 	if dmg > 0 and HouseRuleSwitches.on(state, "hr_brace_fall") and Reactions.can_react(u, "brace_fall", state).ok:
 		# House rule (your idea): brace for the fall with your reaction, taking half.
 		var d := Reactions.offer(state, u, "brace_fall", {"damage": dmg, "suggested": {"take": true}}, {"take": true})

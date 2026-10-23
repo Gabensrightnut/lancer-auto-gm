@@ -1,5 +1,5 @@
 {
-  "_about": "Default battle keybinds (our data). Action ids are Godot InputMap actions used by the battle code (BattleKeys loads this file). Keys are Godot key names (OS.find_keycode_from_string); the Settings screen rebinds any of them. Mouse controls are fixed and listed for the help screen.",
+  "_about": "Default keybinds (our data): battle controls, and walking around out of combat (\"context\": \"explore\"; ExploreInput). Keys only clash within one context, so W can pan the battle camera and walk you forward in town. Action ids are Godot InputMap actions used by the battle code (BattleKeys loads this file). Keys are Godot key names (OS.find_keycode_from_string); the Settings screen rebinds any of them. Mouse controls are fixed and listed for the help screen.",
   "actions": [
     {"id": "cam_pan_up", "label": "Camera: pan forward", "keys": ["W", "Up"]},
     {"id": "cam_pan_down", "label": "Camera: pan back", "keys": ["S", "Down"]},
@@ -20,6 +20,15 @@
     {"id": "fly_toggle", "label": "Take off / land", "keys": ["T"]},
     {"id": "sky_up", "label": "Flying: higher", "keys": ["PageUp"]},
     {"id": "sky_down", "label": "Flying: lower", "keys": ["PageDown"]},
+    {"id": "move_forward", "label": "Walking: forward", "keys": ["W", "Up"], "context": "explore"},
+    {"id": "move_back", "label": "Walking: back", "keys": ["S", "Down"], "context": "explore"},
+    {"id": "move_left", "label": "Walking: step left", "keys": ["A", "Left"], "context": "explore"},
+    {"id": "move_right", "label": "Walking: step right", "keys": ["D", "Right"], "context": "explore"},
+    {"id": "run", "label": "Walking: run (hold)", "keys": ["Shift"], "context": "explore"},
+    {"id": "jump", "label": "Walking: jump", "keys": ["Space"], "context": "explore"},
+    {"id": "use", "label": "Walking: use / talk to what you're looking at", "keys": ["E"], "context": "explore"},
+    {"id": "turn_left", "label": "Walking, third person: turn the camera left", "keys": ["Z"], "context": "explore"},
+    {"id": "turn_right", "label": "Walking, third person: turn the camera right", "keys": ["X"], "context": "explore"},
     {"id": "action_1", "label": "Action bar slot 1 (1-0 for slots 1-10)", "keys": ["1"], "fixed": true}
   ],
   "mouse": [
@@ -27,6 +36,8 @@
     ["Right click", "Context menu (cancel while picking)"],
     ["Middle drag", "Orbit the camera (Shift: pan)"],
     ["Wheel", "Zoom"],
-    ["Screen edges", "Pan the camera"]
+    ["Screen edges", "Pan the camera"],
+    ["Walking, first person: mouse", "Look and aim; left click uses what's under the crosshair"],
+    ["Walking, third person: right drag", "Turn the camera"]
   ]
 }

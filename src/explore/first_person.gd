@@ -85,8 +85,9 @@ func _make_arms() -> Node3D:
 
 
 func look(rel: Vector2, yaw: float) -> float:
-	pitch = clampf(pitch - rel.y * 0.003, deg_to_rad(-60), deg_to_rad(60))
-	return yaw - rel.x * 0.003
+	var v := ExploreInput.look(yaw, pitch, rel, StorySettings.look_sensitivity(), StorySettings.invert_y())
+	pitch = v.y
+	return v.x
 
 
 func eye_height() -> float:
@@ -111,8 +112,10 @@ func used() -> void:
 	_use_t = 0.3
 
 
-## What's under the crosshair: the nearest person or building door in reach and in view.
-func pick(cam: Camera3D, npcs: Dictionary, spots: Array, story: StoryState) -> Dictionary:
+## What's under the crosshair: the nearest person, building door, or other thing (`extra`:
+## [{kind, id, pos: Vector3, name, ...}]: things to take, doors inside, your parked mech) in
+## reach and in view.
+func pick(cam: Camera3D, npcs: Dictionary, spots: Array, story: StoryState, extra: Array = []) -> Dictionary:
 	var fwd := -cam.global_transform.basis.z
 	var best: Dictionary = {}
 	var best_a := AIM
@@ -138,6 +141,14 @@ func pick(cam: Camera3D, npcs: Dictionary, spots: Array, story: StoryState) -> D
 		if a < best_a:
 			best_a = a
 			best = {"kind": "door", "id": str(s["id"]), "spot": str(s["id"]), "name": str(s.get("name", s["id"]))}
+	for x: Dictionary in extra:
+		var to: Vector3 = (x["pos"] as Vector3) - cam.position
+		if to.length() > REACH * float(x.get("reach", 1.0)):
+			continue
+		var a := fwd.angle_to(to)
+		if a < best_a:
+			best_a = a
+			best = x
 	target = best
 	return best
 
@@ -165,6 +176,15 @@ func show(story: StoryState, me_pid: String, near_room: String) -> void:
 		t = "[E] Go into %s" % target["name"]
 		if sneaking and not priv.is_empty():
 			t = "[E] Slip into %s, %s   [R] Force the door" % [target["name"], TownLife.room_name(story, spot, str(priv[0]))]
+	match str(target.get("kind", "")):
+		"item":
+			t = "[E] Take %s" % target["name"]
+		"exit":
+			t = "[E] Go back out"
+		"idoor":
+			t = ("[E] Pick the lock   [R] Force it" if bool(target.get("locked", false)) else "")
+		"mech":
+			t = "[E] Check %s" % target["name"]
 	if t == "" and inside_prompt != "":
 		t = inside_prompt
 	_prompt.text = t

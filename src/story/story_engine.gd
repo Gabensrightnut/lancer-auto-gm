@@ -550,6 +550,13 @@ func _combat_from_scene(story: StoryState, campaign: Campaign, spec: Dictionary)
 	hook["from_scene"] = true
 	if hook.has("boarding") and not bool(spec.get("in_town", true)):
 		spec["in_town"] = false
+	# Aboard a ship that's the squad's hub (the Saint Cadence), a fight breaks out on her own
+	# decks: a boarding-style map of your own ship, not a street.
+	if bool(story.hub.get("ship", false)) and bool(spec.get("in_town", true)):
+		hook["boarding"] = {"kind": "defend", "map": "own_ship"}
+		hook["landscape"] = ""
+		hook["in_town"] = false
+		spec["in_town"] = false
 	# A fight that breaks out in a conversation happens right there, outside their door.
 	if bool(spec.get("in_town", true)) and not story.hub.is_empty():
 		hook["in_town"] = true

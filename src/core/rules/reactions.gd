@@ -80,7 +80,7 @@ static func suggested_answer(state: GameState) -> Dictionary:
 
 static func can_react(u: Unit, reaction: String, state: GameState = null) -> RuleResult:
 	if not Combat.is_present(u):
-		return RuleResult.deny("Not on the field.", "")
+		return RuleResult.deny("Only characters still on the field can react.", "Core p.73 Reactions")
 	if state != null and String(u.counters.get("reaction_turn", "")) == _turn_key(state) \
 			and int(u.counters.get("reaction_turn_count", 1)) >= maxi(1, Effects.value(u, "reactions_per_turn")):
 		return RuleResult.deny("Only one reaction per turn (yours or anyone else's).", "Core p.73 Reactions")

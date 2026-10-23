@@ -37,6 +37,19 @@ var _hover_unit := ""
 ## (R / F raise and lower it).
 var fly := false
 var sky_level := -1
+## First person (V): the mouse aims. Drag to turn the cockpit view; whatever is under the
+## crosshair (screen centre) gets the usual hover info, and a click (without dragging) picks
+## it, so the selected weapon or action goes to Confirm and the rules engine as usual. Aiming
+## only picks the target: the roll is the normal attack roll.
+var cockpit_hud: CockpitHUD
+var aim_yaw := 0.0
+var aim_pitch := 0.0
+var _aim_press := false
+var _aim_drag := false
+var _aim_from := Vector2.ZERO
+const AIM_SPEED := 0.005
+const AIM_DRAG_START := 6.0
+const AIM_PITCH_MAX := 1.2
 
 
 func setup(ui_layer: CanvasLayer) -> void:
@@ -126,6 +139,9 @@ func _set_hint() -> void:
 			if active and can_fly():
 				_hint.text += "
 " + ("FLYING at height %d  ·  R / F: up / down  ·  T: land" % sky_level if fly else "T: take off and fly")
+	if in_cockpit() and active:
+		_hint.text += "
+FIRST PERSON  ·  drag to look around  ·  click to aim at what's under the crosshair  ·  V to leave"
 	# Under the turn-order bar's round banner, clear of hover cards; sized to its text so
 	# nameplates only fade right under it.
 	_hint.size = Vector2.ZERO
@@ -139,6 +155,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not active or busy:
 		return
 	if event is InputEventKey and (event as InputEventKey).echo:
+		return
+	if in_cockpit() and (event is InputEventMouseMotion or (event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT)):
+		_cockpit_mouse(event)
 		return
 	if event.is_action_pressed("confirm"):
 		if not pending.is_empty():
@@ -245,8 +264,100 @@ func set_tactical_view(on: bool) -> void:
 func toggle_first_person() -> void:
 	if view.camera_mode == "tactical":
 		view.set_camera_mode("cockpit", unit_id, _hover_unit)
+		# Start aiming where the cockpit looks (at the hovered enemy, else straight ahead).
+		var ang := aim_angles(-view.cockpit_cam.global_transform.basis.z)
+		aim_yaw = ang.x
+		aim_pitch = ang.y
+		view.cockpit_aim = aim_dir(aim_yaw, aim_pitch)
+		if cockpit_hud == null and _prompt != null and _prompt.get_parent() != null:
+			cockpit_hud = CockpitHUD.new()
+			_prompt.get_parent().add_child(cockpit_hud)
+			_prompt.get_parent().move_child(cockpit_hud, 0)
+		if cockpit_hud:
+			cockpit_hud.battle = view
+			cockpit_hud.unit_id = unit_id
+			cockpit_hud.visible = true
+		_aim_update()
 	else:
 		view.set_camera_mode("tactical")
+		if cockpit_hud:
+			cockpit_hud.visible = false
+	_aim_press = false
+	_aim_drag = false
+	_set_hint()
+
+
+func in_cockpit() -> bool:
+	return view != null and view.camera_mode == "cockpit"
+
+
+## The look direction for a yaw (turning, 0 = toward -Z) and pitch (up is positive).
+static func aim_dir(yaw: float, pitch: float) -> Vector3:
+	return Vector3(-sin(yaw) * cos(pitch), sin(pitch), -cos(yaw) * cos(pitch))
+
+
+static func aim_angles(dir: Vector3) -> Vector2:
+	var d := dir.normalized()
+	return Vector2(atan2(-d.x, -d.z), asin(clampf(d.y, -1.0, 1.0)))
+
+
+## Turns the cockpit view by a mouse drag (pixels).
+func turn_view(drag: Vector2) -> void:
+	aim_yaw = wrapf(aim_yaw - drag.x * AIM_SPEED, -PI, PI)
+	aim_pitch = clampf(aim_pitch - drag.y * AIM_SPEED, -AIM_PITCH_MAX, AIM_PITCH_MAX)
+	view.cockpit_aim = aim_dir(aim_yaw, aim_pitch)
+	_aim_update()
+
+
+## The crosshair's ray: from your mech's eye along the aim (not the smoothed camera).
+func aim_ray() -> Array:
+	var mv: MechView = view.units.get(unit_id)
+	var eye: Vector3 = view.cockpit_cam.global_position if view.cockpit_cam.is_inside_tree() else Vector3.ZERO
+	if mv != null and mv.is_inside_tree():
+		eye = mv.model.eye.global_position if mv.model.eye else mv.body_center()
+	return [eye, aim_dir(aim_yaw, aim_pitch)]
+
+
+## Press, then drag to turn the view; release without dragging to click at the crosshair.
+func _cockpit_mouse(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.pressed:
+			_aim_press = true
+			_aim_drag = false
+			_aim_from = mb.position
+		else:
+			if _aim_press and not _aim_drag:
+				cockpit_click()
+			_aim_press = false
+			_aim_drag = false
+		return
+	var mm := event as InputEventMouseMotion
+	if _aim_press:
+		if not _aim_drag and mm.position.distance_to(_aim_from) > AIM_DRAG_START:
+			_aim_drag = true
+		if _aim_drag:
+			turn_view(mm.relative)
+
+
+## What's under the crosshair gets the same hover as from above (hit chance, cover, range,
+## line of sight, or the reason it can't be targeted).
+func _aim_update() -> void:
+	if cockpit_hud:
+		cockpit_hud.target_id = unit_at_screen(Vector2.ZERO)
+		cockpit_hud.weapon_name = String(selected.get("name", ""))
+	if pending.is_empty():
+		hover_screen(Vector2.ZERO)  # in the cockpit every screen point means the crosshair
+
+
+func cockpit_click() -> void:
+	if mode == "idle" and pending.is_empty():
+		var id := unit_at_screen(Vector2.ZERO)
+		var me := state.unit(unit_id)
+		if id != "" and state.unit(id) != null and me != null and state.unit(id).side != me.side:
+			_ask("Choose a weapon or action first, then click to aim it at %s." % state.unit(id).name, {})
+			return
+	click_screen(Vector2.ZERO)
 
 
 ## Tab: the next enemy, nearest first (while picking a target it becomes the target).
@@ -342,6 +453,8 @@ func _boost_to(c: Vector2i) -> void:
 
 
 func _ray(screen: Vector2) -> Array:
+	if in_cockpit():
+		return aim_ray()
 	var cam := view.get_viewport().get_camera_3d()
 	return [cam.project_ray_origin(screen), cam.project_ray_normal(screen)]
 
@@ -365,15 +478,29 @@ func cell_at_screen(screen: Vector2) -> Variant:
 
 func unit_at_screen(screen: Vector2) -> String:
 	var r := _ray(screen)
-	var best := ""
-	var best_d := 0.6
+	var cands: Array = []
 	for id: String in view.units:
 		var mv: MechView = view.units[id]
-		var p := mv.body_center()
-		var dist: float = (p - (r[0] as Vector3)).cross(r[1] as Vector3).length() / maxf(0.5, mv.model.height)
-		if dist < best_d and not mv.destroyed:
+		if mv.destroyed or (in_cockpit() and id == unit_id):
+			continue  # from the cockpit you never aim at yourself
+		cands.append({"id": id, "center": mv.body_center(), "height": mv.model.height})
+	return unit_on_ray(r[0], r[1], cands)
+
+
+## The unit whose body the ray passes closest to (relative to its height), in front of the
+## ray's start; "" if none is near enough. cands: [{id, center: Vector3, height}].
+static func unit_on_ray(origin: Vector3, dir: Vector3, cands: Array) -> String:
+	var best := ""
+	var best_d := 0.6
+	var d := dir.normalized()
+	for c: Dictionary in cands:
+		var to: Vector3 = (c["center"] as Vector3) - origin
+		if to.dot(d) <= 0.0:
+			continue
+		var dist: float = to.cross(d).length() / maxf(0.5, float(c["height"]))
+		if dist < best_d:
 			best_d = dist
-			best = id
+			best = String(c["id"])
 	return best
 
 
@@ -525,6 +652,8 @@ func _on_action(a: Dictionary) -> void:
 		_:
 			_ask("[color=#aab]%s: not playable in this demo yet.[/color]" % a.get("name", ""), {})
 	_set_hint()
+	if in_cockpit():
+		_aim_update()  # the crosshair's target gets this action's hover at once
 
 
 func hover_target(id: String) -> void:
@@ -559,6 +688,12 @@ func choose_target(id: String) -> void:
 	match String(a.get("kind", "")):
 		"attack":
 			action = {"type": "skirmish", "actor": unit_id, "params": {"weapon": a["weapon"], "target": id}}
+			if engine != null:
+				# Out of range, no line of sight and the like: say why, with the rule, before asking.
+				var r := engine.validate(state, action)
+				if not r.ok:
+					_ask("[color=#ff8a7a]Can't fire %s at %s: %s[/color]\n[color=#8a93a0]%s[/color]" % [a.get("name", ""), t.name, r.reason, r.rule_ref], {})
+					return
 			var o := ActionCatalog.attack_outcome(state, unit_id, String(a["weapon"]), id)
 			line = "Fire %s at %s?  [b]%d%%[/b] to hit" % [a.get("name", ""), t.name, roundi(float(o.get("hit_chance", 0)) * 100.0)]
 		"tech":

@@ -39,6 +39,8 @@ static func from_drone(state: GameState, u: Unit, a: Dictionary) -> Dictionary:
 
 
 static func _check_attack(state: GameState, u: Unit, a: Variant, ref: String) -> RuleResult:
+	if a is Dictionary and String(Weapons.find(u, String((a as Dictionary).get("weapon", ""))).get("id", "")) == "mw_lancaster_integrated":
+		return GearSystems.check_latch(state, u, Weapons.find(u, String(a["weapon"])), state.unit(String((a as Dictionary).get("target", ""))))
 	if a is Dictionary:
 		var fd := AttackActions.from_drone(state, u, a)
 		if fd.has("denied"):
@@ -136,6 +138,15 @@ static func _check_aux(state: GameState, u: Unit, aux: Array, fired: Array[Dicti
 
 static func _run(state: GameState, u: Unit, a0: Dictionary, aux: bool) -> Array[Dictionary]:
 	var a := AttackActions.from_drone(state, u, a0)
+	var lw := Weapons.find(u, String(a.get("weapon", "")))
+	if String(lw.get("id", "")) == "mw_lancaster_integrated":
+		return GearSystems.latch(state, u, lw, state.unit(String(a.get("target", ""))), a)
+	if String(lw.get("id", "")) == "mw_fuel_rod_gun" and u.heat > 0:
+		# Fuel Rod Gun: clear 4 heat when you attack with it.
+		u.heat = maxi(0, u.heat - 4)
+		var fr := _fire(state, u, WeaponRules.variant(lw, a), a, aux)
+		fr.push_front({"type": "heat_changed", "unit": u.id, "amount": -4, "total": u.heat, "source": "Fuel Rod Gun"})
+		return fr
 	if String(Weapons.find(u, String(a.get("weapon", ""))).get("id", "")) == "mw_annihilation_nexus" and state.active_unit == u.id:
 		u.counters["annihilation_round"] = state.round_number  # its secondary attack next turn
 	var w := WeaponRules.variant(Weapons.find(u, String(a["weapon"])), a)

@@ -34,6 +34,8 @@ var popup_duration := 1.0
 ## Solo and hot-seat: AI squadmates take their turns on their own once only they are left to
 ## act (people can still pick them earlier). Online games start with it off.
 var ai_squad_auto := true
+## Host: seconds between a vote that splits the squad and the fight that settles it (15-30).
+var split_countdown := 20.0
 ## action name -> keycode
 var keybinds: Dictionary = {}
 ## This player's house rules (HouseRules: id -> on). They're the game's when this player
@@ -59,6 +61,7 @@ static func load_settings(path: String = FILE) -> GameSettings:
 	s.animation_speed = _one_of(cfg.get_value("gameplay", "animation_speed", "normal"), ANIMATION, "normal")
 	s.popup_duration = clampf(float(cfg.get_value("gameplay", "popup_duration", 1.0)), 0.5, 2.0)
 	s.ai_squad_auto = bool(cfg.get_value("gameplay", "ai_squad_auto", true))
+	s.split_countdown = clampf(float(cfg.get_value("gameplay", "split_countdown", 20.0)), 15.0, 30.0)
 	if int(cfg.get_value("keys", "_version", 1)) == KEYS_VERSION:
 		for a: String in s.keybinds:
 			s.keybinds[a] = int(cfg.get_value("keys", a, s.keybinds[a]))
@@ -78,6 +81,7 @@ func save(path: String = FILE) -> Error:
 	cfg.set_value("gameplay", "animation_speed", animation_speed)
 	cfg.set_value("gameplay", "popup_duration", popup_duration)
 	cfg.set_value("gameplay", "ai_squad_auto", ai_squad_auto)
+	cfg.set_value("gameplay", "split_countdown", split_countdown)
 	cfg.set_value("keys", "_version", KEYS_VERSION)
 	for a: String in keybinds:
 		cfg.set_value("keys", a, keybinds[a])
@@ -113,17 +117,21 @@ static func default_graphics() -> String:
 
 func apply_keys() -> void:
 	var table := actions()
-	var primary := {}
+	var primary := {}  # key -> actions that have it as their own key
 	for a: String in keybinds:
-		primary[int(keybinds[a])] = true
+		if not primary.has(int(keybinds[a])):
+			primary[int(keybinds[a])] = []
+		primary[int(keybinds[a])].append(a)
 	for a: String in keybinds:
 		if not InputMap.has_action(a):
 			InputMap.add_action(a)
 		InputMap.action_erase_events(a)
 		var keys: Array = [int(keybinds[a])]
-		# The defaults' second keys (arrows, keypad...) stay, unless one is now another's key.
+		# The defaults' second keys (arrows, keypad...) stay, unless one is now the key of
+		# another action in the same context.
 		for i in range(2, (table.get(a, []) as Array).size()):
-			if not primary.has(int(table[a][i])):
+			var taken: Array = primary.get(int(table[a][i]), [])
+			if not taken.any(func(b: String) -> bool: return b != a and shares_context(a, b)):
 				keys.append(int(table[a][i]))
 		for k: int in keys:
 			var ev := InputEventKey.new()
@@ -139,26 +147,53 @@ static func actions() -> Dictionary:
 	return out
 
 
-## Pairs of actions whose default keys are the same (none should be).
+## Pairs of actions in the same context whose default keys are the same (none should be).
 static func default_clashes() -> Array:
-	var owner := {}
 	var out: Array = []
 	var table := actions()
-	for a: String in table:
-		for i in range(1, (table[a] as Array).size()):
-			var k := int(table[a][i])
-			if owner.has(k):
-				out.append([owner[k], a, key_name(k)])
-			owner[k] = a
+	var ids := table.keys()
+	for i in range(ids.size()):
+		for j in range(i + 1, ids.size()):
+			if not shares_context(ids[i], ids[j]):
+				continue
+			for k: Variant in (table[ids[i]] as Array).slice(1):
+				if (table[ids[j]] as Array).slice(1).has(k):
+					out.append([ids[i], ids[j], key_name(int(k))])
 	return out
 
 
-## Binds `key` to `action`. If another action used that key, it's swapped onto the old key
-## so nothing is left unbound. Returns the action that was swapped ("" if none).
+## Actions in this player's bindings that share a key with another in the same context (after
+## a rebind elsewhere, or a saved file edited by hand): {action: [other actions]}.
+func conflicts() -> Dictionary:
+	var out := {}
+	for a: String in keybinds:
+		for b: String in keybinds:
+			if a != b and int(keybinds[a]) == int(keybinds[b]) and shares_context(a, b):
+				if not out.has(a):
+					out[a] = []
+				out[a].append(b)
+	return out
+
+
+## Where an action is used: "battle", "explore" or "both" (data/game/keybinds.json "context";
+## battle when not given). The same key may do different things in different contexts (W pans
+## the battle camera and walks while exploring).
+static func context_of(action: String) -> String:
+	if action in ["confirm", "cancel", "codex"]:
+		return "both"
+	return BattleKeys.context(action)
+
+
+static func shares_context(a: String, b: String) -> bool:
+	var ca := context_of(a)
+	var cb := context_of(b)
+	return ca == cb or ca == "both" or cb == "both"
+
+
 func rebind(action: String, key: int) -> String:
 	var old := int(keybinds.get(action, 0))
 	for other: String in keybinds:
-		if other != action and int(keybinds[other]) == key:
+		if other != action and int(keybinds[other]) == key and shares_context(action, other):
 			keybinds[other] = old
 			keybinds[action] = key
 			return other
