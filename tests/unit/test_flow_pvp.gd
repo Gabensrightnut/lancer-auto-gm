@@ -188,6 +188,8 @@ func test_split_vote_three_against_one_online() -> void:
 	var st := hs.host.state
 	expect(st.units.values().all(func(u: Unit) -> bool: return GameFlow.story.seats.has(u.controller)), "only the squad's mechs: no enemies")
 	expect(bool(st.objectives.get("nonlethal", false)), "non-lethal")
+	expect(bool(st.objectives.get("arena", false)), "a sealed-off arena: not part of the town or region")
+	expect(st.map.cells().size() <= 144, "tiny: 12x12 at most for four mechs (%d cells)" % st.map.cells().size())
 	expect(hs.is_split_fight())
 	var unit_of := func(seat: String) -> String:
 		for u: Unit in st.units.values():

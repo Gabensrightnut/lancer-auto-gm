@@ -15,6 +15,8 @@ var campaign: Campaign
 ## func(payload: Dictionary) that sends to the host. Set by attach_net_client().
 var send: Callable
 var _next_id := 1
+## Tells this client's requests apart from an earlier run's (the host runs each one once).
+var _nonce := "%d-%d" % [OS.get_process_id(), Time.get_ticks_usec()]
 
 
 func _init(content: ContentDB = null, my_seat: String = "") -> void:
@@ -30,7 +32,7 @@ func submit(_story: StoryState, _campaign: Campaign, action: Dictionary) -> Dict
 	if not why.is_empty():
 		return {"ok": false, "reason": why["reason"], "rule_ref": why.get("rule_ref", ""), "events": []}
 	if send.is_valid():
-		send.call({"story_action": a, "id": _next_id})
+		send.call({"story_action": a, "id": _next_id, "nonce": _nonce})
 	_next_id += 1
 	return {"ok": true, "reason": "", "rule_ref": "", "events": [], "pending": true}
 

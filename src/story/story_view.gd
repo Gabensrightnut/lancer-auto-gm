@@ -25,6 +25,8 @@ static func view_for(story: StoryState, campaign: Campaign, seat: String = "") -
 	for k: String in story.flags:
 		if k != StoryState.KEY:
 			flags[k] = story.flags[k]
+	if seat != "gm" and seat != "":
+		_only_mine(flags, story.pilot_of_seat(seat))
 	var pilots := {}
 	for pid: String in campaign.pilots:
 		var p: Dictionary = campaign.pilots[pid]
@@ -38,11 +40,33 @@ static func view_for(story: StoryState, campaign: Campaign, seat: String = "") -
 		"history": campaign.history.duplicate(true)}
 
 
+## Per-player things stay with their player: other pilots' wallets, inventories and bounty
+## details are left out, and only the trades this pilot is part of come along. Public "wanted"
+## notices (_wanted) stay for everyone.
+const PRIVATE := ["_wallets", "_inventory", "_bounties"]
+
+
+static func _only_mine(flags: Dictionary, pid: String) -> void:
+	for key: String in PRIVATE:
+		if flags.get(key) is Dictionary:
+			var all: Dictionary = flags[key]
+			flags[key] = {pid: all[pid]} if all.has(pid) else {}
+	if flags.get("_trades") is Dictionary:
+		var mine := {}
+		for id: String in flags["_trades"]:
+			var t: Dictionary = flags["_trades"][id]
+			if str(t.get("from", "")) == pid or str(t.get("to", "")) == pid:
+				mine[id] = t
+		flags["_trades"] = mine
+
+
 ## Events as a client may see them: hooks without their hidden twist (until it's revealed at
 ## the debrief), NPC records without secrets.
-static func events_for(events: Array, seat: String = "") -> Array:
+static func events_for(events: Array, seat: String = "", story: StoryState = null) -> Array:
 	var out: Array = []
 	for e: Dictionary in events:
+		if e.has("seen_by_pilot") and seat != "gm" and (story == null or str(e["seen_by_pilot"]) != story.pilot_of_seat(seat)):
+			continue  # one pilot's own business (their bounty, their trade)
 		var c := e.duplicate(true)
 		if c.get("hook") is Dictionary and seat != "gm":
 			(c["hook"] as Dictionary).erase("twist")

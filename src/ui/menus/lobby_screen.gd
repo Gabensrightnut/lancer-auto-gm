@@ -307,6 +307,11 @@ func _mission_panel() -> Control:
 		else:
 			lobby.set_map(names[i - 1]))
 	b.add_child(maps)
+	b.add_child(_caption("House rules"))
+	var hr: Dictionary = HouseRules.of_campaign(lobby.campaign) if lobby.is_host else (lobby.remote.get("house_rules", {}) as Dictionary)
+	var hr_line := MenuTheme.label(HouseRules.summary(hr), 15, MenuTheme.MUTED, true)
+	hr_line.tooltip_text = "Optional rules that aren't in the LANCER core book. %s decides them (Settings > House rules); everyone else sees them here." % ("The GM" if bool(lobby.options.get("human_gm", false)) else "The host")
+	b.add_child(hr_line)
 	b.add_child(_caption("Battle grid"))
 	var grid := HBoxContainer.new()
 	grid.add_theme_constant_override("separation", 6)
