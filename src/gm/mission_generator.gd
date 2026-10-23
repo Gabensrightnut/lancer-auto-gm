@@ -92,7 +92,13 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 		if landscape == "":
 			landscape = "station" if str(hub.get("kind", "")) == "station" else str(WorldKits.HUB_LANDSCAPE.get(culture, "grassy_hills"))
 	var bf: Dictionary
-	if doc == null:
+	var inside := _interior_kind(hub)
+	if doc == null and inside != "":
+		# On foot inside a hub building: the fight map is that building's own interior.
+		var ib := InteriorBattle.build(inside, culture, int(hub.get("seed", 0)), shape, m.sitrep_id)
+		bf = {"map": ib["map"], "layout": ib["layout"], "fairness": {"ok": true, "interior": inside},
+			"world": [landscape if landscape != "" else str(WorldKits.HUB_LANDSCAPE.get(culture, "grassy_hills")), culture]}
+	elif doc == null:
 		bf = battlefield(rng, world_rng, m.sitrep_id, w, h, shape, landscape, culture, maxi(0, int(settings.approach) + int(settings.fight("approach", 0))), hub)
 	else:
 		bf = _doc_battlefield(doc, m.sitrep_id, rng)
@@ -329,6 +335,18 @@ static func _edge_profile(region_seed: int, key: String, n: int, landscape: Stri
 			tags = [Sight.TAG_SOFT_COVER, BattleMap.TAG_DIFFICULT, "woods"]
 		out.append([g, tags])
 	return out
+
+
+## The interior kind a fight inside a building happens in: the hub spot the fight starts at
+## (opts.town "at" with "inside": true), when it has an interior (Interiors); "" otherwise.
+## ("on_foot" alone only means the pilots start dismounted beside their mechs.)
+static func _interior_kind(hub: Dictionary) -> String:
+	if hub.is_empty() or not bool(hub.get("inside", false)):
+		return ""
+	for spot: Dictionary in hub.get("spots", []):
+		if str(spot.get("id", "")) == str(hub.get("at", "")) and str(spot.get("kind", "")) in Interiors.kinds():
+			return str(spot["kind"])
+	return ""
 
 
 ## The weather for the kit ("" = clear), from opts.weather or a pick that suits the landscape.

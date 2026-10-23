@@ -573,3 +573,27 @@ func test_ship_decks_have_a_spine_and_size_by_fight_length() -> void:
 	var small: GameState = _gen(8, {"landscape": "boarding_defend", "settings": short_s})["state"]
 	var big: GameState = _gen(8, {"landscape": "boarding_defend", "settings": long_s})["state"]
 	expect(small.map.cells().size() < big.map.cells().size(), "a short fight aboard is a smaller ship")
+
+
+func test_on_foot_fights_inside_the_same_building() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var hub := {"kind": "town", "culture": "old_west", "seed": 5, "spots": HubLayout.spots("town", rng), "at": "bar", "on_foot": true, "inside": true}
+	var g := _gen(9, {"town": hub, "sitrep": "sitrep_standardcombat", "players": 2})
+	var map: BattleMap = (g["state"] as GameState).map
+	var walls := 0
+	var doors := 0
+	var rooms := {}
+	var street := 0
+	for c in map.cells():
+		var col := map.column(c)
+		walls += 1 if col.has_tag("interior_wall") and col.ground == 2 else 0
+		doors += 1 if col.has_tag("door") else 0
+		street += 1 if col.has_tag("road") else 0
+		for t in col.tags:
+			if t.begins_with("room_"):
+				rooms[t] = true
+	expect(walls > 10 and doors >= 2 and street > 5, "the saloon's walls (%d), doors (%d) and the street (%d)" % [walls, doors, street])
+	expect(rooms.has("room_main") and rooms.has("room_back"), "the same rooms as on foot: %s" % rooms.keys())
+	var m: Mission = g["mission"]
+	expect(not (m.deployment[Mission.PLAYERS] as Array).is_empty() and not (m.deployment[Mission.ENEMIES] as Array).is_empty(), "both sides deploy")
