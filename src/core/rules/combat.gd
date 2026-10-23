@@ -133,13 +133,13 @@ static func skill_check(state: GameState, u: Unit, skill: String, label: String,
 		bonus = hook.systems  # Metahook: the linked Goblin's Systems
 	if skill == "systems" and u.counters.has("hosting"):
 		bonus = FrameSystems.shared_stat(state, u, "systems")  # Goblin Symbiosis
-	if u.kind == Unit.KIND_PILOT:
+	if u.on_foot():
 		bonus = u.grit  # unmounted characters add GRIT to attacks and saves (Core p.74)
 	var record := state.dice.check(bonus, acc, diff, target, all_sources)
 	if u.kind == Unit.KIND_MECH:
 		record = TalentRules.nhp_reroll(state, u, record, func() -> Dictionary: return state.dice.check(bonus, acc, diff, target, all_sources))
 	record = GearSystems.sisyphus(state, u, record)  # SISYPHUS: Probabilistic Cannibalism
-	record["bonus_sources"] = [{"label": "Grit" if u.kind == Unit.KIND_PILOT else skill.capitalize(), "value": bonus}]
+	record["bonus_sources"] = [{"label": "Grit" if u.on_foot() else skill.capitalize(), "value": bonus}]
 	record["bonuses"] = record["bonus_sources"]
 	record["target_label"] = "Save Target" if target != CHECK_TARGET else "Check (10+)"
 	record["skill"] = skill
@@ -807,8 +807,8 @@ static func refresh_engagement(state: GameState) -> Array[Dictionary]:
 			for o: Unit in units:
 				if o.side == u.side or not _is_character(o) or o.has_status("Hidden"):
 					continue
-				if o.kind == Unit.KIND_PILOT and u.kind != Unit.KIND_PILOT:
-					continue  # pilots don't cause mechs to become Engaged (Core p.74)
+				if o.on_foot() and not u.on_foot():
+					continue  # pilots (and soldiers, PROVISIONAL) don't cause mechs to become Engaged (Core p.74)
 				if Sight.unit_distance(state, u, o) <= 1:
 					by = o.id
 					break

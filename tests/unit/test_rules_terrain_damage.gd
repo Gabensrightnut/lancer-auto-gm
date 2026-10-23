@@ -61,6 +61,10 @@ func test_shoot_a_wall_down() -> void:
 	var col := s.map.column(Vector2i(3, 0))
 	expect_eq(col.ground, 0)
 	expect(not col.has_tag(BattleMap.TAG_DESTRUCTIBLE) and not col.has_tag(BattleMap.TAG_DIFFICULT), "no rubble rule in the book")
+	# The map state remembers what's gone (for drawing the rubble), and clients get it.
+	expect(int(s.terrain_lost.get("3,0", 0)) >= 1 and int(gone[0].get("lost", 0)) >= 1, "sections lost are recorded")
+	expect_eq(int(GameState.from_dict(s.to_dict()).terrain_lost.get("3,0", 0)), int(s.terrain_lost["3,0"]), "and saved")
+	expect_eq(TerrainDamage.damage_state(s, Vector2i(3, 0))["sections_lost"], int(s.terrain_lost["3,0"]), "damage_state reads it")
 	expect(not F.ok(F.act(e, s, "skirmish", "a", {"weapon": "0:0", "target": "terrain:3,0"})), "nothing left to hit")
 
 

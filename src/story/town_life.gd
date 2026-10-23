@@ -462,7 +462,7 @@ static func _seen(story: StoryState, campaign: Campaign, pid: String, spot: Stri
 
 
 static func _caught_fight(story: StoryState, campaign: Campaign, pid: String) -> Array:
-	return [{"type": "combat_requested", "spec": {"hook": "standoff", "on_foot": true, "in_town": true, "reason": "%s was caught. Now it's a fight." % _cs(campaign, pid)},
+	return [{"type": "combat_requested", "spec": {"hook": "standoff", "on_foot": true, "in_town": true, "crime": true, "reason": "%s was caught. Now it's a fight." % _cs(campaign, pid)},
 		"rule_ref": "Core p.45: switching to mech combat"}]
 
 

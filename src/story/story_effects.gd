@@ -24,6 +24,9 @@ extends RefCounted
 ##   {"agenda": {"pilot": "speaker", "kind", "why", "add"}}  a pilot's own grudge or goal (Agendas)
 ##   {"clone_template": {"pilot": id | "speaker" | "squad", "state": "corrupted" | "tampered" | "destroyed"}}
 ##   {"clone_template": {"pilot": ..., "store": "flash" | "facsimile"}}  store a template here (Cloning)
+##   {"recruit": {"source": "bar" | "recruiter" | "prisoners" | "beaten_crew" | "crew", "free", "name"}}  troops (Troops)
+##   {"reinforce": true}                            bring the squad's troops back up to ten
+##   {"full_repair": true}                         10 hours at a repair bay (RepairBay, Core p.82)
 ##   {"renown": 1, "why": "..."}                  the people aboard the squad's ship love them more (ShipLife)
 ##   {"decision": {id, prompt, accept: [effects], decline: [effects]}}  a squad decision (Decisions)
 ##   {"trust": "$npc" | npc id, "add": 1}         how much this person trusts the squad (-5..5)
@@ -143,6 +146,13 @@ static func apply(e: Dictionary, story: StoryState, campaign: Campaign, ctx: Dic
 		if who == "speaker":
 			who = str(ctx.get("speaker", ""))
 		return Agendas.add(story, campaign, who, str(ag.get("kind", "grievance")), StoryText.fill(str(ag.get("why", "")), story, campaign, ctx), int(ag.get("add", 1)))
+	if e.has("recruit"):
+		return Troops.recruit(story, campaign, e["recruit"], ctx)
+	if e.has("reinforce"):
+		return Troops.reinforce(story, campaign)
+	if e.has("full_repair"):
+		var why_fr := RepairBay.refusal(story, campaign)
+		return RepairBay.full_repair(story, campaign) if why_fr == "" else [{"type": "refused", "text": why_fr, "rule_ref": RepairBay.REF}]
 	if e.has("renown"):
 		return ShipLife.add_renown(story, campaign, int(e["renown"]), StoryText.fill(str(e.get("why", "what the lance did")), story, campaign, ctx))
 	if e.has("clone_template"):

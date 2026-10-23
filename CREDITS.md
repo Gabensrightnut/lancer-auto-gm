@@ -5,7 +5,9 @@
 Human bodies and faces use open-source MakeHuman assets, the one approved exception to
 "models made in house" (user decision, see DESIGN.md). Only the assets below are used, and
 each one's license was checked. They are built into `assets/people/human_male.glb` and
-`human_female.glb` by `tools/blender/people_mh.py`. The gear, rig animations and game code are
+`human_female.glb` by `tools/blender/people_mh.py`, and into the light infantry model
+`assets/people/soldier.glb` (base mesh, game_engine skeleton, young_caucasian_male skin and
+low-poly eyes only) by `tools/blender/soldier_mh.py`. The gear, rig animations and game code are
 our own.
 
 | What | From | License |

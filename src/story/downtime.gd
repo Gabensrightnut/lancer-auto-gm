@@ -75,6 +75,9 @@ static func start(story: StoryState, campaign: Campaign, long_downtime: bool = f
 		story.down_and_out.erase(pid)
 		events.append({"type": "full_repair", "pilot": pid, "hp": StoryEffects.max_hp(campaign.pilots[pid]), "rule_ref": "Core p.82: full repair"})
 	story.downtime["actions_left"] = left
+	if RepairBay.needed(story):
+		events.append({"type": "repairs_needed", "text": "Your mechs are still damaged from the fight. " + RepairBay.PLAIN + " Walk up to the repair bay (E).",
+			"fixed": RepairBay.summary(story, campaign), "rule_ref": RepairBay.REF})
 	story.downtime["queue"] = []
 	story.pending_choice = {}
 	# Organizations started in an earlier downtime roll now (not an action).

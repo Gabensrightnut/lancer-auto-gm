@@ -1,0 +1,26 @@
+{
+  "_note": "Our own data. The squad's own troops, when it has men of its own (a pirate crew, a ship's captains, a merc company owner): squads of ten (one shared HP pool: the rules session's soldier squad unit), whose losses carry over between fights until reinforced. Recruited in person by talking to people (a bar's regulars, a recruiter or fixer, freed prisoners, a beaten crew changing sides), paid in manna with the wallet house rule, else as a favour owed. Upkeep is one ration per squad per day under the food-and-water house rule; hungry troops lose heart and then desert, and side with whoever's stirring up trouble. Fights: allied units (deploy_max squads), or the book's Reinforcements reserve.",
+  "squad_size": 10,
+  "max_squads": 4,
+  "deploy_max": 2,
+  "morale_max": 3,
+  "price": 300,
+  "reinforce_price": 30,
+  "sources": {
+    "bar": {"roles": ["bartender"], "text": "Anyone in here looking for work with a gun? We pay, and we look after our own.", "min_standing": 0,
+            "signed": "A handful of the regulars put down their drinks. By closing time you have ten more fighters: {name}.", "name": ["the bar-room volunteers", "the night-shift crew", "the regulars"]},
+    "recruiter": {"roles": ["fixer", "faction_agent"], "text": "I'm hiring fighters. Who have you got?", "min_standing": -1,
+                  "signed": "Ten fighters, vouched for and armed: {name}.", "name": ["the hired guns", "the free company", "the fixer's ten"]},
+    "prisoners": {"text": "You're free. Anyone who wants to fight with us is welcome.", "signed": "Some of the freed prisoners stay: {name}.", "name": ["the freed prisoners"]},
+    "beaten_crew": {"text": "Your captain's done. Fight for us now, and you eat with us.", "signed": "The beaten crew changes sides: {name}.", "name": ["the turned crew"]},
+    "crew": {"signed": "{name} stand with the lance.", "name": ["the old hands"]}
+  },
+  "lines": {
+    "hungry": "{name} went short tonight. They're grumbling.",
+    "desert": "{name} are gone in the night, packs and rifles with them. Nobody stays where they aren't fed.",
+    "with_instigator": "{name} are listening to {pilot}. Hungry men follow whoever says it out loud.",
+    "lost": "{name} were lost to the last man.",
+    "losses": "{name} came back with {men} of ten.",
+    "refused": "Nobody here wants to fight under your name. Not yet."
+  }
+}

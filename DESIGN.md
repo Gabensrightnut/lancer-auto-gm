@@ -218,7 +218,13 @@ them, and they disappear when the turn moves on.
   procedurally in our own code, so nothing in it is someone else's art.
 - 3D scene in Godot with switchable camera modes, changeable
   any time in game:
-  - **Tactical (default):** angled, rotatable overhead view of the whole board.
+  - **The core idea (user decision):** a first-person / third-person / top-down TTRPG. You
+    can control your own character directly in every view, but battles stay turn-based, on
+    the hex/square grid, with movement limited by the book (Speed, Boost, terrain, Engagement).
+  - **Top-down:** straight overhead, like a tabletop map: the clearest view of the grid,
+    zones, ranges and areas.
+  - **Tactical / third person (default):** angled, rotatable view behind or over your unit.
+    WASD (or click) steers your mech space by space along the grid.
   - **First person:** cockpit view from your mech's eye level, with a HUD (heat, HP,
     structure, selected weapon, range). Attacks, hacks and effects play out from inside the
     cockpit. A minimap shows the grid so moves and ranges stay readable.
@@ -230,6 +236,11 @@ them, and they disappear when the turn moves on.
     enemy to target it (range, line of sight, cover and hit chance on the HUD), and pick
     actions from a cockpit action panel (Quick/Full actions, Overcharge, Brace, tech, etc.).
     Nothing happens in real time; nothing resolves until you confirm.
+  - **Direct control in every view:** on your turn, WASD walks your mech one space at a time
+    in the direction you face or the camera points. Each step snaps to the grid, costs
+    movement per the book, and shows "Moves left: 3". You can't step past your Speed (or Boost)
+    or into illegal spaces; a wall or an Engagement stops you with the reason. Undo steps until
+    you confirm. Click-to-move works in every view too.
   - Other players can use different cameras at the same time.
 - **Every model matches what's actually equipped.** Mechs are assembled from the pilot's
   real loadout data, not a fixed model per frame:
@@ -554,6 +565,26 @@ differently without an AI. Each game has a **seed**: share it to replay the same
   the rules.
 - **All of it is data:** tables, behaviors and presets live in editable data files, so new
   content and variety can be added without changing code.
+
+### Soldiers
+
+Soldiers are people fighting on foot on the mech battlefield: a **squad** (ten people sharing
+one pool of 10 HP in one space; how many are still standing shows on the model) or a single
+**soldier**. They follow the book's rules for anyone out of a mech (Core p.74): they add Grit to
+attacks and saves, can't be hacked (only Lock On and Scan work on them), take heat as energy
+damage, attack with Fight using pilot weapons, and mechs walk straight through them without
+being Engaged. Mech weapons hit them hard; their rifles barely scratch a mech, but a missile
+team's launcher can.
+
+Nobody gives soldiers orders, on either side. Each acts on its own AI, by what kind of squad it
+is (the book's NPC roles: a missile team fires from far back, medics stay hidden and patch up
+people on foot, a guard squad holds what it guards) and by the mission's objective: in a
+Holdout, guards stay on the zone instead of chasing kills. On your side you still choose when
+an allied squad takes its turn (Core p.60), and the combat log says in plain words what it's
+doing and why ("Guard Squad: moves into cover, fires its rifles at the Goblin (holding the
+zone)"). Weights are a table in `data/game/gm/objective_priorities.json`; kinds and their
+placeholder numbers in `data/game/soldiers.json`. A new player meets them as town guards and
+patrols, as garrisons in enemy bases, and as allied troops on missions that have them.
 
 ## 10. Around combat: the rest of the game
 

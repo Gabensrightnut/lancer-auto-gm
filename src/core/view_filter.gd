@@ -62,6 +62,9 @@ func view_for(state: GameState, seat: String) -> Dictionary:
 		var visible := {}
 		for key: String in PUBLIC_FIELDS:
 			visible[key] = d[key]
+		for key: String in ["soldier", "men_left"]:
+			if d.has(key):
+				visible[key] = d[key]  # soldiers: what they are and how many are left, plain to see
 		var lost := mounts_lost(u)
 		if not lost.is_empty():
 			visible["mounts_lost"] = lost  # torn off for everyone to see (no stats)

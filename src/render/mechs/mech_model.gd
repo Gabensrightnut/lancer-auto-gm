@@ -218,3 +218,24 @@ func set_weapons_gone(ids: Array) -> void:
 		if is_instance_valid(w) and not w.has_meta("dock"):
 			w.visible = not weapons_gone.has(id)
 	set_docks_out(_docks_out)
+
+
+## Kneeling for a pilot to climb in or out (0 standing .. 1 down on its knees): hips flex
+## forward, knees bend, the body lowers. Legged gaits only bend their legs; hover and
+## tracked frames just settle lower.
+func set_kneel(k: float) -> void:
+	k = clampf(k, 0.0, 1.0)
+	set_meta("kneel", k)
+	if pelvis:
+		var rest_y: float = pelvis.get_meta("rest_y", pelvis.position.y)
+		if not pelvis.has_meta("rest_y"):
+			pelvis.set_meta("rest_y", rest_y)
+		pelvis.position.y = rest_y * (1.0 - 0.28 * k)
+	if gait in ["hover", "tracked", "winged"]:
+		return
+	for leg: Dictionary in legs:
+		var base: Vector3 = leg["base"]
+		var bend := 1.0 if base.y <= 0.0 else -1.0
+		(leg["hip"] as Node3D).rotation_degrees.x = base.x + 45.0 * k
+		(leg["knee"] as Node3D).rotation_degrees.x = base.y - 85.0 * k * bend
+		(leg["ankle"] as Node3D).rotation_degrees.x = base.z + 40.0 * k * bend
