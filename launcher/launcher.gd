@@ -97,6 +97,11 @@ func _download_and_install() -> void:
 
 
 func _ready_to_play(message: String, auto_start: bool = false) -> void:
+	if OS.get_environment("LANCER_LAUNCHER_DRY_RUN") != "":
+		# Testing the update logic (tools/launcher_dry_run.sh): say what happened, start nothing.
+		print("LAUNCHER: %s | installed=%s previous=%s" % [message, logic.current_version(), logic.previous_version()])
+		get_tree().quit()
+		return
 	var current := logic.current_version()
 	var can_play := logic.game_exe() != ""
 	status.text = message

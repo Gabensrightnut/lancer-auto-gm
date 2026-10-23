@@ -138,6 +138,16 @@ rollback, `installs.json` current/previous); a tampered checksum (refused, nothi
 the current version unchanged, the launcher waits for the player); the same version again
 (no download, starts the game).
 
+The same checks in one go, with nothing started on screen (the launcher runs headless in a dry-run
+mode that prints what it did instead of starting the game; uses build/game as exported):
+
+```bash
+A:/lancer/tools/gpu_lock.sh run <who> -- bash tools/launcher_dry_run.sh
+```
+
+It prints one line per case: first install, update (the old version kept for rollback),
+tampered checksum (refused, nothing changed), same version (up to date).
+
 ### Bug found by the first local export (fixed)
 
 Every icon (menus, action bar, resource HUD) was missing in the exported game: the icon code
