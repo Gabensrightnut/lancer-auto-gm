@@ -546,7 +546,13 @@ func _load(v: Dictionary) -> void:
 	for id: String in v.get("units", {}):
 		var u: Dictionary = v["units"][id]
 		if not u.get("hidden", false) and not u.get("destroyed", false) and _on_board(v, u):
+			if String(u.get("kind", "")) != "deployable":
+				view.add_unit(u)
+	for id: String in v.get("units", {}):  # deployables after their owners (they take their colors)
+		var u: Dictionary = v["units"][id]
+		if String(u.get("kind", "")) == "deployable" and not u.get("hidden", false) and not u.get("destroyed", false) and _on_board(v, u):
 			view.add_unit(u)
+	view.sync_parts(v.get("units", {}))
 	var mine := _local_units()
 	var center := Vector3.ZERO
 	for mv: MechView in view.units.values():
@@ -598,6 +604,7 @@ func _sync(v: Dictionary) -> void:
 			if u.has(k):
 				mv.unit[k] = u[k]
 		mv.refresh()
+	view.sync_parts(units)  # drones out of the body, destroyed or thrown weapons, recalled units gone
 	_show_objectives(v)
 	_refresh_hud()
 

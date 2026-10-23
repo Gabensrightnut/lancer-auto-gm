@@ -59,11 +59,13 @@ func load_view(view: Dictionary) -> void:
 	if view.get("mission") is Dictionary:
 		show_mission(view["mission"], String(view.get("phase", GameState.PHASE_SETUP)))
 	clear_units()
-	for id: String in view.get("units", {}):
-		var u: Dictionary = view["units"][id]
-		if u.get("hidden", false):
-			continue  # Hidden enemies: only what the rules reveal (last known position later).
-		add_unit(u)
+	for pass_deployables: bool in [false, true]:  # owners first: deployables take their colors
+		for id: String in view.get("units", {}):
+			var u: Dictionary = view["units"][id]
+			if u.get("hidden", false) or (String(u.get("kind", "")) == "deployable") != pass_deployables:
+				continue  # Hidden enemies: only what the rules reveal (last known position later).
+			add_unit(u)
+	sync_parts(view.get("units", {}))
 
 
 func clear_units() -> void:
@@ -81,7 +83,117 @@ func add_unit(u: Dictionary) -> MechView:
 	return mv
 
 
-## Switches between the tactical camera and the cockpit of `unit_id`.
+## Makes the board match GameState for parts that leave a mech (data/game/visible_parts.json):
+## docked drones that are out leave gaps, destroyed weapons are gone from the body, thrown
+## weapons lie where the state says, and units the state no longer has (a recalled drone) go.
+## Call after every state update with the view's units (ViewFilter.view_for()["units"]).
+var _thrown_props: Dictionary = {}
+
+
+func sync_parts(view_units: Dictionary) -> void:
+	for id: String in units.keys():
+		if not view_units.has(id):
+			var gone: MechView = units[id]
+			units.erase(id)
+			if is_instance_valid(gone):
+				gone.queue_free()
+	var lying := {}
+	var latched := {}
+	for id: String in units:
+		var mv: MechView = units[id]
+		var u: Dictionary = view_units.get(id, {})
+		for k: String in ["counters", "loadout"]:
+			if u.has(k):
+				mv.unit[k] = u[k]
+		if mv.model == null:
+			continue
+		var thrown := VisibleParts.thrown_weapons(mv.unit)
+		mv.model.set_weapons_gone(VisibleParts.destroyed_weapons(mv.unit) + thrown.keys())
+		var out := VisibleParts.out_counts(view_units, id)
+		var counters: Dictionary = mv.unit.get("counters", {})
+		var att := VisibleParts.frame_attach(mv.model.frame_id)
+		var host := String(counters.get(att.get("counter", "-"), "")) if not att.is_empty() else ""
+		if host != "" and units.has(host):
+			out[att["name"]] = 1
+			latched[id] = true
+			_latch(id, att, units[host])
+		mv.model.set_docks_out(out)
+		var swarm_on := VisibleParts.core_active_look(mv.model.frame_id) == "swarm" and bool(counters.get("core_active", false))
+		var swarm: Node3D = mv.get_node_or_null("Hellswarm")
+		if swarm_on and swarm == null:
+			mv.add_child(_swarm(mv.model))
+		elif not swarm_on and swarm:
+			swarm.queue_free()
+		for wid: String in thrown:
+			var key := "%s:%s" % [id, wid]
+			lying[key] = true
+			if not _thrown_props.has(key) and content:
+				_thrown_props[key] = _lay_weapon(content.weapon(wid), thrown[wid])
+	for key: String in _thrown_props.keys():
+		if not lying.has(key):
+			var n: Node3D = _thrown_props[key]
+			_thrown_props.erase(key)
+			if is_instance_valid(n):
+				n.queue_free()
+	for owner_id: String in _latched.keys():
+		if not latched.has(owner_id):
+			var n: Node3D = _latched[owner_id]
+			_latched.erase(owner_id)
+			if is_instance_valid(n):
+				n.queue_free()
+
+
+var _latched: Dictionary = {}
+
+
+## A frame's part clamped onto another unit (Lancaster's Latch Drone on an ally's back).
+func _latch(owner_id: String, att: Dictionary, host: MechView) -> void:
+	var n: Node3D = _latched.get(owner_id)
+	if n and is_instance_valid(n) and n.get_parent() == host:
+		return
+	if n and is_instance_valid(n):
+		n.queue_free()
+	n = Node3D.new()
+	n.name = "Latched_" + owner_id
+	host.add_child(n)
+	n.position = Vector3(0, host.model.height * 0.72, host.model.height * 0.16)
+	var owner_mv: MechView = units.get(owner_id)
+	DeployableBuilder.shape(n, att["spec"], MechStyles.palette(owner_mv.model.manufacturer) if owner_mv and owner_mv.model else {}, 0.5)
+	_latched[owner_id] = n
+
+
+## The Balor's Hellswarm: a cloak of tiny drones orbiting the body.
+func _swarm(m: MechModel) -> Node3D:
+	var root := Node3D.new()
+	root.name = "Hellswarm"
+	var mat := MeshKit.mech_material(Color(0.1, 0.1, 0.11), 0.6, 0.4, Color.BLACK, false)
+	for ring in range(3):
+		var r := Node3D.new()
+		r.position.y = m.height * (0.3 + ring * 0.22)
+		root.add_child(r)
+		for i in range(14):
+			var a := i * TAU / 14.0 + ring
+			var rad := m.height * (0.42 + 0.06 * MeshKit.hash01("hs", i + ring * 20))
+			var p := MeshKit.part(r, MeshKit.sphere(0.018, 4), mat, Vector3(cos(a) * rad, (MeshKit.hash01("hs", i + 50) - 0.5) * 0.12, sin(a) * rad))
+			p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		m.spinners.append({"node": r, "axis": Vector3.UP, "speed": 1.6 * (1.0 if ring % 2 == 0 else -1.0)})
+	return root
+
+
+## A thrown weapon at rest on the ground (tags: Thrown) at [x, y, level].
+func _lay_weapon(w: Dictionary, at: Array) -> Node3D:
+	var model := WeaponBuilder.build(w)
+	fx_root.add_child(model)
+	var c := Vector2i(int(at[0]), int(at[1]))
+	model.position = map.grid.to_world(c, int(at[2]) if at.size() > 2 else map.ground_height(c)) + Vector3.UP * 0.04 if map else Vector3.ZERO
+	model.rotation_degrees = Vector3(0, MeshKit.hash01(str(at), 1) * 360.0, 90)
+	return model
+
+
+## Switches between the tactical camera and the cockpit of `unit_id`. First person shows what
+## the pilot would see (data/game/visible_parts.json "first_person"): a cockpit around the view
+## for most frames; for drone-bodied frames (the Hydra) no cockpit, just your own remaining
+## body (gaps where drones are out) and the drones you can see out in the world.
 func set_camera_mode(mode: String, unit_id: String = "", target_id: String = "") -> void:
 	if unit_id != "":
 		cockpit_unit = unit_id
@@ -91,15 +203,32 @@ func set_camera_mode(mode: String, unit_id: String = "", target_id: String = "")
 	for mv: MechView in units.values():
 		if mv.model and mv.model.head:
 			mv.model.head.visible = true
+	if _shell:
+		_shell.queue_free()
+		_shell = null
 	camera_mode = mode
 	if mode == "cockpit" and units.has(cockpit_unit):
 		var mv: MechView = units[cockpit_unit]
-		mv.model.head.visible = false
+		if mv.model.head:
+			mv.model.head.visible = false
+		if first_person_style(mv) == "cockpit":
+			_shell = CockpitShell.build(MechStyles.palette(mv.model.manufacturer))
+			cockpit_cam.add_child(_shell)
 		cockpit_cam.current = true
 		_update_cockpit(true)
 	else:
 		camera_mode = "tactical"
 		tactical.camera.current = true
+
+
+var _shell: Node3D
+
+
+## "cockpit" or "body" for a unit's first-person view (pilots on foot see from their eyes).
+func first_person_style(mv: MechView) -> String:
+	if mv == null or mv.model == null or String(mv.unit.get("kind", "")) in ["pilot", "deployable"]:
+		return "eyes"
+	return VisibleParts.first_person(mv.model.frame_id)
 
 
 func _process(delta: float) -> void:
@@ -116,7 +245,11 @@ func _update_cockpit(snap: bool, delta: float = 0.0) -> void:
 		return
 	var eye := mv.model.eye.global_position if mv.model.eye else mv.body_center()
 	var fwd := -mv.model.global_transform.basis.z
-	var look := eye + fwd * 5.0
+	if first_person_style(mv) == "body":
+		# No cockpit: the view rides just above and behind the sensor, so you see what's left
+		# of your own body (and its gaps) below you.
+		eye += Vector3.UP * mv.model.height * 0.14 - fwd * mv.model.height * 0.22
+	var look := eye + fwd * 5.0 - Vector3.UP * (mv.model.height * 0.35 if first_person_style(mv) == "body" else 0.0)
 	var tgt: MechView = units.get(cockpit_target)
 	if tgt:
 		look = tgt.body_center()

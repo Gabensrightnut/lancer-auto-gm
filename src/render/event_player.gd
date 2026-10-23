@@ -248,7 +248,7 @@ func play_event(e: Dictionary) -> void:
 			var fmv := _view(e.get("unit", ""))
 			if fmv and Fx.speed > 0.0:
 				Fx.float_text(battle.fx_root, fmv.body_center() + Vector3.UP * 0.4, "FALLING", Color(1.0, 0.45, 0.3), 46)
-		"overcharged", "stabilized", "reloaded", "scanned", "tech_action", "disengaged", "searched", "equipment_destroyed", "system_trauma":
+		"overcharged", "stabilized", "reloaded", "scanned", "tech_action", "disengaged", "searched", "system_trauma":
 			_log("%s: %s" % [_name(e.get("unit", e.get("attacker", ""))), String(e["type"]).replace("_", " ")])
 		"moved":
 			await _moved(e)
@@ -266,6 +266,10 @@ func play_event(e: Dictionary) -> void:
 			_set_stat(e["unit"], "structure", int(e.get("total", 0)))
 		"deployed":
 			await _deployed(e)
+		"recalled":
+			await _recalled(e)
+		"equipment_destroyed":
+			await _equipment_destroyed(e)
 		"tech_attack":
 			await _tech(e)
 		"destroyed":
@@ -856,10 +860,109 @@ func _deployed(e: Dictionary) -> void:
 			lasting[id] = Fx.hard_light_wall(battle.fx_root, segs, float(obj.get("height", 1.0)))
 			await Fx.wait(self, 1.0)
 		_:
-			var marker := MeshKit.part(battle.fx_root, MeshKit.chamfer_box(Vector3(0.3, 0.3, 0.3), 0.03), MeshKit.mech_material(Color(0.4, 0.42, 0.45)), center + Vector3.UP * 0.15)
-			MeshKit.part(marker, MeshKit.sphere(0.05, 8), MeshKit.fx_material(Color(0.4, 1.0, 0.6), 3.0), Vector3(0, 0.18, 0))
-			lasting[id] = marker
-			await Fx.wait(self, 0.4)
+			await _launch(e, mv, obj, center)
+
+
+## A deployable leaves its owner (data/game/visible_parts.json): a docked drone lifts off the
+## body and flies to its space, anything else is lobbed there; the body keeps the gap. The
+## unit itself comes from the state (BattleView.sync_parts); for the local seat's own pieces
+## it's placed right away so it doesn't pop in late. Hostile mines and snares are Hidden, so
+## the other side only sees the launch, not where it landed.
+func _launch(e: Dictionary, owner: MechView, obj: Dictionary, center: Vector3) -> void:
+	var dname := String(obj.get("name", ""))
+	var s := VisibleParts.spec(dname, String(obj.get("kind", "")).capitalize())
+	var id := String(obj.get("id", ""))
+	var mine_owner := owner != null and String(e.get("unit", "")) in local_units
+	var hidden_kind := String(s["look"]) in ["mine", "snare"] and not mine_owner and owner != null
+	var palette := MechStyles.palette(owner.model.manufacturer) if owner and owner.model else {}
+	var from := owner.model.dock_position(dname) if owner and owner.model else center + Vector3.UP * 3.0
+	if owner and owner.model and owner.model.docks.has(dname):
+		(owner.model.docks[dname] as Node3D).visible = false
+	if Fx.speed > 0.0 and owner:
+		await _turn_to(owner, center)
+		var piece := Node3D.new()
+		battle.fx_root.add_child(piece)
+		DeployableBuilder.shape(piece, s, palette, 0.5)
+		piece.global_position = from
+		if hidden_kind:
+			Fx.dust(battle.fx_root, from, 6, Color(0.6, 0.6, 0.6), 0.2, 0.3, 0.5)
+			piece.queue_free()
+		else:
+			var to := center + (Vector3.UP * 0.16 if String(s["launch"]) == "fly" else Vector3.ZERO)
+			var rise := 0.6 if String(s["launch"]) == "fly" else 1.2
+			var tw := piece.create_tween()
+			tw.tween_method(func(t: float) -> void:
+				if is_instance_valid(piece):
+					piece.global_position = from.lerp(to, t) + Vector3.UP * rise * 4.0 * t * (1.0 - t)
+					piece.rotation.y = lerp_angle(0.0, atan2(from.x - to.x, from.z - to.z), minf(1.0, t * 3.0)), 0.0, 1.0, Fx.t(0.7)).set_trans(Tween.TRANS_SINE)
+			await tw.finished
+			if is_instance_valid(piece):
+				piece.queue_free()
+	if mine_owner and not battle.units.has(id) and owner:
+		var c: Array = (obj.get("cells", []) as Array)[0] if not (obj.get("cells", []) as Array).is_empty() else [0, 0, 0]
+		battle.add_unit({"id": id, "name": dname, "kind": "deployable", "side": owner.unit.get("side", ""),
+			"cell": [c[0], c[1]], "level": int(c[2]) if c.size() > 2 else 0, "size": 0.5 if String(s["launch"]) == "fly" else 1,
+			"hp": obj.get("hp", 0), "max_hp": obj.get("hp", 0), "counters": {"owner": String(e.get("unit", "")), "deploy_type": String(obj.get("kind", "")).capitalize()}})
+	await Fx.wait(self, 0.3)
+
+
+## A recalled deployable flies back into its owner's body (the gap closes) and leaves the board.
+func _recalled(e: Dictionary) -> void:
+	var owner := _view(e.get("unit", ""))
+	var id := String(e.get("object", ""))
+	var mv := _view(id)
+	var dname := String(mv.unit.get("name", "")) if mv else ""
+	_log("%s recalls %s." % [_name(e.get("unit", "")), dname if dname != "" else "a deployable"])
+	if mv:
+		battle.units.erase(id)
+		if Fx.speed > 0.0 and owner and owner.model:
+			var to := owner.model.dock_position(dname)
+			var from := mv.model.global_position + Vector3.UP * (mv.model.pelvis.position.y if mv.model.pelvis else 0.0)
+			mv.model.reparent(battle.fx_root)
+			mv.visible = false
+			var piece := mv.model
+			var tw := piece.create_tween()
+			tw.tween_method(func(t: float) -> void:
+				if is_instance_valid(piece):
+					piece.global_position = from.lerp(to, t) + Vector3.UP * 0.6 * 4.0 * t * (1.0 - t), 0.0, 1.0, Fx.t(0.6)).set_trans(Tween.TRANS_SINE)
+			await tw.finished
+			piece.queue_free()
+		mv.queue_free()
+	if owner and owner.model and owner.model.docks.has(dname):
+		(owner.model.docks[dname] as Node3D).visible = true
+	await Fx.wait(self, 0.2)
+
+
+## Gear destroyed by system trauma (the structure damage table, combat.gd): a destroyed
+## weapon breaks off the body and falls away; a destroyed system sparks.
+func _equipment_destroyed(e: Dictionary) -> void:
+	var mv := _view(e.get("unit", ""))
+	var what := String(e.get("name", e.get("system", "equipment")))
+	_log("%s: %s destroyed." % [_name(e.get("unit", "")), what])
+	if mv == null or mv.model == null:
+		return
+	var wid := ""
+	for w: Dictionary in (mv.unit.get("loadout", {}) as Dictionary).get("weapons", []):
+		if String(w.get("key", "")) == String(e.get("weapon", "-")):
+			wid = String(w.get("id", ""))
+	var node: Node3D = mv.model.weapons.get(wid) if wid != "" else null
+	var at := node.global_position if node else mv.body_center()
+	Fx.sparks(battle.fx_root, at, Color(1.0, 0.7, 0.3), 26, 3.5)
+	Fx.float_text(battle.fx_root, at + Vector3.UP * 0.3, "%s DESTROYED" % what.to_upper(), Color(1.0, 0.45, 0.3), 44)
+	if node and Fx.speed > 0.0:
+		var piece := node.duplicate() as Node3D
+		battle.fx_root.add_child(piece)
+		piece.global_transform = node.global_transform
+		var tw := piece.create_tween()
+		tw.tween_property(piece, "global_position", at + Vector3(0.3, -at.y + mv.global_position.y + 0.05, 0.2), Fx.t(0.6)).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+		tw.parallel().tween_property(piece, "rotation_degrees", piece.rotation_degrees + Vector3(70, 30, 90), Fx.t(0.6))
+		tw.tween_interval(Fx.t(1.5))
+		tw.tween_callback(piece.queue_free)
+	if wid != "":
+		var gone: Array = mv.model.weapons_gone.keys()
+		gone.append(wid)
+		mv.model.set_weapons_gone(gone)
+	await Fx.wait(self, 0.6)
 
 
 func _tech(e: Dictionary) -> void:
