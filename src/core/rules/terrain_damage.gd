@@ -30,6 +30,15 @@ const SECTION_HP := 10
 const EVASION := 5
 
 
+## What a cell looks like after damage, for drawing it (visuals): the top section's HP left,
+## a stage 0 intact, 1 cracked, 2 badly damaged, 3 about to go; sections lost so far (rubble).
+static func damage_state(state: GameState, c: Vector2i) -> Dictionary:
+	var dmg := int(state.terrain_damage.get(key(c), 0))
+	var stage := 0 if dmg == 0 else (1 if dmg < 5 else (2 if dmg < 8 else 3))
+	return {"hp_left": SECTION_HP - dmg, "section_hp": SECTION_HP, "stage": stage,
+		"sections_lost": int(state.terrain_lost.get(key(c), 0))}
+
+
 static func key(c: Vector2i) -> String:
 	return "%d,%d" % [c.x, c.y]
 
@@ -290,11 +299,12 @@ static func destroy_sections(state: GameState, c: Vector2i, n: int, source: Stri
 		col.gap_top = 0
 	col.ground = new_ground
 	state.terrain_damage.erase(key(c))
+	state.terrain_lost[key(c)] = int(state.terrain_lost.get(key(c), 0)) + (old - new_ground)
 	if col.ground <= floor_of(col):
 		var tags := col.tags
 		tags.remove_at(tags.find(BattleMap.TAG_DESTRUCTIBLE))
 		col.tags = tags
-	events.append({"type": "terrain_destroyed", "cells": [[c.x, c.y, col.ground]], "from": old, "source": source, "rule_ref": REF})
+	events.append({"type": "terrain_destroyed", "cells": [[c.x, c.y, col.ground]], "from": old, "lost": int(state.terrain_lost[key(c)]), "source": source, "rule_ref": REF})
 	if not room.is_empty():
 		# A room's roof and walls came down on whoever was inside (house rule: Garrison).
 		events.append_array(Garrison.collapse(state, c, int(room[0]), int(room[1]), old, source))

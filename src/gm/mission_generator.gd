@@ -99,7 +99,8 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 		bf = {"map": ib["map"], "layout": ib["layout"], "fairness": {"ok": true, "interior": inside},
 			"world": [landscape if landscape != "" else str(WorldKits.HUB_LANDSCAPE.get(culture, "grassy_hills")), culture]}
 	elif doc == null:
-		bf = battlefield(rng, world_rng, m.sitrep_id, w, h, shape, landscape, culture, maxi(0, int(settings.approach) + int(settings.fight("approach", 0))), hub)
+		bf = battlefield(rng, world_rng, m.sitrep_id, w, h, shape, landscape, culture, maxi(0, int(settings.approach) + int(settings.fight("approach", 0))), hub,
+			_secondary_kind(mission_seed, m.sitrep_id, str(opts.get("secondary", "?"))))
 	else:
 		bf = _doc_battlefield(doc, m.sitrep_id, rng)
 	state.map = bf["map"]
@@ -107,6 +108,12 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	var fairness: Dictionary = bf["fairness"]
 	var world: Array = bf["world"]
 	m.deployment = layout["deployment"]
+	# An ambush on the road (WorldMapGen ambush spot): the squad caught on the road through the
+	# middle, the ambushers already in the cover along one flank.
+	if opts.get("ambush") is Dictionary:
+		m.deployment = _ambush_deployment(state.map, shape, w, h, int(opts["ambush"].get("at", [0, 0])[0]) % 2 == 0)
+		m.flavor["ambush"] = (opts["ambush"] as Dictionary).duplicate(true)
+		m.first_side = Mission.ENEMIES  # they sprang it
 	m.zones = layout["zones"]
 	if layout["first_side"] != "":
 		m.first_side = layout["first_side"]
@@ -139,6 +146,11 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 		"region": {"seed": place_seed, "landscape": world[0], "culture": world[1], "weather": weather}, "time": time}
 	if not boarding.is_empty():
 		m.flavor["boarding"] = boarding.duplicate()
+	# Defend objectives (Holdout's protected object): for the mission, the AI and the HUD.
+	if layout.has("protect"):
+		m.flavor["protect"] = (layout["protect"] as Dictionary).duplicate()
+	if layout.has("objectives"):
+		m.flavor["objectives"] = (layout["objectives"] as Array).duplicate(true)
 	_pick_environments(m, state, mission_seed, world[0], weather, settings, opts)
 	var players := clampi(int(opts.get("players", 4)), 1, 4)
 	state.seats["gm"] = {"name": "GM", "side": Mission.ENEMIES, "gm": true}
@@ -149,6 +161,9 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	_add_enemies(state, m, rng, cfg, players, settings, opts.get("npc_templates", UnitFactory.npc_templates()))
 	_setup_objectives(m, state, rng, cfg)
 	m.briefing = _briefing(m, w, h, players, state)
+	for o: Dictionary in m.flavor.get("objectives", []):
+		if bool(o.get("secondary", false)):
+			m.briefing += " Secondary (a GM objective, not the sitrep's): %s. Reward: %s. It never decides the mission." % [o["text"], o["reward_name"]]
 	return {"state": state, "mission": m, "fairness": fairness, "layout": layout}
 
 
@@ -227,8 +242,10 @@ static func _rect(c0: int, r0: int, cw: int, rh: int, w: int, h: int, shape: Gri
 ## sitrep's fortifications, then fairness repairs (MapFairness). `rng` lays out the zones;
 ## `world_rng` builds the terrain. Returns {map, layout, fairness, world: [landscape, culture]}.
 static func battlefield(rng: RandomNumberGenerator, world_rng: RandomNumberGenerator, sitrep_id: String, w: int, h: int,
-		shape: GridLayout.Shape, landscape: String = "", culture: String = "", approach: int = 0, hub: Dictionary = {}) -> Dictionary:
+		shape: GridLayout.Shape, landscape: String = "", culture: String = "", approach: int = 0, hub: Dictionary = {}, secondary: String = "") -> Dictionary:
 	var layout := SitrepLayout.layout(sitrep_id, w, h, shape, rng, approach)
+	if secondary != "":
+		_add_secondary(layout, secondary, w, h, shape, hash([w, h, sitrep_id, secondary]))
 	var blocked := {}  # cells kept clear of rocks and woods (deployment, zones, routes)
 	for list: Array in (layout["deployment"] as Dictionary).values() + (layout["zones"] as Dictionary).values() + [layout["clear"]]:
 		for c: Array in list:
@@ -237,6 +254,8 @@ static func battlefield(rng: RandomNumberGenerator, world_rng: RandomNumberGener
 	var map := TerrainGen.generate(world_rng, w, h, shape, blocked, world[0], world[1], hub)
 	if sitrep_id in ["sitrep_holdout", "sitrep_gauntlet"]:
 		_fortify(map, rng, layout["zones"]["zone"], shape)
+	if layout.has("protect"):
+		_place_protected(map, layout["protect"])
 	var fairness := MapFairness.repair(map, layout, w, h, shape, blocked, world_rng, TerrainGen.cover_tags(world[0]))
 	return {"map": map, "layout": layout, "fairness": fairness, "world": world}
 
@@ -308,10 +327,78 @@ static func area(area_seed: int, opts: Dictionary = {}) -> Dictionary:
 	var kit := TerrainGen.kit(world[0], world[1]) + ("+" + weather if weather != "" else "") + ("~" + time if time in ["dawn", "evening", "night"] else "") + "#%d" % place
 	var cell := func(c: int, r: int) -> Array:
 		return [c - (r >> 1), r] if shape == GridLayout.Shape.HEX else [c, r]
-	return {"map": map, "kit": kit, "name": TerrainGen.describe(world[0], world[1]), "place": place_kind, "at": [ax, ay],
+	var safe := _safe_points(map, place_kind, gen_hub, region_seed, ax, ay, size, shape)
+	# Story's contract: safe_point (a secure place for Full Repairs, Core p.82), repair "bay" or
+	# "rig", repair_bay = where it stands (world x, z).
+	var flat := {"safe_point": not safe.is_empty()}
+	if not safe.is_empty():
+		var first: Dictionary = safe[0]
+		flat["repair"] = "rig" if str(first["kind"]) in ["field_rig", "camp"] else "bay"
+		var wp := map.grid.to_world(Vector2i(first["cell"][0], first["cell"][1]))
+		flat["repair_bay"] = [wp.x, wp.z]
+	var result := {"map": map, "kit": kit, "name": TerrainGen.describe(world[0], world[1]), "place": place_kind, "at": [ax, ay], "safe_points": safe,
 		"region": {"seed": place, "landscape": world[0], "culture": world[1], "weather": weather},
 		"center": cell.call(size / 2, size / 2),
 		"entries": {"west": cell.call(0, size / 2), "east": cell.call(size - 1, size / 2), "north": cell.call(size / 2, 0), "south": cell.call(size / 2, size - 1)}}
+	result.merge(flat)
+	return result
+
+
+## Where the squad can make Full Repairs (Core p.82: ten hours in a secure location): the
+## town's repair bay or printer (by its door), or, out in the country, a field repair rig by
+## the road in about one area in three (spaced by the region's seed so most jobs have one
+## within an area or two). [{cell [x, y], kind "repair_bay" | "printer" | "field_rig", spot?}]
+static func _safe_points(map: BattleMap, place: String, hub: Dictionary, region_seed: int, ax: int, ay: int, size: int, shape: GridLayout.Shape) -> Array:
+	var out: Array = []
+	if not hub.is_empty():
+		for spot: Dictionary in hub.get("spots", []):
+			var kind := str(spot.get("kind", ""))
+			if not kind in ["workshop", "printer"]:
+				continue
+			for c in map.cells():
+				if map.column(c).has_tag("door_" + str(spot.get("id", kind))):
+					map.column(c).tags.append("safe_point")
+					out.append({"cell": [c.x, c.y], "kind": "repair_bay" if kind == "workshop" else "printer", "spot": str(spot.get("id", kind))})
+					break
+		if not out.is_empty():
+			return out
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([region_seed, "safe", ax, ay])
+	# Every third area along each row of the region, offset by row: never more than a step or
+	# two from the nearest rig.
+	if place == "town" or posmod(ax + ay * 2, 3) == 0:
+		var mid := size / 2
+		for k in range(2, 10):
+			for sgn: int in [1, -1]:
+				var c := mid + sgn * k
+				var r := mid + 2
+				var cell := SitrepLayout.cell_of(c, r, shape)
+				if map.has_cell(cell) and map.ground_height(cell) <= 1 and map.column(cell).tags.is_empty() or (map.has_cell(cell) and map.column(cell).has_tag("lot")):
+					var col := map.column(cell)
+					col.ground = map.ground_height(cell) + 1
+					col.tags = PackedStringArray(["machinery", "repair_rig", BattleMap.TAG_DESTRUCTIBLE])
+					var stand := SitrepLayout.cell_of(c, r - 1, shape)
+					if map.has_cell(stand):
+						map.column(stand).tags.append("safe_point")
+					out.append({"cell": [stand.x, stand.y], "kind": "field_rig"})
+					return out
+	return out
+
+
+## A camp the squad has secured (story, after clearing an area): that spot becomes a safe point
+## for Full Repairs (Core p.82). Marks the map cell and returns the safe point.
+static func secure_camp(area_result: Dictionary, cell: Vector2i) -> Dictionary:
+	var map: BattleMap = area_result["map"]
+	if map.has_cell(cell):
+		map.column(cell).tags.append("safe_point")
+	var sp := {"cell": [cell.x, cell.y], "kind": "camp"}
+	(area_result.get("safe_points", []) as Array).append(sp)
+	area_result["safe_point"] = true
+	if not area_result.has("repair"):
+		area_result["repair"] = "rig"
+		var wp := map.grid.to_world(cell)
+		area_result["repair_bay"] = [wp.x, wp.z]
+	return sp
 
 
 ## One edge between two areas of a region: [[ground, tags], ...] along it, the same for both
@@ -347,6 +434,86 @@ static func _interior_kind(hub: Dictionary) -> String:
 		if str(spot.get("id", "")) == str(hub.get("at", "")) and str(spot.get("kind", "")) in Interiors.kinds():
 			return str(spot["kind"])
 	return ""
+
+
+## Deployment for an ambush: the squad on a band across the middle (the road), the
+## ambushers on the open ground nearest the woods, rocks or ruins along one flank.
+static func _ambush_deployment(map: BattleMap, shape: GridLayout.Shape, w: int, h: int, west: bool) -> Dictionary:
+	var squad: Array = []
+	var foes: Array = []
+	for r in range(h):
+		for c in range(w):
+			var cell := SitrepLayout.cell_of(c, r, shape)
+			if not map.has_cell(cell) or map.ground_height(cell) > 2 or map.column(cell).has_tag(BattleMap.TAG_IMPASSABLE):
+				continue
+			if absi(r - h / 2) <= 1 and absi(c - w / 2) <= w / 4:
+				squad.append([cell.x, cell.y])
+			var flank := c < w / 4 if west else c >= w - w / 4
+			if flank and absi(r - h / 2) <= h / 3:
+				var covered := false
+				for n in map.grid.neighbors(cell):
+					if map.has_cell(n) and (map.column(n).has_tag(Sight.TAG_SOFT_COVER) or map.ground_height(n) > map.ground_height(cell)):
+						covered = true
+				if covered and map.ground_height(cell) <= 1:
+					foes.append([cell.x, cell.y])
+	if foes.size() < 6:
+		# Little cover on that flank: they wait out on it anyway.
+		for r in range(h / 3, h - h / 3):
+			for c in (range(0, w / 4) if west else range(w - w / 4, w)):
+				var cell := SitrepLayout.cell_of(c, r, shape)
+				if map.has_cell(cell) and map.ground_height(cell) <= 1 and not map.column(cell).has_tag(BattleMap.TAG_IMPASSABLE):
+					foes.append([cell.x, cell.y])
+	return {Mission.PLAYERS: squad, Mission.ENEMIES: foes}
+
+
+## A secondary objective for this fight: opts.secondary "capture" / "defend" / "none", or "?"
+## for the GM's pick (about one fight in three, on sitreps with room for it).
+static func _secondary_kind(mission_seed: int, sitrep_id: String, wanted: String) -> String:
+	if wanted in ["capture", "defend"]:
+		return wanted
+	if wanted != "?" or not sitrep_id in ["sitrep_standardcombat", "sitrep_control", "sitrep_holdout", "sitrep_gauntlet"]:
+		return ""
+	var r := RandomNumberGenerator.new()
+	r.seed = hash([mission_seed, "secondary"])
+	if r.randf() > 0.33:
+		return ""
+	return "defend" if sitrep_id == "sitrep_standardcombat" and r.randf() < 0.5 else "capture"
+
+
+const SECONDARY := {
+	"capture": ["the comms tower", "a supply cache", "the relay mast", "the fuel depot"],
+	"defend": ["the landing zone", "the field hospital", "the supply dump"],
+}
+const SECONDARY_REWARDS := ["reserve_supplies", "reserve_ammo", "reserve_extra_repairs", "reserve_access", "reserve_knowledge"]
+
+
+## A secondary objective (main's rule: the book's sitrep is the primary and alone decides the
+## mission; this one is the GM's, marked as such, and only earns a reserve or has a story cost):
+## a 3x3 zone out on a flank, toward the enemy for a capture, on the squad's side for a defence.
+static func _add_secondary(layout: Dictionary, kind: String, w: int, h: int, shape: GridLayout.Shape, seed_value: int) -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = seed_value
+	var band: Array = layout.get("band", [0, h])
+	var top := int(band[0])
+	var bottom := int(band[1])
+	var c0 := int(w * 0.12) if r.randf() < 0.5 else int(w * 0.88) - 3
+	var r0 := (top + SitrepLayout.DEPTH + 1) if kind == "capture" else (bottom - SitrepLayout.DEPTH - 4)
+	r0 = clampi(r0, 0, h - 3)
+	layout["zones"]["secondary"] = SitrepLayout.rect(c0, r0, 3, 3, w, h, shape)
+	var what: String = SECONDARY[kind][r.randi_range(0, SECONDARY[kind].size() - 1)]
+	var reward: String = SECONDARY_REWARDS[r.randi_range(0, SECONDARY_REWARDS.size() - 1)]
+	var reward_name := reward
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/lancer-data/reserves.json"))
+	if data is Array:
+		for e: Dictionary in data:
+			if str(e.get("id", "")) == reward:
+				reward_name = str(e.get("name", reward))
+	var verb := "take and hold" if kind == "capture" else "keep the enemy out of"
+	var objectives: Array = layout.get("objectives", [])
+	objectives.append({"id": "secondary", "type": kind, "side": Mission.PLAYERS, "zone": "secondary", "secondary": true,
+		"what": what, "text": "%s %s" % [verb, what], "reward": reward, "reward_name": reward_name,
+		"failure": "%s is lost: the region pays for it later." % what.capitalize(), "state": "open"})
+	layout["objectives"] = objectives
 
 
 ## The weather for the kit ("" = clear), from opts.weather or a pick that suits the landscape.
@@ -404,20 +571,64 @@ static func _tag(col: BattleMap.Column, tags: Array) -> void:
 
 ## Sitreps: "The area around the Control Zone is fortified with Size 1-2 hard cover."
 ## Short walls (1 level above the ground) just outside the zone, with gaps to walk through.
+## A defended zone: a low wall ring round it (sandbags and barriers, one level: cover to fight
+## from) broken by a two-space gap on each side, so attackers have to come through chokepoints,
+## and a few barricades further out on the approaches to break their lines of fire.
 static func _fortify(map: BattleMap, rng: RandomNumberGenerator, zone: Array, _shape: GridLayout.Shape) -> void:
 	var inside := {}
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
 	for c: Array in zone:
-		inside[Vector2i(c[0], c[1])] = true
+		var cell := Vector2i(c[0], c[1])
+		inside[cell] = true
+		var p := map.grid.to_world(cell)
+		lo = Vector2(minf(lo.x, p.x), minf(lo.y, p.z))
+		hi = Vector2(maxf(hi.x, p.x), maxf(hi.y, p.z))
+	var centre := (lo + hi) * 0.5
 	var ring := {}
 	for cell: Vector2i in inside:
 		for n in map.grid.neighbors(cell):
 			if map.has_cell(n) and not inside.has(n):
 				ring[n] = true
 	for cell: Vector2i in ring:
-		if rng.randf() < 0.45:
+		var p := map.grid.to_world(cell)
+		var d := Vector2(p.x, p.z) - centre
+		# The gaps: straight out from the middle of each side (north, west, east, south).
+		var gap := absf(d.x) < 1.1 or absf(d.y) < 0.9
+		var col := map.column(cell)
+		if gap or col.has_tag(BattleMap.TAG_IMPASSABLE) or col.gap_top > 0:
+			continue
+		col.ground += 1
+		col.tags = PackedStringArray(["wall"])
+	# Barricades out on the approaches, staggered so there's no clean line to the zone.
+	var outer := {}
+	for cell: Vector2i in ring:
+		for n in map.grid.cells_within(cell, 4):
+			if map.has_cell(n) and not inside.has(n) and not ring.has(n) and map.grid.distance(n, cell) >= 3:
+				outer[n] = true
+	var cells := outer.keys()
+	cells.sort()
+	for cell: Vector2i in cells:
+		if rng.randf() < 0.06:
 			var col := map.column(cell)
-			col.ground += 1 if rng.randf() < 0.7 else 2
-			col.tags = PackedStringArray(["wall"])
+			if col.ground <= 1 and col.gap_top == 0 and not col.has_tag(BattleMap.TAG_IMPASSABLE) and not col.has_tag("building"):
+				col.ground += 1
+				col.tags = PackedStringArray(["wall"])
+
+
+## The thing a Holdout's defenders protect stands in the zone: a Size 1 object (Core p.68:
+## Evasion 5, 10 HP) the enemy can target. Lose it and the mission is lost (Mission).
+static func _place_protected(map: BattleMap, protect: Dictionary) -> void:
+	var cell := Vector2i(protect["cell"][0], protect["cell"][1])
+	if not map.has_cell(cell):
+		return
+	var col := map.column(cell)
+	var look: String = {"generator": "machinery", "relay": "machinery", "convoy truck": "container", "civilian shelter": "container"}.get(str(protect["kind"]), "container")
+	col.ground = map.ground_height(cell) + 1
+	col.gap_bottom = 0
+	col.gap_top = 0
+	col.tags = PackedStringArray([look, "objective", BattleMap.TAG_DESTRUCTIBLE, "hp_%d" % int(protect.get("hp", 10)), "armor_0"])
+	protect["ground"] = col.ground
 
 
 # --- Forces ------------------------------------------------------------------------------

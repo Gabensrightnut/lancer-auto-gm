@@ -179,7 +179,9 @@ func play_event(e: Dictionary) -> void:
 			battle.zones.add_zone(z)
 			_log("%s: %s." % [_name(z.get("owner", "")), z.get("label", z.get("kind", "zone"))])
 		"zone_removed":
-			battle.zones.remove_zone(String(e.get("id", "")))
+			_zone_removed(e)
+		"zone_changed":
+			_zone_changed(e)
 		"manual_effect":
 			# Something the game doesn't apply: say what, and what the table should do.
 			var guide := String(e.get("guidance", e.get("note", "The table applies this.")))
@@ -248,7 +250,7 @@ func play_event(e: Dictionary) -> void:
 			var fmv := _view(e.get("unit", ""))
 			if fmv and Fx.speed > 0.0:
 				Fx.float_text(battle.fx_root, fmv.body_center() + Vector3.UP * 0.4, "FALLING", Color(1.0, 0.45, 0.3), 46)
-		"overcharged", "stabilized", "reloaded", "scanned", "tech_action", "disengaged", "searched", "equipment_destroyed", "system_trauma":
+		"overcharged", "stabilized", "reloaded", "scanned", "tech_action", "disengaged", "searched", "system_trauma":
 			_log("%s: %s" % [_name(e.get("unit", e.get("attacker", ""))), String(e["type"]).replace("_", " ")])
 		"moved":
 			await _moved(e)
@@ -266,6 +268,10 @@ func play_event(e: Dictionary) -> void:
 			_set_stat(e["unit"], "structure", int(e.get("total", 0)))
 		"deployed":
 			await _deployed(e)
+		"recalled":
+			await _recalled(e)
+		"equipment_destroyed":
+			await _equipment_destroyed(e)
 		"tech_attack":
 			await _tech(e)
 		"destroyed":
@@ -561,7 +567,7 @@ func _attack(e: Dictionary) -> void:
 		return
 	if Fx.speed > 0.0:
 		firing.emit(e)
-		await _attack_anim(att, tgt, wid, w, style, hit, result == "crit")
+		await _attack_anim(att, tgt, wid, w, style, hit, result == "crit", e)
 	if not is_instance_valid(tgt) or not is_instance_valid(att):
 		return
 	impact.emit(e)
@@ -579,7 +585,50 @@ func _miss_point(att: MechView, tgt: MechView) -> Vector3:
 	return tgt.body_center() + side * (0.6 + tgt.model.height * 0.4) + to.normalized() * 2.5 + Vector3.DOWN * 0.4
 
 
-func _attack_anim(att: MechView, tgt: MechView, wid: String, w: Dictionary, style: String, hit: bool, crit: bool) -> void:
+## The shot, then what it did to barriers and cover on its way (data/game/terrain_effects.json):
+## special paths (phased through walls, punched through, lobbed over, curved around, through
+## cover it ignores) replace the straight shot; barriers it crossed shimmer; a miss into cover
+## strikes the cover. Holes that stay are the terrain renderer's, from terrain_damaged.
+func _attack_anim(att: MechView, tgt: MechView, wid: String, w: Dictionary, style: String, hit: bool, crit: bool, e: Dictionary = {}) -> void:
+	var muzzle := att.model.muzzle_position(wid)
+	var aim := tgt.body_center() if hit else _miss_point(att, tgt)
+	var glow: Color = WeaponBuilder.glow_color(w) if not w.is_empty() else Color(1, 0.8, 0.4)
+	if tgt.model is SquadModel:
+		(tgt.model as SquadModel).take_cover(String(e.get("cover", "none")) != "none")
+	if att.model is SquadModel and style != WeaponBuilder.STYLE_MELEE:
+		# Infantry: every standing man fires together.
+		await (att.model as SquadModel).volley(battle.fx_root, aim)
+		if is_instance_valid(tgt) and hit:
+			Fx.hit_flash(tgt.model)
+			if tgt.model is SquadModel:
+				(tgt.model as SquadModel).hit()
+		return
+	var path := WallFx.path_for(e, w, att.unit) if style != WeaponBuilder.STYLE_MELEE else ""
+	var cover_cells: Array = e.get("cover_cells", [])
+	if path == "" and String(e.get("cover", "")) == "none" and not cover_cells.is_empty():
+		path = String((WallFx.data().get("paths", {}) as Dictionary).get("by_effect", {}).get("ignores_cover", ""))
+	if path in ["phase", "throughbolt", "arc", "seek", "see_through"]:
+		await WallFx.play_path(self, battle, path, muzzle, aim, glow)
+		if not is_instance_valid(tgt):
+			return
+		if hit:
+			Fx.sparks(battle.fx_root, aim, glow, 22)
+			Fx.hit_flash(tgt.model)
+		else:
+			Fx.impact_puff(battle.fx_root, aim)
+	else:
+		await _attack_style_anim(att, tgt, wid, w, style, hit, crit)
+	if not is_instance_valid(tgt) or not is_instance_valid(att):
+		return
+	for x: Dictionary in WallFx.barrier_crossings(battle, muzzle, aim):
+		WallFx.ripple(battle.fx_root, x["point"], x["color"], aim - muzzle)
+	if not hit and path == "" and not cover_cells.is_empty() and style != WeaponBuilder.STYLE_MELEE:
+		# The miss went into the cover that protected the target (cover_cells from the engine).
+		var cc: Array = cover_cells[0] if cover_cells[0] is Array else [0, 0]
+		battle.terrain.hit_terrain(Vector2i(int(cc[0]), int(cc[1])), 3, muzzle)
+
+
+func _attack_style_anim(att: MechView, tgt: MechView, wid: String, w: Dictionary, style: String, hit: bool, crit: bool) -> void:
 	var fx := battle.fx_root
 	var muzzle := att.model.muzzle_position(wid)
 	var aim := tgt.body_center() if hit else _miss_point(att, tgt)
@@ -701,6 +750,7 @@ func _melee(att: MechView, tgt: MechView, hit: bool, color: Color) -> void:
 # --- damage, heat, statuses ------------------------------------------------------------
 
 func _damage(e: Dictionary) -> void:
+	_barrier_hit(e)
 	var mv := _view(e["target"])
 	var amount := int(e.get("amount", 0))
 	var dtype := String(e.get("damage_type", "Kinetic"))
@@ -724,6 +774,61 @@ func _damage(e: Dictionary) -> void:
 	elif mv.unit.has("hp"):
 		mv.set_stat("hp", maxi(0, int(mv.unit["hp"]) - amount))
 	await Fx.wait(self, 0.4)
+
+
+## A barrier taking damage (data/game/terrain_effects.json "barriers"): a zone object like the
+## Portable Bunker (target "zone:<id>") or a barrier deployable flickers, harder the weaker it is.
+func _barrier_hit(e: Dictionary) -> void:
+	var tid := String(e.get("target", ""))
+	var amount := int(e.get("amount", 0))
+	if tid.begins_with("zone:") and battle.zones:
+		var zid := tid.substr(5)
+		var z: Dictionary = battle.zones.zones.get(zid, {})
+		var bz := WallFx.barrier_zone(String(z.get("kind", "")))
+		if bz.is_empty():
+			return
+		var max_hp := int(bz.get("max_hp", 0))
+		var hp := int(z.get("hp", max_hp)) - amount
+		z["hp"] = hp
+		var node: Node3D = battle.zones.get_node_or_null("Zone_" + zid)
+		if node and Fx.speed > 0.0:
+			WallFx.flicker(node, float(hp) / maxf(1.0, max_hp) if max_hp > 0 else 0.5)
+		return
+	var mv := _view(tid)
+	if mv and WallFx.is_barrier_deployable(String(mv.unit.get("name", ""))) and Fx.speed > 0.0:
+		var hp := int(e.get("hp", int(mv.unit.get("hp", 0)) - amount))
+		WallFx.ripple(battle.fx_root, mv.body_center(), Color(0.6, 0.9, 1.0))
+		WallFx.flicker(mv.model, float(hp) / maxf(1.0, float(mv.unit.get("max_hp", 10))))
+
+
+## A barrier zone changed (zone_changed: its hp, cells...): redraw it, flickering if it weakened.
+func _zone_changed(e: Dictionary) -> void:
+	var z: Dictionary = e.get("zone", {})
+	var id := String(z.get("id", ""))
+	if id == "" or battle.zones == null:
+		return
+	var before: Dictionary = battle.zones.zones.get(id, {})
+	battle.zones.add_zone(z)
+	var bz := WallFx.barrier_zone(String(z.get("kind", "")))
+	if not bz.is_empty() and z.has("hp") and int(z["hp"]) < int(before.get("hp", z["hp"])) and Fx.speed > 0.0:
+		var node: Node3D = battle.zones.get_node_or_null("Zone_" + id)
+		WallFx.flicker(node, float(z["hp"]) / maxf(1.0, float(bz.get("max_hp", 10))))
+
+
+## A barrier zone destroyed by the rules (zone_removed, reason destroyed) breaks apart.
+func _zone_removed(e: Dictionary) -> void:
+	var id := String(e.get("id", ""))
+	var z: Dictionary = battle.zones.zones.get(id, {}) if battle.zones else {}
+	var bz := WallFx.barrier_zone(String(z.get("kind", "")))
+	if not bz.is_empty() and String(e.get("reason", "")) == "destroyed" and Fx.speed > 0.0:
+		var sum := Vector3.ZERO
+		var cells := battle.zones.cells_of(z)
+		for c in cells:
+			sum += battle.cell_pos(c, battle.map.ground_height(c))
+		if not cells.is_empty():
+			WallFx.shatter(battle.fx_root, sum / cells.size() + Vector3.UP * 0.4, Color.html(String(bz.get("color", "#80d0ff"))), 1.4)
+	if battle.zones:
+		battle.zones.remove_zone(id)
 
 
 func _heat(e: Dictionary) -> void:
@@ -856,10 +961,111 @@ func _deployed(e: Dictionary) -> void:
 			lasting[id] = Fx.hard_light_wall(battle.fx_root, segs, float(obj.get("height", 1.0)))
 			await Fx.wait(self, 1.0)
 		_:
-			var marker := MeshKit.part(battle.fx_root, MeshKit.chamfer_box(Vector3(0.3, 0.3, 0.3), 0.03), MeshKit.mech_material(Color(0.4, 0.42, 0.45)), center + Vector3.UP * 0.15)
-			MeshKit.part(marker, MeshKit.sphere(0.05, 8), MeshKit.fx_material(Color(0.4, 1.0, 0.6), 3.0), Vector3(0, 0.18, 0))
-			lasting[id] = marker
-			await Fx.wait(self, 0.4)
+			await _launch(e, mv, obj, center)
+
+
+## A deployable leaves its owner (data/game/visible_parts.json): a docked drone lifts off the
+## body and flies to its space, anything else is lobbed there; the body keeps the gap. The
+## unit itself comes from the state (BattleView.sync_parts); for the local seat's own pieces
+## it's placed right away so it doesn't pop in late. Hostile mines and snares are Hidden, so
+## the other side only sees the launch, not where it landed.
+func _launch(e: Dictionary, owner: MechView, obj: Dictionary, center: Vector3) -> void:
+	var dname := String(obj.get("name", ""))
+	var s := VisibleParts.spec(dname, String(obj.get("kind", "")).capitalize())
+	var id := String(obj.get("id", ""))
+	if id != "" and String(e.get("unit", "")) != "":
+		VisibleParts.known_owners[id] = String(e.get("unit", ""))
+	var mine_owner := owner != null and String(e.get("unit", "")) in local_units
+	var hidden_kind := String(s["look"]) in ["mine", "snare"] and not mine_owner and owner != null
+	var palette := MechStyles.palette(owner.model.manufacturer) if owner and owner.model else {}
+	var from := owner.model.dock_position(dname) if owner and owner.model else center + Vector3.UP * 3.0
+	if owner and owner.model and owner.model.docks.has(dname):
+		(owner.model.docks[dname] as Node3D).visible = false
+	if Fx.speed > 0.0 and owner:
+		await _turn_to(owner, center)
+		var piece := Node3D.new()
+		battle.fx_root.add_child(piece)
+		DeployableBuilder.shape(piece, s, palette, 0.5)
+		piece.global_position = from
+		if hidden_kind:
+			Fx.dust(battle.fx_root, from, 6, Color(0.6, 0.6, 0.6), 0.2, 0.3, 0.5)
+			piece.queue_free()
+		else:
+			var to := center + (Vector3.UP * 0.16 if String(s["launch"]) == "fly" else Vector3.ZERO)
+			var rise := 0.6 if String(s["launch"]) == "fly" else 1.2
+			var tw := piece.create_tween()
+			tw.tween_method(func(t: float) -> void:
+				if is_instance_valid(piece):
+					piece.global_position = from.lerp(to, t) + Vector3.UP * rise * 4.0 * t * (1.0 - t)
+					piece.rotation.y = lerp_angle(0.0, atan2(from.x - to.x, from.z - to.z), minf(1.0, t * 3.0)), 0.0, 1.0, Fx.t(0.7)).set_trans(Tween.TRANS_SINE)
+			await tw.finished
+			if is_instance_valid(piece):
+				piece.queue_free()
+	if mine_owner and not battle.units.has(id) and owner:
+		var c: Array = (obj.get("cells", []) as Array)[0] if not (obj.get("cells", []) as Array).is_empty() else [0, 0, 0]
+		battle.add_unit({"id": id, "name": dname, "kind": "deployable", "side": owner.unit.get("side", ""),
+			"cell": [int(c[0]), int(c[1])], "level": int(c[2]) if c.size() > 2 else 0, "size": 0.5 if String(s["launch"]) == "fly" else 1,
+			"hp": obj.get("hp", 0), "max_hp": obj.get("hp", 0), "counters": {"owner": String(e.get("unit", "")), "deploy_type": String(obj.get("kind", "")).capitalize()}})
+	await Fx.wait(self, 0.3)
+
+
+## A recalled deployable flies back into its owner's body (the gap closes) and leaves the board.
+func _recalled(e: Dictionary) -> void:
+	var owner := _view(e.get("unit", ""))
+	var id := String(e.get("object", ""))
+	var mv := _view(id)
+	var dname := String(mv.unit.get("name", "")) if mv else ""
+	_log("%s recalls %s." % [_name(e.get("unit", "")), dname if dname != "" else "a deployable"])
+	if mv:
+		battle.units.erase(id)
+		if Fx.speed > 0.0 and owner and owner.model:
+			var to := owner.model.dock_position(dname)
+			var from := mv.model.global_position + Vector3.UP * (mv.model.pelvis.position.y if mv.model.pelvis else 0.0)
+			mv.model.reparent(battle.fx_root)
+			mv.visible = false
+			var piece := mv.model
+			var tw := piece.create_tween()
+			tw.tween_method(func(t: float) -> void:
+				if is_instance_valid(piece):
+					piece.global_position = from.lerp(to, t) + Vector3.UP * 0.6 * 4.0 * t * (1.0 - t), 0.0, 1.0, Fx.t(0.6)).set_trans(Tween.TRANS_SINE)
+			await tw.finished
+			piece.queue_free()
+		mv.queue_free()
+	if owner and owner.model and owner.model.docks.has(dname):
+		(owner.model.docks[dname] as Node3D).visible = true
+	await Fx.wait(self, 0.2)
+
+
+## Gear destroyed by system trauma (the structure damage table, combat.gd): a destroyed
+## weapon breaks off the body and falls away; a destroyed system sparks.
+func _equipment_destroyed(e: Dictionary) -> void:
+	var mv := _view(e.get("unit", ""))
+	var what := String(e.get("name", e.get("system", "equipment")))
+	_log("%s: %s destroyed." % [_name(e.get("unit", "")), what])
+	if mv == null or mv.model == null:
+		return
+	var wid := ""
+	for w: Dictionary in (mv.unit.get("loadout", {}) as Dictionary).get("weapons", []):
+		if String(w.get("key", "")) == String(e.get("weapon", "-")):
+			wid = String(w.get("id", ""))
+	var node: Node3D = mv.model.weapons.get(wid) if wid != "" else null
+	var at := node.global_position if node else mv.body_center()
+	Fx.sparks(battle.fx_root, at, Color(1.0, 0.7, 0.3), 26, 3.5)
+	Fx.float_text(battle.fx_root, at + Vector3.UP * 0.3, "%s DESTROYED" % what.to_upper(), Color(1.0, 0.45, 0.3), 44)
+	if node and Fx.speed > 0.0:
+		var piece := node.duplicate() as Node3D
+		battle.fx_root.add_child(piece)
+		piece.global_transform = node.global_transform
+		var tw := piece.create_tween()
+		tw.tween_property(piece, "global_position", at + Vector3(0.3, -at.y + mv.global_position.y + 0.05, 0.2), Fx.t(0.6)).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+		tw.parallel().tween_property(piece, "rotation_degrees", piece.rotation_degrees + Vector3(70, 30, 90), Fx.t(0.6))
+		tw.tween_interval(Fx.t(1.5))
+		tw.tween_callback(piece.queue_free)
+	if wid != "":
+		var gone: Array = mv.model.weapons_gone.keys()
+		gone.append(wid)
+		mv.model.set_weapons_gone(gone)
+	await Fx.wait(self, 0.6)
 
 
 func _tech(e: Dictionary) -> void:
@@ -901,6 +1107,19 @@ func _destroyed(e: Dictionary) -> void:
 	var mv := _view(e["unit"])
 	_log("[b]%s is destroyed![/b]" % _name(e["unit"]))
 	if mv == null:
+		return
+	if mv.model is SquadModel:
+		# The last men fall; no explosion.
+		(mv.model as SquadModel).set_men(0)
+		mv.destroyed = true
+		await Fx.wait(self, 0.8)
+		return
+	if WallFx.is_barrier_deployable(String(mv.unit.get("name", ""))):
+		# Barriers and cover break apart instead of falling over like a mech.
+		if Fx.speed > 0.0:
+			WallFx.shatter(battle.fx_root, mv.body_center(), Color(0.6, 0.85, 1.0), maxf(1.0, mv.model.size))
+		mv.destroyed = true
+		mv.visible = false
 		return
 	if Fx.speed > 0.0:
 		Fx.explosion(battle.fx_root, mv.body_center(), 1.4 * maxf(1.0, mv.model.size))

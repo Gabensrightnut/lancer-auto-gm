@@ -1,0 +1,44 @@
+{
+  "_note": "Road events (DESIGN.md \"Exploring vs. fighting\"): the few unscripted encounters on the world map, from the procedural GM's tables. Most encounters come from the job board, contracts, patrons and the story. chance_per_hour: the chance per hour of travel that something happens (rolled on the story's dice, d100). Each event becomes an encounter area on the road where the fight (if any) starts in place. Our own content, not book rules.",
+  "chance_per_hour": 3,
+  "events": [
+    {
+      "id": "patrol",
+      "weight": 3,
+      "name": "A patrol",
+      "fight": true,
+      "enemies": [
+        {
+          "template": "ph_grunt",
+          "count": 2
+        }
+      ],
+      "text": "A patrol is working the road ahead. They've seen you."
+    },
+    {
+      "id": "bandits",
+      "weight": 2,
+      "name": "Bandits",
+      "fight": true,
+      "enemies": [
+        {
+          "template": "ph_grunt",
+          "count": 2
+        },
+        {
+          "template": "ph_assault",
+          "count": 1
+        }
+      ],
+      "text": "Wrecks across the road and movement in the rocks: an ambush."
+    },
+    {
+      "id": "convoy",
+      "weight": 2,
+      "name": "A broken-down convoy",
+      "fight": false,
+      "enemies": [],
+      "text": "A convoy has broken down by the road. The drivers wave you over: they need a hand, and maybe an escort."
+    }
+  ]
+}

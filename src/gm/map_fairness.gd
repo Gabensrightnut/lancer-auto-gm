@@ -371,7 +371,7 @@ static func _copy_cover(map: BattleMap, src: Vector2i, dst: Vector2i, blocked: D
 
 
 ## Structures repairs never raise or overwrite (streets, yards and fields may get barricades).
-const BUILT := ["building", "house", "keep", "wall", "door"]
+const BUILT := ["building", "house", "keep", "wall", "door", "objective", "mech_parking"]
 
 
 static func _built(map: BattleMap, cell: Vector2i) -> bool:

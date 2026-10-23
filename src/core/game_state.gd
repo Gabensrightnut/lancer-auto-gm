@@ -47,6 +47,9 @@ var environments: Array = []
 ## Damage on the top section of destructible terrain columns: {"x,y": damage}. See
 ## TerrainDamage (Core p.68).
 var terrain_damage: Dictionary = {}
+## Sections each cell has lost so far ({"x,y": n}): rubble and wreckage to draw (look only; the
+## column is already that much lower, which is what the rules see).
+var terrain_lost: Dictionary = {}
 ## House rule switches the table set: {id: bool} (HouseRuleSwitches; missing = default).
 var house_rules: Dictionary = {}
 ## "combat", or "explore" for turn-based exploring (turns for stealth, no fight).
@@ -94,7 +97,7 @@ func to_dict() -> Dictionary:
 		"acted": Array(acted), "turn_side": turn_side, "first_side": first_side,
 		"intel": intel.duplicate(true), "pending": pending.duplicate(true), "seats": seats.duplicate(true),
 		"rulings": rulings.duplicate(true), "packs": packs.duplicate(true), "dice_state": str(dice.get_state()),
-		"zones": zones.duplicate(true), "environments": environments.duplicate(), "terrain_damage": terrain_damage.duplicate(), "house_rules": house_rules.duplicate(), "turn_mode": turn_mode, "player_sides": player_sides.duplicate(),
+		"zones": zones.duplicate(true), "environments": environments.duplicate(), "terrain_damage": terrain_damage.duplicate(), "terrain_lost": terrain_lost.duplicate(), "house_rules": house_rules.duplicate(), "turn_mode": turn_mode, "player_sides": player_sides.duplicate(),
 		"objectives": objectives.duplicate(true),
 	}
 
@@ -118,6 +121,7 @@ static func from_dict(d: Dictionary) -> GameState:
 	s.packs = (d.get("packs", []) as Array).duplicate(true)
 	s.zones = (d.get("zones", []) as Array).duplicate(true)
 	s.terrain_damage = (d.get("terrain_damage", {}) as Dictionary).duplicate()
+	s.terrain_lost = (d.get("terrain_lost", {}) as Dictionary).duplicate()
 	s.house_rules = (d.get("house_rules", {}) as Dictionary).duplicate()
 	s.turn_mode = String(d.get("turn_mode", "combat"))
 	s.player_sides = (d.get("player_sides", ["players"]) as Array).duplicate()

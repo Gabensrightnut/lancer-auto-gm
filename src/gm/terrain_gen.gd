@@ -187,6 +187,7 @@ static func generate(rng: RandomNumberGenerator, w: int, h: int, shape: GridLayo
 		g._area_edges()
 	g._lane_tags()
 	g._parked_vehicles(landscape, culture)
+	g._building_interiors()
 	g._materials(landscape, culture)
 	return g.map
 
@@ -372,6 +373,18 @@ func _town(hub: Dictionary, culture: String) -> void:
 		var dc := _cell(d.x, d.y)
 		if map.has_cell(dc) and not map.column(dc).has_tag("building"):
 			map.column(dc).tags.append_array(["door", "door_" + door_ids[i]])
+		# The building's mech parking spot: the next open space out from the door, away from
+		# the building (where the squad left its mechs when they walked in).
+		var out := Vector2(d.x - cc, d.y - cr)
+		var step := Vector2i(signi(int(round(out.x))) if absf(out.x) >= absf(out.y) else 0, signi(int(round(out.y))) if absf(out.y) > absf(out.x) else 0)
+		for k in range(1, 4):
+			var q := d - step * k  # toward the square: the door faces it
+			if q.x < 0 or q.y < 0 or q.x >= w or q.y >= h:
+				break
+			var qc := _cell(q.x, q.y)
+			if map.has_cell(qc) and not map.column(qc).has_tag("building") and not map.column(qc).has_tag("door") and map.ground_height(qc) == 0:
+				map.column(qc).tags.append_array(["mech_parking", "parking_" + door_ids[i]])
+				break
 
 
 var rng: RandomNumberGenerator
@@ -1682,6 +1695,62 @@ func _parked_vehicles(landscape: String, culture: String) -> void:
 				outer = int(p[1]) >= 2 and (int(p[0]) == 0 or int(p[0]) == int(p[1]) - 1)
 		if outer and rng.randf() < rate:
 			col.tags.append_array(["vehicle", Sight.TAG_SOFT_COVER, BattleMap.TAG_DESTRUCTIBLE])
+
+
+## Buildings have room inside for small units (soldier squads, pilots: rules' capacity rule)
+## and windows to shoot out of. Look tags the rules read; rules own the mechanics:
+## "interior" on every building cell, "storeys_N" (its height in levels), "window_<i>" for each
+## open face (i = the face's index in GridLayout.neighbors order, so it works on hex and square),
+## and on one cell of each building facing a street or lot "entrance" + "door_face_<i>".
+func _building_interiors() -> void:
+	var seen := {}
+	for cell in cells:
+		if seen.has(cell) or not _is_house(cell):
+			continue
+		# One building: the connected cells of the same height.
+		var part: Array[Vector2i] = []
+		var stack: Array[Vector2i] = [cell]
+		var level := map.ground_height(cell)
+		seen[cell] = true
+		while not stack.is_empty():
+			var c: Vector2i = stack.pop_back()
+			part.append(c)
+			for n in map.grid.neighbors(c):
+				if map.has_cell(n) and not seen.has(n) and _is_house(n) and map.ground_height(n) == level:
+					seen[n] = true
+					stack.append(n)
+		var entrance := Vector2i(-1, -1)
+		var entrance_face := -1
+		for c in part:
+			var col := map.column(c)
+			col.tags.append_array(["interior", "storeys_%d" % maxi(1, col.ground)])
+			var ns := map.grid.neighbors(c)
+			for i in range(ns.size()):
+				var n: Vector2i = ns[i]
+				if map.has_cell(n) and _is_house(n):
+					continue
+				col.tags.append("window_%d" % i)
+				if entrance_face < 0 and map.has_cell(n) and (map.column(n).has_tag("road") or map.column(n).has_tag("lot") or map.column(n).has_tag("door")):
+					entrance = c
+					entrance_face = i
+		if entrance_face < 0:
+			# No street alongside: the first open face will do.
+			for c in part:
+				var ns := map.grid.neighbors(c)
+				for i in range(ns.size()):
+					if map.has_cell(ns[i]) and not _is_house(ns[i]) and map.ground_height(ns[i]) <= map.ground_height(c):
+						entrance = c
+						entrance_face = i
+						break
+				if entrance_face >= 0:
+					break
+		if entrance_face >= 0:
+			map.column(entrance).tags.append_array(["entrance", "door_face_%d" % entrance_face])
+
+
+func _is_house(cell: Vector2i) -> bool:
+	var col := map.column(cell)
+	return col.has_tag("building") or col.has_tag("house") or col.has_tag("keep")
 
 
 ## Towns that get a railway past them.

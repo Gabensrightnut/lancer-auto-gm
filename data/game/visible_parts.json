@@ -1,0 +1,75 @@
+{
+  "_doc": [
+    "What visibly leaves, rests on the board or changes on a mech, keyed so new content plugs in.",
+    "Read by src/render/mechs/visible_parts.gd. Everything shown is driven by GameState and engine",
+    "events (deployed, recalled, destroyed, equipment_destroyed, heat_changed); this table only says",
+    "what it LOOKS like and where on the body it comes from. Nothing here changes a rule.",
+    "types: the default look for a deployable by its lancer-data type.",
+    "deployables: by deployable name (the deployed unit's public name). look = a DeployableBuilder",
+    "  look; dock = the slot it rides on while it is part of the mech (back_r/back_l/shoulder_r/",
+    "  shoulder_l/torso, or weapon:<id> when the weapon itself is what deploys); launch = fly (it flies",
+    "  out under its own power) or throw (lobbed in an arc); color = primary/secondary/trim/glow or hex.",
+    "frames: first_person = cockpit (default) or body (no cockpit: you see your own remaining body).",
+    "weapons_by_tag: what a weapon tag does to the weapon on the body.",
+    "equipment: what a destroyed mount/system looks like."
+  ],
+  "types": {
+    "Drone": {"look": "drone", "launch": "fly"},
+    "Mine": {"look": "mine", "launch": "throw"},
+    "Deployable": {"look": "block", "launch": "throw"},
+    "Rocket": {"look": "rocket", "launch": "throw"},
+    "Bomb": {"look": "bomb", "launch": "throw"},
+    "Object": {"look": "pylon", "launch": "throw"},
+    "Decoy": {"look": "decoy", "launch": "fly"}
+  },
+  "deployables": {
+    "Guardian OROCHI Drone": {"look": "orochi", "variant": "guardian", "dock": "shoulder_l", "color": "primary", "source": "frames: Hydra (OROCHI drones; recall integrates the drone into your mech's body)"},
+    "Snare OROCHI Drone": {"look": "orochi", "variant": "snare", "dock": "back_l", "color": "primary", "source": "frames: Hydra"},
+    "Shredder OROCHI Drone": {"look": "orochi", "variant": "shredder", "dock": "shoulder_r", "color": "primary", "source": "frames: Hydra"},
+    "Hunter OROCHI Drone": {"look": "orochi", "variant": "hunter", "dock": "back_r", "color": "primary", "source": "frames: Hydra"},
+    "Turret Drone": {"look": "turret_drone", "dock": "back_r"},
+    "Restock Drone": {"look": "drone", "variant": "crate", "dock": "back_l"},
+    "ICEOUT Drone": {"look": "drone", "variant": "eye", "dock": "back_l", "color": "#5fd0ff"},
+    "Lotus Projector": {"look": "projector", "dock": "back_r", "color": "#7fe0ff"},
+    "Hive Drone": {"look": "drone", "variant": "swarm", "dock": "back_l", "color": "#e0b040"},
+    "Sentinel Drone": {"look": "turret_drone", "dock": "back_l"},
+    "Tempest Drone": {"look": "drone", "variant": "coil", "dock": "back_r", "color": "#8fb8ff"},
+    "Assassin Drone": {"look": "drone", "variant": "blade", "dock": "back_r", "color": "#ff5a4a"},
+    "Autoloader Drone": {"look": "drone", "variant": "crate", "dock": "back_l"},
+    "Ghast Drone": {"look": "drone", "variant": "nexus", "dock": "weapon:mw_ghast_nexus", "color": "#b07dff"},
+    "Smoke Mine": {"look": "mine", "color": "#c8c8c8"},
+    "Explosive Mine": {"look": "mine", "color": "#ff7a30"},
+    "Breaching Charge": {"look": "mine", "variant": "charge", "color": "#ff7a30"},
+    "Flash Mine": {"look": "mine", "color": "#fff4b0"},
+    "Mesmer Mine": {"look": "mine", "color": "#c070ff"},
+    "Bouncing Mine": {"look": "mine", "variant": "spring", "color": "#ff9a40"},
+    "HAVOK Mine": {"look": "mine", "color": "#ff4040"},
+    "Grounding Mine": {"look": "mine", "color": "#60c0ff"},
+    "Thermite Charge": {"look": "mine", "variant": "charge", "color": "#ffb030"},
+    "Jericho Deployable Cover": {"look": "cover"},
+    "Fortress cover": {"look": "cover", "variant": "heavy"},
+    "Aegis Shield Generator": {"look": "shield_generator", "color": "#60b8ff"},
+    "Portable Bunker": {"look": "bunker"},
+    "Webjaw Snare": {"look": "snare"},
+    "Caltrop Field": {"look": "caltrops"},
+    "Perimeter Command Plate": {"look": "plate", "color": "#60ff9a"},
+    "Javelin Rocket": {"look": "rocket"},
+    "Clamp Bombs": {"look": "bomb"},
+    "Stasis Barrier": {"look": "barrier", "color": "#9fe8ff"},
+    "Construct Other: Ideal Image": {"look": "pylon", "color": "#ffd070"},
+    "Construct Other: False Idol": {"look": "decoy", "color": "#ffd070"},
+    "Dimensional Emblems": {"look": "pylon", "variant": "emblem", "color": "#ffd070"}
+  },
+  "frames": {
+    "mf_hydra": {"first_person": "body", "note": "The OROCHI drones are part of the Hydra's body: deployed drones leave visible gaps, and in first person you see what is left of you."},
+    "mf_lancaster": {"attach": {"name": "Latch Drone", "look": "drone", "variant": "crate", "dock": "back_l", "counter": "latched_to"}, "note": "Core system Latch Drone clamps onto an allied mech for the scene (frames: Lancaster). Shown on the ally named by counters.latched_to once the engine records it; until then nothing is shown."},
+    "mf_balor": {"core_active": "swarm", "note": "Core power Hellswarm: a cloak of nanite drones around the Balor while counters.core_active is set (frames: Balor)."}
+  },
+  "weapons_by_tag": {
+    "tg_thrown": {"note": "Thrown X (tags: Thrown): the weapon comes to rest next to its target and must be retrieved. Shown from state when the engine tracks it: counters.weapons[key].thrown_at = [x, y, level] hides it on the body and lays it on the board; events weapon_thrown / weapon_retrieved / weapon_returned fly it."}
+  },
+  "equipment": {
+    "weapon_destroyed": "breaks_off",
+    "system_destroyed": "sparks"
+  }
+}

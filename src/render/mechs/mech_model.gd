@@ -61,7 +61,8 @@ func steps_per_cell() -> int:
 
 func _process(delta: float) -> void:
 	for s: Dictionary in spinners:
-		(s["node"] as Node3D).rotate(s["axis"], s["speed"] * delta)
+		if is_instance_valid(s["node"]):
+			(s["node"] as Node3D).rotate(s["axis"], s["speed"] * delta)
 	if walk_amount > 0.001 or airborne or gait == "hover":
 		_idle_t += delta
 		_apply_walk()
@@ -82,7 +83,10 @@ func collect_meshes() -> void:
 func _collect(n: Node) -> void:
 	for c in n.get_children():
 		if c is GeometryInstance3D:
-			meshes.append(c)
+			# Glows and holograms (fx/overlay materials) have no heat/flash/lift parameters.
+			var ov: Material = (c as GeometryInstance3D).material_override
+			if ov == null or (ov is ShaderMaterial and (ov as ShaderMaterial).shader == MeshKit.MECH_SHADER):
+				meshes.append(c)
 		_collect(c)
 
 
@@ -174,3 +178,64 @@ func aim_arm(side: String, target: Vector3, on: bool = true) -> void:
 	var pitch := rad_to_deg(atan2(local.y, Vector2(local.x, local.z).length()))
 	shoulder.rotation_degrees = Vector3(90.0 + pitch, 0, 0)
 	elbow.rotation_degrees = Vector3.ZERO
+
+
+# --- Parts that leave the body (data/game/visible_parts.json) -------------------------------
+
+## Docked deployables: deployable name -> the part on the body (a drone riding a shoulder,
+## an OROCHI drone that is part of the Hydra, a weapon that deploys itself).
+var docks: Dictionary = {}
+## Weapon ids currently off the body (destroyed, or thrown and lying on the board).
+var weapons_gone: Dictionary = {}
+var _docks_out: Dictionary = {}
+
+
+## Shows each docked part only while it's on the body: `out` is {deployable name: how many
+## are out on the board (or destroyed there)}, from GameState.
+func set_docks_out(out: Dictionary) -> void:
+	_docks_out = out.duplicate()
+	for n: String in docks:
+		var d: Node3D = docks[n]
+		if is_instance_valid(d):
+			d.visible = int(out.get(n, 0)) <= 0 and not weapons_gone.has(String(d.get_meta("weapon_id", "")))
+
+
+## Where a docked part sits now (world space), or the body center if it has none.
+func dock_position(deployable_name: String) -> Vector3:
+	var d: Node3D = docks.get(deployable_name)
+	if d and is_instance_valid(d):
+		return d.global_position
+	return global_position + Vector3.UP * height * 0.6
+
+
+## Hides weapons that are off the body (destroyed or thrown) and shows the rest.
+func set_weapons_gone(ids: Array) -> void:
+	weapons_gone.clear()
+	for id: String in ids:
+		weapons_gone[id] = true
+	for id: String in weapons:
+		var w: Node3D = weapons[id]
+		if is_instance_valid(w) and not w.has_meta("dock"):
+			w.visible = not weapons_gone.has(id)
+	set_docks_out(_docks_out)
+
+
+## Kneeling for a pilot to climb in or out (0 standing .. 1 down on its knees): hips flex
+## forward, knees bend, the body lowers. Legged gaits only bend their legs; hover and
+## tracked frames just settle lower.
+func set_kneel(k: float) -> void:
+	k = clampf(k, 0.0, 1.0)
+	set_meta("kneel", k)
+	if pelvis:
+		var rest_y: float = pelvis.get_meta("rest_y", pelvis.position.y)
+		if not pelvis.has_meta("rest_y"):
+			pelvis.set_meta("rest_y", rest_y)
+		pelvis.position.y = rest_y * (1.0 - 0.28 * k)
+	if gait in ["hover", "tracked", "winged"]:
+		return
+	for leg: Dictionary in legs:
+		var base: Vector3 = leg["base"]
+		var bend := 1.0 if base.y <= 0.0 else -1.0
+		(leg["hip"] as Node3D).rotation_degrees.x = base.x + 45.0 * k
+		(leg["knee"] as Node3D).rotation_degrees.x = base.y - 85.0 * k * bend
+		(leg["ankle"] as Node3D).rotation_degrees.x = base.z + 40.0 * k * bend

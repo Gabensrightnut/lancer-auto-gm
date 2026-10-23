@@ -927,6 +927,36 @@ func screenshot_stage(tag: String) -> void:
 			player.play(ev["destroy"])
 			# The fireball at its peak, or the burning wreck once it settles.
 			await Fx.wait(self, 0.35 if tag == "destroy" else 2.6)
+		"squads":
+			# A Union squad fires a volley at a pirate squad down to 4 HP (four men standing).
+			var e0: MechView = view.units["everest"]
+			var a := view.map.grid.from_world(e0.global_position + Vector3(1.6, 0, -0.6))
+			var b := view.map.grid.from_world(e0.global_position + Vector3(1.6, 0, -3.4))
+			var us := view.add_unit({"id": "sq_a", "name": "Union Squad", "kind": "squad", "side": "players", "faction": "union", "cell": [a.x, a.y], "level": view.map.ground_height(a), "hp": 10, "max_hp": 10, "size": 1})
+			var them := view.add_unit({"id": "sq_b", "name": "Pirate Squad", "kind": "squad", "side": "enemies", "faction": "pirate", "cell": [b.x, b.y], "level": view.map.ground_height(b), "hp": 4, "max_hp": 10, "size": 1})
+			us.face(them.global_position)
+			them.face(us.global_position)
+			view.tactical.look_at_point((us.global_position + them.global_position) * 0.5 + Vector3.UP * 0.2, 3.6)
+			view.tactical.pitch = -32.0
+			view.tactical.snap()
+			await Fx.wait(self, 1.2)
+			(us.model as SquadModel).volley(view.fx_root, them.body_center())
+			await Fx.wait(self, 0.22)
+		"drones":
+			# A Hydra launches its Snare OROCHI drone: it lifts off the body and the gap stays.
+			var ev_mv: MechView = view.units["everest"]
+			var hy := UnitFactory.build_mech(content, "hydra", "mf_hydra", {"mounts": [], "systems": [], "orochi": "Snare OROCHI Drone"})
+			hy.side = "players"
+			hy.cell = view.map.grid.from_world(ev_mv.global_position + Vector3(2.2, 0, 0))
+			hy.level = view.map.ground_height(hy.cell)
+			var hmv := view.add_unit(hy.to_dict())
+			hmv.face(hmv.global_position + Vector3(0, 0, -6))
+			player.local_units.append("hydra")
+			var to := view.map.grid.from_world(hmv.global_position + Vector3(1.2, 0, -2.0))
+			view.tactical.look_at_point(hmv.global_position + Vector3(0.5, 0.4, -0.9), 4.5)
+			view.tactical.snap()
+			await player.play([{"type": "deployed", "unit": "hydra", "object": {"id": "hydra_dep1", "kind": "drone", "name": "Snare OROCHI Drone", "cells": [[to.x, to.y, view.map.ground_height(to)]], "hp": 5}}])
+			await Fx.wait(self, 0.5)
 		"firetest":
 			var at: Vector3 = view.units["goblin"].global_position + Vector3(1.5, 0, 0)
 			view.units["goblin"].visible = false

@@ -537,4 +537,5 @@ def main():
     print("EXPORTED", out, "faces:", tris, "keys:", [k.name for k in body.data.shape_keys.key_blocks][:30])
 
 
-main()
+if __name__ == "__main__":
+    main()
