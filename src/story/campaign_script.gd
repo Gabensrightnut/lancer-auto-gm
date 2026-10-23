@@ -137,7 +137,7 @@ static func populate(story: StoryState, campaign: Campaign) -> void:
 		story.hub["room_names"] = (wdef["room_names"] as Dictionary).duplicate(true)
 	# Who keeps order here (Soldiers): the world's own garrison.
 	if wdef.has("garrison") and not story.hub.get("garrison_def") is Dictionary:
-		Soldiers.restyle(story, wdef["garrison"])
+		Garrisons.restyle(story, wdef["garrison"])
 	# What's inside its buildings (HubInterior): a ship's deck, a sleeper vault.
 	if wdef.has("interiors"):
 		story.hub["interiors"] = (wdef["interiors"] as Dictionary).duplicate(true)
@@ -288,7 +288,7 @@ static func build_hook(story: StoryState, campaign: Campaign, cid: String) -> Di
 	if hs.has("soldiers"):
 		# Soldier squads the story puts in this fight (Soldiers: a boarding party, marines).
 		hook["soldiers"] = (hs["soldiers"] as Dictionary).duplicate()
-		hook["soldiers"]["template"] = str(Soldiers.data().get("unit_template", ""))
+		hook["soldiers"]["template"] = str(Garrisons.data().get("unit_template", ""))
 	if hs.has("loot"):
 		hook["loot"] = {"name": fill(story, campaign, str(hs["loot"].get("name", "")), ch), "value": int(hs["loot"].get("value", 200)), "reserve": str(hs["loot"].get("reserve", "reserve_supplies"))}
 	hook["chapter"] = cid

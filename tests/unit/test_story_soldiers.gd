@@ -8,7 +8,7 @@ const DR := preload("res://tests/unit/test_story_dead_reckoning.gd")
 
 
 func _soldiers(s: StoryState) -> Array:
-	return (s.hub["npcs"] as Array).filter(func(id: String) -> bool: return str(s.npcs[id].get("role", "")) == Soldiers.ROLE)
+	return (s.hub["npcs"] as Array).filter(func(id: String) -> bool: return str(s.npcs[id].get("role", "")) == Garrisons.ROLE)
 
 
 func _by_duty(s: StoryState, duty: String) -> String:
@@ -24,7 +24,7 @@ func test_every_hub_has_a_garrison_on_its_rounds() -> void:
 	var c: Campaign = t["campaign"]
 	var e: StoryEngine = t["engine"]
 	expect(_soldiers(s).size() >= 3, "guards, a night watch and a patrol")
-	expect(str(Soldiers.garrison(s).get("faction", "")) != "")
+	expect(str(Garrisons.garrison(s).get("faction", "")) != "")
 	var guard := _by_duty(s, "guard")
 	var watch := _by_duty(s, "watch")
 	var patrol := _by_duty(s, "patrol")
@@ -57,7 +57,7 @@ func test_a_soldier_who_sees_it_raises_the_alarm() -> void:
 	var ev := TownLife._seen(s, c, t["a"], "market", "floor", false, "", 10)
 	expect(ev.any(func(x: Dictionary) -> bool: return x["type"] == "alarm"), "the patrol saw it: the alarm goes up")
 	e._combat_from_scene(s, c, {"hook": "standoff", "on_foot": true, "in_town": true, "crime": true})
-	expect_eq(str(s.current_hook.get("soldiers", {}).get("faction", "")), str(Soldiers.garrison(s)["faction"]), "the garrison turns out")
+	expect_eq(str(s.current_hook.get("soldiers", {}).get("faction", "")), str(Garrisons.garrison(s)["faction"]), "the garrison turns out")
 
 
 func test_the_campaigns_have_their_own_forces() -> void:
