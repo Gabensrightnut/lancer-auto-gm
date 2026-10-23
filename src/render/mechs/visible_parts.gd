@@ -85,23 +85,43 @@ static func out_counts(units: Dictionary, owner_id: String) -> Dictionary:
 	var out := {}
 	for id: String in units:
 		var u: Dictionary = units[id]
-		if String(u.get("kind", "")) != "deployable":
+		if not is_deployable(u):
 			continue
-		if String((u.get("counters", {}) as Dictionary).get("owner", u.get("owner", ""))) != owner_id:
+		if owner_of(u) != owner_id:
 			continue
 		var n := String(u.get("name", ""))
 		out[n] = int(out.get(n, 0)) + 1
 	return out
 
 
-## Weapon ids on a unit that are destroyed (counters.weapons[key].destroyed), so the board
-## drops them from the body.
+## Drones and deployables are units of kind "deployable" or "drone" (the net view contract).
+static func is_deployable(u: Dictionary) -> bool:
+	return String(u.get("kind", "")) in ["deployable", "drone"]
+
+
+## Owners seen launching a deployable ("deployed" events reach every seat that sees it), for
+## enemies whose view has no counters: {deployable id: owner id}.
+static var known_owners: Dictionary = {}
+
+
+## Who a deployable came from: its counters (own side), an "owner" field, or the deploy event.
+static func owner_of(u: Dictionary) -> String:
+	var o := String((u.get("counters", {}) as Dictionary).get("owner", u.get("owner", "")))
+	return o if o != "" else String(known_owners.get(String(u.get("id", "")), ""))
+
+
+## Weapon ids on a unit that are off the body because they're destroyed: own side from
+## counters.weapons[key].destroyed, unscanned enemies from "mounts_lost" (mount indexes; network
+## numbers arrive as floats).
 static func destroyed_weapons(u: Dictionary) -> Array:
 	var states: Dictionary = (u.get("counters", {}) as Dictionary).get("weapons", {})
+	var lost := {}
+	for m: Variant in u.get("mounts_lost", []):
+		lost[int(m)] = true
 	var out: Array = []
 	for w: Dictionary in (u.get("loadout", {}) as Dictionary).get("weapons", []):
 		var st: Variant = states.get(String(w.get("key", "")))
-		if st is Dictionary and bool((st as Dictionary).get("destroyed", false)):
+		if (st is Dictionary and bool((st as Dictionary).get("destroyed", false))) or lost.has(int(w.get("mount", -1))):
 			out.append(String(w.get("id", "")))
 	return out
 

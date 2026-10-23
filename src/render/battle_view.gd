@@ -62,7 +62,7 @@ func load_view(view: Dictionary) -> void:
 	for pass_deployables: bool in [false, true]:  # owners first: deployables take their colors
 		for id: String in view.get("units", {}):
 			var u: Dictionary = view["units"][id]
-			if u.get("hidden", false) or (String(u.get("kind", "")) == "deployable") != pass_deployables:
+			if u.get("hidden", false) or VisibleParts.is_deployable(u) != pass_deployables:
 				continue  # Hidden enemies: only what the rules reveal (last known position later).
 			add_unit(u)
 	sync_parts(view.get("units", {}))
@@ -102,7 +102,7 @@ func sync_parts(view_units: Dictionary) -> void:
 	for id: String in units:
 		var mv: MechView = units[id]
 		var u: Dictionary = view_units.get(id, {})
-		for k: String in ["counters", "loadout"]:
+		for k: String in ["counters", "loadout", "mounts_lost"]:
 			if u.has(k):
 				mv.unit[k] = u[k]
 		if mv.model == null:
@@ -226,7 +226,7 @@ var _shell: Node3D
 
 ## "cockpit" or "body" for a unit's first-person view (pilots on foot see from their eyes).
 func first_person_style(mv: MechView) -> String:
-	if mv == null or mv.model == null or String(mv.unit.get("kind", "")) in ["pilot", "deployable"]:
+	if mv == null or mv.model == null or String(mv.unit.get("kind", "")) == "pilot" or VisibleParts.is_deployable(mv.unit):
 		return "eyes"
 	return VisibleParts.first_person(mv.model.frame_id)
 

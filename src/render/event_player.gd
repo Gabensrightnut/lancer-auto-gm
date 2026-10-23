@@ -872,6 +872,8 @@ func _launch(e: Dictionary, owner: MechView, obj: Dictionary, center: Vector3) -
 	var dname := String(obj.get("name", ""))
 	var s := VisibleParts.spec(dname, String(obj.get("kind", "")).capitalize())
 	var id := String(obj.get("id", ""))
+	if id != "" and String(e.get("unit", "")) != "":
+		VisibleParts.known_owners[id] = String(e.get("unit", ""))
 	var mine_owner := owner != null and String(e.get("unit", "")) in local_units
 	var hidden_kind := String(s["look"]) in ["mine", "snare"] and not mine_owner and owner != null
 	var palette := MechStyles.palette(owner.model.manufacturer) if owner and owner.model else {}
@@ -901,7 +903,7 @@ func _launch(e: Dictionary, owner: MechView, obj: Dictionary, center: Vector3) -
 	if mine_owner and not battle.units.has(id) and owner:
 		var c: Array = (obj.get("cells", []) as Array)[0] if not (obj.get("cells", []) as Array).is_empty() else [0, 0, 0]
 		battle.add_unit({"id": id, "name": dname, "kind": "deployable", "side": owner.unit.get("side", ""),
-			"cell": [c[0], c[1]], "level": int(c[2]) if c.size() > 2 else 0, "size": 0.5 if String(s["launch"]) == "fly" else 1,
+			"cell": [int(c[0]), int(c[1])], "level": int(c[2]) if c.size() > 2 else 0, "size": 0.5 if String(s["launch"]) == "fly" else 1,
 			"hp": obj.get("hp", 0), "max_hp": obj.get("hp", 0), "counters": {"owner": String(e.get("unit", "")), "deploy_type": String(obj.get("kind", "")).capitalize()}})
 	await Fx.wait(self, 0.3)
 

@@ -135,3 +135,14 @@ func test_balor_hellswarm_and_lancaster_latch_follow_the_state() -> void:
 	expect(not (lmv.model.docks["Latch Drone"] as Node3D).visible, "the latch drone left the Lancaster")
 	expect(bmv.get_node_or_null("Latched_la") != null, "and clamps onto its ally")
 	bv.free()
+
+
+func test_net_view_contract_drones_mounts_lost_and_float_numbers() -> void:
+	var enemy := {"id": "x", "kind": "mech", "mounts_lost": [1.0],
+		"loadout": {"weapons": [{"key": "w0", "id": "mw_assault_rifle", "mount": 0.0}, {"key": "w1", "id": "mw_heavy_machine_gun", "mount": 1.0}]}}
+	expect_eq(VisibleParts.destroyed_weapons(enemy), ["mw_heavy_machine_gun"], "a lost mount (sent as a float) drops its weapon")
+	var units := {"d1": {"id": "d1", "kind": "drone", "name": "Turret Drone"}, "d2": {"id": "d2", "kind": "deployable", "name": "Turret Drone", "counters": {"owner": "o"}}}
+	VisibleParts.known_owners["d1"] = "o"
+	expect(VisibleParts.is_deployable(units["d1"]), "kind drone counts as a deployable")
+	expect_eq(VisibleParts.out_counts(units, "o"), {"Turret Drone": 2}, "owners from counters and from the deploy event")
+	VisibleParts.known_owners.erase("d1")
