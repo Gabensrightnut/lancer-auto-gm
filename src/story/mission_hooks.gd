@@ -87,6 +87,8 @@ static func make(story: StoryState, campaign: Campaign, template_id: String, opt
 		hook["twist"] = twist
 	# Who leads the other side: an arc's commander, or one back for revenge (Rivals).
 	Rivals.attach(story, hook, rng, str(opts.get("commander", "")))
+	# Where it is, and how the squad gets there: walk, dropship, ship or a hired ride (Journeys).
+	Journeys.dress(story, campaign, hook)
 	return hook
 
 

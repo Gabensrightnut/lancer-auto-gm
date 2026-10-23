@@ -18,6 +18,9 @@ signal menu_requested
 ## fight with teams by vote ({id, sides: {option: [seats]}, fight, options}), then submit
 ## split_resolved {winner: option id}.
 signal arena_requested(split: Dictionary)
+## A mounted pilot walked out of town (the edge of the hub): the flow puts them on the world
+## map at the town's site (after squad_mounted).
+signal walked_out(seat: String)
 
 const WALK_SPEED := 4.2
 ## The world/maps session's culture kits for hub towns (buildings, props, plaza, sky). Used
@@ -66,6 +69,8 @@ var _inside: Dictionary = {}
 var _interior: Node3D
 var _iroom := ""
 var _mechs: Array = []  # parked mechs to aim at: [{pid, name, pos: Vector3}]
+var _gantry_at: Dictionary = {}  # pilot id -> where their mech parks (world position)
+var _walked_out := false
 var _inner_blockers: Array = []  # inside: furniture you walk around
 var _cursor_toggled := false  # show_cursor in toggle mode
 var _bay_armed := -100.0  # when the repair bay's "press E again" was shown (seconds)
@@ -105,6 +110,7 @@ func rebuild() -> void:
 	npc_nodes.clear()
 	_blockers.clear()
 	_mechs.clear()
+	_gantry_at.clear()
 	_buildings.clear()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([story.hub.get("seed", 0), "hub_props"])
@@ -288,6 +294,10 @@ func _landing(root: Node3D, w: float, d: float) -> void:
 		for sx: float in [-1.0, 1.0]:
 			MeshKit.part(root, MeshKit.chamfer_box(Vector3(0.35, 9.0, 0.35), 0.03), metal, Vector3(x + sx * 1.8, 4.5, -1.5))
 		MeshKit.part(root, MeshKit.chamfer_box(Vector3(4.0, 0.35, 0.6), 0.03), metal, Vector3(x, 8.8, -1.5))
+		if i < squad.size():
+			_gantry_at[str((squad[i]["pilot"] as Dictionary).get("id", ""))] = root.transform * Vector3(x, 0.2, -1.2)
+		if i < squad.size() and Journeys.mounted(story, str((squad[i]["pilot"] as Dictionary).get("id", ""))):
+			continue  # its pilot has climbed in and walked it off the gantry
 		if i < squad.size() and db != null:
 			var mech: Dictionary = squad[i]["mech"]
 			var frame := db.frame(str(mech.get("frame", Campaign.STARTER_FRAME)))
@@ -411,6 +421,11 @@ func _place_squad() -> void:
 		fig.position = Vector3(-1.5 + i * 1.4, 0, 5.5 + (i % 2) * 0.8)
 		_world.add_child(fig)
 		avatars[s] = fig
+		# Mounted up: they walk the town in their mech (Journeys).
+		if Journeys.mounted(story, pid):
+			fig.set_mech(_mech_model(p))
+			if _gantry_at.has(pid):
+				fig.position = _gantry_at[pid] + Vector3(0, 0, 3.0)
 		i += 1
 
 
@@ -425,6 +440,9 @@ func _physics_process(delta: float) -> void:
 	var first := fp != null and fp.enabled
 	_capture_mouse(first and not busy and not dialogue.visible and not _cursor_free())
 	var speed := ExploreInput.speed(not busy and InputMap.has_action("run") and Input.is_action_pressed("run"), fp != null and fp.sneaking)
+	var in_mech := Journeys.mounted(story, story.pilot_of_seat(local_seat))
+	if in_mech:
+		speed *= 2.2  # a mech's stride
 	if not busy:
 		var ax := ExploreInput.axes()
 		dir = ExploreInput.direction(_yaw, ax.y, ax.x)
@@ -467,6 +485,10 @@ func _move(fig: PilotFigure, step: Vector3) -> void:
 	p = _push_out(p)
 	if p.length() > HubLayout.BOUNDS:
 		p = p.normalized() * HubLayout.BOUNDS
+		# Walking out of town in your mech: the flow takes the squad onto the world map.
+		if fig == avatars.get(local_seat) and Journeys.mounted(story, story.pilot_of_seat(local_seat)) and not _walked_out:
+			_walked_out = true
+			walked_out.emit(local_seat)
 	fig.position = Vector3(p.x, 0, p.y)
 	fig.rotation.y = lerp_angle(fig.rotation.y, atan2(-step.x, -step.z), 0.25)
 
@@ -549,6 +571,7 @@ func _update_camera(delta: float) -> void:
 	# First person on foot (V): the camera in your pilot's eyes, crosshair and prompts.
 	var face_talk := dialogue != null and dialogue.visible and StorySettings.dialogue_view() == "first"
 	if fp != null and fp.enabled and me != null and not face_talk:
+		fp.cockpit = Journeys.mounted(story, story.pilot_of_seat(local_seat))
 		fp.place_camera(_cam, me, _yaw, delta)
 		_set_ceiling(true)
 		fp.pick(_cam, npc_nodes, story.hub.get("spots", []) if _inside.is_empty() else [], story, _aim_targets())
@@ -575,7 +598,7 @@ func _update_camera(delta: float) -> void:
 	if dialogue != null and dialogue.visible and npc_nodes.has(str(story.dialogue.get("ctx", {}).get("npc", ""))):
 		focus = focus.lerp((npc_nodes[str(story.dialogue["ctx"]["npc"])] as PilotFigure).position, 0.5)
 	var talking := dialogue != null and dialogue.visible
-	var dist := CAM_DIST * (0.55 if talking else 1.0)
+	var dist := CAM_DIST * (0.55 if talking else 1.0) * (1.8 if Journeys.mounted(story, story.pilot_of_seat(local_seat)) else 1.0)
 	var pitch := TALK_PITCH if talking else CAM_PITCH
 	if not _inside.is_empty():
 		# Inside: a closer camera, looking down through the roof (the ceiling is hidden).
@@ -615,8 +638,17 @@ func _fade_occluders(focus: Vector3) -> void:
 func _fp_use(rough: bool) -> void:
 	var pid := story.pilot_of_seat(local_seat)
 	var t := fp.target
-	if str(t.get("kind", "")) in ["mech", "bay"]:
+	if str(t.get("kind", "")) == "mech":
+		if rough:
+			_bay_use()
+		else:
+			_climb(str(t["id"]), true)
+		return
+	if str(t.get("kind", "")) == "bay":
 		_bay_use()
+		return
+	if t.is_empty() and Journeys.mounted(story, pid) and not rough:
+		_climb(pid, false)
 		return
 	if not _inside.is_empty() and t.get("kind", "") != "npc":
 		if str(t.get("kind", "")) in ["item", "exit", "idoor"]:
@@ -1042,10 +1074,19 @@ func _use_nearby(rough: bool) -> void:
 	var me: PilotFigure = avatars.get(local_seat)
 	if me == null:
 		return
+	# In your mech: E climbs out (anywhere in town is safe).
+	if Journeys.mounted(story, story.pilot_of_seat(local_seat)):
+		if not rough:
+			_climb(story.pilot_of_seat(local_seat), false)
+		return
+	# At the gantries: E climbs into your mech, R is the repair bay.
 	for m: Dictionary in _mechs:
 		var root: Node3D = m["root"]
 		if is_instance_valid(root) and Vector2(root.position.x, root.position.z).distance_to(Vector2(me.position.x, me.position.z)) < 6.0:
-			_bay_use()
+			if rough:
+				_bay_use()
+			else:
+				_climb(story.pilot_of_seat(local_seat), true)
 			return
 	for spot: Dictionary in story.hub.get("spots", []):
 		if str(spot["kind"]) in ["plaza", "landing"]:
@@ -1155,6 +1196,49 @@ func _aim_targets() -> Array:
 		if is_instance_valid(root):
 			out.append({"kind": "mech", "id": m["pid"], "name": m["name"], "pos": root.transform * (m["local"] as Vector3), "reach": 3.0})
 	return out
+
+
+## Climbs into your mech at the gantry (or back out): a moment's climb, then you walk the
+## town in it, first person from the cockpit (Journeys.mount_up / dismount).
+func _climb(pid: String, up: bool) -> void:
+	if up and pid != story.pilot_of_seat(local_seat):
+		hud.toast("That's %s's mech." % campaign.pilots.get(pid, {}).get("callsign", "someone else"), StoryStyle.DIM)
+		return
+	var r := engine.submit(story, campaign, {"type": "mount_up" if up else "dismount", "seat": local_seat, "params": {"pilot": story.pilot_of_seat(local_seat)}})
+	if not r["ok"]:
+		hud.toast(str(r["reason"]), StoryStyle.RED)
+		return
+	if fp != null:
+		fp.used()
+	var me: PilotFigure = avatars.get(local_seat)
+	var where := me.position if me != null else Vector3.ZERO
+	_handle(r["events"])
+	for e: Dictionary in r["events"]:
+		if str(e.get("type", "")) == "squad_mounted":
+			hud.toast(str(e["text"]), StoryStyle.GOLD)
+	rebuild()
+	me = avatars.get(local_seat)
+	if me != null and not up:
+		me.position = Vector3(where.x, 0, where.z)
+	if fp != null:
+		fp.cockpit = Journeys.mounted(story, story.pilot_of_seat(local_seat))
+
+
+## A squad mech's model, as it stands on the gantry.
+func _mech_model(p: Dictionary) -> Node3D:
+	if db == null:
+		return null
+	var mech: Dictionary = {}
+	for m: Dictionary in p.get("mechs", []):
+		if m.get("id", "") == p.get("active_mech", "") or mech.is_empty():
+			mech = m
+	var frame := db.frame(str(mech.get("frame", Campaign.STARTER_FRAME)))
+	if frame.is_empty():
+		return null
+	var model := MechBuilder.build(frame, mech.get("loadout", {}), db)
+	model.scale = Vector3.ONE * 4.2
+	model.rotation.y = PI
+	return model
 
 
 ## Inside: rooms where mechs are worked on (a hangar, engineering, a printer floor) have a bay.

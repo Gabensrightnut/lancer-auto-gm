@@ -31,6 +31,9 @@ extends RefCounted
 ##   store_template {pilot, kind} / wake_clone {pilot} / add_second_pilot {seat, name, callsign, relation}
 ##   set_active_pilot {seat, pilot}                     death, cloning and a second pilot (Cloning)
 ##   ship_work {job, pilot}                              a shift's work aboard the squad's ship (ShipLife)
+##   mount_up {pilot} / dismount {pilot} / travel_time {hours, group}   getting out of town (Journeys)
+##   eat / pack_ration / unpack_ration / sell_item / fund_deposit / set_auto_eat / set_pay_split
+##   trade_offer {from, to, give, get} / trade_answer {trade, accept} / trade_cancel {trade}   (Inventory, Survival)
 ##   full_repair {}                                      10 hours at a repair bay somewhere secure (RepairBay, Core p.82)
 ##   buy_upgrade {slot}                                   the squad's own ship (house rule; Plunder)
 ##   decide {option} (or {accept}) / split_start {} / split_resolved {winner: option}   squad votes and arena splits (Decisions)
@@ -269,6 +272,19 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 		"split_start":
 			if seat != "gm" or not Decisions.current(story).has("split"):
 				return _no("There's no split to settle.")
+		"travel_time":
+			if seat != "gm":
+				return _no("The host passes travel time on.")
+			var why_tt := Journeys.travel_refusal(story, float(p.get("hours", 0.0)))
+			if why_tt != "":
+				return _no(why_tt)
+		"mount_up", "dismount":
+			var mp := str(p.get("pilot", me))
+			if seat != "gm" and not _looks_after(story, seat, mp):
+				return _no("Pick one of your pilots.")
+			var why_m := Journeys.mount_refusal(story, campaign, mp, type == "mount_up")
+			if why_m != "":
+				return _no(why_m, Journeys.REF)
 		"ship_work":
 			var wpid := str(p.get("pilot", me))
 			if seat != "gm" and not _controls(story, seat, wpid):
@@ -487,8 +503,10 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 					"vars": StoryText.briefing_vars(story, campaign)}))
 			return events
 		"confirm_reserves":
+			# A ride out to a job beyond walking distance: the hours pass on the way (Journeys).
+			var ride := Journeys.ride(story, campaign, story.current_hook)
 			story.phase = "mission"
-			return [{"type": "boots_on_the_ground", "hook": story.current_hook.duplicate(true), "reserves": story.reserves.duplicate(true),
+			return ride + [{"type": "boots_on_the_ground", "hook": story.current_hook.duplicate(true), "reserves": story.reserves.duplicate(true),
 				"rule_ref": "Core p.44: stage four, boots on the ground"}]
 		"mission_finished":
 			return _finish_mission(story, campaign, p)
@@ -556,6 +574,10 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 			return Decisions.vote(story, campaign, seat, str(p["option"]) if p.has("option") else bool(p.get("accept", true)))
 		"split_start":
 			return Decisions.start_split(story)
+		"travel_time":
+			return Journeys.travel_time(story, campaign, float(p["hours"]), p.get("group", []))
+		"mount_up", "dismount":
+			return Journeys.mount(story, campaign, str(p.get("pilot", me)), str(action["type"]) == "mount_up")
 		"ship_work":
 			return ShipLife.work(story, campaign, str(p["job"]), str(p.get("pilot", me)))
 		"buy_upgrade":
@@ -673,6 +695,8 @@ func _finish_mission(story: StoryState, campaign: Campaign, p: Dictionary) -> Ar
 	var ctx := {"hook": hook, "npc": str(hook.get("patron_id", ""))}
 	var events: Array = [{"type": "debrief", "mission": story.mission_number, "outcome": outcome, "reason": str(p.get("reason", "")),
 		"hook": hook.duplicate(true), "rule_ref": "Core p.44: stage five, ending a mission and debrief"}]
+	# Back from the job: on foot again in town (Journeys).
+	Journeys.all_dismount(story)
 	events.append_array(StoryEffects.apply_all(hook.get("success" if won else "failure", []), story, campaign, ctx))
 	for pid: Variant in p.get("dead", []):
 		if campaign.pilots.has(str(pid)) and story.is_alive(str(pid)):

@@ -19,6 +19,9 @@ book in a way that changes the setting; parked.
 | New pilots start at LL0 with the Everest and GMS gear | Canon | Core p.31 |
 | Mechs are 3D-printed; printers ubiquitous on most occupied worlds | Canon | Core p.31, p.82 |
 | Full Repair: 10 hours in a secure location; prints a licensed mech | Canon | Core p.82 |
+| Climbing into your mech at the gantry and walking out of town in it; climbing out only somewhere safe | Consistent | Mounting and dismounting are pilot actions (Core p.30-31); out of combat they're narrative |
+| Jobs at real places: walk if it's close, otherwise a dropship (a patron's or chartered), a ship (space) or a hired vehicle, the hours passing on the clock | Consistent | Mechs are carried and deployed where they're needed (Core p.30-31, p.82; the Orbital Drop reserve, p.48); travel is narrative (p.42) |
+| Worlds at war (noble feuds, insurgencies, claim wars, raiders against shipping) have ambushes on their roads | Consistent | Conflicts outside the Core (Core p.10-11); the GM sets the opposition (p.42) |
 | Mech damage (HP, structure, stress, Repairs, CORE power, Limited charges, destroyed gear, a wrecked mech) lasts from one mission to the next until a Full Repair | Canon | Damage persists until repaired; Full Repair restores it all and reprints (Core p.82) |
 | A repair bay in every hub (the mech gantries, a ship's hangar or engineering) where the squad does the Full Repair | Consistent | Printers and repair facilities on occupied worlds (Core p.31, p.82); hubs are secure locations |
 | What a Full Repair costs: the 10 hours pass on the clock (people's days move on), rations get eaten (food-and-water house rule), and the enemy regroups (one more at the next fight); not with the alarm up or enemies about; between fights in a mission only a Rest | Consistent (canon costs; the regroup is GM pacing) | 10 hours, secure location (Core p.82); the GM moves the world on and sets the opposition (Core p.42) |

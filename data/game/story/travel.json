@@ -1,0 +1,12 @@
+{
+  "_note": "Our own data. Getting to a job (DESIGN.md 'Exploring vs. fighting'): jobs are at real places on the region map; close ones you walk to (in your mechs), farther ones need a ride: a dropship (a patron's, or chartered), a ship for anything in space, or a hired vehicle (a crawler, a train, a flatbed). Mechs are carried by dropships and haulers in the setting (Core p.30-31, p.82: printed and deployed where needed; the Orbital Drop reserve, Core p.48). Which hub conflicts mean open war (ambushes on the roads) and the hours each ride takes.",
+  "near_chance": 70,
+  "modes": {
+    "walk": {"name": "on foot, in your mechs", "hours": 0, "text": "It's close: walk out of town in your mechs."},
+    "vehicle": {"name": "a hired vehicle", "hours": 6, "text": "Too far to walk: a hired crawler carries the squad and its mechs."},
+    "dropship": {"name": "a dropship", "hours": 3, "text": "A dropship takes the squad and its mechs out to the site."},
+    "ship": {"name": "a ship", "hours": 10, "text": "It's out in space: a ship carries the squad there."}
+  },
+  "dropship_patrons": ["company", "union", "officer", "noble"],
+  "war_conflicts": ["noble_feud", "insurgency", "claim_war", "raiders_vs_shipping"]
+}
