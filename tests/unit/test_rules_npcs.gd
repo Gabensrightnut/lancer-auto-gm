@@ -36,8 +36,8 @@ func _db(with_pack: bool) -> ContentDB:
 
 func test_placeholder_pack_until_a_real_one_is_loaded() -> void:
 	var db := _db(false)
-	expect(NPCBuilder.source(db)["placeholder"])
 	var n := UnitFactory.build_npc_class(db, "e1", "npcc_ph_grunt", 2)
+	expect(n.loadout["placeholder"], "built from our placeholders (the local official pack, if any, has no Grunt class)")
 	expect_eq(n.max_hp, 8)
 	var w: Dictionary = n.loadout["weapons"][0]
 	expect_eq(w["damage"][0]["val"], "1d6+1", "tier 2 damage")

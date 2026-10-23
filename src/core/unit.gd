@@ -84,6 +84,12 @@ func on_foot() -> bool:
 	return kind == KIND_PILOT or bool(loadout.get("on_foot", false))
 
 
+## Biological (Core p.282 NPC types, p.74 unmounted characters): no Heat Cap, immune to tech
+## actions other than Scan and Lock On, and (NPCs) can't take tech actions.
+func biological() -> bool:
+	return on_foot() or bool(loadout.get("biological", false))
+
+
 func to_dict() -> Dictionary:
 	return {
 		"id": id, "name": name, "kind": kind, "side": side, "controller": controller,
@@ -107,7 +113,10 @@ func _soldier_fields() -> Dictionary:
 	if not loadout.has("soldier"):
 		return {}
 	var out := {"soldier": String(loadout["soldier"])}
-	var men := int(loadout.get("squad_men", 0))
+	var men := int(loadout.get("squad_men", 0))  # a set member count (older saves, tests)
+	for e: Dictionary in loadout.get("effects", []):
+		if e.get("kind", "") == "squad_members":
+			men = int(e.get("members", 10))
 	if men > 0:
 		out["men_left"] = 0 if hp <= 0 or destroyed else ceili(float(hp) / maxf(1.0, max_hp) * men)
 	return out

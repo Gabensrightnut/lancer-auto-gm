@@ -576,23 +576,24 @@ differently without an AI. Each game has a **seed**: share it to replay the same
 
 ### Soldiers
 
-Soldiers are people fighting on foot on the mech battlefield: a **squad** (ten people sharing
-one pool of 10 HP in one space; how many are still standing shows on the model) or a single
-**soldier**. They follow the book's rules for anyone out of a mech (Core p.74): they add Grit to
-attacks and saves, can't be hacked (only Lock On and Scan work on them), take heat as energy
-damage, attack with Fight using pilot weapons, and mechs walk straight through them without
-being Engaged. Mech weapons hit them hard; their rifles barely scratch a mech, but a missile
-team's launcher can.
+Soldiers are the book's special NPC classes for people fighting without mechs (Core p.322-323):
+a **Squad** (ten soldiers acting as one Size 4 character; how many are still standing shows on
+the model) or a single **Human**. Both are Biological: no Heat Cap, and only Scan and Lock On
+work on them. A squad spreads out: others walk through it, it can stand among cover and other
+characters, it always counts as in soft cover but never hard cover, single shots barely hurt it
+(Resistance unless it's an area attack), and its rifles fire twice until it has lost half its
+people. A single Human is a person on foot: mechs walk through them, they don't Engage mechs,
+and they attack with Fight. Kinds are book builds: rifle squad, missile team (anti-armor), guard
+squad (Armored, Duck and Cover), spotter team (Ambushers), drop squad (Rapid Insertion), and
+single soldiers and veterans.
 
-Nobody gives soldiers orders, on either side. Each acts on its own AI, by what kind of squad it
-is (the book's NPC roles: a missile team fires from far back, medics stay hidden and patch up
-people on foot, a guard squad holds what it guards) and by the mission's objective: in a
-Holdout, guards stay on the zone instead of chasing kills. On your side you still choose when
-an allied squad takes its turn (Core p.60), and the combat log says in plain words what it's
-doing and why ("Guard Squad: moves into cover, fires its rifles at the Goblin (holding the
-zone)"). Weights are a table in `data/game/gm/objective_priorities.json`; kinds and their
-placeholder numbers in `data/game/soldiers.json`. A new player meets them as town guards and
-patrols, as garrisons in enemy bases, and as allied troops on missions that have them.
+Nobody gives soldiers orders, on either side. Each acts on its own AI, by its role and the
+mission's objective; on your side you still choose when an allied squad takes its turn (Core
+p.60), and the combat log says in plain words what it's doing and why. Weights are a table in
+`data/game/gm/objective_priorities.json`. The official numbers come from a local pack typed from
+your own book (`local/content/core_npcs.json`, never in the public repo; docs/NPC_PACK.md); without
+it the game uses our placeholders. A new player meets soldiers as town guards and patrols, as
+garrisons in enemy bases, and as allied troops on missions that have them.
 
 ## 10. Around combat: the rest of the game
 
@@ -848,7 +849,7 @@ at any time, even mid-campaign. The game stays canon until someone turns one on.
 - **Clearly labeled:** every house rule shows where it comes from ("Your idea", "Community",
   "Lancer Tactics") and that it isn't a book rule. The codex marks them the same way.
 - **Your ideas** (from this design, previously parked):
-  - Garrisoned buildings (**on by default**, the user asked for it): squads and people on foot
+  - Garrisoned buildings (off by default, in Joe's Rules): squads and people on foot
     go inside buildings through doors and fight from the windows (the window's hard cover is
     the book's own rule, Core p.66). A room space holds one Size 1 unit, or two Size 1/2 units
     plus a squad. A collapsing building lands on everyone inside: falling damage for its height,

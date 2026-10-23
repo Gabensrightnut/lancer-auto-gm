@@ -133,13 +133,15 @@ static func skill_check(state: GameState, u: Unit, skill: String, label: String,
 		bonus = hook.systems  # Metahook: the linked Goblin's Systems
 	if skill == "systems" and u.counters.has("hosting"):
 		bonus = FrameSystems.shared_stat(state, u, "systems")  # Goblin Symbiosis
-	if u.on_foot():
+	if u.kind == Unit.KIND_PILOT:
 		bonus = u.grit  # unmounted characters add GRIT to attacks and saves (Core p.74)
+	if Effects.has(u, "ambushers") and state.round_number <= 1:
+		bonus += 2  # Squad Ambushers: +2 to saves and checks in the first round (Core p.322)
 	var record := state.dice.check(bonus, acc, diff, target, all_sources)
 	if u.kind == Unit.KIND_MECH:
 		record = TalentRules.nhp_reroll(state, u, record, func() -> Dictionary: return state.dice.check(bonus, acc, diff, target, all_sources))
 	record = GearSystems.sisyphus(state, u, record)  # SISYPHUS: Probabilistic Cannibalism
-	record["bonus_sources"] = [{"label": "Grit" if u.on_foot() else skill.capitalize(), "value": bonus}]
+	record["bonus_sources"] = [{"label": "Grit" if u.kind == Unit.KIND_PILOT else skill.capitalize(), "value": bonus}]
 	record["bonuses"] = record["bonus_sources"]
 	record["target_label"] = "Save Target" if target != CHECK_TARGET else "Check (10+)"
 	record["skill"] = skill
@@ -741,12 +743,6 @@ static func fall_unit(state: GameState, u: Unit, max_drop: int = -1) -> Array[Di
 			events.append({"type": "effect_triggered", "unit": u.id, "effect": "Brace for the fall", "target": u.id, "rule_ref": "House rule: Brace for the fall"})
 	if dmg > 0:
 		events.append_array(deal_damage(state, u, [{"type": "Kinetic", "amount": dmg}], {"ap": true, "source": "fall"}))
-		if HouseRuleSwitches.on(state, "hr_fall_stun") and not u.destroyed:
-			# House rule (your idea): Hull save or Stunned until the end of its next turn.
-			var save := skill_check(state, u, "hull", "Hard fall: Hull save", CHECK_TARGET, 0, 0, [], true)
-			events.append({"type": "skill_check", "unit": u.id, "check": save, "rule_ref": "House rule: Stunned by a hard fall"})
-			if not save["success"]:
-				events.append_array(add_status(state, u, "Stunned", "fall", u.id))
 	return events
 
 

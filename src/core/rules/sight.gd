@@ -222,7 +222,20 @@ static func cover(state: GameState, attacker: Body, target: Body, guardians: Arr
 
 
 static func unit_cover(state: GameState, attacker: Unit, target: Unit) -> Dictionary:
-	return cover(state, body_of(state, attacker), body_of(state, target), Effects.guardians(state, target))
+	return undersized(target, cover(state, body_of(state, attacker), body_of(state, target), Effects.guardians(state, target)))
+
+
+## Squad Undersize (Core p.322): it always has soft cover, even in the open, but never hard.
+static func undersized(target: Unit, cov: Dictionary) -> Dictionary:
+	if target == null or not Effects.has(target, "undersize") or not cov.get("los", false):
+		return cov
+	var out := cov.duplicate()
+	out["cover"] = "soft"
+	out["difficulty"] = SOFT_COVER_DIFFICULTY
+	out["cover_cells"] = []
+	out["reason"] = "Undersize: a squad always has soft cover, even in the open, but never hard cover."
+	out["rule_ref"] = "Core p.322 Squad"
+	return out
 
 
 ## Cover a unit would have at a hypothetical position against every hostile unit.
@@ -233,7 +246,7 @@ static func cover_at(state: GameState, u: Unit, anchor: Vector2i, level: int) ->
 	for other: Unit in state.units.values():
 		if other.side == u.side or not Combat.is_present(other) or other.kind == Unit.KIND_DEPLOYABLE:
 			continue
-		out[other.id] = cover(state, body_of(state, other), me)
+		out[other.id] = undersized(u, cover(state, body_of(state, other), me))
 	return out
 
 

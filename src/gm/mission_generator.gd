@@ -745,6 +745,19 @@ static func _free_cells(cells: Array, rng: RandomNumberGenerator) -> Array:
 
 ## Puts `u` on the first cell in `free` where it fits standing on level ground.
 static func _place(state: GameState, u: Unit, free: Array) -> bool:
+	if Soldiers.spreads(u):
+		# Spread Out (Core p.322): a squad can stand overlapping cover and obstructions as long
+		# as at least 2 of its spaces are free.
+		for cell: Vector2i in free:
+			var lv := state.map.ground_height(cell)
+			if Soldiers.spread_ok(state, u, cell, lv, u.size):
+				u.cell = cell
+				u.level = lv
+				state.add_unit(u)
+				free.erase(cell)
+				return true
+		push_warning("No room to deploy %s." % u.id)
+		return false
 	var taken := {}
 	for o: Unit in state.units.values():
 		for c in state.map.grid.footprint(o.cell, o.size):

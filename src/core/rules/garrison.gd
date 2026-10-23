@@ -17,7 +17,7 @@ extends RefCounted
 ##   door or from inside the building; Core p.66).
 ## - Standing on a building that's destroyed: the book's falling rule (Core p.63, TerrainDamage).
 ##
-## House rule "Garrisoned buildings" (hr_garrisoned_buildings, your idea, on by default):
+## House rule "Garrisoned buildings" (hr_garrisoned_buildings, Joe's Rules, off by default):
 ## - Ground-storey rooms can be entered, through the door face only (and between a building's
 ##   own cells); walls and windows can't be crossed. Off: buildings are solid, as in the book.
 ## - A room space holds one Size 1 or larger unit on its own, or up to two Size 1/2 units
@@ -227,6 +227,10 @@ static func nearest_free(state: GameState, u: Unit) -> Variant:
 		ring.sort()
 		for c in ring:
 			for lv in Movement.surface_levels(state, u.size, c):
+				if Soldiers.spreads(u):
+					if Soldiers.spread_ok(state, u, c, lv, u.size):
+						return [c.x, c.y, lv]
+					continue
 				if not Movement.placement(state, u.size, c, lv)["standing"]:
 					continue
 				var body := Sight.make_body(state, c, lv, u.size)

@@ -29,6 +29,7 @@ func kinds() -> Array:
 
 ## Pilot actions that only a mech's own pilot takes (soldiers don't climb into mechs).
 const PILOT_ONLY := ["mount", "eject", "dismount", "self_destruct"]
+const TECH_ACTIONS := ["quick_tech", "full_tech", "scan", "lock_on", "invade", "bolster"]
 
 
 ## The action's own rules. Must not change state.
@@ -52,6 +53,8 @@ func validate(state: GameState, action: Dictionary) -> RuleResult:
 		var who := "People on foot" if u.on_foot() else ("Mechs" if u.kind == Unit.KIND_MECH else "This unit")
 		var hint := " They attack with Fight." if u.on_foot() and type() in ["skirmish", "barrage"] else ""
 		return RuleResult.deny("%s can't take this action (%s).%s" % [who, type(), hint], "Core p.74 Pilots in Mech Combat")
+	if u.kind == Unit.KIND_NPC and u.biological() and type() in TECH_ACTIONS:
+		return RuleResult.deny("Biological NPCs can't take tech actions.", "Core p.282 Biological")
 	var params: Dictionary = action.get("params", {})
 	if params.has("free_via") and Effects.grant(grant_holder(state, u, params), String(params["free_via"]), type(), cost() == TurnRules.QUICK).is_empty():
 		return RuleResult.deny("That free action isn't available (used up, or doesn't cover %s)." % type(), Effects.REF)

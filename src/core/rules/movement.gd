@@ -121,7 +121,9 @@ static func _others(state: GameState, u: Unit) -> Array[Dictionary]:
 			blocks = false  # Infiltrator Prowl: through enemy spaces on its turn (not ending there)
 		if Effects.has(o, "maze") and o.side != u.side:
 			blocks = true  # Minotaur Localized Maze: hostiles can't pass through it for any reason
-		out.append({"body": Sight.body_of(state, o), "unit": o, "blocks": blocks, "wreck": wreck})
+		if Soldiers.spreads(o):
+			blocks = false
+		out.append({"body": Sight.body_of(state, o), "unit": o, "blocks": blocks, "wreck": wreck, "spread": Soldiers.spreads(o)})
 	return out
 
 
@@ -208,8 +210,15 @@ static func _car(state: GameState, u: Unit, anchor: Vector2i, level: int) -> int
 	return out
 
 
+## A spreading squad's end position (Movement.plan/reachable set turn._spread_size).
+static func _spread_end(state: GameState, u: Unit, anchor: Vector2i, level: int) -> bool:
+	return Soldiers.spread_ok(state, u, anchor, level, float(u.turn["_spread_size"]))
+
+
 static func _blocked_by_unit(body: Sight.Body, others: Array[Dictionary], ending: bool) -> bool:
 	for o in others:
+		if o.get("spread", false):
+			continue  # Spread Out: others move through and stop in a squad's spaces (Core p.322)
 		if (o["blocks"] or ending) and _overlaps(body, o["body"]):
 			return true
 	return false
@@ -244,6 +253,20 @@ static func can_fly(u: Unit, mode: String) -> bool:
 ##   grey_area (ruling id or ""), unreachable_roof (true when it's a climb up that this move
 ##   can't afford: the arrow shows "can't reach this roof")}.
 static func plan(state: GameState, u: Unit, dest: Vector2i, level: int = -1, mode: String = MODE_MOVE, fly: bool = false) -> Dictionary:
+	if Soldiers.spreads(u) and not u.turn.has("_spread_size"):
+		# Spread Out (Core p.322): the squad's members move freely within its space, so it
+		# moves like one of them (Size 1/2) and only its end position checks its footprint.
+		var real := u.size
+		u.turn["_spread_size"] = real
+		u.size = 0.5
+		var out := plan(state, u, dest, level, mode, fly)
+		u.size = real
+		u.turn.erase("_spread_size")
+		return out
+	return _plan(state, u, dest, level, mode, fly)
+
+
+static func _plan(state: GameState, u: Unit, dest: Vector2i, level: int = -1, mode: String = MODE_MOVE, fly: bool = false) -> Dictionary:
 	var out := {"ok": false, "reason": "", "rule_ref": REF_MOVE, "path": [], "cost": 0,
 		"budget": budget(u, mode), "remaining": 0, "needs_boost": false, "stopped_by": "",
 		"warnings": [], "grey_area": ""}
@@ -395,6 +418,18 @@ static func pull_path_to(state: GameState, u: Unit, goal: Sight.Body, reach: int
 ## Returns {"budget": int, "spaces": [{"cell": [x, y], "level": int, "cost": int,
 ## "stops": bool (an Engaged stop), "ruling": bool (needs the uneven-ground ruling)}]}.
 static func reachable(state: GameState, u: Unit, mode: String = MODE_MOVE, fly: bool = false) -> Dictionary:
+	if Soldiers.spreads(u) and not u.turn.has("_spread_size"):
+		var real := u.size
+		u.turn["_spread_size"] = real
+		u.size = 0.5
+		var out := reachable(state, u, mode, fly)
+		u.size = real
+		u.turn.erase("_spread_size")
+		return out
+	return _reachable(state, u, mode, fly)
+
+
+static func _reachable(state: GameState, u: Unit, mode: String = MODE_MOVE, fly: bool = false) -> Dictionary:
 	var cap := budget(u, mode)
 	var spaces: Array = []
 	if fly and u.flight != "hover":
@@ -529,7 +564,8 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool, goals: Dicti
 				continue
 			var stopper := _stopper(state, u, body, others, engaged_at_start)
 			nodes[nk] = {"cost": total, "parent": k, "stop": stopper.id if stopper else "",
-				"can_end": car == CAR_NONE and (not _blocked_by_unit(body, others, true) or Garrison.may_share(state, u, body, others)),
+				"can_end": _spread_end(state, u, nb, lv) if u.turn.has("_spread_size") else \
+					car == CAR_NONE and (not _blocked_by_unit(body, others, true) or Garrison.may_share(state, u, body, others)),
 				"uneven": node["uneven"] or place["uneven"], "difficult": difficult and not fly,
 				"dangerous": dangerous, "climb": absi(lv - k.z) if not fly else 0, "rulings": flags}
 			_heap_push(heap_cost, heap_key, total, nk)

@@ -167,7 +167,7 @@ func _context(know: AiKnowledge, u: Unit, orders: Dictionary) -> Dictionary:
 		"pref_range": _preferred_range(u, profile), "keep_away": int(profile.get("keep_away", 0)),
 		"zones": zones, "zone_weight": float(orders.get("zone_weight", 0.0)) * float(prio.get("zone", 1.0)), "rng": rng,
 		"no_hide": bool(orders.get("no_hide", false)), "hide_w": float(prio.get("hide", 1.0)), "intent": String(prio.get("intent", "")),
-		"foot": u.on_foot(), "garrison": float(prio.get("garrison", 0.0)),
+		"foot": u.on_foot(), "no_tech": u.biological(), "garrison": float(prio.get("garrison", 0.0)),
 	}
 
 
@@ -321,7 +321,7 @@ func _best_package(know: AiKnowledge, u: Unit, ctx: Dictionary) -> Dictionary:
 			var factor := _target_factor(know, t, ctx, p["hit_chance"] * dmg)
 			var lock_chance: float = p["hit_chance"]
 			var lockable := false
-			if not ctx["foot"] and not t.has_status("Lock On") and Attacks.tech_target_check(s, u, t).ok:
+			if not ctx["no_tech"] and not t.has_status("Lock On") and Attacks.tech_target_check(s, u, t).ok:
 				lockable = true
 				lock_chance = RulesQueries.hit_chance(p["bonus"], p["accuracy"] - p["difficulty"] + 1, p["target_number"])
 			shots.append({"w": w, "t": t, "chance": p["hit_chance"], "dmg": dmg, "factor": factor,
@@ -349,7 +349,7 @@ func _best_package(know: AiKnowledge, u: Unit, ctx: Dictionary) -> Dictionary:
 				break
 		# Shoot, then Scan an enemy we know nothing about.
 		for t: Unit in ctx["enemies"]:
-			if not ctx["foot"] and not know.knows_stats(t.id) and Attacks.tech_target_check(s, u, t).ok:
+			if not ctx["no_tech"] and not know.knows_stats(t.id) and Attacks.tech_target_check(s, u, t).ok:
 				options.append(_with(base, _act(u, "scan", {"target": t.id}), 0.5 * tech_w, ", then scans %s" % _name(t)))
 				break
 		# Shoot, then Hide if nobody can see us here.
@@ -375,7 +375,7 @@ func _best_package(know: AiKnowledge, u: Unit, ctx: Dictionary) -> Dictionary:
 		if not ctx["no_hide"] and Combat.can_hide(s, u).ok:
 			options.append({"value": 1.0 * ctx["caution"] * ctx["hide_w"], "steps": [_act(u, "hide")], "attacks": false, "quick_left": 0, "text": "hides", "kind": "hide"})
 		for t: Unit in ctx["enemies"]:
-			if not ctx["foot"] and Attacks.tech_target_check(s, u, t).ok:
+			if not ctx["no_tech"] and Attacks.tech_target_check(s, u, t).ok:
 				if not know.knows_stats(t.id):
 					options.append({"value": 0.6 * tech_w, "steps": [_act(u, "scan", {"target": t.id})], "attacks": false,
 						"quick_left": 1, "text": "scans %s" % _name(t), "kind": "scan"})

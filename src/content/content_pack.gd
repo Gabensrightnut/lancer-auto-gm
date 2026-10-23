@@ -31,6 +31,25 @@ var collections: Dictionary = {}
 var error := ""
 
 
+## A pack kept as one plain JSON file {name, author, version, <collection>: [entries]...}
+## (the local official NPC pack). Check `error` on the result.
+static func from_json(file_path: String) -> ContentPack:
+	var p := ContentPack.new()
+	p.path = file_path
+	var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(file_path))
+	if not d is Dictionary:
+		p.error = "Not a readable JSON content pack."
+		return p
+	p.name = str(d.get("name", file_path.get_file()))
+	p.author = str(d.get("author", ""))
+	p.version = str(d.get("version", ""))
+	p.id = pack_id(p.author, p.name)
+	for key: String in d:
+		if d[key] is Array:
+			p.collections[key] = d[key]
+	return p
+
+
 ## Reads a .lcp file. Check `error` on the result.
 static func read(file_path: String) -> ContentPack:
 	var p := ContentPack.new()

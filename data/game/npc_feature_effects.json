@@ -1,43 +1,95 @@
 {
-  "_note": "Engine effects for NPC features, by feature id (src/content/npc_builder.gd). Effects as in src/core/rules/effects.gd (traits) or ability ops (systems).",
-  "npcf_ph_grunt_f0": [
-    {
-      "kind": "accuracy",
-      "on": "attack",
-      "reaction_only": true,
-      "value": 1
-    }
-  ],
-  "npcf_ph_assault_f0": [
-    {
-      "kind": "accuracy",
-      "on": "melee_attack",
-      "value": 1
-    }
-  ],
-  "npcf_ph_artillery_f0": [
-    {
-      "kind": "resist",
-      "damage": [
-        "Explosive"
-      ]
-    }
-  ],
-  "npcf_ph_brawler_f0": [
-    {
-      "kind": "heavy_frame"
-    }
-  ],
-  "npcf_ph_controller_f0": [
-    {
-      "kind": "accuracy",
-      "on": "tech_attack",
-      "value": 1
-    }
-  ],
-  "npcf_ph_support_f0": [
-    {
-      "kind": "guardian"
-    }
-  ]
+ "_note": "Engine effects for NPC features, by feature id (src/content/npc_builder.gd). Effects as in src/core/rules/effects.gd (traits) or ability ops (systems).",
+ "npcf_ph_grunt_f0": [
+  {
+   "kind": "accuracy",
+   "on": "attack",
+   "reaction_only": true,
+   "value": 1
+  }
+ ],
+ "npcf_ph_assault_f0": [
+  {
+   "kind": "accuracy",
+   "on": "melee_attack",
+   "value": 1
+  }
+ ],
+ "npcf_ph_artillery_f0": [
+  {
+   "kind": "resist",
+   "damage": [
+    "Explosive"
+   ]
+  }
+ ],
+ "npcf_ph_brawler_f0": [
+  {
+   "kind": "heavy_frame"
+  }
+ ],
+ "npcf_ph_controller_f0": [
+  {
+   "kind": "accuracy",
+   "on": "tech_attack",
+   "value": 1
+  }
+ ],
+ "npcf_ph_support_f0": [
+  {
+   "kind": "guardian"
+  }
+ ],
+ "npcf_squad_soldiers": [
+  {
+   "kind": "squad_members",
+   "members": 10
+  }
+ ],
+ "npcf_squad_rank_and_file": [],
+ "npcf_squad_strength_in_numbers": [
+  {
+   "kind": "squad_resistance"
+  },
+  {
+   "kind": "immune",
+   "status": "Stunned"
+  },
+  {
+   "kind": "no_grapple_ram_target"
+  },
+  {
+   "kind": "no_knockback"
+  }
+ ],
+ "npcf_squad_spread_out": [
+  {
+   "kind": "spread_out"
+  }
+ ],
+ "npcf_squad_undersize": [
+  {
+   "kind": "undersize"
+  }
+ ],
+ "npcf_squad_ambushers": [
+  {
+   "kind": "ambushers"
+  }
+ ],
+ "npcf_squad_duck_and_cover": [
+  {
+   "kind": "duck_and_cover"
+  }
+ ],
+ "npcf_squad_rapid_insertion": [
+  {
+   "kind": "optional_flight"
+  }
+ ],
+ "npcf_squad_disciplined": [
+  {
+   "kind": "disciplined"
+  }
+ ]
 }

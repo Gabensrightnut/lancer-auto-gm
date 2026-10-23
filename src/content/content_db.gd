@@ -32,6 +32,9 @@ const FILES := {
 
 ## Collections that only content packs provide.
 const PACK_ONLY := ["npc_classes", "npc_templates", "npc_features"]
+## The official NPC numbers typed from the user's own core book (docs/NPC_PACK.md). Local
+## only: /local/ is gitignored, so the public repo never has it; loaded when present.
+const LOCAL_NPC_PACK := "res://local/content/core_npcs.json"
 
 ## Packs added on top of the core data, in order: [ContentPack.summary()].
 var packs: Array = []
@@ -58,6 +61,8 @@ func load_all(dir: String = DATA_DIR) -> bool:
 		_by_name[collection] = {}
 	rules = _read_json(dir + "rules.json") if FileAccess.file_exists(dir + "rules.json") else {}
 	info = _read_json(dir + "info.json") if FileAccess.file_exists(dir + "info.json") else {}
+	if FileAccess.file_exists(LOCAL_NPC_PACK):
+		add_pack(ContentPack.from_json(LOCAL_NPC_PACK))
 	return ok
 
 

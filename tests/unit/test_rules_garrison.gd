@@ -21,6 +21,7 @@ static func building(height: int = 2) -> GameState:
 		if c == Vector2i(5, 5):
 			tags.append_array(["entrance", "door_face_2"])
 		s.map.set_column(c, height, tags)
+	s.house_rules[Garrison.HOUSE_RULE] = true  # Joe's Rules, off by default
 	Garrison.sync(s)
 	return s
 
@@ -34,7 +35,7 @@ static func soldier(s: GameState, id: String, kind: String, side: String, cell: 
 
 func test_a_window_is_hard_cover_you_can_shoot_through() -> void:
 	var s := building()
-	var sq := soldier(s, "sq", "rifle_squad", "players", Vector2i(5, 5))
+	var sq := soldier(s, "sq", "soldier", "players", Vector2i(5, 5))
 	var m := F.mech(s, "m", "enemies", Vector2i(5, 9))
 	var c := Sight.unit_cover(s, m, sq)
 	expect(c["los"], "seen through the window")
@@ -60,14 +61,14 @@ func test_a_window_is_hard_cover_you_can_shoot_through() -> void:
 func test_room_spaces_hold_two_people_and_a_squad() -> void:
 	var s := building()
 	var e := RulesEngine.new()
-	var sq := soldier(s, "sq", "guard_squad", "players", Vector2i(5, 5))
+	var sq := soldier(s, "sq", "guard_squad", "players", Vector2i(0, 8))
+	var inside := soldier(s, "in", "soldier", "players", Vector2i(5, 5))
 	var s1 := soldier(s, "s1", "soldier", "players", Vector2i(5, 2))
 	var m := F.mech(s, "m", "players", Vector2i(6, 2))
 	F.mech(s, "foe", "enemies", Vector2i(11, 11))
-	expect(Garrison.fits([sq, s1]) and not Garrison.fits([sq, m]), "the capacity rule")
-	var s2 := soldier(s, "s2", "soldier", "players", Vector2i(0, 0))
+	expect(Garrison.fits([sq, s1, inside]) and not Garrison.fits([inside, m]), "the capacity rule")
 	var s3 := soldier(s, "s3", "soldier", "players", Vector2i(0, 1))
-	expect(not Garrison.fits([sq, s1, s2, s3]), "no more than two people and a squad")
+	expect(not Garrison.fits([sq, s1, inside, s3]), "no more than two people and a squad")
 	expect(Garrison.step_ok(s.map, Vector2i(5, 4), 0, Vector2i(5, 5), 0), "in through the door")
 	expect(not Garrison.step_ok(s.map, Vector2i(5, 6), 0, Vector2i(5, 5), 0), "not through a window")
 	expect(Garrison.step_ok(s.map, Vector2i(5, 5), 0, Vector2i(6, 5), 0), "between the building's own rooms")
@@ -79,7 +80,7 @@ func test_room_spaces_hold_two_people_and_a_squad() -> void:
 	s.turn_side = "players"
 	F.act(e, s, "start_turn", "m")
 	out = F.act(e, s, "move", "m", {"to": [5, 5]})
-	expect(not F.ok(out), "a Size 1 mech can't share with a squad")
+	expect(not F.ok(out), "a Size 1 mech doesn't fit with people inside")
 
 
 func test_a_collapse_lands_on_everyone_inside() -> void:
