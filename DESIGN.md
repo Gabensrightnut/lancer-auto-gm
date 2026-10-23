@@ -221,10 +221,12 @@ them, and they disappear when the turn moves on.
   - **The core idea (user decision):** a first-person / third-person / top-down TTRPG. You
     can control your own character directly in every view, but battles stay turn-based, on
     the hex/square grid, with movement limited by the book (Speed, Boost, terrain, Engagement).
-  - **Top-down:** straight overhead, like a tabletop map: the clearest view of the grid,
-    zones, ranges and areas.
-  - **Tactical / third person (default):** angled, rotatable view behind or over your unit.
-    WASD (or click) steers your mech space by space along the grid.
+  - **Top-down (the base way to play, the default):** overhead like a tabletop map, the
+    clearest view of the grid, zones, ranges and areas. Mouse-first: click to move and target,
+    WASD and screen edges pan, Q/E rotate, wheel zooms (down to an angled tactical view).
+  - **First and third person (optional camera angles):** identical controls, only the camera
+    differs (eyes/cockpit vs over the shoulder). Mouse look and aim, WASD steps space by space
+    along the grid, hold right mouse to aim down sights (zoom only, never reveals more).
   - **First person:** cockpit view from your mech's eye level, with a HUD (heat, HP,
     structure, selected weapon, range). Attacks, hacks and effects play out from inside the
     cockpit. A minimap shows the grid so moves and ranges stay readable.
