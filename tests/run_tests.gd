@@ -8,6 +8,7 @@ const UNIT_DIR := "res://tests/unit/"
 
 
 func _init() -> void:
+	ContentDB.use_local_pack = false  # results never depend on the gitignored local NPC pack
 	var total := 0
 	var failed: Array[String] = []
 	var only: Array = OS.get_cmdline_user_args()  # several filters run tests matching any of them
