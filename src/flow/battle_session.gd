@@ -292,12 +292,13 @@ func pvp_yield() -> void:
 func _yield(from: String) -> void:
 	if not is_host or mission == null:
 		return
-	var a := PvpBattle.yield_side(mission, host.state, from)
-	if not a.is_empty():
-		mission.outcome = str(a["params"]["outcome"])
-		mission.outcome_reason = str(a["params"]["reason"])
+	var r := PvpBattle.yield_side(mission, host.state, from)
+	if not r.is_empty():
+		mission.outcome = str(r["outcome"])
+		mission.outcome_reason = str(r["reason"])
 		mission.ended = true
-		host.submit(NetHost.GM_SEAT, a)
+		var side := str(r["outcome"])
+		host.submit(NetHost.GM_SEAT, {"type": "gm_end_mission", "params": {"outcome": side if side in [Mission.PLAYERS, Mission.ENEMIES] else "none", "reason": str(r["reason"])}})
 
 
 ## Who the game is waiting on, as the seat on screen may know it (NetHost.waiting_on).

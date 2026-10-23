@@ -60,6 +60,8 @@ func _ready() -> void:
 	hub.setup(StoryHostEngine.new(db, session), GameFlow.story, campaign, db, _seat)
 	hub.mission_requested.connect(_on_mission_requested)
 	hub.story_events.connect(_on_story_events)
+	hub.arena_requested.connect(_start_split_fight)
+	campaign.options["split_countdown"] = int(MenuSession.settings().split_countdown)  # the host's setting (Decisions)
 	session.updated.connect(func(_v: Dictionary, evs: Array) -> void: _on_squad_events(evs))  # every seat's actions
 	_hook_epilogue()
 	var pending := GameFlow.story_events
@@ -200,23 +202,12 @@ func _on_mission_requested(_hook: Dictionary) -> void:
 
 # --- The squad together: gathering and split votes ---------------------------------------
 
-## A split vote: seconds left before the fight starts, and the party_split event.
-var _split_left := -1.0
-var _split_event: Dictionary = {}
-var _split_shown := -1
-
-
 ## Story events that concern the whole squad (Decisions.gathering): everyone is pulled
 ## together; a split vote (party_split) becomes a fight after the host's countdown.
 func _on_squad_events(events: Array) -> void:
 	var gather := Decisions.gathering(events)
 	if not gather.is_empty():
 		_gather(gather[0])
-	for e: Dictionary in events:
-		if str(e.get("type", "")) == "party_split":
-			_split_event = e
-			_split_left = MenuSession.settings().split_countdown if story_client == null else -1.0
-			hub.hud.toast("%s The fight starts in %d seconds." % [e.get("text", "The squad is split."), int(MenuSession.settings().split_countdown)], StoryStyle.RED)
 
 
 ## Everyone gathers by the squad's lead (the first person's pilot): this screen moves its own
@@ -236,29 +227,20 @@ func _gather(e: Dictionary) -> void:
 	hub.hud.toast("The squad comes together%s" % (": " + why if why != "" else "."), StoryStyle.BLUE)
 
 
-func _split_tick(delta: float) -> void:
-	if _split_left < 0.0:
-		return
-	_split_left -= delta
-	if int(ceil(_split_left)) != _split_shown and _split_left > 0.0 and int(ceil(_split_left)) % 5 == 0:
-		_split_shown = int(ceil(_split_left))
-		hub.hud.toast("The fight between the two sides starts in %d seconds." % _split_shown, StoryStyle.RED)
-	if _split_left <= 0.0:
-		_split_left = -1.0
-		_start_split_fight(_split_event)
-
-
-## The vote's two sides fight it out on a compact arena where the squad stands: only the squad's
-## mechs, no enemies, nobody dies (knocked out instead), damage kept; the winning side's choice
-## stands (GameFlow.start_pvp_mission with the split; split_resolved when it's over).
+## Story's vote screen ran its countdown (HubScene.arena_requested {id, sides: {option: [seats]},
+## fight, options}): the votes lock (split_start) and the sides fight it out on a compact arena
+## where the squad stands: only the squad's mechs, nobody dies (knocked out instead), damage
+## kept; the winning side's option stands (split_resolved when it's over, GameFlow).
 func _start_split_fight(e: Dictionary) -> void:
+	if story_client != null:
+		return  # the host runs it; friends follow into the battle
+	hub.engine.submit(hub.story, campaign, {"type": "split_start", "seat": "gm", "params": {}})
 	var sides: Dictionary = e.get("sides", {})
 	var local: Array = []
 	for seat: String in GameFlow.story.seats:
 		if not GameFlow.story.is_ai(seat) and (GameFlow.story_host == null or GameFlow.story_host.seat_table().get(seat, {}).get("where", "local") != "remote"):
 			local.append(seat)
-	var s := GameFlow.start_pvp_mission(campaign, MenuSession.content(), MenuSession.store, {"a": sides.get("accept", []), "b": sides.get("decline", [])},
-		{}, str(e.get("id", "")), local, {"fight": e.get("fight", {})})
+	var s := GameFlow.start_pvp_mission(campaign, MenuSession.content(), MenuSession.store, sides, {}, str(e.get("id", "")), local, {"fight": e.get("fight", {})})
 	if s == null:
 		hub.hud.toast("The fight between the two sides couldn't start.", StoryStyle.RED)
 		return
@@ -330,7 +312,6 @@ func _on_friend_message(seat: String, msg: Dictionary) -> void:
 
 ## Everyone's pilots on the host's screen and the friends' (the host passes each one on).
 func _process(delta: float) -> void:
-	_split_tick(delta)
 	if hub == null or hub.avatars.is_empty() or (story_client == null and GameFlow.story_host == null):
 		return
 	_send_left -= delta
