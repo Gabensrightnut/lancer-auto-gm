@@ -145,3 +145,91 @@ func test_online_split_two_friends() -> void:
 	GameFlow.session = null
 	GameFlow.story = null
 	preload("res://tests/unit/test_campaign_saves.gd")._remove(store.dir)
+
+
+## A vote split the squad 3 to 1 (the host and two friends against a third friend): the fight
+## is only the squad's mechs on a small arena, each friend sees their own side's picture, the
+## lone player yields from their client, the winning side's choice goes back to the story, and
+## everyone keeps their damage.
+func test_split_vote_three_against_one_online() -> void:
+	var store := SaveStore.new("user://test_split_%d" % Time.get_ticks_usec())
+	var db := MissionTest.db()
+	GameFlow.story = null
+	GameFlow.session = null
+	var c := GameFlow.start_story_campaign(store, db, "Split", 4, 0, "Standard")
+	GameFlow.finish_session_zero(c, store)
+	var host := GameFlow.host_story_online(c, db, store, ["p1"])
+	var hub := LoopbackTransport.Hub.new()
+	host.open_room(LoopbackTransport.new(hub), "SPLIT3")
+	var friends: Array = []
+	for seat: String in ["p2", "p3", "p4"]:
+		var f := NetClient.new(LoopbackTransport.new(hub))
+		f.join("SPLIT3", seat, seat)
+		friends.append(f)
+	var pump := func(hs: BattleSession = null) -> void:
+		for i in range(10):
+			host.poll()
+			if hs != null:
+				hs.poll(0.0)
+			for f: NetClient in friends:
+				f.poll(0.1)
+	pump.call()
+	expect(friends.all(func(f: NetClient) -> bool: return f.seat != ""), "three friends seated")
+	GameFlow.story.flags[Decisions.KEY] = {"id": "mutiny", "prompt": "Hand the colonists over", "accept": [], "decline": [], "votes": {},
+		"split": {"accept": ["p1", "p2", "p3"], "decline": ["p4"]}}
+	GameFlow.story_client = null
+	var hs := GameFlow.start_pvp_mission(c, db, store, {"a": ["p1", "p2", "p3"], "b": ["p4"]}, {}, "mutiny", ["p1"], {"fight": {}})
+	expect(hs != null)
+	if hs == null:
+		return
+	hs.start()
+	pump.call(hs)
+	var st := hs.host.state
+	expect(st.units.values().all(func(u: Unit) -> bool: return GameFlow.story.seats.has(u.controller)), "only the squad's mechs: no enemies")
+	expect(bool(st.objectives.get("nonlethal", false)), "non-lethal")
+	expect(hs.is_split_fight())
+	var unit_of := func(seat: String) -> String:
+		for u: Unit in st.units.values():
+			if u.controller == seat:
+				return u.id
+		return ""
+	var p4: NetClient = friends[2]
+	var p2: NetClient = friends[0]
+	expect((p4.view["units"][unit_of.call("p1")] as Dictionary).size() <= ViewFilter.PUBLIC_FIELDS.size(), "the lone dissenter can't see the others' stats")
+	expect((p2.view["units"][unit_of.call("p1")] as Dictionary).size() > ViewFilter.PUBLIC_FIELDS.size(), "p2 sees its own side's")
+	expect((p2.view["units"][unit_of.call("p4")] as Dictionary).size() <= ViewFilter.PUBLIC_FIELDS.size(), "but not p4's")
+	# Some damage on the winners' side, kept afterwards.
+	st.unit(unit_of.call("p2")).hp = 3
+	# p4 yields from their own client.
+	p4.transport.send(NetTransport.HOST_PEER, {"t": NetProtocol.LOBBY, "pvp_yield": true})
+	pump.call(hs)
+	var guard := 0
+	while not hs.over and guard < 40:
+		guard += 1
+		pump.call(hs)
+	expect(hs.over, "p4 yielded: the fight is over")
+	expect_eq(PvpBattle.winner(hs.mission), "a")
+	var d := GameFlow.finish_mission(hs, c, store, db)
+	expect(d.has("pvp"))
+	expect_eq(str(GameFlow.story.flags.get("decided:mutiny", "")), "accept", "the winning side's choice stands")
+	var pid := GameFlow.story.pilot_of_seat("p2")
+	var kept: Dictionary = {}
+	for m: Dictionary in c.pilots[pid]["mechs"]:
+		if m.has("condition"):
+			kept = m["condition"]
+	expect_eq(int(kept.get("hp", -1)), 3, "damage is kept after the fight")
+	GameFlow.leave_story_online()
+	GameFlow.session = null
+	GameFlow.story = null
+	preload("res://tests/unit/test_campaign_saves.gd")._remove(store.dir)
+
+
+func test_knocked_out_mechs_are_out_of_the_fight() -> void:
+	var gen := _split()
+	var state: GameState = gen["state"]
+	var mission: Mission = gen["mission"]
+	for u: Unit in state.units_on_side(Mission.ENEMIES):
+		u.counters["knocked_out"] = true  # the rules' knockout (non-lethal)
+	mission.observe(state, [])
+	expect_eq(PvpBattle.winner(mission), "a", "a side all knocked out has lost")
+	expect(state.units_on_side(Mission.ENEMIES).all(func(u: Unit) -> bool: return not u.destroyed), "nobody destroyed")

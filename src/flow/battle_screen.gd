@@ -102,6 +102,17 @@ func _ready() -> void:
 	session.events_seen.connect(_on_events_seen)
 	_setup_story_battle()
 	_setup_gm_map_edit()
+	if session.is_split_fight():
+		var y := Button.new()
+		y.theme = MenuTheme.theme()
+		y.text = "Yield"
+		y.focus_mode = Control.FOCUS_NONE
+		y.tooltip_text = "Give up this fight between the squad's two sides. When everyone on your side has yielded, the other side's choice stands. Nobody dies: knocked-out mechs just need repairs."
+		y.position = Vector2(300, 16)
+		y.pressed.connect(func() -> void:
+			session.pvp_yield()
+			show_banner("You yield. When everyone on your side has, the other side wins."))
+		ui.add_child(y)
 	SitrepActions.register(session.engine)
 	var speed := MenuSession.settings().animation_speed
 	session.ai_interval = {"cinematic": 0.9, "normal": 0.45, "fast": 0.1}.get(speed, 0.45)
