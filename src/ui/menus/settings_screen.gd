@@ -68,6 +68,17 @@ func _ready() -> void:
 	inv.button_pressed = StorySettings.invert_y()
 	inv.toggled.connect(func(on: bool) -> void: StorySettings.set_invert_y(on))
 	sb.add_child(inv)
+	var cur := CheckButton.new()
+	cur.text = "Cursor key (Alt) toggles instead of hold (first person)"
+	cur.tooltip_text = "Off: hold Alt to show the mouse and click buttons. On: press Alt once to show it, again to hide it."
+	cur.button_pressed = StorySettings.cursor_mode() == "toggle"
+	cur.toggled.connect(func(on: bool) -> void: StorySettings.set_cursor_mode("toggle" if on else "hold"))
+	sb.add_child(cur)
+	var vp := CheckButton.new()
+	vp.text = "Show mech pictures instead of pilot portraits on squad votes"
+	vp.button_pressed = StorySettings.vote_picture() == "mech"
+	vp.toggled.connect(func(on: bool) -> void: StorySettings.set_vote_picture("mech" if on else "pilot"))
+	sb.add_child(vp)
 
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 20)

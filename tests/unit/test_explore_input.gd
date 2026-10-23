@@ -57,4 +57,10 @@ func test_explore_keys_are_their_own() -> void:
 	var swapped := s.rebind("use", KEY_W)
 	expect_eq(swapped, "move_forward", "rebinding swaps within walking keys")
 	expect_eq(int(s.keybinds["cam_pan_up"]), KEY_W, "and leaves the battle keys alone")
+	expect_eq(BattleKeys.context("show_cursor"), "explore")
+	expect(InputMap.action_get_events("show_cursor").any(func(e: InputEvent) -> bool: return e is InputEventKey and (e as InputEventKey).physical_keycode == KEY_ALT), "Alt shows the cursor")
+	StorySettings.persist = false
+	StorySettings.set_cursor_mode("toggle")
+	expect_eq(StorySettings.cursor_mode(), "toggle")
+	StorySettings.set_cursor_mode("hold")
 	expect(not InputMap.action_get_events("use").any(func(e: InputEvent) -> bool: return e is InputEventKey and (e as InputEventKey).physical_keycode == KEY_Q), "Q doesn't use things")

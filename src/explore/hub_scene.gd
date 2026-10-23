@@ -14,6 +14,10 @@ signal story_events(events: Array)
 signal mission_requested(hook: Dictionary)
 ## The campaign ended and the player wants the main menu.
 signal menu_requested
+## The squad split on a vote and the countdown ran out (host): run the player-vs-player arena
+## fight with teams by vote ({id, sides: {option: [seats]}, fight, options}), then submit
+## split_resolved {winner: option id}.
+signal arena_requested(split: Dictionary)
 
 const WALK_SPEED := 4.2
 ## The world/maps session's culture kits for hub towns (buildings, props, plaza, sky). Used
@@ -44,6 +48,7 @@ var _kits: Variant = null  # the WorldKits script, or null  # [{"root": Node3D, 
 var ui: CanvasLayer
 var dialogue: DialogueView
 var popup: StoryCheckPopup
+var decision_panel: DecisionPanel
 var downtime_panel: DowntimePanel
 var downtime_screen: DowntimeScreen
 var hud: HubHud
@@ -62,6 +67,7 @@ var _interior: Node3D
 var _iroom := ""
 var _mechs: Array = []  # parked mechs to aim at: [{pid, name, pos: Vector3}]
 var _inner_blockers: Array = []  # inside: furniture you walk around
+var _cursor_toggled := false  # show_cursor in toggle mode
 var _bay_armed := -100.0  # when the repair bay's "press E again" was shown (seconds)
 var _jump_h := 0.0
 var _jump_v := 0.0
@@ -409,10 +415,10 @@ func _physics_process(delta: float) -> void:
 	var me: PilotFigure = avatars.get(local_seat)
 	if me == null:
 		return
-	var busy := dialogue.visible or downtime_screen.visible or hud.board_open() or level_panel.visible or gear_panel.visible or codex.visible or map.visible
+	var busy := decision_panel.visible or dialogue.visible or downtime_screen.visible or hud.board_open() or level_panel.visible or gear_panel.visible or codex.visible or map.visible
 	var dir := Vector3.ZERO
 	var first := fp != null and fp.enabled
-	_capture_mouse(first and not busy and not dialogue.visible)
+	_capture_mouse(first and not busy and not dialogue.visible and not _cursor_free())
 	var speed := ExploreInput.speed(not busy and InputMap.has_action("run") and Input.is_action_pressed("run"), fp != null and fp.sneaking)
 	if not busy:
 		var ax := ExploreInput.axes()
@@ -698,6 +704,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 	if ev is InputEventMouseButton and (ev as InputEventMouseButton).button_index == MOUSE_BUTTON_RIGHT:
 		_orbit = ev.pressed and not (fp != null and fp.enabled)
 	# Walking actions (rebindable, data/game/keybinds.json).
+	if InputMap.has_action("show_cursor") and ev.is_action_pressed("show_cursor") and not ev.is_echo() and StorySettings.cursor_mode() == "toggle":
+		_cursor_toggled = not _cursor_toggled
+		return
 	if InputMap.has_action("jump") and ev.is_action_pressed("jump") and not dialogue.visible and _jump_h <= 0.0:
 		_jump_v = ExploreInput.JUMP_SPEED
 		_jump_h = 0.001
@@ -733,6 +742,10 @@ func _unhandled_input(ev: InputEvent) -> void:
 			KEY_V:
 				if not dialogue.visible:
 					fp.set_enabled(not fp.enabled, _cam)
+					_cursor_toggled = false
+					if fp.enabled and StorySettings.take_cursor_hint():
+						var k := BattleKeys.keys_text("show_cursor")
+						hud.toast(("Hold %s to use the mouse" if StorySettings.cursor_mode() == "hold" else "Press %s to use the mouse") % (k if k != "" else "Alt"), StoryStyle.BLUE)
 			KEY_C:
 				if fp.enabled and not dialogue.visible:
 					fp.sneaking = not fp.sneaking
@@ -767,8 +780,10 @@ func _unhandled_input(ev: InputEvent) -> void:
 				hud.close_board()
 				hud.set_busy(false)
 	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT and fp != null and fp.enabled and not dialogue.visible and not downtime_screen.visible:
-		# First person: left click uses what's under the crosshair.
-		_fp_use(false)
+		# First person: left click uses what's under the crosshair (not while the cursor is out
+		# for clicking buttons).
+		if not _cursor_free():
+			_fp_use(false)
 		return
 	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT and not dialogue.visible and not downtime_screen.visible:
 		var from := _cam.project_ray_origin(ev.position)
@@ -1070,6 +1085,16 @@ func _inside_use(rough: bool) -> void:
 
 # --- Walking controls (ExploreInput) ------------------------------------------------------
 
+## The show-cursor key (Alt, rebindable): held, or toggled (Settings), the cursor is free to
+## click buttons and the view stops turning.
+func _cursor_free() -> bool:
+	if not InputMap.has_action("show_cursor"):
+		return false
+	if StorySettings.cursor_mode() == "toggle":
+		return _cursor_toggled
+	return Input.is_action_pressed("show_cursor")
+
+
 ## First person: the mouse is captured while you walk; any panel or conversation frees it.
 func _capture_mouse(on: bool) -> void:
 	if DisplayServer.get_name() == "headless":
@@ -1193,6 +1218,11 @@ func _build_ui() -> void:
 	level_panel.story_events.connect(_handle)
 	popup = StoryCheckPopup.new()
 	ui.add_child(popup)
+	decision_panel = DecisionPanel.new()
+	ui.add_child(decision_panel)
+	decision_panel.bind(engine, story, campaign, db, local_seat)
+	decision_panel.story_events.connect(_handle)
+	decision_panel.arena_requested.connect(func(split: Dictionary) -> void: arena_requested.emit(split))
 	codex = CodexPanel.new()
 	ui.add_child(codex)
 	epilogue = EpilogueScreen.new()
@@ -1260,6 +1290,7 @@ func _center(c: Control) -> void:
 
 ## Everything the story engine reports: pop-ups, toasts, panels to open, missions to start.
 func _handle(events: Array) -> void:
+	decision_panel.show_events(events)
 	popup.dock = "corner" if downtime_screen.visible else ("bottom" if hud.board_open() else "top")
 	tutorial_panel.show_events(events)
 	for e: Dictionary in events:
@@ -1385,6 +1416,9 @@ func screenshot_setup(args: Array) -> Array:
 	if args.has("inside"):
 		StorySettings.persist = false
 		return ["inside_bar", "inside_fp"]
+	if args.has("vote"):
+		StorySettings.persist = false
+		return ["vote"]
 	return ["walk", "talk", "choices", "check", "downtime", "supplies", "gear", "board", "briefing", "levelup"]
 
 
@@ -1437,6 +1471,17 @@ func screenshot_stage(tag: String) -> void:
 			fp.pitch = deg_to_rad(-4)
 		"fp_sneak":
 			fp.sneaking = true
+		"vote":
+			var seats := story.seats.keys()
+			seats.sort()
+			if seats.size() > 1:
+				engine.submit(story, campaign, {"type": "set_seat", "seat": "gm", "params": {"seat": seats[1], "pilot": story.pilot_of_seat(seats[1]), "ai": false}})
+			var ev := StoryEffects.apply({"decision": {"id": "fork", "prompt": "The canyon forks. Which way do we take the convoy?",
+				"options": [{"id": "left", "label": "Left: the dry riverbed"}, {"id": "right", "label": "Right: the high road"}]}}, story, campaign, {})
+			ev.append_array(engine.submit(story, campaign, {"type": "decide", "seat": seats[0], "params": {"option": "left"}})["events"])
+			if seats.size() > 1:
+				ev.append_array(engine.submit(story, campaign, {"type": "decide", "seat": seats[1], "params": {"option": "right"}})["events"])
+			_handle(ev)
 		"inside_bar":
 			enter_building("bar")
 			_yaw = 0.0

@@ -26,6 +26,11 @@ static var _seen: Dictionary = {}
 ## Walking in first person: mouse look speed (0.25..3) and invert-Y.
 static var _look := 1.0
 static var _invert_y := false
+## The show-cursor key (show_cursor, Alt): "hold" while held, or "toggle" press to show/hide.
+static var _cursor_mode := "hold"
+static var _vote_picture := "pilot"
+## How many times the "Hold Alt to use the mouse" hint has been shown (stops after a few).
+static var _cursor_hints := 0
 static var _notifier: Notifier
 
 
@@ -53,6 +58,9 @@ static func _load() -> void:
 		_view = str(cfg.get_value("dialogue", "view", "third"))
 		_look = clampf(float(cfg.get_value("walking", "look_sensitivity", 1.0)), 0.25, 3.0)
 		_invert_y = bool(cfg.get_value("walking", "invert_y", false))
+		_cursor_mode = "toggle" if str(cfg.get_value("walking", "cursor_mode", "hold")) == "toggle" else "hold"
+		_cursor_hints = int(cfg.get_value("walking", "cursor_hints", 0))
+		_vote_picture = "mech" if str(cfg.get_value("dialogue", "vote_picture", "pilot")) == "mech" else "pilot"
 	if FileAccess.file_exists(SEEN_FILE):
 		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(SEEN_FILE))
 		if d is Array:
@@ -69,6 +77,9 @@ static func _save() -> void:
 	cfg.set_value("dialogue", "view", _view)
 	cfg.set_value("walking", "look_sensitivity", _look)
 	cfg.set_value("walking", "invert_y", _invert_y)
+	cfg.set_value("walking", "cursor_mode", _cursor_mode)
+	cfg.set_value("walking", "cursor_hints", _cursor_hints)
+	cfg.set_value("dialogue", "vote_picture", _vote_picture)
 	cfg.save(FILE)
 
 
@@ -145,6 +156,41 @@ static func set_invert_y(on: bool) -> void:
 	_invert_y = on
 	_save()
 	notifier().changed.emit()
+
+
+## On the squad's vote screen: each voter shown by their "pilot" portrait or their "mech".
+static func vote_picture() -> String:
+	_load()
+	return _vote_picture
+
+
+static func set_vote_picture(v: String) -> void:
+	_load()
+	_vote_picture = "mech" if v == "mech" else "pilot"
+	_save()
+	notifier().changed.emit()
+
+
+static func cursor_mode() -> String:
+	_load()
+	return _cursor_mode
+
+
+static func set_cursor_mode(v: String) -> void:
+	_load()
+	_cursor_mode = "toggle" if v == "toggle" else "hold"
+	_save()
+	notifier().changed.emit()
+
+
+## True the first few times (3): show "Hold Alt to use the mouse", and count it.
+static func take_cursor_hint() -> bool:
+	_load()
+	if _cursor_hints >= 3:
+		return false
+	_cursor_hints += 1
+	_save()
+	return true
 
 
 static func line_key(scene: String, node: String, text: String) -> String:

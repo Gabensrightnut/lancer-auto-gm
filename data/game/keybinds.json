@@ -29,6 +29,7 @@
     {"id": "use", "label": "Walking: use / talk to what you're looking at", "keys": ["E"], "context": "explore"},
     {"id": "turn_left", "label": "Walking, third person: turn the camera left", "keys": ["Z"], "context": "explore"},
     {"id": "turn_right", "label": "Walking, third person: turn the camera right", "keys": ["X"], "context": "explore"},
+    {"id": "show_cursor", "label": "First person: show the mouse cursor (hold, or toggle in Settings)", "keys": ["Alt"], "context": "explore"},
     {"id": "action_1", "label": "Action bar slot 1 (1-0 for slots 1-10)", "keys": ["1"], "fixed": true}
   ],
   "mouse": [
