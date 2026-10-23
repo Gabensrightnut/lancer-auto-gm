@@ -698,3 +698,22 @@ func test_deployment_zones_per_side_for_setup() -> void:
 		expect_eq(overlap, 0, "%s: the zones don't overlap" % sitrep)
 	var hold: GameState = _gen(14, {"sitrep": "sitrep_holdout", "players": 2})["state"]
 	expect_eq(hold.objectives["defender"], Mission.PLAYERS, "in a Holdout the squad holds the ground")
+
+
+func test_weather_by_season_with_sound_hooks() -> void:
+	var snowy := 0
+	var dusty := 0
+	for s in range(40):
+		var r := RandomNumberGenerator.new()
+		r.seed = s
+		snowy += 1 if TerrainGen.pick_weather(r, "grassy_hills", "", "winter") in ["snow", "blizzard"] else 0
+		var r2 := RandomNumberGenerator.new()
+		r2.seed = s
+		dusty += 1 if TerrainGen.pick_weather(r2, "desert_mesas", "", "summer") == "sandstorm" else 0
+	expect(snowy >= 8, "winter brings snow to the hills: %d of 40" % snowy)
+	expect(dusty >= 12, "summer brings dust storms to the desert: %d of 40" % dusty)
+	var rain := WorldStyle.resolve("grassy_hills+rain")
+	expect_eq(rain["sound"], "rain_loop", "the weather's sound hook")
+	# The book's environments still come only from weather.json and the GM's dial.
+	var m: Mission = _gen(4, {"landscape": "desert_mesas", "weather": "sandstorm", "season": "summer"})["mission"]
+	expect(m.flavor["kit"].contains("+sandstorm"), "the dust storm is in the look")

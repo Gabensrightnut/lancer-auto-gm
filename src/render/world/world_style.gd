@@ -102,6 +102,7 @@ static func resolve(kit: String) -> Dictionary:
 		w.erase("fog_scale")
 		style = merge(style, w)
 		style["weather"] = weather
+		style["sound"] = str(w.get("sound", ""))  # the weather's audio hook
 		style["kit"] += "+" + weather
 	if period != "" and period != "day":
 		WorldKits.time_of_day(style, period)

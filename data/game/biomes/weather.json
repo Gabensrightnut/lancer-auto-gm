@@ -1,44 +1,151 @@
 {
-	"_about": "Weather for WorldStyle. A kit name can end in +<weather>, e.g. \"jungle+rain\", \"desert_mesas/old_west+sandstorm\". Visual only: rules effects (storms giving soft cover, damage, Stunned...) come from environments (lancer-data environments.json, ids in `environment`), applied by the rules engine when a mission uses them. Each entry deep-merges over the style. `lightning` adds flashes; `fog_scale` multiplies fog density.",
-	"clear": {"name": "clear"},
+	"_about": "Weather for WorldStyle. A kit name can end in +<weather>, e.g. \"jungle+rain\", \"desert_mesas/old_west+sandstorm\". Visual only: rules effects (storms giving soft cover, damage, Stunned...) come from environments (lancer-data environments.json, ids in `environment`), applied by the rules engine when a mission uses them. Each entry deep-merges over the style. `lightning` adds flashes; `fog_scale` multiplies fog density. `sound`: the audio hook the weather plays (look only).",
+	"clear": {
+		"name": "clear",
+		"sound": ""
+	},
 	"rain": {
-		"name": "rain", "particles": ["rain"], "lightning": 0.0, "fog_scale": 1.6,
-		"ground": {"wetness": 1.0},
-		"sky": {"clouds": 0.9, "cloud_color": "#a0a6b0", "cloud_shade": "#4a505a", "haze": 0.15, "sun_glow": 0.2},
-		"light": {"sun_energy_scale": 0.45, "ambient": 0.6, "saturation": 0.9, "contrast": 1.0}
+		"name": "rain",
+		"particles": ["rain"],
+		"lightning": 0.0,
+		"fog_scale": 1.6,
+		"ground": {
+			"wetness": 1.0
+		},
+		"sky": {
+			"clouds": 0.9,
+			"cloud_color": "#a0a6b0",
+			"cloud_shade": "#4a505a",
+			"haze": 0.15,
+			"sun_glow": 0.2
+		},
+		"light": {
+			"sun_energy_scale": 0.45,
+			"ambient": 0.6,
+			"saturation": 0.9,
+			"contrast": 1.0
+		},
+		"sound": "rain_loop"
 	},
 	"storm": {
-		"name": "thunderstorm", "particles": ["rain"], "lightning": 1.0, "fog_scale": 2.0, "environment": "env_electricalstorms",
-		"ground": {"wetness": 1.0},
-		"sky": {"clouds": 1.0, "cloud_color": "#6a707a", "cloud_shade": "#24282e", "haze": 0.0, "sun_glow": 0.0, "top": "#2a3038", "horizon": "#5a606a"},
-		"light": {"sun_energy_scale": 0.3, "ambient": 0.55, "saturation": 0.85, "contrast": 1.05},
-		"horizon": {"storm": true, "storm_color": "#1e2228"}
+		"name": "thunderstorm",
+		"particles": ["rain"],
+		"lightning": 1.0,
+		"fog_scale": 2.0,
+		"environment": "env_electricalstorms",
+		"ground": {
+			"wetness": 1.0
+		},
+		"sky": {
+			"clouds": 1.0,
+			"cloud_color": "#6a707a",
+			"cloud_shade": "#24282e",
+			"haze": 0.0,
+			"sun_glow": 0.0,
+			"top": "#2a3038",
+			"horizon": "#5a606a"
+		},
+		"light": {
+			"sun_energy_scale": 0.3,
+			"ambient": 0.55,
+			"saturation": 0.85,
+			"contrast": 1.05
+		},
+		"horizon": {
+			"storm": true,
+			"storm_color": "#1e2228"
+		},
+		"sound": "storm_loop"
 	},
 	"snow": {
-		"name": "snowfall", "particles": ["snow_heavy"], "fog_scale": 2.2,
-		"sky": {"clouds": 0.85, "cloud_color": "#e8ecf0", "cloud_shade": "#9aa4b0", "haze": 0.1},
-		"light": {"sun_energy_scale": 0.6, "ambient": 0.75, "fog_color": "#d8e0ea"}
+		"name": "snowfall",
+		"particles": ["snow_heavy"],
+		"fog_scale": 2.2,
+		"sky": {
+			"clouds": 0.85,
+			"cloud_color": "#e8ecf0",
+			"cloud_shade": "#9aa4b0",
+			"haze": 0.1
+		},
+		"light": {
+			"sun_energy_scale": 0.6,
+			"ambient": 0.75,
+			"fog_color": "#d8e0ea"
+		},
+		"sound": "snow_wind"
 	},
 	"blizzard": {
-		"name": "blizzard", "particles": ["blizzard"], "fog_scale": 4.0, "environment": "env_extremecold",
-		"sky": {"clouds": 1.0, "cloud_color": "#e0e6ee", "cloud_shade": "#8a94a2", "haze": 0.0, "sun_glow": 0.1},
-		"light": {"sun_energy_scale": 0.4, "ambient": 0.85, "fog_color": "#dce4ee"}
+		"name": "blizzard",
+		"particles": ["blizzard"],
+		"fog_scale": 4.0,
+		"environment": "env_extremecold",
+		"sky": {
+			"clouds": 1.0,
+			"cloud_color": "#e0e6ee",
+			"cloud_shade": "#8a94a2",
+			"haze": 0.0,
+			"sun_glow": 0.1
+		},
+		"light": {
+			"sun_energy_scale": 0.4,
+			"ambient": 0.85,
+			"fog_color": "#dce4ee"
+		},
+		"sound": "blizzard_loop"
 	},
 	"sandstorm": {
-		"name": "sandstorm", "particles": ["sandstorm"], "fog_scale": 4.5, "environment": "env_particulatestorms",
-		"sky": {"clouds": 0.9, "cloud_color": "#c89a6a", "cloud_shade": "#8a6a4a", "haze": 0.9, "haze_color": "#d8a060", "top": "#a8885a", "horizon": "#d8b080"},
-		"light": {"sun_energy_scale": 0.55, "ambient": 0.7, "fog_color": "#c8a070", "saturation": 0.85}
+		"name": "sandstorm",
+		"particles": ["sandstorm"],
+		"fog_scale": 4.5,
+		"environment": "env_particulatestorms",
+		"sky": {
+			"clouds": 0.9,
+			"cloud_color": "#c89a6a",
+			"cloud_shade": "#8a6a4a",
+			"haze": 0.9,
+			"haze_color": "#d8a060",
+			"top": "#a8885a",
+			"horizon": "#d8b080"
+		},
+		"light": {
+			"sun_energy_scale": 0.55,
+			"ambient": 0.7,
+			"fog_color": "#c8a070",
+			"saturation": 0.85
+		},
+		"sound": "dust_storm_loop"
 	},
 	"ashfall": {
-		"name": "ashfall", "particles": ["ash", "embers"], "fog_scale": 2.0,
-		"sky": {"clouds": 0.9, "cloud_color": "#6a605a", "cloud_shade": "#2a2422", "sun_glow": 0.3},
-		"light": {"sun_energy_scale": 0.6, "saturation": 0.85}
+		"name": "ashfall",
+		"particles": ["ash", "embers"],
+		"fog_scale": 2.0,
+		"sky": {
+			"clouds": 0.9,
+			"cloud_color": "#6a605a",
+			"cloud_shade": "#2a2422",
+			"sun_glow": 0.3
+		},
+		"light": {
+			"sun_energy_scale": 0.6,
+			"saturation": 0.85
+		},
+		"sound": "ash_wind"
 	},
 	"spores": {
-		"name": "spore drift", "particles": ["spores", "spores"], "fog_scale": 1.6
+		"name": "spore drift",
+		"particles": ["spores", "spores"],
+		"fog_scale": 1.6,
+		"sound": "spore_hum"
 	},
 	"mist": {
-		"name": "mist", "particles": ["mist"], "fog_scale": 2.5,
-		"light": {"fog_height": 1.5, "fog_height_density": 0.12, "sun_energy_scale": 0.8}
+		"name": "mist",
+		"particles": ["mist"],
+		"fog_scale": 2.5,
+		"light": {
+			"fog_height": 1.5,
+			"fog_height_density": 0.12,
+			"sun_energy_scale": 0.8
+		},
+		"sound": "fog_still"
 	}
 }

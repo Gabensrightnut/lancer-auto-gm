@@ -106,13 +106,26 @@ const CITY_WEATHER := {"cyberpunk": ["rain", "rain", "storm", ""], "union": ["",
 	"ruins": ["", "mist", "storm", ""], "industrial": ["", "", "mist"], "port": ["", "", "rain", "mist"]}
 
 
-static func pick_weather(rng: RandomNumberGenerator, landscape: String, culture: String = "") -> String:
-	var options: Array = WEATHER.get(landscape, [""])
+static func pick_weather(rng: RandomNumberGenerator, landscape: String, culture: String = "", season: String = "") -> String:
+	var options: Array = (WEATHER.get(landscape, [""]) as Array).duplicate()
 	if culture == "burning":
 		return "ashfall"
 	if landscape == "city" and CITY_WEATHER.has(culture):
-		options = CITY_WEATHER[culture]
+		options = (CITY_WEATHER[culture] as Array).duplicate()
+	# The season shifts the odds where the world has seasons (look only; the book's environments
+	# come from weather.json "environment" and the GM's dial, as before).
+	options.append_array((SEASON_WEATHER.get(season, {}) as Dictionary).get(landscape, []))
 	return str(options[rng.randi_range(0, options.size() - 1)])
+
+
+## Extra weather a season adds to a landscape's draw ("spring", "summer", "autumn", "winter").
+const SEASON_WEATHER := {
+	"winter": {"grassy_hills": ["snow", "snow", "snow", "mist"], "autumn_forest": ["snow", "mist"], "tundra": ["blizzard", "snow"],
+		"city": ["snow"], "jungle": ["rain"]},
+	"spring": {"grassy_hills": ["rain", "rain"], "autumn_forest": ["rain"], "jungle": ["rain", "storm"], "toxic_swamp": ["mist"]},
+	"summer": {"desert_mesas": ["sandstorm", "sandstorm"], "salt_flats": ["sandstorm"], "grassy_hills": ["", "storm"], "volcanic": ["ashfall"]},
+	"autumn": {"grassy_hills": ["mist", "rain"], "autumn_forest": ["mist", "rain", "rain"], "city": ["mist", "rain"]},
+}
 
 
 ## Kit name for the renderer ("landscape" or "landscape/culture").

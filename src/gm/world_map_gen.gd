@@ -24,7 +24,7 @@ const SITE_KIND := {"town": "town", "outpost": "outpost", "pad": "outpost", "por
 static func region(seed_value: int, world: Dictionary) -> Dictionary:
 	var culture := WorldKits.culture_id(str(world.get("map_culture", world.get("culture", ""))))
 	var profile := {"seed": seed_value, "landscape": str(world.get("landscape", "grassy_hills")), "culture": culture,
-		"weather": str(world.get("weather", "")), "name": str(world.get("name", "the town"))}
+		"weather": str(world.get("weather", "")), "season": str(world.get("season", "")), "name": str(world.get("name", "the town"))}
 	var rm := RegionMap.build(profile, {"start": bool(world.get("start", false))})
 	var tiles := {}
 	var size: Array = rm["size"]

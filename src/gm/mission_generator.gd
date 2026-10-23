@@ -125,7 +125,7 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	var wanted_weather := str(opts.get("weather", doc.weather if doc and doc.weather != "" else ("clear" if doc else str(region.get("weather", "?")) if region.has("weather") else "?")))
 	if wanted_weather == "":
 		wanted_weather = "clear"
-	var weather := _pick_weather(world_rng, world[0], world[1], wanted_weather)
+	var weather := _pick_weather(world_rng, world[0], world[1], wanted_weather, str(opts.get("season", region.get("season", ""))))
 	# The place's own look (WorldStyle.vary): the region's seed, the hub's for a town fight,
 	# else one of its own.
 	var place_seed := int(region.get("seed", -1))
@@ -324,7 +324,7 @@ static func area(area_seed: int, opts: Dictionary = {}) -> Dictionary:
 	var feature := place_kind if place_kind in TerrainGen.FEATURES else ""
 	var map := TerrainGen.generate(rng, size, size, shape, {}, world[0], gen_culture, gen_hub, true, edges, feature)
 	var weather := str(opts.get("weather", region.get("weather", "?")))
-	weather = _pick_weather(rng, world[0], world[1], weather if weather != "" else "clear")
+	weather = _pick_weather(rng, world[0], world[1], weather if weather != "" else "clear", str(opts.get("season", region.get("season", ""))))
 	var place := int(region.get("seed", hub.get("seed", hash([area_seed, "place"]) & 0x7fffffff)))
 	var time := str(opts.get("time", region.get("time", "day")))
 	var kit := TerrainGen.kit(world[0], world[1]) + ("+" + weather if weather != "" else "") + ("~" + time if time in ["dawn", "evening", "night"] else "") + "#%d" % place
@@ -520,8 +520,8 @@ static func _add_secondary(layout: Dictionary, kind: String, w: int, h: int, sha
 
 
 ## The weather for the kit ("" = clear), from opts.weather or a pick that suits the landscape.
-static func _pick_weather(rng: RandomNumberGenerator, landscape: String, culture: String, wanted: String) -> String:
-	var w := wanted if wanted != "?" else TerrainGen.pick_weather(rng, landscape, culture)
+static func _pick_weather(rng: RandomNumberGenerator, landscape: String, culture: String, wanted: String, season: String = "") -> String:
+	var w := wanted if wanted != "?" else TerrainGen.pick_weather(rng, landscape, culture, season)
 	return "" if w == "clear" else w
 
 
