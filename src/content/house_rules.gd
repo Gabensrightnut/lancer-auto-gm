@@ -8,20 +8,55 @@ extends RefCounted
 ## data/game/story/house_rules.json: wallet, printers, travel...) switch with the StoryEngine
 ## `house_rule` action. Both keep the campaign's set in campaign.options["house_rules"].
 ##
-## Each entry: {id, name, description, source ("Your idea" / "Community" / "Lancer Tactics"),
+## Each entry: {id, name, description, source ("joe" / "Community" / "Lancer Tactics"),
 ## source_link, default, system ("rules" / "story")}. Who may switch them: HouseRulesFlow.
+## "joe" marks the user's own ideas (the "Joe's Rules" tab; the older "Your idea" counts as
+## joe). Every switch is off by default unless the user picked it; the book comes first.
 
-const SOURCES := ["Lancer Tactics", "Your idea", "Community"]
+const JOE := "joe"
+const SOURCES := [JOE, "Lancer Tactics", "Community"]
+const SOURCE_NAMES := {JOE: "Joe's Rules", "Lancer Tactics": "Lancer Tactics options", "Community": "Community house rules"}
+
+
+## A source as written in the data, with the old "Your idea" read as joe.
+static func source_of(raw: String) -> String:
+	return JOE if raw in ["", "Your idea", "your idea", JOE] else raw
+
+
+## What a source's tab is called.
+static func source_name(source: String) -> String:
+	return str(SOURCE_NAMES.get(source, source))
+
+
+## The panel's tabs, in order: [{source, name, rules: [entries]}], Joe's Rules first.
+static func tabs() -> Array:
+	var out: Array = []
+	for src: String in sources():
+		out.append({"source": src, "name": source_name(src), "rules": all().filter(func(r: Dictionary) -> bool: return str(r["source"]) == src)})
+	return out
+
+
+## Presets for the panel's buttons. "joe": every one of Joe's Rules on (the rest as they
+## are); "book": everything off, the core book only. Returns the new full set.
+static func preset(kind: String, current: Dictionary) -> Dictionary:
+	var out := normalized(current)
+	for r: Dictionary in all():
+		var id := str(r["id"])
+		if kind == "book":
+			out[id] = false
+		elif kind == "joe" and str(r["source"]) == JOE:
+			out[id] = true
+	return out
 
 
 ## Every house rule, the rules engine's first.
 static func all() -> Array:
 	var out: Array = []
 	for e: Dictionary in HouseRuleSwitches.catalog():
-		out.append({"id": str(e["id"]), "name": str(e.get("name", e["id"])), "description": str(e.get("text", "")), "source": str(e.get("source", "")),
+		out.append({"id": str(e["id"]), "name": str(e.get("name", e["id"])), "description": str(e.get("text", "")), "source": source_of(str(e.get("source", ""))),
 			"source_link": str(e.get("source_link", "")), "default": bool(e.get("default", false)), "system": "rules"})
 	for r: Dictionary in StoryHouseRules.definitions():
-		out.append({"id": str(r["id"]), "name": str(r.get("name", r["id"])), "description": str(r.get("text", "")), "source": str(r.get("source", "Your idea")),
+		out.append({"id": str(r["id"]), "name": str(r.get("name", r["id"])), "description": str(r.get("text", "")), "source": source_of(str(r.get("source", JOE))),
 			"source_link": "", "default": bool(r.get("default", false)), "system": "story"})
 	return out
 
@@ -93,4 +128,4 @@ static func put(state: GameState, set: Dictionary) -> Array:
 ## What a switch says in the log.
 static func announce(id: String, is_on: bool) -> String:
 	var r := rule(id)
-	return "House rule %s: %s (%s, not a book rule)." % ["on" if is_on else "off", str(r.get("name", id)), str(r.get("source", ""))]
+	return "House rule %s: %s (%s, not a book rule)." % ["on" if is_on else "off", str(r.get("name", id)), source_name(str(r.get("source", "")))]

@@ -42,6 +42,16 @@ static func _hit(events: Array) -> bool:
 	return false
 
 
+## Squads (Core p.322): Strength in Numbers makes them immune to Grapple and Ram; Spread Out
+## means they can't Grapple or Ram either.
+static func squad_refusal(u: Unit, t: Unit, what: String) -> RuleResult:
+	if Effects.has(u, "spread_out"):
+		return RuleResult.deny("A squad can't %s: its size doesn't reflect its mass." % what, Soldiers.REF_SQUAD)
+	if t != null and Effects.has(t, "no_grapple_ram_target"):
+		return RuleResult.deny("Squads are immune to %s." % what, Soldiers.REF_SQUAD)
+	return RuleResult.allow()
+
+
 static func _adjacent_target(state: GameState, u: Unit, params: Dictionary, ref: String) -> RuleResult:
 	var t := state.unit(String(params.get("target", "")))
 	if t == null or not Combat.is_present(t) or t == u:
@@ -74,6 +84,9 @@ class Ram:
 		if not r.ok:
 			return r
 		var t := state.unit(String(params["target"]))
+		var sq := CloseCombat.squad_refusal(u, t, "Ram")
+		if not sq.ok:
+			return sq
 		if t.size > GearSystems.grapple_size(u, t):
 			return RuleResult.deny("You can only Ram characters your Size or smaller.", CloseCombat.REF_RAM)
 		var p := Attacks.preview(state, u, CloseCombat.body_attack(u, "Ram"), t, {"improvised": true})
@@ -199,6 +212,9 @@ class Grapple:
 		if u.counters.has("grapple"):
 			return RuleResult.deny("You're already in a grapple.", CloseCombat.REF_GRAPPLE)
 		var t := state.unit(String(params["target"]))
+		var sq := CloseCombat.squad_refusal(u, t, "Grapple")
+		if not sq.ok:
+			return sq
 		if Effects.has(t, "immune_grapple"):
 			return RuleResult.deny("It's immune to Grapple right now.", Effects.REF)
 		var p := Attacks.preview(state, u, CloseCombat.grapple_attack(u), t, {"improvised": true})

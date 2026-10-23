@@ -176,19 +176,25 @@ npc_features, npc_templates): from a loaded content pack, or from our placeholde
 | NPC features | Weapons (tiered damage, attack bonus, accuracy, tags), tech features (rolled with their own attack bonus), systems with activation tags, Recharge and Limited, and stat bonuses/overrides (templates) work for any pack. Effect text is applied by the table unless `data/game/npc_feature_effects.json` encodes the feature | `npc_builder.gd` |
 | Placeholder Elite/Ultra | Our stand-ins: Elite +1 Structure, +1 Stress, 2 activations; Ultra +2/+2, 3 activations. The official templates replace them when an NPC pack is loaded | `data/game/npc_placeholder_pack.json` |
 
-### Soldiers (squads and single humans on foot)
+### Soldiers: the book's Squad and Human (Core p.322-323)
 
-Code: `src/content/soldiers.gd`, `data/game/soldiers.json`, `Unit.on_foot()`. PROVISIONAL rows:
+Code: `src/content/soldiers.gd`, builds in `data/game/soldiers.json`, effects by feature id in
+`data/game/npc_feature_effects.json`. Numbers: the official local pack when present
+(`local/content/core_npcs.json`, see [NPC_PACK.md](NPC_PACK.md)), else our placeholders.
 
-| Assumption | Why |
-|---|---|
-| Soldier numbers (HP, Grit by tier, defenses, squad Size 1 with 10 HP for 10 people) are placeholders | The book's Human and Squad NPC templates are in the full core book's GM section; our free copy has no NPC data. Check against the full book or an NPC pack. |
-| Soldiers use the book's rules for unmounted characters: Grit to attacks and saves, Biological (tech immunity except Lock On and Scan, heat becomes energy damage), attack with Fight, take only pilots' actions | Core p.74 ("unmounted characters"); the Fight rule says "characters on foot" (p.64) |
-| Soldiers don't Engage mechs and don't block them, at any Size | Core p.74 says this of "pilots"; we read it for all people on foot. A squad that blocks mechs would be a table ruling. |
-| Soldiers can't repair or otherwise aid mechs | Core p.74: unmounted characters can't aid mechs |
-| Allied soldiers activate like allied NPCs: the players choose when one goes, and its own AI picks what it does | Core p.60 (players nominate a player or allied NPC); the book doesn't say who decides an allied NPC's actions, so the user's choice is that nobody orders soldiers |
-| "Men left" for squads is ceil(HP / max HP x 10), for the look only | Not a book rule; no rules effect |
-| Patch (pilot gear) works on a squad, restoring half its maximum HP | The gear says "an adjacent pilot"; we read it as any person on foot |
+| Rule | Reading | Book |
+|---|---|---|
+| Squad and Human are Biological NPCs | no Heat Cap (heat becomes energy damage), immune to tech actions other than Scan and Lock On, can't take tech actions | Core p.282 Types of NPCs, p.322 |
+| Squad: Size 4 (1/2 individually), 10 members | one character; "men left" = ceil(HP / max HP x 10), for the look | p.322 Soldiers |
+| Squad Main Rifle | two attacks at a time (the second at `params.targets[1]` or the same target); one once it has lost more than half its HP, unless Disciplined | p.322 |
+| Strength in Numbers | Resistance to damage from attacks that aren't area attacks (Blast, Burst, Cone, Line); immune to Grapple, Ram, Knockback and Stunned. PROVISIONAL: the book shows the exempt attack types as icons our text copy lost; please confirm the icons on p.322 | p.322 |
+| Spread Out | others move through and stop in its spaces; it moves like one of its members (Size 1/2 path) and may end overlapping obstructions, cover or characters while at least 2 of its spaces are free; it can't Grapple or Ram. PROVISIONAL: Engagement during its own move is checked for the moving member only | p.322 |
+| Undersize | always soft cover, even in the open; never hard cover (so window cover doesn't apply to squads) | p.322 |
+| Modules | Armored (+1 Armor), Ambushers (+2 to attacks, saves and checks in round 1), Duck and Cover (reaction when hit: Resistance, then Immobilized until the end of its next turn; the AI always takes it), Rapid Insertion (flies when it moves or Boosts), Disciplined | p.322 |
+| Squad kinds | rifle squad (no module), missile team (anti-armor: Heavy Cannon explosive), guard squad (Armored + Duck and Cover), spotter team (Ambushers), medic team (Disciplined; healing isn't a book module, so "medic" is flavour), drop squad (Rapid Insertion); damage types are the pick the book leaves to when the squad is made | p.322 |
+| Human | Size 1/2, one weapon (ranged, melee or anti-armor), optional Veteran and Armored (+1; the book allows +1 to +2); a person on foot: doesn't Engage or block mechs, attacks with Fight | p.322, p.62, p.64, p.74 |
+| Allied soldiers activate like allied NPCs | the players choose when one goes; its own AI picks what it does (the user's choice: nobody orders soldiers) | p.60 |
+| Reinforcements | by the book a friendly NPC mech, once per mission; Joe's Rules `hr_reinforcement_squad` (off) may bring a soldier squad instead | p.52 |
 
 ### Open-ended talents: the literal reading, and the alternatives
 
@@ -209,22 +215,24 @@ table. Implemented ones are marked (code); the rest are played at the table this
 
 Switches in `state.house_rules` (`HouseRuleSwitches`, catalog in
 `data/game/house_rules_engine.json`), flipped between actions with `set_house_rule`. Off by
-default except the two Lancer Tactics options the user picked. Each card names its source.
+default except the two Lancer Tactics options the user picked; the user's own ideas (source
+`joe`) sit in the "Joe's Rules" tab, with "Turn on all of Joe's Rules" and "Book only"
+buttons (`HouseRules.tabs`, `HouseRules.preset`). Each card names its source.
 
 | Id | Source | What it does |
 |---|---|---|
 | `lt_split_barrage` (on) | Lancer Tactics | Skirmish twice with different mounts, moving in between |
 | `lt_brace_prompt` (on) | Lancer Tactics | Brace offered only on big hits |
 | `lt_repeat_quick_tech` | Lancer Tactics | the same Quick Tech option twice |
-| `hr_collapse_save` | Your idea | a section still standing after 5+ damage rolls 1d6 + Armor; 3 or less: it collapses |
-| `hr_fall_stun` | Your idea | fall damage: Hull save (10+) or Stunned until the end of its next turn |
-| `hr_brace_fall` | Your idea | reaction: halve fall damage |
+| `hr_collapse_save` | joe | a section still standing after 5+ damage rolls 1d6 + Armor; 3 or less: it collapses |
+| `hr_brace_fall` | joe | reaction: halve fall damage |
 | `hr_structure_no_stun` | Community (lancer-rules.carrd.co) | Direct Hit's Stun becomes Brace's penalties |
 | `hr_hide_hard_cover` | Community (lancer-rules.carrd.co) | hard cover from everyone who sees you is enough to Hide and stay Hidden |
 | `hr_npc_recharge_heat` | Community (Train Lightning) | NPC Recharge abilities cost 1 heat (4+/5+) or 2 (6+) |
 | `hr_overheated` | Community (Train Lightning) | Exposed from overheating also blocks Heat (Self) and Overkill until Stabilize |
-| `hr_garrisoned_buildings` (on) | Your idea | a building cell's ground storey is a room, entered only by its door face; a room space holds one Size 1+ unit alone, or two Size 1/2 units plus one squad; when the room's section is destroyed, everyone inside takes the book's falling damage for the building's height and is moved to the nearest free space (`garrison.gd`). Off: buildings are solid. Cover at windows is the book's (Core p.66), not part of the switch |
-| `hr_origin_perks` | Your idea | former employer (`pilot.origin.former_employer`, a manufacturer id, or `employer` by name): +1 Accuracy on the first attack each scene against a frame from that manufacturer. NPC classes have no manufacturer, so it only meets player-built frames |
+| `hr_garrisoned_buildings` | joe | a building cell's ground storey is a room, entered only by its door face; a room space holds one Size 1+ unit alone, or two Size 1/2 units plus one squad; when the room's section is destroyed, everyone inside takes the book's falling damage for the building's height and is moved to the nearest free space (`garrison.gd`). Off: buildings are solid. Cover at windows is the book's (Core p.66), not part of the switch |
+| `hr_reinforcement_squad` | joe | the Reinforcements reserve (by the book a friendly NPC mech, once per mission, Core p.52) may bring one of the squad's own soldier squads instead (the reserve action comes with the soldier rebuild) |
+| `hr_origin_perks` | joe | former employer (`pilot.origin.former_employer`, a manufacturer id, or `employer` by name): +1 Accuracy on the first attack each scene against a frame from that manufacturer. NPC classes have no manufacturer, so it only meets player-built frames |
 
 ## Buildings, windows and collapses
 

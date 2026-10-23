@@ -26,30 +26,48 @@ func test_catalog_and_defaults() -> void:
 	var fresh := GameState.new(1)
 	for r: Dictionary in HouseRuleSwitches.listing(fresh):
 		expect(r.has("source") and r.has("text") and r.has("name"), String(r["id"]))
-		# On by default only where the user asked: two Lancer Tactics picks and Garrisoned buildings.
-		var expected: bool = r["id"] in ["lt_split_barrage", "lt_brace_prompt", "hr_garrisoned_buildings"]
+		# On by default only where the user asked: two Lancer Tactics picks. Joe's Rules start off.
+		var expected: bool = r["id"] in ["lt_split_barrage", "lt_brace_prompt"]
 		expect_eq(bool(r["on"]), expected, String(r["id"]) + " default")
 	expect(HouseRuleSwitches.listing(fresh).size() >= 10)
 
 
 func test_switch_mid_game() -> void:
 	_setup()
-	var out := e.submit(s, {"type": "set_house_rule", "params": {"id": "hr_fall_stun", "on": true}})
+	var out := e.submit(s, {"type": "set_house_rule", "params": {"id": "hr_brace_fall", "on": true}})
 	expect(F.ok(out))
-	expect_eq(F.events_of(out, "house_rule_changed")[0]["name"], "Stunned by a hard fall")
-	expect(HouseRuleSwitches.on(s, "hr_fall_stun"))
-	expect(GameState.from_dict(s.to_dict()).house_rules.get("hr_fall_stun", false), "saved with the game")
+	expect_eq(F.events_of(out, "house_rule_changed")[0]["name"], "Brace for the fall")
+	expect(HouseRuleSwitches.on(s, "hr_brace_fall"))
+	expect(GameState.from_dict(s.to_dict()).house_rules.get("hr_brace_fall", false), "saved with the game")
 	expect(not F.ok(e.submit(s, {"type": "set_house_rule", "params": {"id": "nope", "on": true}})))
 
 
-func test_fall_stun_and_brace_for_the_fall() -> void:
-	_setup(["hr_fall_stun", "hr_brace_fall"])
+func test_brace_for_the_fall() -> void:
+	_setup(["hr_brace_fall"])
 	t.level = 6
 	t.counters["falling"] = true
-	F.load_dice(s, [3])  # the Hull save fails
 	Combat.fall_unit(s, t)
 	expect_eq(t.hp, 27, "braced: half of 6")
-	expect(t.has_status("Stunned"), "a hard fall stuns")
+	expect(not t.has_status("Stunned"), "no stun from a fall (that switch was removed)")
+	# An old save that still lists the removed switch loads and changes nothing.
+	s.house_rules["hr_fall_stun"] = true
+	expect(not HouseRules.normalized(s.house_rules).has("hr_fall_stun"), "unknown switch ids are dropped")
+
+
+func test_joes_rules_tab_and_presets() -> void:
+	var tabs := HouseRules.tabs()
+	expect_eq(tabs[0]["name"], "Joe's Rules", "Joe's Rules come first")
+	var in_tab: Array = (tabs[0]["rules"] as Array).map(func(r: Dictionary) -> String: return r["id"])
+	for r: Dictionary in HouseRules.all():
+		if r["source"] == HouseRules.JOE:
+			expect(in_tab.has(r["id"]), "%s is in Joe's Rules" % r["id"])
+	expect(in_tab.has("hr_garrisoned_buildings") and in_tab.has("hr_reinforcement_squad") and in_tab.has("hr_brace_fall"))
+	var on := HouseRules.preset("joe", {})
+	for id: String in in_tab:
+		expect(on[id], "%s on with the preset" % id)
+	expect(not on["lt_repeat_quick_tech"], "the Joe preset leaves the others alone")
+	var book := HouseRules.preset("book", on)
+	expect(not book.values().has(true), "Book only: everything off")
 
 
 func test_collapse_roll() -> void:

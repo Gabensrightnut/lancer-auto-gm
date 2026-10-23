@@ -42,15 +42,23 @@ static func feature_effects() -> Dictionary:
 	return _effects
 
 
-## The NPC data in use: a pack's if any pack has NPC classes, else the placeholders.
-## Returns {"classes": {id: entry}, "features": {id: entry}, "templates": {id: entry}, "official": bool}.
+## The NPC data in use: our placeholders, with every class, feature and template a loaded pack
+## has on top (same id: the pack's wins, e.g. the official Squad and Human from the local
+## pack). Returns {"classes", "features", "templates": {id: entry}, "placeholder": bool (no pack
+## has NPCs), "official": {class id: true} for classes a pack provides}.
 static func source(db: ContentDB) -> Dictionary:
-	if db != null and db.count("npc_classes") > 0:
-		return {"classes": _index(db.all("npc_classes")), "features": _index(db.all("npc_features")),
-			"templates": _index(db.all("npc_templates")), "placeholder": false}
 	var p := placeholder_pack()
-	return {"classes": _index(p.get("npc_classes", [])), "features": _index(p.get("npc_features", [])),
-		"templates": _index(p.get("npc_templates", [])), "placeholder": true}
+	var out := {"classes": _index(p.get("npc_classes", [])), "features": _index(p.get("npc_features", [])),
+		"templates": _index(p.get("npc_templates", [])), "placeholder": true, "official": {}}
+	if db != null and db.count("npc_classes") > 0:
+		var pc := _index(db.all("npc_classes"))
+		out["classes"].merge(pc, true)
+		out["features"].merge(_index(db.all("npc_features")), true)
+		out["templates"].merge(_index(db.all("npc_templates")), true)
+		out["placeholder"] = false
+		for id: String in pc:
+			out["official"][id] = true
+	return out
 
 
 static func _index(list: Array) -> Dictionary:
@@ -167,7 +175,16 @@ static func build(db: ContentDB, id: String, class_id: String, tier: int = 1, op
 				copy["rule_ref"] = "NPC feature: " + String(f.get("name", ""))
 				effects.append(copy)
 	u.loadout = {"weapons": weapons, "systems": [], "effects": effects, "traits": traits, "abilities": abilities, "tier": tier,
-		"role": cls.get("role", ""), "class": class_id, "templates": template_names, "placeholder": src["placeholder"]}
+		"role": cls.get("role", ""), "class": class_id, "templates": template_names,
+		"placeholder": not (src["official"] as Dictionary).has(class_id)}
+	# NPC types (Core p.282): Biological NPCs have no Heat Cap, are immune to tech actions other
+	# than Scan and Lock On, and can't take tech actions.
+	var types: Array = cls.get("npc_type", [])
+	if not types.is_empty():
+		u.loadout["npc_type"] = types.duplicate()
+	if types.has("Biological"):
+		u.loadout["biological"] = true
+		u.heat_cap = 0
 	return u
 
 
@@ -221,4 +238,4 @@ static func _weapon(f: Dictionary, key: String, tier: int) -> Dictionary:
 	return {"key": key, "id": f.get("id", ""), "name": f.get("name", ""), "mount": -1, "size": size, "type": wtype,
 		"damage": damage, "range": (f.get("range", []) as Array).duplicate(true), "tags": (f.get("tags", []) as Array).duplicate(true),
 		"attack_bonus": int(_num(_tiered(f.get("attack_bonus", 0), tier))), "accuracy": int(_num(_tiered(f.get("accuracy", 0), tier))),
-		"npc_on_hit": _text(f.get("on_hit", "")), "npc_effect": _text(f.get("effect", ""))}
+		"npc_on_hit": _text(f.get("on_hit", "")), "npc_effect": _text(f.get("effect", "")), "multi_attack": int(f.get("attacks", 1))}

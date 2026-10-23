@@ -153,6 +153,17 @@ static func _run(state: GameState, u: Unit, a0: Dictionary, aux: bool) -> Array[
 	var pre := TalentRules.spend_ammo(u, String(a.get("ammo", "")))
 	var lunge: Array[Dictionary] = TalentRules.lunge(state, u, state.unit(String(a.get("target", "")))) if a.get("lunge", false) else ([] as Array[Dictionary])
 	var events := lunge + _fire(state, u, w, a, aux)
+	# Squad Main Rifle: two attacks at a time while it has more than half its HP (Core p.322).
+	# The second goes at params.targets[1] if given, else the same target.
+	for i in range(1, Soldiers.attacks_with(u, w)):
+		var again := a.duplicate()
+		var more: Array = a.get("targets", [])
+		if more.size() > i:
+			again["target"] = more[i]
+		var t2 := state.unit(String(again.get("target", "")))
+		if t2 == null or not Combat.is_present(t2) or u.destroyed:
+			break
+		events.append_array(_fire(state, u, w, again, aux))
 	if not pre.is_empty():
 		events.push_front(pre)
 		events.append_array(TalentRules.shock_ammo(state, u, String(a.get("ammo", "")), state.unit(String(a.get("target", a.get("shock_target", "")))), events))

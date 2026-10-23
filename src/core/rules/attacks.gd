@@ -107,7 +107,7 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 		out["phase"] = true  # Phase-Ready: through walls, no line of sight, no cover; target counts as Invisible
 	var ignores_los := Weapons.has_tag(w, "tg_arcing") or seeking or phase
 	# Area attacks take cover and line of sight from the area's origin (glossary: Blast, Burst).
-	var cover := FrameSystems.extra_cover(state, target, Sight.cover(state, area_origin if area_origin != null else a_body, t_body, Effects.guardians(state, target)), attacker)
+	var cover := Sight.undersized(target, FrameSystems.extra_cover(state, target, Sight.cover(state, area_origin if area_origin != null else a_body, t_body, Effects.guardians(state, target)), attacker))
 	if not Zones.barrier_between(state, attacker, target).is_empty():
 		return fail.call("No attack can cross that barrier.", "systems: Hardlight Defense System / Blinkshield")
 	if area_origin == null and Zones.blocks_sight(state, attacker, target):
@@ -232,6 +232,9 @@ static func preview(state: GameState, attacker: Unit, w: Dictionary, target: Uni
 	for b: Dictionary in Effects.attack_bonus(attacker, roll_kinds):
 		(out["bonus_sources"] as Array).append(b)
 		out["bonus"] = int(out["bonus"]) + int(b["value"])
+	if Effects.has(attacker, "ambushers") and state.round_number <= 1:
+		(out["bonus_sources"] as Array).append({"label": "Ambushers (first round)", "value": 2})
+		out["bonus"] = int(out["bonus"]) + 2  # Squad Ambushers (Core p.322)
 	if area_origin != null:
 		out["kind"] = KIND_RANGED if not Weapons.is_melee(w) else KIND_MELEE
 	_defense(out, target, Weapons.has_tag(w, "tg_smart"))
@@ -732,6 +735,22 @@ static func _apply(state: GameState, attacker: Unit, target: Unit, parts: Array,
 		brace_answer = d
 	if brace:
 		events.append_array(Reactions.brace(state, target, attacker.id, brace_answer.get("move_to")))
+	if not area and Effects.has(target, "squad_resistance") and not parts.is_empty():
+		# Squad Strength in Numbers: Resistance to damage from attacks that aren't area attacks
+		# (Core p.322; PROVISIONAL reading of the book's attack-type icons).
+		resist_all = true
+		events.append({"type": "effect_triggered", "unit": target.id, "effect": "Strength in Numbers", "target": target.id,
+			"text": "A squad shrugs off single shots: Resistance to the damage.", "rule_ref": Soldiers.REF_SQUAD})
+	elif not brace and not resist_all and not parts.is_empty() and Effects.has(target, "duck_and_cover") and Reactions.can_react(target, "duck_and_cover", state).ok:
+		# Squad Duck and Cover (reaction when hit): Resistance to the damage, then Immobilized
+		# until the end of its next turn (Core p.322).
+		var dc := Reactions.offer(state, target, "duck_and_cover", {"attacker": attacker.id, "damage": parts}, {"take": true})
+		if dc.get("take", false):
+			Reactions._mark_used(target, "duck_and_cover", state)
+			resist_all = true
+			events.append({"type": "effect_triggered", "unit": target.id, "effect": "Duck and Cover", "target": target.id,
+				"text": "The squad hits the dirt: Resistance to the damage, Immobilized until the end of its next turn.", "rule_ref": Soldiers.REF_SQUAD})
+			events.append_array(Combat.add_status(state, target, "Immobilized", "Duck and Cover", target.id))
 	var aegis := brace and Effects.has(target, "flash_aegis")
 	if half:
 		var halved_parts: Array = []
@@ -876,6 +895,8 @@ static func knock_back(state: GameState, target: Unit, origin: Vector2i, spaces:
 		return anchor["events"]
 	if Effects.has(target, "immovable"):
 		return [{"type": "knockback_blocked", "unit": target.id, "reason": "Immune to involuntary movement.", "rule_ref": Effects.REF}] as Array[Dictionary]
+	if Effects.has(target, "no_knockback"):
+		return [{"type": "knockback_blocked", "unit": target.id, "reason": "Squads are immune to Knockback.", "rule_ref": Soldiers.REF_SQUAD}] as Array[Dictionary]
 	if by != null and by.size < target.size and Effects.has(target, "heavy_frame"):
 		return [{"type": "knockback_blocked", "unit": target.id, "reason": "Heavy Frame: smaller characters can't knock it back.", "rule_ref": Effects.REF}] as Array[Dictionary]
 	var path := Movement.push_path(state, target, origin, spaces)
@@ -993,8 +1014,8 @@ static func tech_target_check(state: GameState, user: Unit, target: Unit, action
 		return RuleResult.deny("Hidden characters can't be targeted.", "statuses: Hidden")
 	if target.has_status("Shut Down"):
 		return RuleResult.deny("Shut Down mechs are immune to tech actions.", "statuses: Shut Down")
-	if target.on_foot() and action != "scan" and action != "lock_on":
-		return RuleResult.deny("People on foot are BIOLOGICAL: immune to tech actions except Lock On and Scan.", "Core p.74 Fighting on the Ground")
+	if target.biological() and action != "scan" and action != "lock_on":
+		return RuleResult.deny("People and squads on foot are Biological: immune to tech actions except Lock On and Scan.", "Core p.74, p.282 Biological")
 	var in_sensors := Sight.within(state, Sight.body_of(state, user), Sight.body_of(state, target), user.sensors)
 	if in_sensors["grey_area"] != "":
 		return Rulings.needed(in_sensors["grey_area"])

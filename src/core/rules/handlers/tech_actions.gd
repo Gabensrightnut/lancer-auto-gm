@@ -108,8 +108,8 @@ class Bolster:
 			return RuleResult.deny("Jammed characters can't benefit from tech actions.", "statuses: Jammed")
 		if target.has_status("Shut Down"):
 			return RuleResult.deny("Shut Down mechs are immune to tech actions.", "statuses: Shut Down")
-		if target.on_foot():
-			return RuleResult.deny("People on foot are BIOLOGICAL: immune to tech actions except Lock On and Scan.", "Core p.74 Fighting on the Ground")
+		if target.biological():
+			return RuleResult.deny("People and squads on foot are Biological: immune to tech actions except Lock On and Scan.", "Core p.74, p.282 Biological")
 		if Sight.unit_distance(state, u, target) > u.sensors:
 			return RuleResult.deny("Out of Sensors range (%d)." % u.sensors, "actions: Bolster")
 		return RuleResult.allow()
