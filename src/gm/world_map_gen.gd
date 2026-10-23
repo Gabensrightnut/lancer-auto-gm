@@ -7,7 +7,7 @@ extends RefCounted
 ##     tiles: {"x,y": {terrain, cost (hours per space at Speed 1), mech: bool, foot: bool}},
 ##     sites: [{id, kind "town" | "outpost" | "job" | "safe" | "landmark", at [x, y], name,
 ##              area: {place, at, region} (feed it to MissionGenerator.area(seed, area)),
-##              safe_point, repair?}],
+##              safe_point, repair?, printer_schedule (0 none, 1-3: Core p.377)}],
 ##     war: {factions: [...]} or null, ambush_spots: [{id, at, cover, faction, force}] }
 ##
 ## world: a Sector world {id?, name, culture (story kit), map_culture?, landscape, weather?,
@@ -40,6 +40,7 @@ static func region(seed_value: int, world: Dictionary) -> Dictionary:
 			"name": str(p["name"]), "area": area, "safe_point": bool(p.get("safe_point", false))}
 		if p.has("repair"):
 			s["repair"] = p["repair"]
+		s["printer_schedule"] = int(p.get("printer_schedule", 0))
 		sites.append(s)
 	var war: Variant = world.get("war") if world.get("war") is Dictionary else null
 	var ambush: Array = _ambush_spots(rm, war, seed_value, profile) if war != null else []

@@ -322,7 +322,10 @@ static func area(area_seed: int, opts: Dictionary = {}) -> Dictionary:
 	# A place on the world map (farm, wreck, outpost, landmark, port, pad, camp, mine, ruins,
 	# relay): its own feature instead of a village, in the region's materials.
 	var feature := place_kind if place_kind in TerrainGen.FEATURES else ""
-	var map := TerrainGen.generate(rng, size, size, shape, {}, world[0], gen_culture, gen_hub, true, edges, feature)
+	# The biggest printer here (Core p.377): the region passes its place's; otherwise a town or
+	# hub has a schedule 3 printworks, a village a schedule 1 unit, outposts and ports 2, pads 1.
+	var printer := int(opts.get("printer_schedule", PLACE_PRINTER.get(place_kind, 0)))
+	var map := TerrainGen.generate(rng, size, size, shape, {}, world[0], gen_culture, gen_hub, true, edges, feature, printer)
 	var weather := str(opts.get("weather", region.get("weather", "?")))
 	weather = _pick_weather(rng, world[0], world[1], weather if weather != "" else "clear", str(opts.get("season", region.get("season", ""))))
 	var place := int(region.get("seed", hub.get("seed", hash([area_seed, "place"]) & 0x7fffffff)))
@@ -331,6 +334,13 @@ static func area(area_seed: int, opts: Dictionary = {}) -> Dictionary:
 	var cell := func(c: int, r: int) -> Array:
 		return [c - (r >> 1), r] if shape == GridLayout.Shape.HEX else [c, r]
 	var safe := _safe_points(map, place_kind, gen_hub, region_seed, ax, ay, size, shape)
+	var sched := 0
+	for c in map.cells():
+		for t in map.column(c).tags:
+			if t.begins_with("printer_schedule_"):
+				sched = maxi(sched, int(t.trim_prefix("printer_schedule_")))
+	for sp: Dictionary in safe:
+		sp["printer_schedule"] = sched
 	# Story's contract: safe_point (a secure place for Full Repairs, Core p.82), repair "bay" or
 	# "rig", repair_bay = where it stands (world x, z).
 	var flat := {"safe_point": not safe.is_empty()}
@@ -340,6 +350,7 @@ static func area(area_seed: int, opts: Dictionary = {}) -> Dictionary:
 		var wp := map.grid.to_world(Vector2i(first["cell"][0], first["cell"][1]))
 		flat["repair_bay"] = [wp.x, wp.z]
 	var result := {"map": map, "kit": kit, "name": TerrainGen.describe(world[0], world[1]), "place": place_kind, "at": [ax, ay], "safe_points": safe,
+		"printer_schedule": sched,
 		"region": {"seed": place, "landscape": world[0], "culture": world[1], "weather": weather},
 		"center": cell.call(size / 2, size / 2),
 		"entries": {"west": cell.call(0, size / 2), "east": cell.call(size - 1, size / 2), "north": cell.call(size / 2, 0), "south": cell.call(size / 2, size - 1)}}
@@ -347,10 +358,16 @@ static func area(area_seed: int, opts: Dictionary = {}) -> Dictionary:
 	return result
 
 
+## The biggest printer each kind of place has when the region doesn't say (Core p.377).
+const PLACE_PRINTER := {"town": 3, "outskirts": 1, "outpost": 2, "port": 2, "pad": 1}
+
+
 ## Where the squad can make Full Repairs (Core p.82: ten hours in a secure location): the
-## town's repair bay or printer (by its door), or, out in the country, a field repair rig by
-## the road in about one area in three (spaced by the region's seed so most jobs have one
-## within an area or two). [{cell [x, y], kind "repair_bay" | "printer" | "field_rig", spot?}]
+## town's repair bay or printer (by its door), a place's own printer, or, out in the country, a
+## field repair rig by the road in about one area in three (spaced by the region's seed so most
+## jobs have one within an area or two). [{cell [x, y], kind "repair_bay" | "printer" |
+## "field_rig", spot?, printer_schedule}]: printer_schedule is the biggest printer at the place
+## (0 none; 1 prints up to Size 1, 2 up to Size 2, 3 up to Size 3: Core p.377).
 static func _safe_points(map: BattleMap, place: String, hub: Dictionary, region_seed: int, ax: int, ay: int, size: int, shape: GridLayout.Shape) -> Array:
 	var out: Array = []
 	if not hub.is_empty():
@@ -365,6 +382,15 @@ static func _safe_points(map: BattleMap, place: String, hub: Dictionary, region_
 					break
 		if not out.is_empty():
 			return out
+	# A place's own printer: the open space beside it.
+	for c in map.cells():
+		if not map.column(c).has_tag("printer"):
+			continue
+		for n in map.grid.neighbors(c):
+			if map.has_cell(n) and map.ground_height(n) <= map.ground_height(c) and not map.column(n).has_tag("printer") \
+					and not map.column(n).has_tag("building") and not map.column(n).has_tag("machinery") and not map.column(n).has_tag("water"):
+				map.column(n).tags.append("safe_point")
+				return [{"cell": [n.x, n.y], "kind": "printer"}]
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([region_seed, "safe", ax, ay])
 	# Every third area along each row of the region, offset by row: never more than a step or

@@ -134,9 +134,12 @@ static func kit(landscape: String, culture: String) -> String:
 
 
 static func generate(rng: RandomNumberGenerator, w: int, h: int, shape: GridLayout.Shape, blocked: Dictionary, landscape: String, culture: String,
-		hub: Dictionary = {}, area: bool = false, edges: Dictionary = {}, feature: String = "") -> BattleMap:
+		hub: Dictionary = {}, area: bool = false, edges: Dictionary = {}, feature: String = "", printer: int = 0) -> BattleMap:
 	var g := TerrainGen.new()
 	g.edges = edges
+	# The biggest printer here (Core p.377): towns and hubs 3, smaller places 1-2; city maps
+	# always have their schedule 3 printworks.
+	g.printer = printer if printer > 0 or landscape != "city" or not hub.is_empty() or feature != "" else 3
 	g.rng = rng
 	g.w = w
 	g.h = h
@@ -196,6 +199,8 @@ static func generate(rng: RandomNumberGenerator, w: int, h: int, shape: GridLayo
 	if area and landscape not in ["city", "station", "starship", "boarding", "boarding_defend", "boarding_assault"]:
 		g._area_ways()
 	g._clear_rock_near_built()
+	if g.printer > 0 and landscape not in ["station", "starship", "boarding", "boarding_defend", "boarding_assault"]:
+		g._printer_site()
 	g._place_outcrops()
 	g._clear_blocked()
 	if area:
@@ -330,9 +335,21 @@ func _town(hub: Dictionary, culture: String) -> void:
 		# The hub's own building: its cells carry the spot id (the saloon you walked into on
 		# foot is the same building in the fight), its door where the hub's door is.
 		var sid := "spot_" + str(spot.get("id", kind))
+		var tags: Array = ["building", BattleMap.TAG_DESTRUCTIBLE, sid]
+		if kind == "printer":
+			# The town's printer (Core p.377): a hub's is a schedule 3 printworks, a standalone
+			# industrial hall half as big again and two storeys high.
+			var sched := printer if printer > 0 else 3
+			tags.append_array(_printer_tags(sched))
+			if sched >= 3:
+				sw = sw * 3 / 2
+				sd = sd * 3 / 2
+				c0 = cc + int(round(pos.x)) - sw / 2
+				r0 = cr + int(round(pos.y)) - sd / 2
+				levels = 2
 		for r in range(r0, r0 + sd):
 			for c in range(c0, c0 + sw):
-				mark.call(c, r, levels, ["building", BattleMap.TAG_DESTRUCTIBLE, sid])
+				mark.call(c, r, levels, tags)
 		var door := Vector2(float(spot["door"][0]), float(spot["door"][1])) / TOWN_SCALE
 		doors.append(Vector2i(cc + int(round(door.x)), cr + int(round(door.y))))
 		door_ids.append(str(spot.get("id", kind)))
@@ -413,6 +430,8 @@ var map: BattleMap
 ## Share of inner bulkheads that can be broken through (ships' partitions are lighter).
 var breakable_walls := 0.3
 var cells: Array[Vector2i] = []
+## The biggest printer schedule this place has (0 none; Core p.377).
+var printer := 0
 
 
 ## Map coordinates are (col, row) on a rectangle; hex maps shear rows like BattleMap.flat().
@@ -1818,7 +1837,8 @@ func _feature(kind: String, culture: String) -> void:
 			# A walled compound with a gate toward the road, barracks, a watchtower, a pad.
 			_ring_wall(fc - 7, fr - 5, 14, 10, base + 2, "south")
 			_box(fc - 5, fr - 3, 4, 2, base + 1, ["building", BattleMap.TAG_DESTRUCTIBLE])
-			_box(fc + 2, fr - 3, 3, 2, base + 1, ["building", BattleMap.TAG_DESTRUCTIBLE])
+			# The garrison's printer: a self-contained schedule 2 unit (Core p.377).
+			_box(fc + 2, fr - 3, 3, 2, base + 1, ["building", BattleMap.TAG_DESTRUCTIBLE] + _printer_tags(2))
 			_box(fc + 4, fr + 2, 1, 1, base + 3, ["wall", "watchtower", BattleMap.TAG_DESTRUCTIBLE])
 			_box(fc - 4, fr + 1, 4, 3, base, ["deck", "landing_pad"])
 		"landmark":
@@ -1832,6 +1852,11 @@ func _feature(kind: String, culture: String) -> void:
 			# water along the east side.
 			_box(fc - 6, fr - 4, 6, 6, base, ["deck", "landing_pad"])
 			_box(fc + 2, fr - 5, 5, 4, base + 2, ["building", "hangar", BattleMap.TAG_DESTRUCTIBLE])
+			# The field printer: a schedule 1 shed on a pad, a schedule 2 unit at a port.
+			if kind == "pad":
+				_box(fc - 1, fr - 5, 1, 1, base + 1, ["machinery", BattleMap.TAG_DESTRUCTIBLE] + _printer_tags(1))
+			else:
+				_box(fc - 1, fr - 6, 2, 2, base + 1, ["building", BattleMap.TAG_DESTRUCTIBLE] + _printer_tags(2))
 			for r in range(fr + 1, fr + 6, 2):
 				for c in range(fc + 1, fc + 7, 3):
 					_box(c, r, 2, 1, base + 1, ["container", BattleMap.TAG_DESTRUCTIBLE])
@@ -1887,6 +1912,73 @@ func _feature(kind: String, culture: String) -> void:
 	for r in range(fr + 7, h / 2 + 1):
 		track.append(Vector2i(fc, r))
 	_road(track, "road_z")
+
+
+## Look tags for a printer of this schedule (the size it prints up to, Core p.377).
+func _printer_tags(sched: int) -> Array:
+	printer = maxi(printer, sched)
+	return ["printer", "printer_schedule_%d" % sched]
+
+
+## The place's printer where nothing built one yet (Core p.377), near the crossroads off the
+## through-roads: schedule 1 a one-person unit of about 14 square meters (one space, a level
+## high); schedule 2 a self-contained unit (3x2); schedule 3 a standalone printworks hall (6x5,
+## two storeys) with its smaller workbench units alongside.
+func _printer_site() -> void:
+	for cell in cells:
+		if map.column(cell).has_tag("printer"):
+			return
+	var dims: Vector2i = [Vector2i(1, 1), Vector2i(1, 1), Vector2i(3, 2), Vector2i(6, 5)][clampi(printer, 1, 3)]
+	var span := dims + (Vector2i(2, 0) if printer >= 3 else Vector2i.ZERO)
+	# First open ground only; then (cities) knock down whatever stood there.
+	for strict: bool in [true, false]:
+		for ring in range(3, maxi(w, h) / 2):
+			for k in range(16):
+				var a := TAU * k / 16.0
+				var c0 := w / 2 + int(round(cos(a) * ring)) - span.x / 2
+				var r0 := h / 2 + int(round(sin(a) * ring)) - span.y / 2
+				if not _printer_fits(c0, r0, span, strict):
+					continue
+				var level := 0
+				for r in range(r0, r0 + span.y):
+					for c in range(c0, c0 + span.x):
+						level = maxi(level, map.ground_height(_cell(c, r)))
+				level = mini(level, 1)
+				var tags: Array = (["building"] if printer >= 2 else ["machinery"]) + [BattleMap.TAG_DESTRUCTIBLE, "printer", "printer_schedule_%d" % printer]
+				for r in range(r0, r0 + span.y):
+					for c in range(c0, c0 + span.x):
+						var bench := c >= c0 + dims.x
+						if bench and (r - r0) % 2 == 1:
+							_put(c, r, level, ["lot"])
+						elif bench:
+							_put(c, r, level + 1, ["machinery", "workbench", BattleMap.TAG_DESTRUCTIBLE])
+						else:
+							_put(c, r, level + (2 if printer >= 3 else 1), tags)
+				return
+
+
+func _printer_fits(c0: int, r0: int, span: Vector2i, strict: bool) -> bool:
+	if c0 < 2 or r0 < 2 or c0 + span.x > w - 2 or r0 + span.y > h - 2:
+		return false
+	for r in range(r0 - 1, r0 + span.y + 1):
+		for c in range(c0 - 1, c0 + span.x + 1):
+			var cell := _cell(c, r)
+			if not map.has_cell(cell) or blocked.has(cell):
+				return false
+			var col := map.column(cell)
+			var edge := r < r0 or c < c0 or r >= r0 + span.y or c >= c0 + span.x
+			if col.has_tag("road") or col.has_tag("water") or col.has_tag(BattleMap.TAG_IMPASSABLE) or col.has_tag("rail") or col.has_tag("door"):
+				return false
+			if edge:
+				continue
+			if col.ground > 2 or col.has_tag("safe_point") or col.has_tag("objective") or col.has_tag("keep"):
+				return false
+			for t in col.tags:
+				if t.begins_with("spot_") or t.begins_with("place_"):
+					return false
+			if strict and not (col.tags.is_empty() or col.has_tag("lot") or col.has_tag("farm")):
+				return false
+	return true
 
 
 func _box(c0: int, r0: int, cw: int, rh: int, ground: int, tags: Array) -> void:

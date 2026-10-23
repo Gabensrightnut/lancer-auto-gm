@@ -105,3 +105,22 @@ func test_worlds_differ_by_culture_and_starts_vary() -> void:
 	var look: Dictionary = WorldMapGen.region(41, {"name": "Saltpan", "culture": "old_west", "landscape": "desert_mesas"})["look"]
 	expect(look.has("palette") and look.has("landmarks") and str(look["palette"]["top_a"]) != "", "the map view gets the world's palette and landmarks")
 
+
+func test_printers_by_place() -> void:
+	var r := WorldMapGen.region(41, {"name": "Saltpan", "culture": "old_west", "landscape": "grassy_hills", "start": true, "campaign_seed": 2})
+	var by_kind := {}
+	for s: Dictionary in r["sites"]:
+		by_kind[s["detail"]] = int(s["printer_schedule"])
+	expect_eq(by_kind["town"], 3, "the town's printworks is schedule 3 (Core p.377)")
+	expect_eq(by_kind.get("outpost", 2), 2, "an outpost's printer is schedule 2")
+	expect_eq(by_kind.get("farm", 0), 0, "a farm has none")
+	var region := {"seed": 7, "landscape": "grassy_hills", "culture": "old_west", "weather": ""}
+	for place: String in ["town", "outpost", "pad"]:
+		var a := MissionGenerator.area(3, {"region": region, "at": [1, 1], "place": place, "shape": "square", "size": 40})
+		var want: int = {"town": 3, "outpost": 2, "pad": 1}[place]
+		expect_eq(a["printer_schedule"], want, "a %s prints up to schedule %d" % [place, want])
+		var tagged := false
+		for c in (a["map"] as BattleMap).cells():
+			tagged = tagged or (a["map"] as BattleMap).column(c).has_tag("printer_schedule_%d" % want)
+		expect(tagged, "the %s's printer stands on the map" % place)
+		expect(not (a["safe_points"] as Array).is_empty() and int(a["safe_points"][0]["printer_schedule"]) == want, "its safe point says what it prints: %s" % [a["safe_points"]])

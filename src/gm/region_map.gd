@@ -39,6 +39,10 @@ const LANDMARKS := {"": ["wrecked lander", "survey beacon"], "old_west": ["water
 	"medieval": ["castle on the hill", "standing stones", "abbey ruins"], "east_asian": ["pagoda", "shrine gate", "terraced hill"],
 	"retro": ["dome colony", "saucer tower", "monorail station"], "union": ["white towers", "space elevator base", "monorail hub"],
 	"cyberpunk": ["arcology", "neon spire", "elevated rail yard"], "industrial": ["smokestacks", "slag heap"], "port": ["crane yard", "lighthouse"]}
+## The biggest printer at each kind of place (Core p.377): the town (the region's hub) a
+## schedule 3 printworks; outposts and ports a schedule 2 unit; pads and safe points a
+## schedule 1 one-person printer. Story shows which mechs each can print.
+const PRINTER := {"town": 3, "outpost": 2, "port": 2, "pad": 1, "safe_point": 1}
 ## Hand-tuned starting regions (the campaign seed picks one): the first jobs' places, at fixed
 ## steps from the town, and a river or ridge that shapes the walk.
 const STARTS := [
@@ -103,7 +107,8 @@ static func build(region: Dictionary, opts: Dictionary = {}) -> Dictionary:
 	var places: Array = []
 	var start := Vector2i(cols / 2, rows / 2)
 	_set_tile(tiles, start, "city" if landscape == "city" else "plains")
-	places.append({"id": "town", "kind": "town", "name": str(region.get("name", "the town")), "at": [start.x, start.y], "safe_point": true, "repair": "bay"})
+	places.append({"id": "town", "kind": "town", "name": str(region.get("name", "the town")), "at": [start.x, start.y], "safe_point": true, "repair": "bay",
+		"printer_schedule": PRINTER["town"]})
 	var culture := str(region.get("culture", ""))
 	var taken := {start: true}
 	var start_layout: Dictionary = {}
@@ -171,9 +176,11 @@ static func _place_dict(kind: String, i: int, at: Vector2i, culture: String, rng
 		var names: Array = LANDMARKS.get(culture, LANDMARKS[""])
 		name = str(names[rng.randi_range(0, names.size() - 1)])
 	var p := {"id": "%s_%d" % [kind, i], "kind": kind, "name": name, "at": [at.x, at.y],
-		"safe_point": kind in ["outpost", "safe_point", "pad"]}
+		"safe_point": kind in ["outpost", "safe_point", "pad", "port"]}
 	if bool(p["safe_point"]):
 		p["repair"] = "rig"
+	if PRINTER.has(kind):
+		p["printer_schedule"] = PRINTER[kind]
 	return p
 
 
@@ -186,7 +193,11 @@ static func area_opts(rm: Dictionary, x: int, y: int) -> Dictionary:
 			place = str(AREA_PLACE.get(str(p["kind"]), "wilds"))
 	if place == "wilds" and str(rm["tiles"][y][x]) == "road":
 		place = "road"
-	return {"region": rm["region"], "at": [x, y], "place": place}
+	var out := {"region": rm["region"], "at": [x, y], "place": place}
+	for p: Dictionary in rm["places"]:
+		if int(p["at"][0]) == x and int(p["at"][1]) == y and p.has("printer_schedule"):
+			out["printer_schedule"] = p["printer_schedule"]
+	return out
 
 
 ## Hours to walk or drive from tile a to tile b along the cheapest straight-ish route (sum of
