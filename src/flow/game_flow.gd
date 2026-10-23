@@ -401,7 +401,7 @@ static func start_pvp_mission(campaign: Campaign, db: ContentDB, store: SaveStor
 		var gen := PvpBattle.arena(campaign, the_story, db, absi(hash([campaign.id, id, campaign.history.size()])) % 100000, split.get("fight", {})) if not split.is_empty() 			else CampaignLoop.build_mission(campaign, the_story, db, {"shape": opts.get("shape", "hex"), "sitrep": "sitrep_standardcombat"})
 		PvpBattle.split(gen, groups, allies, id, ai_seats)
 		if not split.is_empty():
-			(gen["mission"] as Mission).flavor[PvpBattle.KEY]["choices"] = {"a": "accept", "b": "decline"}
+			(gen["mission"] as Mission).flavor[PvpBattle.KEY]["vote"] = true  # a split vote: groups are its options
 		return gen, story_host)
 	lobby.set_fill_empty(true)
 	for seat: String in modes:
@@ -472,7 +472,7 @@ static func resume_mission(store: SaveStore, campaign: Campaign, db: ContentDB =
 static func finish_mission(s: BattleSession, campaign: Campaign, store: SaveStore, db: ContentDB = null) -> Dictionary:
 	var state := s.host.state
 	var m := s.mission
-	if is_story(campaign) and PvpBattle.is_pvp(m) and (m.flavor[PvpBattle.KEY] as Dictionary).has("choices"):
+	if is_story(campaign) and PvpBattle.is_pvp(m) and bool((m.flavor[PvpBattle.KEY] as Dictionary).get("vote", false)):
 		return _finish_split_fight(s, campaign, store, db)
 	if is_story(campaign):
 		return _finish_story_mission(s, campaign, store, db)
@@ -530,12 +530,18 @@ static func _finish_split_fight(s: BattleSession, campaign: Campaign, store: Sav
 	open_story(campaign, db if db != null else ContentDB.new())
 	var m := s.mission
 	var st := s.host.state
-	PvpBattle.keep_damage(st, campaign, story)
+	# Everyone keeps the damage they took, until a Full Repair (RepairBay). The other sides'
+	# mechs are the squad's too: record them as such.
+	var copy := GameState.from_dict(st.to_dict())
+	for u: Unit in copy.units.values():
+		if story.seats.has(u.controller):
+			u.side = Mission.PLAYERS
+	RepairBay.record(story, copy)
 	var r := PvpBattle.result(m)
-	var choice := str((m.flavor[PvpBattle.KEY]["choices"] as Dictionary).get(r["winner"], ""))
+	var choice := str(r["winner"])
 	story_events = []
 	if choice != "":
-		story_events = story_engine.submit(story, campaign, {"type": "split_resolved", "seat": "gm", "params": {"winner": choice, "choice": choice}}).get("events", [])
+		story_events = story_engine.submit(story, campaign, {"type": "split_resolved", "seat": "gm", "params": {"winner": choice}}).get("events", [])
 	var e := r.duplicate()
 	e["type"] = "pvp_ended"
 	e["choice"] = choice

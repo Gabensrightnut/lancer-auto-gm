@@ -66,6 +66,12 @@ func observe(state: GameState, events: Array) -> void:
 					flavor.erase("carrier")
 		if outcome != "":
 			return
+	if flavor.has(PvpBattle.KEY):
+		# The squad split by a vote: the last side standing wins, however many sides there are.
+		var left := PvpBattle.last_side(self, state)
+		if left != "":
+			_decide(left, "The last side standing.")
+		return
 	var alive := {PLAYERS: 0, ENEMIES: 0}
 	var extracted := 0
 	for u: Unit in state.units.values():

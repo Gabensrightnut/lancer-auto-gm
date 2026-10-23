@@ -175,10 +175,11 @@ func test_split_vote_three_against_one_online() -> void:
 				f.poll(0.1)
 	pump.call()
 	expect(friends.all(func(f: NetClient) -> bool: return f.seat != ""), "three friends seated")
-	GameFlow.story.flags[Decisions.KEY] = {"id": "mutiny", "prompt": "Hand the colonists over", "accept": [], "decline": [], "votes": {},
+	GameFlow.story.flags[Decisions.KEY] = {"id": "mutiny", "prompt": "Hand the colonists over", "votes": {},
+		"options": [{"id": "accept", "label": "Hand them over", "effects": []}, {"id": "decline", "label": "Refuse", "effects": []}],
 		"split": {"accept": ["p1", "p2", "p3"], "decline": ["p4"]}}
 	GameFlow.story_client = null
-	var hs := GameFlow.start_pvp_mission(c, db, store, {"a": ["p1", "p2", "p3"], "b": ["p4"]}, {}, "mutiny", ["p1"], {"fight": {}})
+	var hs := GameFlow.start_pvp_mission(c, db, store, {"accept": ["p1", "p2", "p3"], "decline": ["p4"]}, {}, "mutiny", ["p1"], {"fight": {}})
 	expect(hs != null)
 	if hs == null:
 		return
@@ -208,16 +209,12 @@ func test_split_vote_three_against_one_online() -> void:
 		guard += 1
 		pump.call(hs)
 	expect(hs.over, "p4 yielded: the fight is over")
-	expect_eq(PvpBattle.winner(hs.mission), "a")
+	expect_eq(PvpBattle.winner(hs.mission), "accept")
 	var d := GameFlow.finish_mission(hs, c, store, db)
 	expect(d.has("pvp"))
 	expect_eq(str(GameFlow.story.flags.get("decided:mutiny", "")), "accept", "the winning side's choice stands")
 	var pid := GameFlow.story.pilot_of_seat("p2")
-	var kept: Dictionary = {}
-	for m: Dictionary in c.pilots[pid]["mechs"]:
-		if m.has("condition"):
-			kept = m["condition"]
-	expect_eq(int(kept.get("hp", -1)), 3, "damage is kept after the fight")
+	expect_eq(int(RepairBay.condition(GameFlow.story, pid).get("hp", -1)), 3, "damage is kept until a Full Repair")
 	GameFlow.leave_story_online()
 	GameFlow.session = null
 	GameFlow.story = null
@@ -233,3 +230,20 @@ func test_knocked_out_mechs_are_out_of_the_fight() -> void:
 	mission.observe(state, [])
 	expect_eq(PvpBattle.winner(mission), "a", "a side all knocked out has lost")
 	expect(state.units_on_side(Mission.ENEMIES).all(func(u: Unit) -> bool: return not u.destroyed), "nobody destroyed")
+
+
+## A three-way vote (left / middle / right): three sides, all hostile to each other; the last
+## standing wins.
+func test_three_way_split() -> void:
+	var gen := MissionGenerator.generate(929, {"db": MissionTest.db(), "size": 24, "players": 3, "sitrep": "sitrep_standardcombat", "environments": []})
+	expect_eq(PvpBattle.split(gen, {"left": ["p1"], "middle": ["p2"], "right": ["p3"]}, {}, "fork"), "")
+	var state: GameState = gen["state"]
+	var mission: Mission = gen["mission"]
+	expect_eq(TurnRules.sides(state).size(), 3, "three sides take turns")
+	expect_eq(_unit_of(state, "p3").side, "side_right")
+	_unit_of(state, "p1").destroyed = true
+	mission.observe(state, [])
+	expect_eq(PvpBattle.winner(mission), "", "two sides still standing")
+	_unit_of(state, "p3").counters["knocked_out"] = true
+	mission.observe(state, [])
+	expect_eq(PvpBattle.winner(mission), "middle")
