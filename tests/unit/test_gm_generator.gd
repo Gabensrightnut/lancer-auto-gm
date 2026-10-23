@@ -630,6 +630,7 @@ func test_safe_points_for_full_repairs() -> void:
 	var town := MissionGenerator.area(5, {"hub": hub, "shape": "square", "size": 50})
 	expect(not (town["safe_points"] as Array).is_empty(), "the town has a safe point")
 	expect(str(town["safe_points"][0]["kind"]) in ["repair_bay", "printer"], "at its repair bay or printer")
+	expect(town["safe_point"] == true and town["repair"] == "bay" and (town["repair_bay"] as Array).size() == 2, "story's fields: safe_point, repair, repair_bay")
 	var region := {"seed": 9, "landscape": "grassy_hills", "culture": "", "weather": ""}
 	var with_rig := 0
 	for ax in range(3):

@@ -316,10 +316,20 @@ static func area(area_seed: int, opts: Dictionary = {}) -> Dictionary:
 	var cell := func(c: int, r: int) -> Array:
 		return [c - (r >> 1), r] if shape == GridLayout.Shape.HEX else [c, r]
 	var safe := _safe_points(map, place_kind, gen_hub, region_seed, ax, ay, size, shape)
-	return {"map": map, "kit": kit, "name": TerrainGen.describe(world[0], world[1]), "place": place_kind, "at": [ax, ay], "safe_points": safe,
+	# Story's contract: safe_point (a secure place for Full Repairs, Core p.82), repair "bay" or
+	# "rig", repair_bay = where it stands (world x, z).
+	var flat := {"safe_point": not safe.is_empty()}
+	if not safe.is_empty():
+		var first: Dictionary = safe[0]
+		flat["repair"] = "rig" if str(first["kind"]) in ["field_rig", "camp"] else "bay"
+		var wp := map.grid.to_world(Vector2i(first["cell"][0], first["cell"][1]))
+		flat["repair_bay"] = [wp.x, wp.z]
+	var result := {"map": map, "kit": kit, "name": TerrainGen.describe(world[0], world[1]), "place": place_kind, "at": [ax, ay], "safe_points": safe,
 		"region": {"seed": place, "landscape": world[0], "culture": world[1], "weather": weather},
 		"center": cell.call(size / 2, size / 2),
 		"entries": {"west": cell.call(0, size / 2), "east": cell.call(size - 1, size / 2), "north": cell.call(size / 2, 0), "south": cell.call(size / 2, size - 1)}}
+	result.merge(flat)
+	return result
 
 
 ## Where the squad can make Full Repairs (Core p.82: ten hours in a secure location): the
@@ -371,6 +381,11 @@ static func secure_camp(area_result: Dictionary, cell: Vector2i) -> Dictionary:
 		map.column(cell).tags.append("safe_point")
 	var sp := {"cell": [cell.x, cell.y], "kind": "camp"}
 	(area_result.get("safe_points", []) as Array).append(sp)
+	area_result["safe_point"] = true
+	if not area_result.has("repair"):
+		area_result["repair"] = "rig"
+		var wp := map.grid.to_world(cell)
+		area_result["repair_bay"] = [wp.x, wp.z]
 	return sp
 
 
