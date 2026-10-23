@@ -15,6 +15,9 @@ var cockpit_cam: Camera3D
 var camera_mode := "tactical"
 var cockpit_unit := ""
 var cockpit_target := ""
+## Where the cockpit looks when the player aims with the mouse (a direction); zero = at
+## cockpit_target, or straight ahead.
+var cockpit_aim := Vector3.ZERO
 var sun: DirectionalLight3D
 var world_env: WorldEnvironment
 ## Keeps nameplates apart and out from under the HUD (set active_unit / hover_unit on it).
@@ -92,6 +95,7 @@ func set_camera_mode(mode: String, unit_id: String = "", target_id: String = "")
 		if mv.model and mv.model.head:
 			mv.model.head.visible = true
 	camera_mode = mode
+	cockpit_aim = Vector3.ZERO
 	if mode == "cockpit" and units.has(cockpit_unit):
 		var mv: MechView = units[cockpit_unit]
 		mv.model.head.visible = false
@@ -118,7 +122,9 @@ func _update_cockpit(snap: bool, delta: float = 0.0) -> void:
 	var fwd := -mv.model.global_transform.basis.z
 	var look := eye + fwd * 5.0
 	var tgt: MechView = units.get(cockpit_target)
-	if tgt:
+	if cockpit_aim != Vector3.ZERO:
+		look = eye + cockpit_aim * 5.0
+	elif tgt:
 		look = tgt.body_center()
 	var xf := Transform3D(Basis.looking_at(look - eye, Vector3.UP), eye + fwd * 0.02)
 	if snap:

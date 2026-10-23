@@ -76,8 +76,7 @@ static func import_pilot(source: Variant, db: ContentDB) -> Dictionary:
 		for g: Variant in gear.get(key, []):
 			if g is Dictionary and str(g.get("id", "")) != "":
 				p["pilot_gear"].append(str(g["id"]))
-	if not p["pilot_gear"].is_empty():
-		warn.append("Pilot gear (%d items) is kept but not used in battles yet." % p["pilot_gear"].size())
+	# Pilot gear is used: UnitFactory.build_pilot sorts it into weapons, armor and gear.
 	for skipped in ["bond", "bondId", "orgs", "clocks"]:
 		var val: Variant = d.get(skipped)
 		if (val is Array and not val.is_empty()) or (val is String and val != "") or (val is Dictionary and not val.is_empty()):

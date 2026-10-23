@@ -842,5 +842,31 @@
         "kind": "talent_gear"
       }
     ]
-  }
+  },
+  "ms_eva_module": [
+    {
+      "kind": "eva_module",
+      "label": "EVA Module: moves normally in zero-g and underwater (Environments)"
+    }
+  ],
+  "ms_technophile_1": [
+    {
+      "kind": "talent_gear"
+    }
+  ],
+  "ms_walking_armory_1": [
+    {
+      "kind": "talent_gear"
+    }
+  ],
+  "ms_walking_armory_2": [
+    {
+      "kind": "talent_gear"
+    }
+  ],
+  "ms_walking_armory_3": [
+    {
+      "kind": "talent_gear"
+    }
+  ]
 }

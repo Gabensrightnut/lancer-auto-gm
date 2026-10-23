@@ -310,3 +310,27 @@ func test_destroyed_mechs_pilot_stays_inside_and_may_exit() -> void:
 	var out := F.act(e, s, "dismount", pilot.id)
 	expect(F.ok(out), F.reason(out))
 	expect(not pilot.counters.has("mounted_in"), "climbed out (Core p.80: 'you may still exit it')")
+
+
+func test_pilot_gear() -> void:
+	var db := ContentDB.new()
+	db.load_all()
+	s = F.state()
+	e = RulesEngine.new()
+	var p := UnitFactory.build_pilot(db, "pp", {"name": "Ash", "ll": 0, "armor": "pg_assault_hardsuit", "gear": ["pg_patch", "pg_frag_grenades", "pg_stealth_hardsuit"],
+		"weapons": ["pg_light_signature"], "signature_damage": {"pg_light_signature": "Energy"}}, "players")
+	p.cell = Vector2i(0, 0)
+	s.add_unit(p)
+	t = F.mech(s, "t", "enemies", Vector2i(3, 0))
+	expect_eq([p.max_hp, p.armor, p.evasion], [9, 1, 8], "Assault Hardsuit: +3 HP, Armor 1, Evasion 8")
+	expect_eq(p.loadout["weapons"][0]["damage"][0]["type"], "Energy", "the signature weapon's chosen damage type")
+	F.begin(e, s, p)
+	p.hp = 2
+	var key := ""
+	for x: Dictionary in Abilities.all(p):
+		if x["name"] == "Use Patch":
+			key = x["key"]
+	var out := F.act(e, s, "activate", "pp", {"ability": key})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(p.hp, 7, "half its maximum HP back")
+	expect(not F.ok(F.act(e, s, "activate", "pp", {"ability": key})), "Limited 1")

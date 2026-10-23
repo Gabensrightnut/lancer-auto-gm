@@ -212,4 +212,5 @@ static func attack(state: GameState, attacker: Unit, w: Dictionary, params: Dict
 		events.append_array(Attacks.attack(state, attacker, w, target, opts))
 	events.append_array(FrameSystems.after_area(state, attacker, w, events))
 	events.append_array(TerrainDamage.after_area(state, attacker, w, p["cells"]))
+	events.append_array(GearSystems.area_left_behind(state, attacker, w, p["cells"], params))
 	return events
