@@ -110,7 +110,7 @@ static func _others(state: GameState, u: Unit) -> Array[Dictionary]:
 			continue  # mines lie on the ground
 		var object: bool = wreck or (o.kind == Unit.KIND_DEPLOYABLE and dtype != "Drone")
 		var blocks: bool = (object or o.side != u.side) and o.size >= u.size
-		if o.kind == Unit.KIND_PILOT and u.kind != Unit.KIND_PILOT:
+		if o.on_foot() and not u.on_foot():
 			blocks = false  # mechs can always move through unmounted humans (Core p.62)
 		if blocks and (GearSystems.intangible(u) or GearSystems.intangible(o)):
 			blocks = false  # FADE Cloak: through other characters (not ending there)
@@ -170,8 +170,8 @@ static func _engagers(state: GameState, u: Unit, body: Sight.Body, others: Array
 		var ou: Unit = o["unit"]
 		if ou.side == u.side or ou.kind == Unit.KIND_DEPLOYABLE or ou.has_status("Hidden") or not Combat.is_present(ou):
 			continue
-		if ou.kind == Unit.KIND_PILOT and u.kind != Unit.KIND_PILOT:
-			continue  # pilots don't cause mechs to become Engaged (Core p.74)
+		if ou.on_foot() and not u.on_foot():
+			continue  # pilots (and soldiers, PROVISIONAL) don't cause mechs to become Engaged (Core p.74)
 		if String(u.counters.get("feint", "")) == ou.id:
 			continue  # Duelist Feint: moving ignores engagement with it
 		if Sight.distance(state, body, o["body"]) <= 1:

@@ -693,8 +693,8 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 				return r
 		if op.get("op", "") in ["patch", "corrective"]:
 			var pt := state.unit(String(params.get("target", u.id)))
-			if pt == null or pt.kind != Unit.KIND_PILOT or (pt != u and Sight.unit_distance(state, u, pt) > 1):
-				return RuleResult.deny("Choose yourself or an adjacent pilot (params.target).", "pilot gear: " + String(a.get("source_name", "")))
+			if pt == null or not pt.on_foot() or (pt != u and Sight.unit_distance(state, u, pt) > 1):
+				return RuleResult.deny("Choose yourself or an adjacent person on foot (params.target).", "pilot gear: " + String(a.get("source_name", "")))
 			if op["op"] == "corrective" and not pt.has_status("Down and Out"):
 				return RuleResult.deny("Correctives are for Down and Out pilots.", "pilot gear: Corrective")
 			if op["op"] == "patch" and pt.has_status("Down and Out"):

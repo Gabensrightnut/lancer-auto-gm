@@ -175,6 +175,20 @@ npc_features, npc_templates): from a loaded content pack, or from our placeholde
 | NPC features | Weapons (tiered damage, attack bonus, accuracy, tags), tech features (rolled with their own attack bonus), systems with activation tags, Recharge and Limited, and stat bonuses/overrides (templates) work for any pack. Effect text is applied by the table unless `data/game/npc_feature_effects.json` encodes the feature | `npc_builder.gd` |
 | Placeholder Elite/Ultra | Our stand-ins: Elite +1 Structure, +1 Stress, 2 activations; Ultra +2/+2, 3 activations. The official templates replace them when an NPC pack is loaded | `data/game/npc_placeholder_pack.json` |
 
+### Soldiers (squads and single humans on foot)
+
+Code: `src/content/soldiers.gd`, `data/game/soldiers.json`, `Unit.on_foot()`. PROVISIONAL rows:
+
+| Assumption | Why |
+|---|---|
+| Soldier numbers (HP, Grit by tier, defenses, squad Size 1 with 10 HP for 10 people) are placeholders | The book's Human and Squad NPC templates are in the full core book's GM section; our free copy has no NPC data. Check against the full book or an NPC pack. |
+| Soldiers use the book's rules for unmounted characters: Grit to attacks and saves, Biological (tech immunity except Lock On and Scan, heat becomes energy damage), attack with Fight, take only pilots' actions | Core p.74 ("unmounted characters"); the Fight rule says "characters on foot" (p.64) |
+| Soldiers don't Engage mechs and don't block them, at any Size | Core p.74 says this of "pilots"; we read it for all people on foot. A squad that blocks mechs would be a table ruling. |
+| Soldiers can't repair or otherwise aid mechs | Core p.74: unmounted characters can't aid mechs |
+| Allied soldiers activate like allied NPCs: the players choose when one goes, and its own AI picks what it does | Core p.60 (players nominate a player or allied NPC); the book doesn't say who decides an allied NPC's actions, so the user's choice is that nobody orders soldiers |
+| "Men left" for squads is ceil(HP / max HP x 10), for the look only | Not a book rule; no rules effect |
+| Patch (pilot gear) works on a squad, restoring half its maximum HP | The gear says "an adjacent pilot"; we read it as any person on foot |
+
 ### Open-ended talents: the literal reading, and the alternatives
 
 The user asked for the most literal reading of each, with the other readings listed for the

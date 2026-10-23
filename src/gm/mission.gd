@@ -290,7 +290,7 @@ func objective_for(side: String) -> Dictionary:
 			# moves it: AI squadmates don't carry it yet).
 			cells = zones.get("objective", zones.get("extraction", []))
 			weight = 1.2
-	return {"zones": cells, "zone_weight": weight}
+	return {"zones": cells, "zone_weight": weight, "sitrep": sitrep_id}
 
 
 func to_dict() -> Dictionary:

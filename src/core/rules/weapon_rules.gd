@@ -116,7 +116,7 @@ static func damage_override(attacker: Unit, w: Dictionary, target: Unit) -> Arra
 	if r.has("object_damage") and target.kind == Unit.KIND_DEPLOYABLE:
 		return [{"type": "Energy", "val": str(r["object_damage"]), "ap": true}]
 	var vs: Dictionary = r.get("damage_vs", {})
-	if vs.has("grappled_or_biological") and (target.counters.has("grapple") or target.kind == Unit.KIND_PILOT):
+	if vs.has("grappled_or_biological") and (target.counters.has("grapple") or target.on_foot()):
 		return [{"type": "Kinetic", "val": str(vs["grappled_or_biological"])}]
 	return []
 

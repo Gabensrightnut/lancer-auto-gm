@@ -555,7 +555,7 @@ static func _hit(state: GameState, attacker: Unit, w: Dictionary, target: Unit, 
 		damage = [{"type": "Kinetic", "val": str(4 * chambers)}]
 		ap = ap or chambers >= 4
 	var roland: bool = opts.get("roland", false)
-	if Weapons.has_tag(w, "tg_archaic") and target.kind != Unit.KIND_PILOT:
+	if Weapons.has_tag(w, "tg_archaic") and not target.on_foot():
 		damage = []  # Archaic weapons can't harm mechs (tags: Archaic).
 		events.append({"type": "no_effect", "target": target.id, "reason": "Archaic weapons can't harm mechs.", "rule_ref": "tags: Archaic"})
 	# Pegasus "By the Way, I Know Everything": average damage instead of rolling, decided first.
@@ -993,8 +993,8 @@ static func tech_target_check(state: GameState, user: Unit, target: Unit, action
 		return RuleResult.deny("Hidden characters can't be targeted.", "statuses: Hidden")
 	if target.has_status("Shut Down"):
 		return RuleResult.deny("Shut Down mechs are immune to tech actions.", "statuses: Shut Down")
-	if target.kind == Unit.KIND_PILOT and action != "scan" and action != "lock_on":
-		return RuleResult.deny("Pilots on foot are BIOLOGICAL: immune to tech actions except Lock On and Scan.", "Core p.74 Fighting on the Ground")
+	if target.on_foot() and action != "scan" and action != "lock_on":
+		return RuleResult.deny("People on foot are BIOLOGICAL: immune to tech actions except Lock On and Scan.", "Core p.74 Fighting on the Ground")
 	var in_sensors := Sight.within(state, Sight.body_of(state, user), Sight.body_of(state, target), user.sensors)
 	if in_sensors["grey_area"] != "":
 		return Rulings.needed(in_sensors["grey_area"])

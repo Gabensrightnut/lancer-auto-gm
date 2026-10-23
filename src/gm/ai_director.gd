@@ -165,8 +165,8 @@ func play_turn(u: Unit) -> void:
 			plan = ai.plan_turn(know, u.id, o)
 		_:
 			plan = ai.plan_turn(know, u.id, _orders_for(u))
-	if settings.explain:
-		_log(u.id, plan["log"])
+	if settings.explain or (Soldiers.is_soldier(u) and u.side == Mission.PLAYERS):
+		_log(u.id, plan["log"])  # the players always see what their own soldiers are doing and why
 	var steps: Array = plan["steps"]
 	if u.turn.get("braced", false):
 		steps = _braced_steps(steps)

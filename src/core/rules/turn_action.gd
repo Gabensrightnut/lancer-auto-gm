@@ -27,6 +27,10 @@ func kinds() -> Array:
 	return [Unit.KIND_MECH, Unit.KIND_NPC]
 
 
+## Pilot actions that only a mech's own pilot takes (soldiers don't climb into mechs).
+const PILOT_ONLY := ["mount", "eject", "dismount", "self_destruct"]
+
+
 ## The action's own rules. Must not change state.
 func check(_state: GameState, _u: Unit, _params: Dictionary) -> RuleResult:
 	return RuleResult.allow()
@@ -42,9 +46,12 @@ func validate(state: GameState, action: Dictionary) -> RuleResult:
 	var r := TurnRules.check_own_turn(state, u)
 	if not r.ok:
 		return r
-	if not kinds().has(u.kind):
-		var who := "Pilots on foot" if u.kind == Unit.KIND_PILOT else ("Mechs" if u.kind == Unit.KIND_MECH else "This unit")
-		return RuleResult.deny("%s can't take this action (%s)." % [who, type()], "actions.json")
+	# Soldiers on foot take the actions pilots on foot can (Core p.74), but never get into mechs.
+	var as_kind := Unit.KIND_PILOT if u.on_foot() else u.kind
+	if not kinds().has(as_kind) or (u.kind != Unit.KIND_PILOT and u.on_foot() and type() in PILOT_ONLY):
+		var who := "People on foot" if u.on_foot() else ("Mechs" if u.kind == Unit.KIND_MECH else "This unit")
+		var hint := " They attack with Fight." if u.on_foot() and type() in ["skirmish", "barrage"] else ""
+		return RuleResult.deny("%s can't take this action (%s).%s" % [who, type(), hint], "Core p.74 Pilots in Mech Combat")
 	var params: Dictionary = action.get("params", {})
 	if params.has("free_via") and Effects.grant(grant_holder(state, u, params), String(params["free_via"]), type(), cost() == TurnRules.QUICK).is_empty():
 		return RuleResult.deny("That free action isn't available (used up, or doesn't cover %s)." % type(), Effects.REF)
