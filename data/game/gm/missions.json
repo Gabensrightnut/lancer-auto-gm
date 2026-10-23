@@ -13,7 +13,7 @@
       "zone_size": 4
     },
     "sitrep_holdout": {
-      "weight": 1,
+      "weight": 2,
       "rounds": 6,
       "zones": "center",
       "zone_size": [
