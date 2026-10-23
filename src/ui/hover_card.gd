@@ -46,7 +46,18 @@ func show_action(a: Dictionary, scale_factor: float = 1.0) -> void:
 	Icons.write(_text, head + "\n", px)
 	if a.has("stats"):
 		Icons.write(_text, "[color=#cfd8e3]%s[/color]\n" % a["stats"], px)
-	Icons.write(_text, "[color=#b8c4d2]%s[/color]\n" % a.get("text", a.get("desc", "")), px)
+	# Long rule text stays readable: the short description, else the first ~300 characters.
+	var body := String(a.get("text", a.get("desc", "")))
+	if body.length() > 320:
+		var short := String(a.get("desc", ""))
+		if short != "" and short.length() < body.length():
+			body = short
+		else:
+			var cut := body.left(300).rfind(". ")
+			body = body.left(cut + 1 if cut > 120 else 300) + " …"
+	Icons.write(_text, "[color=#b8c4d2]%s[/color]\n" % body, px)
+	if a.get("auto_hint", false):
+		Icons.write(_text, "[color=#ffd166]Right-click: auto-use this whenever it's allowed.[/color]\n", px)
 	if ActionButton.locked(a):
 		Icons.write(_text, "[color=#%s]✕ Can't use: %s[/color]\n" % [DANGER.to_html(false), a.get("reason", "")], px)
 	for w: Variant in a.get("warnings", []):

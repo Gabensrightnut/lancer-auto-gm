@@ -53,39 +53,33 @@ func _draw() -> void:
 	var k := s.y / 100.0
 	draw_rect(Rect2(Vector2.ZERO, s), Color(0.04, 0.05, 0.07, 0.9))
 	draw_rect(Rect2(Vector2.ZERO, s), Color(0.35, 0.55, 0.75, 0.6), false, 1.0)
-	var pad := 8.0 * k
-	var row := (s.y - pad * 2.0) / 4.0
-	var icon := row * 0.72
-	var bar_x := pad + icon + 6 * k
-	var bar_w := s.x - bar_x - pad - 58 * k
+	# Six rows: HP, Heat (Danger Zone mark), Structure, Stress, Repairs as bars with their icon
+	# and current/total, then actions left, Overcharge, Core Power and Burn.
+	var pad := 6.0 * k
+	var row := (s.y - pad * 2.0) / 6.0
+	var icon := row * 0.78
+	var fs := int(maxf(12.0, row * 0.5))
+	var bar_x := pad + icon + 6.0
+	var text_w := font.get_string_size("88/88 +4–6", HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var bar_w := maxf(20.0, s.x - bar_x - pad - text_w - 6.0)
 	var a := 0.55 + 0.45 * sin(_pulse * 8.0)
-	# HP.
-	var hp: Array = _logic._pair("hp")
-	_icon("structure", Vector2(pad, pad), icon, HP_COL)
-	_bar(font, Rect2(bar_x, pad + row * 0.2, bar_w, row * 0.55), hp, HP_COL, k, 0, [], a)
-	# Heat with Danger Zone.
-	var heat: Array = _logic._pair("heat")
-	_icon("heat", Vector2(pad, pad + row), icon, HEAT_COL)
-	var hr := Rect2(bar_x, pad + row * 1.2, bar_w, row * 0.55)
-	_bar(font, hr, heat, HEAT_COL, k, 0, _logic._heat_preview(), a)
-	if not heat.is_empty() and data.has("danger_zone"):
-		var x := hr.position.x + hr.size.x * float(data["danger_zone"]) / maxf(1.0, float(heat[1]))
-		draw_line(Vector2(x, hr.position.y - 2), Vector2(x, hr.end.y + 2), DZ_COL, 2.0)
-	# Structure, stress, repairs as pips.
-	var y := pad + row * 2.0
-	var x0 := pad
-	for key: String in ["structure", "stress", "repairs"]:
-		var icon_name := {"structure": "structure", "stress": "reactor", "repairs": "repair"}[key] as String
-		var col: Color = Icons.color(icon_name)
-		_icon(icon_name, Vector2(x0, y), icon * 0.85, col)
+	var rows: Array = [["hp", "structure", HP_COL], ["heat", "heat", HEAT_COL], ["structure", "structure", Icons.color("structure")],
+		["stress", "reactor", Icons.color("reactor")], ["repairs", "repair", Icons.color("repair")]]
+	for i in range(rows.size()):
+		var key: String = rows[i][0]
+		var col: Color = rows[i][2]
+		var y := pad + row * i
+		_icon(String(rows[i][1]), Vector2(pad, y + (row - icon) * 0.5), icon, col)
+		var r := Rect2(bar_x, y + row * 0.22, bar_w, row * 0.56)
 		var p: Array = _logic._pair(key)
-		var txt := "??" if p.is_empty() else "%d/%d" % p
-		draw_string(font, Vector2(x0 + icon * 0.9, y + row * 0.62), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, int(row * 0.5), col)
-		x0 += (s.x - pad * 2.0) / 3.0
-	# Actions left, Overcharge, core power, burn.
-	y = pad + row * 3.0
-	x0 = pad
+		_bar(font, r, p, col, k, 0, _logic._heat_preview() if key == "heat" else [], a, fs)
+		if key == "heat" and not p.is_empty() and data.has("danger_zone"):
+			var x := r.position.x + r.size.x * float(data["danger_zone"]) / maxf(1.0, float(p[1]))
+			draw_line(Vector2(x, r.position.y - 2), Vector2(x, r.end.y + 2), DZ_COL, 2.0)
+	var y := pad + row * 5.0
+	var x0 := pad
 	var e: Dictionary = data.get("economy", {})
+	var small := icon * 0.85
 	for key: String in ["quick", "full", "reaction"]:
 		if not e.has(key):
 			continue
@@ -96,23 +90,25 @@ func _draw() -> void:
 			col = Color(0.4, 0.4, 0.45)
 		if preview.has(key):
 			col = Color(col.r, col.g, col.b, a)
-		_icon(icon_name, Vector2(x0, y), icon * 0.85, col)
-		draw_string(font, Vector2(x0 + icon * 0.9, y + row * 0.62), "%d/%d" % [int(v[0]), int(v[1])], HORIZONTAL_ALIGNMENT_LEFT, -1, int(row * 0.5), col)
-		x0 += icon * 0.9 + 36 * k
+		_icon(icon_name, Vector2(x0, y + (row - small) * 0.5), small, col)
+		var t := "%d/%d" % [int(v[0]), int(v[1])]
+		draw_string(font, Vector2(x0 + small + 2, y + row * 0.68), t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
+		x0 += small + 6 + font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	if e.has("overcharge_next"):
-		_icon("overcharge", Vector2(x0, y), icon * 0.85, Icons.color("overcharge"))
-		draw_string(font, Vector2(x0 + icon * 0.9, y + row * 0.62), String(e["overcharge_next"]), HORIZONTAL_ALIGNMENT_LEFT, -1, int(row * 0.5), Icons.color("overcharge"))
-		x0 += icon * 0.9 + 40 * k
+		_icon("overcharge", Vector2(x0, y + (row - small) * 0.5), small, Icons.color("overcharge"))
+		draw_string(font, Vector2(x0 + small + 2, y + row * 0.68), String(e["overcharge_next"]), HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Icons.color("overcharge"))
+		x0 += small + 8 + font.get_string_size(String(e["overcharge_next"]), HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	var cp := String(data.get("core_power", ""))
 	if cp != "":
 		var col := Color(0.4, 1.0, 0.6) if cp == "available" else Color(0.45, 0.45, 0.5)
 		if preview.has("core_power") and cp == "available":
 			col = Color(1.0, 0.85, 0.3, a)
-		_icon("corebonus", Vector2(x0, y), icon * 0.85, col)
-		x0 += icon
+		_icon("corebonus", Vector2(x0, y + (row - small) * 0.5), small, col)
+		draw_string(font, Vector2(x0 + small + 2, y + row * 0.68), "CORE", HORIZONTAL_ALIGNMENT_LEFT, -1, int(fs * 0.85), col)
+		x0 += small + 6 + font.get_string_size("CORE", HORIZONTAL_ALIGNMENT_LEFT, -1, int(fs * 0.85)).x
 	if int(data.get("burn", 0)) > 0:
-		_icon("burn", Vector2(x0, y), icon * 0.85, Icons.color("burn"))
-		draw_string(font, Vector2(x0 + icon * 0.9, y + row * 0.62), str(int(data["burn"])), HORIZONTAL_ALIGNMENT_LEFT, -1, int(row * 0.5), Icons.color("burn"))
+		_icon("burn", Vector2(x0, y + (row - small) * 0.5), small, Icons.color("burn"))
+		draw_string(font, Vector2(x0 + small + 2, y + row * 0.68), str(int(data["burn"])), HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Icons.color("burn"))
 
 
 func _icon(icon_name: String, pos: Vector2, px: float, col: Color) -> void:
@@ -121,10 +117,12 @@ func _icon(icon_name: String, pos: Vector2, px: float, col: Color) -> void:
 		draw_texture_rect(t, Rect2(pos, Vector2(px, px)), false, col)
 
 
-func _bar(font: Font, r: Rect2, p: Array, col: Color, k: float, delta: int, heat_add: Array, a: float) -> void:
+func _bar(font: Font, r: Rect2, p: Array, col: Color, k: float, delta: int, heat_add: Array, a: float, fs: int = 0) -> void:
+	if fs <= 0:
+		fs = int(r.size.y * 1.15)
 	draw_rect(r, Color(0.08, 0.1, 0.12))
 	if p.is_empty():
-		draw_string(font, Vector2(r.end.x + 6, r.end.y), "??", HORIZONTAL_ALIGNMENT_LEFT, -1, int(r.size.y * 1.1), Color(0.7, 0.7, 0.75))
+		draw_string(font, Vector2(r.end.x + 6, r.end.y), "??", HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.7, 0.7, 0.75))
 		return
 	var mx := maxf(1.0, float(p[1]))
 	var fill := clampf(float(p[0]) / mx, 0.0, 1.0)
@@ -145,4 +143,4 @@ func _bar(font: Font, r: Rect2, p: Array, col: Color, k: float, delta: int, heat
 	var txt := "%d/%d" % [int(p[0]), int(mx)]
 	if not heat_add.is_empty():
 		txt += " +%s" % (str(heat_add[0]) if heat_add[0] == heat_add[1] else "%d–%d" % heat_add)
-	draw_string(font, Vector2(r.end.x + 6, r.end.y), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, int(r.size.y * 1.15), Color.WHITE)
+	draw_string(font, Vector2(r.end.x + 6, r.end.y + 1), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)

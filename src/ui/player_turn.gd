@@ -117,6 +117,55 @@ func begin(uid: String) -> void:
 		view.tactical.look_at_point(mv.global_position + Vector3.UP * 0.6, 9.0)
 		view.tactical.pitch = -48.0
 	refresh()
+	_run_autos.call_deferred()
+
+
+# --- auto abilities (the action bar's gold bead) -------------------------------------------
+
+var _auto_targets: Dictionary = {}
+var _auto_waiting := false
+var _auto_cancel := false
+
+
+## The unit's autos at the start of its turn, in bar order, before the player takes over:
+## a strip says what will happen ("Auto: Lock On → Grunt 2, Stabilize (skip: would
+## overheat)"); Esc cancels this turn's. Each one goes through the rules engine like a click
+## and pays its full cost; any that can't be paid or found a legal target is skipped.
+func _run_autos() -> void:
+	if not active or busy or engine == null:
+		return
+	var plan := AutoActions.turn_plan(bar.hotkey_order(), bar.layout.get("auto", {}), ActionCatalog.resources(state, state.unit(unit_id)))
+	if plan.is_empty():
+		return
+	var parts: Array = []
+	var todo: Array = []
+	for p: Dictionary in plan:
+		var a: Dictionary = p["action"]
+		var act := {} if String(p["skip"]) != "" else AutoActions.action_for(state, engine, unit_id, a, String(_auto_targets.get(String(a.get("id", "")), "")))
+		var label := String(a.get("short", a.get("name", "")))
+		if String(p["skip"]) != "":
+			parts.append("%s (skip: %s)" % [label, p["skip"]])
+		elif act.is_empty():
+			parts.append("%s (skip: no legal use)" % label)
+		else:
+			var tgt := String((act.get("params", {}) as Dictionary).get("target", ""))
+			parts.append(label + (" → " + state.unit(tgt).name if tgt != "" and state.unit(tgt) else ""))
+			todo.append([label, act])
+	bar.show_note("Auto: %s   (Esc: skip this turn's)" % ", ".join(parts))
+	_auto_waiting = true
+	_auto_cancel = false
+	await get_tree().create_timer(1.6).timeout
+	_auto_waiting = false
+	if _auto_cancel or not active:
+		bar.show_note("Autos skipped this turn.")
+		return
+	for t: Array in todo:
+		if not active or busy:
+			return
+		pending = t[1]
+		await confirm()
+		if player and player.combat_log:
+			player.combat_log.add_line("[color=#ffd166]Auto: %s[/color]" % t[0])
 
 
 func refresh() -> void:
@@ -152,6 +201,10 @@ FIRST PERSON  ·  drag to look around  ·  click to aim at what's under the cros
 # --- input -----------------------------------------------------------------------------
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _auto_waiting and event.is_action_pressed("cancel"):
+		_auto_cancel = true
+		get_viewport().set_input_as_handled()
+		return
 	if not active or busy:
 		return
 	if event is InputEventKey and (event as InputEventKey).echo:
@@ -699,6 +752,7 @@ func choose_target(id: String) -> void:
 		"tech":
 			action = {"type": a.get("type", ""), "actor": unit_id, "params": {"target": id}}
 			line = "%s %s?" % [a.get("name", ""), t.name]
+			_auto_targets[String(a.get("id", ""))] = id  # auto reuses the last target while legal
 		"barrage":
 			var attacks: Array = []
 			for w: Dictionary in state.unit(unit_id).loadout.get("weapons", []).slice(0, 2):

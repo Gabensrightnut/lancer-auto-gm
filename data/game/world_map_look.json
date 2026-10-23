@@ -1,0 +1,43 @@
+{
+  "_doc": [
+    "The world map's look (read by src/render/worldmap/world_map_view.gd): a stylised overworld in the",
+    "spirit of FF VII/X's maps (feel only). One tile = one map space. terrains: by the region map's",
+    "tiles[].terrain name (anything unknown draws as plains): color, height in tiles, props scattered",
+    "on it (trees, pines, palms, rocks, cacti, reeds, ruins, none) and how many per tile; water tiles",
+    "sit under the sea plane. sites: marker look by site kind. Our own data."
+  ],
+  "tile": 1.0,
+  "token_height": 0.75,
+  "sea_level": 0.0,
+  "terrains": {
+    "plains":   {"color": "#7fa35a", "height": 0.15, "props": "none"},
+    "grass":    {"color": "#6f9c4c", "height": 0.15, "props": "none"},
+    "forest":   {"color": "#3f6b35", "height": 0.2, "props": "trees", "count": 4},
+    "jungle":   {"color": "#2f6a3a", "height": 0.2, "props": "palms", "count": 5},
+    "hills":    {"color": "#8b9a5c", "height": 0.55, "props": "rocks", "count": 1},
+    "mountain": {"color": "#7d756b", "height": 1.6, "props": "rocks", "count": 2, "snow_above": 1.3},
+    "rock":     {"color": "#8a8278", "height": 0.4, "props": "rocks", "count": 3},
+    "desert":   {"color": "#d8bf86", "height": 0.12, "props": "cacti", "count": 1},
+    "sand":     {"color": "#e0cc96", "height": 0.08, "props": "none"},
+    "salt":     {"color": "#ece8de", "height": 0.06, "props": "none"},
+    "snow":     {"color": "#eef2f5", "height": 0.3, "props": "pines", "count": 1},
+    "ice":      {"color": "#cfe6f2", "height": 0.1, "props": "none"},
+    "swamp":    {"color": "#55663e", "height": 0.05, "props": "reeds", "count": 4},
+    "water":    {"color": "#2d6f9a", "height": -0.3, "props": "none", "water": true},
+    "sea":      {"color": "#1f557f", "height": -0.6, "props": "none", "water": true},
+    "lake":     {"color": "#2d6f9a", "height": -0.3, "props": "none", "water": true},
+    "river":    {"color": "#3a7fa8", "height": -0.15, "props": "none", "water": true},
+    "road":     {"color": "#a89f8a", "height": 0.14, "props": "none"},
+    "urban":    {"color": "#8f8c86", "height": 0.16, "props": "ruins", "count": 2},
+    "ruins":    {"color": "#7d7a72", "height": 0.18, "props": "ruins", "count": 2},
+    "ash":      {"color": "#55524f", "height": 0.15, "props": "rocks", "count": 1},
+    "lava":     {"color": "#c2471d", "height": 0.05, "props": "none", "glow": true}
+  },
+  "sites": {
+    "town":     {"look": "buildings", "color": "#f2d38a"},
+    "outpost":  {"look": "tower", "color": "#9fd0ff"},
+    "job":      {"look": "beacon", "color": "#ff9a3c"},
+    "safe":     {"look": "tent", "color": "#7dffa0"},
+    "landmark": {"look": "obelisk", "color": "#d8b8ff"}
+  }
+}
