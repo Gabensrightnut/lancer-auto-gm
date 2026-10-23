@@ -33,7 +33,7 @@ extends RefCounted
 ##   ship_work {job, pilot}                              a shift's work aboard the squad's ship (ShipLife)
 ##   full_repair {}                                      10 hours at a repair bay somewhere secure (RepairBay, Core p.82)
 ##   buy_upgrade {slot}                                   the squad's own ship (house rule; Plunder)
-##   decide {accept}  / split_resolved {winner}           squad decisions and party splits (Decisions)
+##   decide {option} (or {accept}) / split_start {} / split_resolved {winner: option}   squad votes and arena splits (Decisions)
 ##   travel {world}                                   go to another world of the sector (between missions; Sector)
 ## "seat" "gm" (the host / procedural GM) may act for anyone.
 
@@ -263,9 +263,12 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 			if (seat != "gm" and seat != aseat) or not choices.has(str(p.get("pilot", ""))) or story.phase == "mission":
 				return _no("Pick one of your pilots, between missions.")
 		"decide":
-			var why_d := Decisions.refusal(story, seat)
+			var why_d := Decisions.refusal(story, seat, str(p.get("option", "")))
 			if why_d != "":
 				return _no(why_d)
+		"split_start":
+			if seat != "gm" or not Decisions.current(story).has("split"):
+				return _no("There's no split to settle.")
 		"ship_work":
 			var wpid := str(p.get("pilot", me))
 			if seat != "gm" and not _controls(story, seat, wpid):
@@ -282,6 +285,8 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 		"split_resolved":
 			if seat != "gm" or not Decisions.current(story).has("split"):
 				return _no("There's no split to settle.")
+			if not (Decisions.current(story).get("options", []) as Array).any(func(o: Dictionary) -> bool: return str(o["id"]) == str(p.get("winner", ""))):
+				return _no("The winner has to be one of the choices.")
 		"set_origin":
 			var opid := str(p.get("pilot", me))
 			if not campaign.pilots.has(opid) or (seat != "gm" and not _controls(story, seat, opid)):
@@ -507,7 +512,9 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 		"set_active_pilot":
 			return Cloning.set_active(story, campaign, str(p.get("seat", seat)), str(p["pilot"]))
 		"decide":
-			return Decisions.vote(story, campaign, seat, bool(p.get("accept", true)))
+			return Decisions.vote(story, campaign, seat, str(p["option"]) if p.has("option") else bool(p.get("accept", true)))
+		"split_start":
+			return Decisions.start_split(story)
 		"ship_work":
 			return ShipLife.work(story, campaign, str(p["job"]), str(p.get("pilot", me)))
 		"buy_upgrade":

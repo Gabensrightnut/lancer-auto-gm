@@ -89,7 +89,8 @@ func test_hungry_troops_stand_with_the_instigator_in_a_split() -> void:
 	e.submit(s, c, {"type": "decide", "seat": "p1", "params": {"accept": true}})
 	var r := e.submit(s, c, {"type": "decide", "seat": "p2", "params": {"accept": false}})
 	var split: Array = (r["events"] as Array).filter(func(x: Dictionary) -> bool: return x["type"] == "party_split")
-	expect(not split.is_empty() and (split[0]["troops"].get("p2", []) as Array).size() == 1, "the hungry squad fights for Kettle")
+	expect(not split.is_empty() and not split[0].has("troops"), "the arena fight is only the players' mechs")
+	expect_eq((Troops.loyalties(s).get("p2", []) as Array).size(), 1, "but the hungry squad stands with Kettle in the story")
 
 
 func test_dead_reckoning_crews() -> void:
