@@ -10,7 +10,7 @@ const UNIT_DIR := "res://tests/unit/"
 func _init() -> void:
 	var total := 0
 	var failed: Array[String] = []
-	var only := " ".join(OS.get_cmdline_user_args())
+	var only: Array = OS.get_cmdline_user_args()  # several filters run tests matching any of them
 	var files := DirAccess.get_files_at(UNIT_DIR)
 	files.sort()
 	for file in files:
@@ -21,7 +21,7 @@ func _init() -> void:
 			var name: String = method["name"]
 			if not name.begins_with("test_"):
 				continue
-			if only != "" and not (file + "." + name).contains(only):
+			if not only.is_empty() and not only.any(func(f: String) -> bool: return (file + "." + name).contains(f)):
 				continue
 			var test: TestCase = script.new()
 			test.run_test(name)
