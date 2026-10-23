@@ -28,6 +28,15 @@
     {"id": "people", "text": "The people of the world we protect", "roles": ["local", "bartender"]},
     {"id": "elders", "text": "The council of our organization", "roles": ["faction_agent", "local"]}
   ],
+  "squad_history": {
+    "_note": "Our own writing. The squad's shared history, made from what the players already chose for their pilots (backgrounds and origins): two pilots from the same world know each other, and so on. Shown as a short summary to edit or reroll; relationships are story flavour (Bonds), no rules effect.",
+    "homeworld": ["{a} and {b} both grew up on {what}. They knew each other's families before they knew each other.", "{a} and {b} are both from {what}; they found that out over a bad drink and have been friends since.", "{a} and {b} left {what} on the same transport, years apart, and still argue about which way home is."],
+    "upbringing": ["{a} and {b} share a {what} upbringing, and it shows in how they talk.", "{a} and {b} were both raised {what}. They recognised it in each other on day one."],
+    "employer": ["{a} and {b} both used to work for {what}, and neither talks about why they left.", "{a} and {b} first met on {what}'s payroll. They were on opposite shifts and opposite sides of a complaint."],
+    "specialty": ["{a} and {b} are both {what}s; they compare notes and keep score.", "{a} taught {b} half of what makes a good {what}. {b} won't admit it."],
+    "background": ["{a} and {b} share a past as {what}: they trust each other's instincts.", "{a} and {b} were both {what} once. They don't always agree what that means."],
+    "none": ["{a} and {b} met the day the squad formed. First impressions were mixed.", "{a} pulled {b} out of trouble on their first job together; {b} still owes them one.", "{a} and {b} share a bunk room and a running card game.", "{b} took {a}'s seat on the transport out. They've been squabbling about it ever since."]
+  },
   "history": [
     {"id": "childhood", "text": "Which of you grew up on the same street as me?", "bond": 3},
     {"id": "nearly_killed", "text": "Which of you nearly got me killed, once?", "bond": -2},

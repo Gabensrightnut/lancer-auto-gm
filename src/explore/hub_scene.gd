@@ -1416,6 +1416,9 @@ func screenshot_setup(args: Array) -> Array:
 	if args.has("inside"):
 		StorySettings.persist = false
 		return ["inside_bar", "inside_fp"]
+	if args.has("vote"):
+		StorySettings.persist = false
+		return ["vote"]
 	return ["walk", "talk", "choices", "check", "downtime", "supplies", "gear", "board", "briefing", "levelup"]
 
 
@@ -1468,6 +1471,17 @@ func screenshot_stage(tag: String) -> void:
 			fp.pitch = deg_to_rad(-4)
 		"fp_sneak":
 			fp.sneaking = true
+		"vote":
+			var seats := story.seats.keys()
+			seats.sort()
+			if seats.size() > 1:
+				engine.submit(story, campaign, {"type": "set_seat", "seat": "gm", "params": {"seat": seats[1], "pilot": story.pilot_of_seat(seats[1]), "ai": false}})
+			var ev := StoryEffects.apply({"decision": {"id": "fork", "prompt": "The canyon forks. Which way do we take the convoy?",
+				"options": [{"id": "left", "label": "Left: the dry riverbed"}, {"id": "right", "label": "Right: the high road"}]}}, story, campaign, {})
+			ev.append_array(engine.submit(story, campaign, {"type": "decide", "seat": seats[0], "params": {"option": "left"}})["events"])
+			if seats.size() > 1:
+				ev.append_array(engine.submit(story, campaign, {"type": "decide", "seat": seats[1], "params": {"option": "right"}})["events"])
+			_handle(ev)
 		"inside_bar":
 			enter_building("bar")
 			_yaw = 0.0

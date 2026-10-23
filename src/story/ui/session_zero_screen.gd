@@ -14,7 +14,11 @@ var campaign: Campaign
 var _identity: OptionButton
 var _identity_own: LineEdit
 var _patron: OptionButton
-var _history_rows: Array = []  # [{"a": pid, "q": OptionButton, "b": OptionButton}]
+var _history_rows: Array = []  # [{"a": pid, "q": OptionButton, "b": OptionButton}] (optional questions)
+var _shared_rows: Array = []  # [{"a", "b", "edit": LineEdit}]: the history made from the pilots
+var _shared_box: VBoxContainer
+var _questions: VBoxContainer
+var _variant := 0
 var _tone := "heroic"
 var _focus := "balanced"
 var _content: Dictionary = {}  # id -> CheckBox ("leave this out")
@@ -101,14 +105,38 @@ func _build() -> void:
 		_patron.set_item_metadata(_patron.item_count - 1, p["id"])
 	prow.add_child(_patron)
 	prow.add_child(_roll_button(func() -> void: _patron.select(story.dice.die(_patron.item_count) - 1)))
-	_section("What's our history?", "Each pilot asks the squad one question, and another pilot answers it. Skip any you don't want; nobody has to answer. Answers set where your bonds start.")
+	_section("How do we know each other?", "Made from the pilots you already built: their backgrounds and where they come from. Change any line, or reroll for a different take.")
+	_shared_box = VBoxContainer.new()
+	_shared_box.add_theme_constant_override("separation", 6)
+	_box.add_child(_shared_box)
+	var reroll := StoryStyle.button("Reroll the history", 14)
+	reroll.name = "RerollHistory"
+	reroll.pressed.connect(func() -> void:
+		_variant += 1
+		_fill_shared())
+	_box.add_child(reroll)
+	_fill_shared()
+	# The question game, for tables that want it: optional and folded away.
+	var more := StoryStyle.button("▸ Add squad history questions (optional)", 14)
+	more.name = "QuestionsToggle"
+	more.flat = true
+	_box.add_child(more)
+	_questions = VBoxContainer.new()
+	_questions.name = "Questions"
+	_questions.visible = false
+	_questions.add_theme_constant_override("separation", 8)
+	_box.add_child(_questions)
+	more.pressed.connect(func() -> void:
+		_questions.visible = not _questions.visible
+		more.text = ("▾ " if _questions.visible else "▸ ") + "Add squad history questions (optional)")
+	_questions.add_child(StoryStyle.label("Each pilot can ask the squad a question, and another pilot answers it. Skip any you like.", 14, StoryStyle.DIM, 1200))
 	_history_rows = []
 	var ids := campaign.pilots.keys()
 	ids.sort()
 	for pid: String in ids:
 		var hr := HBoxContainer.new()
 		hr.add_theme_constant_override("separation", 8)
-		_box.add_child(hr)
+		_questions.add_child(hr)
 		hr.add_child(StoryStyle.label("%s asks:" % campaign.pilots[pid].get("callsign", ""), 15, StoryStyle.TEXT))
 		var q := OptionButton.new()
 		q.add_item("(skip)")
@@ -139,6 +167,20 @@ func _build() -> void:
 		cb.text = "%s: %s" % [d["content"][id]["name"], d["content"][id]["text"]]
 		_content[id] = cb
 		_box.add_child(cb)
+
+
+## The made-up history lines, each editable.
+func _fill_shared() -> void:
+	for ch in _shared_box.get_children():
+		ch.queue_free()
+	_shared_rows = []
+	for h: Dictionary in SessionZero.squad_history(story, campaign, _variant):
+		var e := LineEdit.new()
+		e.text = str(h["text"])
+		e.custom_minimum_size = Vector2(1000, 0)
+		e.add_theme_font_size_override("font_size", StorySettings.size(15))
+		_shared_box.add_child(e)
+		_shared_rows.append({"a": h["a"], "b": h["b"], "edit": e})
 
 
 func _roll_button(cb: Callable) -> Button:
@@ -180,7 +222,12 @@ func choices() -> Dictionary:
 	var identity := _identity_own.text.strip_edges()
 	if identity == "":
 		identity = _identity.get_item_text(_identity.selected)
-	return {"identity": identity, "patron": str(_patron.get_item_metadata(_patron.selected)), "history": history,
+	var shared: Array = []
+	for r: Dictionary in _shared_rows:
+		var t := (r["edit"] as LineEdit).text.strip_edges()
+		if t != "":
+			shared.append({"a": r["a"], "b": r["b"], "text": t})
+	return {"identity": identity, "patron": str(_patron.get_item_metadata(_patron.selected)), "history": history, "squad_history": shared,
 		"tone": _tone, "focus": _focus, "content_off": off}
 
 
