@@ -73,3 +73,35 @@ func test_enter_and_leave_a_site_and_gather() -> void:
 	var v := m.view_for("p2")
 	expect_eq(v["squad"].size(), 2)
 	expect_eq(v["sites"].size(), 2)
+
+
+## The real region data (WorldMapGen.region): start in town, walk to another site, go into its
+## area (its own look from the region), and war regions bring ambushes and faction traffic.
+func test_on_a_real_region() -> void:
+	var r := WorldMapGen.region(41, {"name": "Saltpan", "culture": "old_west", "landscape": "grassy_hills", "start": true, "war": {"factions": ["STX", "Dawn"]}})
+	var region := ExploreRegion.new(41, {"p1": {"name": "Ama", "side": Mission.PLAYERS}})
+	var m := WorldMapSession.new(r, region, Dice.new(41))
+	var start := Vector2(float(r["start"][0]), float(r["start"][1]))
+	m.add_seat("p1", start, 4)
+	var town := m.site_at(WorldMapSession.tile_of(start))
+	expect(not town.is_empty() and str(town["kind"]) == "town", "the region starts in town: %s" % str(town))
+	var other: Dictionary = {}
+	for site: Dictionary in r["sites"]:
+		if site["id"] != town.get("id", "") and m.walkable(Vector2i(int(site["at"][0]), int(site["at"][1])), "mech"):
+			other = site
+			break
+	expect(not other.is_empty(), "somewhere else to walk to")
+	var to := Vector2i(int(other["at"][0]), int(other["at"][1]))
+	var hours := [0.0]
+	m.travelled.connect(func(_g: Array, h: float) -> void: hours[0] += h)
+	expect_eq(m.walk_to("p1", to), "")
+	for i in range(400):
+		m.tick(0.1)
+		if WorldMapSession.tile_of(m.seats["p1"]["at"]) == to:
+			break
+	expect_eq(WorldMapSession.tile_of(m.seats["p1"]["at"]), to, "walked there")
+	expect(hours[0] > 0.0, "the trip took time on the clock")
+	var key := m.enter("p1")
+	expect(key != "" and region.areas.has(key), "into the site's area")
+	var spot_ids: Array = (r["ambush_spots"] as Array).map(func(a: Dictionary) -> String: return str(a["id"]))
+	expect(m.ambushes.list.all(func(a: Dictionary) -> bool: return spot_ids.has(str(a["id"]))), "ambushers only where world put cover")

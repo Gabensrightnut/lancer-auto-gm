@@ -78,3 +78,46 @@ func test_drone_owner_is_public_and_hidden_mines_stay_hidden() -> void:
 	expect(seen.size() == 1 and not (seen[0]["object"] as Dictionary).has("cells"), "the throw is seen, not where the Hidden mine landed")
 	var own: Array = f.events_for(s, "gm", [deployed])
 	expect((own[0]["object"] as Dictionary).has("cells"), "its own side knows")
+
+
+## Soldiers over the network: an enemy squad's people dropping as it takes damage (men_left,
+## public), without its HP; an on-foot pilot on your own side in full.
+func test_soldiers_and_pilots_on_foot_reach_a_friend() -> void:
+	var s := F.state()
+	s.seats = {"p1": {"name": "Ama", "side": "players"}, "p2": {"name": "Rin", "side": "players"}, "gm": {"name": "GM", "side": "enemies", "gm": true}}
+	F.mech(s, "ama", "players", Vector2i(0, 0)).controller = "p1"
+	var pilot := Unit.new()
+	pilot.id = "ama_pilot"
+	pilot.kind = Unit.KIND_PILOT
+	pilot.side = "players"
+	pilot.controller = "p1"
+	pilot.hp = 6
+	pilot.max_hp = 6
+	pilot.cell = Vector2i(1, 1)
+	s.add_unit(pilot)
+	var squad := Unit.new()
+	squad.id = "militia"
+	squad.kind = Unit.KIND_NPC
+	squad.side = "enemies"
+	squad.controller = "gm"
+	squad.hp = 8
+	squad.max_hp = 8
+	squad.cell = Vector2i(6, 6)
+	squad.loadout = {"soldier": "squad", "squad_men": 4, "on_foot": true}
+	s.add_unit(squad)
+	var host := NetHost.new(s, RulesEngine.new())
+	host.add_local_seat("p1")
+	var hub := LoopbackTransport.Hub.new()
+	host.open_room(LoopbackTransport.new(hub), "SOLDRS")
+	var rin := NetClient.new(LoopbackTransport.new(hub))
+	rin.join("SOLDRS", "Rin", "p2")
+	Online._pump(host, rin)
+	var seen: Dictionary = rin.view["units"]["militia"]
+	expect(str(seen.get("soldier", "")) == "squad" and int(seen.get("men_left", 0)) == 4, "what they are and how many: %s" % str(seen))
+	expect(not seen.has("hp"), "not their HP")
+	squad.hp = 4
+	host.send_updates([{"type": "hp_changed", "unit": "militia", "amount": -4, "hp": 4}])
+	Online._pump(host, rin)
+	expect_eq(int(rin.view["units"]["militia"].get("men_left", 0)), 2, "half the squad is down")
+	expect(not rin.view["units"]["militia"].has("hp"))
+	expect_eq(int(rin.view["units"]["ama_pilot"].get("hp", 0)), 6, "Ama's pilot on foot, in full for her side")
