@@ -7,8 +7,12 @@ extends RefCounted
 ##     tiles: {"x,y": {terrain, cost (hours per space at Speed 1), mech: bool, foot: bool}},
 ##     sites: [{id, kind "town" | "outpost" | "job" | "safe" | "landmark", at [x, y], name,
 ##              area: {place, at, region} (feed it to MissionGenerator.area(seed, area)),
-##              safe_point, repair?}],
-##     war: {factions: [...]} or null, ambush_spots: [{id, at, cover, faction, force}] }
+##              safe_point, repair?, printer_schedule (0 none, 1-3: Core p.377)}],
+##     war: {factions: [...]} or null, ambush_spots: [{id, at, cover, faction, force}],
+##     stations: [{id, kind "rail" | "road" | "ferry" | "pad" | "port", at, line, lines, name, place?}],
+##     lines: [{id, kind, stops [station ids], path [[x, y]...], steps, hours_per_tile, max_size}],
+##     transit: [{id, kind, at, routes: [{to, line, hours, max_size}]}] (the same, by station) }
+## Tiles on the railway carry rail: true. Rides are look and travel only (PROVISIONAL numbers).
 ##
 ## world: a Sector world {id?, name, culture (story kit), map_culture?, landscape, weather?,
 ## start? (the campaign's first region), war? {factions}}. Same seed and world, same region.
@@ -25,7 +29,7 @@ static func region(seed_value: int, world: Dictionary) -> Dictionary:
 	var culture := WorldKits.culture_id(str(world.get("map_culture", world.get("culture", ""))))
 	var profile := {"seed": seed_value, "landscape": str(world.get("landscape", "grassy_hills")), "culture": culture,
 		"weather": str(world.get("weather", "")), "season": str(world.get("season", "")), "name": str(world.get("name", "the town"))}
-	var rm := RegionMap.build(profile, {"start": bool(world.get("start", false))})
+	var rm := RegionMap.build(profile, {"start": bool(world.get("start", false)), "campaign_seed": int(world.get("campaign_seed", seed_value))})
 	var tiles := {}
 	var size: Array = rm["size"]
 	for y in range(int(size[1])):
@@ -33,6 +37,8 @@ static func region(seed_value: int, world: Dictionary) -> Dictionary:
 			var t := str(rm["tiles"][y][x])
 			tiles["%d,%d" % [x, y]] = {"terrain": _look(t, profile), "class": t, "cost": float(rm["travel"].get(t, 1.0)),
 				"mech": not (rm["mech_blocked"] as Array).has(t), "foot": t != "water"}
+	for c: Array in rm["rails"]:
+		tiles["%d,%d" % [c[0], c[1]]]["rail"] = true
 	var sites: Array = []
 	for p: Dictionary in rm["places"]:
 		var area := RegionMap.area_opts(rm, int(p["at"][0]), int(p["at"][1]))
@@ -40,11 +46,29 @@ static func region(seed_value: int, world: Dictionary) -> Dictionary:
 			"name": str(p["name"]), "area": area, "safe_point": bool(p.get("safe_point", false))}
 		if p.has("repair"):
 			s["repair"] = p["repair"]
+		s["printer_schedule"] = int(p.get("printer_schedule", 0))
 		sites.append(s)
 	var war: Variant = world.get("war") if world.get("war") is Dictionary else null
 	var ambush: Array = _ambush_spots(rm, war, seed_value, profile) if war != null else []
+	# The world's look for the map view: its kit (palette, sky) and its landmark set.
+	var kit := TerrainGen.kit(str(profile["landscape"]), culture) + "#%d" % seed_value
+	var style := WorldStyle.resolve(kit)
+	var palette := {}
+	for k: String in ["top_a", "top_b", "rock_a", "soil"]:
+		palette[k] = str(WorldStyle.value(style, "ground." + k, ""))
+	palette["leaves"] = (WorldStyle.value(style, "flora.leaf_colors", []) as Array).duplicate()
+	palette["water"] = str(WorldStyle.value(style, "liquid.shallow", ""))
 	return {"id": str(world.get("id", "region_%d" % seed_value)), "size": size, "tiles": tiles, "sites": sites,
-		"war": war, "ambush_spots": ambush, "start": rm["start"], "region": profile}
+		"war": war, "ambush_spots": ambush, "start": rm["start"], "region": profile,
+		"stations": rm["stations"], "lines": rm["lines"], "transit": rm["transit"],
+		"look": {"kit": kit, "palette": palette, "landmarks": (WorldStyle.value(style, "horizon.landmarks", []) as Array).duplicate(),
+			"road_style": rm["road_style"], "start_layout": rm["start_layout"]}}
+
+
+## A small sealed arena for split-vote fights (net's PvpBattle): see PocketArena.build.
+## opts {landscape, culture, size, shape, mechs} -> {map, kit, deployment: {players, enemies}, w, h}
+static func arena(seed_value: int, opts: Dictionary = {}) -> Dictionary:
+	return PocketArena.build(seed_value, opts)
 
 
 ## Ambushes along the routes of a region at war (story sets which regions and who's fighting;

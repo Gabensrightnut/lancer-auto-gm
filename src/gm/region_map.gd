@@ -26,6 +26,31 @@ const MECH_BLOCKED := ["water"]
 const AREA_PLACE := {"town": "town", "outpost": "outpost", "farm": "farm", "port": "port", "pad": "pad",
 	"job_site": "camp", "wreck": "wreck", "landmark": "landmark", "safe_point": "camp", "mine": "mine", "ruins": "ruins", "relay": "relay"}
 
+## How built-up a world is by culture and era: frontier and Old West worlds are sparse, Union
+## core worlds crowded (multiplies the places beyond the starting few).
+const DENSITY := {"": 0.6, "old_west": 0.7, "medieval": 0.9, "east_asian": 1.0, "retro": 1.0, "industrial": 1.1, "port": 1.0,
+	"cyberpunk": 1.2, "union": 1.4, "ruins": 0.8, "burning": 0.8}
+## How the roads join the places: "spokes" (every road from the town: frontier), "chain" (each
+## place to its nearest neighbour: medieval lanes), "web" (spokes and chains both: core worlds).
+const ROADS := {"": "spokes", "old_west": "spokes", "medieval": "chain", "east_asian": "chain", "retro": "web", "industrial": "web",
+	"port": "web", "cyberpunk": "web", "union": "web", "ruins": "spokes", "burning": "spokes"}
+## What a world's landmarks are, by culture (look and name only: no lore).
+const LANDMARKS := {"": ["wrecked lander", "survey beacon"], "old_west": ["water tower", "windmill", "old mine head"],
+	"medieval": ["castle on the hill", "standing stones", "abbey ruins"], "east_asian": ["pagoda", "shrine gate", "terraced hill"],
+	"retro": ["dome colony", "saucer tower", "monorail station"], "union": ["white towers", "space elevator base", "monorail hub"],
+	"cyberpunk": ["arcology", "neon spire", "elevated rail yard"], "industrial": ["smokestacks", "slag heap"], "port": ["crane yard", "lighthouse"]}
+## The biggest printer at each kind of place (Core p.377): the town (the region's hub) a
+## schedule 3 printworks; outposts and ports a schedule 2 unit; pads and safe points a
+## schedule 1 one-person printer. Story shows which mechs each can print.
+const PRINTER := {"town": 3, "outpost": 2, "port": 2, "pad": 1, "safe_point": 1}
+## Hand-tuned starting regions (the campaign seed picks one): the first jobs' places, at fixed
+## steps from the town, and a river or ridge that shapes the walk.
+const STARTS := [
+	{"name": "crossroads", "places": [["farm", 2, 0], ["wreck", 0, -3], ["outpost", -3, 1], ["landmark", 2, 2]]},
+	{"name": "river town", "places": [["port", 2, 1], ["farm", -2, 2], ["wreck", -3, -2], ["landmark", 1, -3]], "river": true},
+	{"name": "hill town", "places": [["mine", 3, -1], ["farm", -2, 1], ["outpost", 0, 3], ["landmark", -2, -3]], "ridge": true},
+]
+
 ## Terrain weights by landscape: what the open country is mostly made of.
 const LAND := {
 	"grassy_hills": {"plains": 5, "hills": 3, "forest": 3, "water": 1},
@@ -82,37 +107,272 @@ static func build(region: Dictionary, opts: Dictionary = {}) -> Dictionary:
 	var places: Array = []
 	var start := Vector2i(cols / 2, rows / 2)
 	_set_tile(tiles, start, "city" if landscape == "city" else "plains")
-	places.append({"id": "town", "kind": "town", "name": str(region.get("name", "the town")), "at": [start.x, start.y], "safe_point": true, "repair": "bay"})
-	var wanted: Array = ["farm", "wreck", "outpost", "landmark"] if bool(opts.get("start", false)) else []
-	wanted.append_array(["outpost", "job_site", "mine" if mix.has("hills") or mix.has("mountains") else "job_site", "ruins", "relay", "landmark", "port" if mix.has("water") else "pad", "safe_point"])
+	places.append({"id": "town", "kind": "town", "name": str(region.get("name", "the town")), "at": [start.x, start.y], "safe_point": true, "repair": "bay",
+		"printer_schedule": PRINTER["town"]})
+	var culture := str(region.get("culture", ""))
 	var taken := {start: true}
+	var start_layout: Dictionary = {}
+	if bool(opts.get("start", false)):
+		# A hand-tuned start, picked by the campaign seed.
+		start_layout = STARTS[posmod(int(opts.get("campaign_seed", seed_value)), STARTS.size())]
+		if bool(start_layout.get("river", false)):
+			for y in range(rows):
+				_set_tile(tiles, Vector2i(clampi(start.x + 4 + int(round(sin(y * 0.6) * 1.0)), 0, cols - 1), y), "water")
+		if bool(start_layout.get("ridge", false)):
+			for x in range(cols):
+				_set_tile(tiles, Vector2i(x, clampi(start.y - 5 + int(round(sin(x * 0.5))), 0, rows - 1)), "hills")
+		for e: Array in start_layout["places"]:
+			var at := Vector2i(clampi(start.x + int(e[1]), 1, cols - 2), clampi(start.y + int(e[2]), 1, rows - 2))
+			taken[at] = true
+			if _tile(tiles, at) in ["water", "mountains"] and str(e[0]) != "port":
+				_set_tile(tiles, at, "plains")
+			places.append(_place_dict(str(e[0]), places.size(), at, culture, rng))
+	# Every world has its way off-world or across the water early in the list, even sparse ones.
+	var extra: Array = ["outpost", "port" if mix.has("water") else "pad", "job_site", "mine" if mix.has("hills") or mix.has("mountains") else "job_site", "ruins", "relay", "landmark", "safe_point", "job_site", "camp"]
+	var n_extra := int(round(extra.size() * float(DENSITY.get(culture, 1.0))))
+	var wanted: Array = extra.slice(0, clampi(n_extra, 4, extra.size()))
 	for i in range(wanted.size()):
 		var kind: String = wanted[i]
-		# The starting town's first places are close (walking distance: 2-3 tiles); the rest spread out.
-		var near := bool(opts.get("start", false)) and i < 4
-		var at := _free_spot(rng, tiles, taken, start, 2 if near else 4, 3 if near else maxi(cols, rows) / 2)
+		var at := _free_spot(rng, tiles, taken, start, 4, maxi(cols, rows) / 2)
 		if at == Vector2i(-1, -1):
 			continue
 		taken[at] = true
 		_set_tile(tiles, at, "plains" if _tile(tiles, at) in ["water", "mountains"] else _tile(tiles, at))
-		var p := {"id": "%s_%d" % [kind, i], "kind": kind, "name": kind.replace("_", " "), "at": [at.x, at.y],
-			"safe_point": kind in ["outpost", "safe_point", "pad"], "repair": "rig" if kind in ["outpost", "safe_point", "pad"] else ""}
-		if str(p["repair"]) == "":
-			p.erase("repair")
-		places.append(p)
-	# Roads from the town to every place (not across water: around it or a bridge where it must).
-	var roads: Array = []
+		places.append(_place_dict(kind, places.size(), at, culture, rng))
+	# Roads by the culture's network: spokes from the town, chains between neighbours, or both.
+	var style := str(ROADS.get(culture, "spokes"))
+	var links: Array = []
 	for p: Dictionary in places:
 		if p["id"] == "town":
 			continue
-		for c in _path(start, Vector2i(p["at"][0], p["at"][1])):
+		var at := Vector2i(p["at"][0], p["at"][1])
+		if style != "chain":
+			links.append([start, at])
+		if style != "spokes":
+			var best := start
+			var best_d := 999
+			for q: Dictionary in places:
+				var qa := Vector2i(q["at"][0], q["at"][1])
+				var d := absi(qa.x - at.x) + absi(qa.y - at.y)
+				if qa != at and d < best_d:
+					best_d = d
+					best = qa
+			links.append([best, at])
+	var roads: Array = []
+	for l: Array in links:
+		for c in _path(l[0], l[1]):
 			if _tile(tiles, c) != "city":
 				_set_tile(tiles, c, "road")
 			if not roads.has([c.x, c.y]):
 				roads.append([c.x, c.y])
-	return {"seed": seed_value, "size": [cols, rows], "landscape": landscape, "culture": str(region.get("culture", "")),
+	var rm := {"seed": seed_value, "size": [cols, rows], "landscape": landscape, "culture": culture,
+		"start_layout": str(start_layout.get("name", "")), "road_style": style,
 		"region": region.duplicate(), "tiles": tiles, "travel": TRAVEL.duplicate(), "mech_blocked": MECH_BLOCKED.duplicate(),
 		"places": places, "roads": roads, "start": [start.x, start.y]}
+	_transit(rm)
+	return rm
+
+
+# --- Transit --------------------------------------------------------------------------
+
+## Rides for hire between places (look and travel only: the book leaves travel to the GM).
+## PROVISIONAL: the hours per tile and the biggest mech each carries are our own numbers.
+## rail: a railway on worlds that build them; road: haulers and caravans along the roads;
+## ferry: boats across water from a port; pad: dropships from a landing pad to the town.
+const TRANSIT := {
+	"rail": {"hours_per_tile": 0.25, "max_size": 3, "name": "%s station"},
+	"road": {"hours_per_tile": 0.35, "max_size": 2, "name": "%s depot"},
+	"ferry": {"hours_per_tile": 0.6, "max_size": 3, "name": "%s landing"},
+	"pad": {"hours_per_tile": 0.1, "max_size": 3, "name": "%s dropship pad"},
+}
+## Worlds with no rail (no ground to lay it on, or no air to haul in).
+const NO_RAIL := ["moon", "asteroid", "ocean", "station", "starship", "molten_world"]
+
+
+## Stations and lines into rm (net's shape): stations [{id, kind "rail" | "road" | "ferry" |
+## "pad" | "port", at, line, lines, name, place?}], lines [{id, kind, stops, path,
+## hours_per_tile, max_size}], rails [[x, y]] (the railway's tiles), and main's per-station
+## view transit [{id, kind, at, routes: [{to, line, hours, max_size}]}].
+static func _transit(rm: Dictionary) -> void:
+	var stations: Array = []
+	var lines: Array = []
+	var by_id := {}
+	var places: Array = rm["places"]
+	var town: Dictionary = places[0]
+	var town_at := Vector2i(town["at"][0], town["at"][1])
+	var add_station := func(kind: String, p: Dictionary, at: Vector2i, line_kind: String) -> String:
+		var id := "%s_%s" % [kind, str(p.get("id", "%d_%d" % [at.x, at.y]))]
+		if not by_id.has(id):
+			var st := {"id": id, "kind": kind, "at": [at.x, at.y], "line": "", "lines": [],
+				"name": str(TRANSIT[line_kind]["name"]) % str(p.get("name", "the shore")).capitalize()}
+			if p.has("id"):
+				st["place"] = p["id"]
+			by_id[id] = st
+			stations.append(st)
+		return id
+	var add_line := func(kind: String, stop_ids: Array, path: Array, steps: Array) -> void:
+		var id := "%s_%d" % [kind, lines.size()]
+		lines.append({"id": id, "kind": kind, "stops": stop_ids, "path": path, "steps": steps,
+			"hours_per_tile": TRANSIT[kind]["hours_per_tile"], "max_size": TRANSIT[kind]["max_size"]})
+		for s: String in stop_ids:
+			var st: Dictionary = by_id[s]
+			(st["lines"] as Array).append(id)
+			if str(st["line"]) == "":
+				st["line"] = id
+	# Haulers and caravans: one run from the town round the nearest places, along the roads.
+	var road_set := {}
+	for r: Array in rm["roads"]:
+		road_set[Vector2i(r[0], r[1])] = true
+	for p: Dictionary in places:
+		road_set[Vector2i(p["at"][0], p["at"][1])] = true
+	var others: Array = places.slice(1)
+	others.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return atan2(float(a["at"][1]) - town_at.y, float(a["at"][0]) - town_at.x) < atan2(float(b["at"][1]) - town_at.y, float(b["at"][0]) - town_at.x))
+	var stops: Array = [add_station.call("road", town, town_at, "road")]
+	var path: Array = [[town_at.x, town_at.y]]
+	var steps: Array = [0]
+	var at := town_at
+	for p: Dictionary in others:
+		if stops.size() >= 5:
+			break
+		var to := Vector2i(p["at"][0], p["at"][1])
+		var leg := _bfs(rm, at, to, func(c: Vector2i) -> bool: return road_set.has(c))
+		if leg.is_empty():
+			continue
+		path.append_array(leg.slice(1))
+		steps.append(path.size() - 1)
+		stops.append(add_station.call("road", p, to, "road"))
+		at = to
+	if stops.size() >= 2:
+		add_line.call("road", stops, path, steps)
+	# The railway: from the town out to the farthest working places (mine, port, outpost, pad).
+	var rails := {}
+	if str(rm["culture"]) in TerrainGen.RAIL_CULTURES and not str(rm["landscape"]) in NO_RAIL:
+		var ends: Array = places.filter(func(p: Dictionary) -> bool: return str(p["kind"]) in ["mine", "port", "outpost", "pad", "job_site"])
+		ends.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+			return _dist(town_at, a["at"]) > _dist(town_at, b["at"]))
+		for p: Dictionary in ends.slice(0, 2):
+			var to := Vector2i(p["at"][0], p["at"][1])
+			var line_path := _bfs(rm, town_at, to, func(c: Vector2i) -> bool: return _tile(rm["tiles"], c) not in ["water", "mountains"])
+			if line_path.size() < 4:
+				continue
+			for c: Array in line_path:
+				rails[Vector2i(c[0], c[1])] = true
+			add_line.call("rail", [add_station.call("rail", town, town_at, "rail"), add_station.call("rail", p, to, "rail")], line_path, [0, line_path.size() - 1])
+	# Ferries: from a port across the water to the farthest shore the boats can reach.
+	for p: Dictionary in places:
+		if str(p["kind"]) != "port":
+			continue
+		var from := Vector2i(p["at"][0], p["at"][1])
+		# The quay: the water within two tiles of the port, then wherever the boats can go.
+		var wet := func(c: Vector2i) -> bool: return _tile(rm["tiles"], c) == "water" or _dist(from, [c.x, c.y]) <= 2
+		var reach := _flood(rm, from, wet)
+		var best := Vector2i(-1, -1)
+		var best_d := 3
+		for c: Vector2i in reach:
+			for n in _around(rm, c):
+				if _tile(rm["tiles"], n) != "water" and not reach.has(n) and _dist(from, [n.x, n.y]) > best_d:
+					best_d = _dist(from, [n.x, n.y])
+					best = n
+		if best == Vector2i(-1, -1):
+			continue
+		var shore := {}
+		for q: Dictionary in places:
+			if Vector2i(q["at"][0], q["at"][1]) == best:
+				shore = q
+		var line_path := _bfs(rm, from, best, func(c: Vector2i) -> bool: return wet.call(c) or c == best)
+		if line_path.size() >= 3:
+			add_line.call("ferry", [add_station.call("port", p, from, "ferry"), add_station.call("ferry", shore, best, "ferry")], line_path, [0, line_path.size() - 1])
+	# Dropships: from each landing pad straight to the town (they fly over anything).
+	for p: Dictionary in places:
+		if str(p["kind"]) != "pad":
+			continue
+		var to := Vector2i(p["at"][0], p["at"][1])
+		var line_path: Array = [[town_at.x, town_at.y]]
+		for c in _path(town_at, to):
+			line_path.append([c.x, c.y])
+		add_line.call("pad", [add_station.call("pad", town, town_at, "pad"), add_station.call("pad", p, to, "pad")], line_path, [0, line_path.size() - 1])
+	# Main's view: each station's rides, with the hours along its line.
+	var transit: Array = []
+	for st: Dictionary in stations:
+		var routes: Array = []
+		for l: Dictionary in lines:
+			var i: int = (l["stops"] as Array).find(st["id"])
+			if i < 0:
+				continue
+			for j in range((l["stops"] as Array).size()):
+				if j != i:
+					routes.append({"to": l["stops"][j], "line": l["id"], "max_size": l["max_size"],
+						"hours": snappedf(absi(int(l["steps"][j]) - int(l["steps"][i])) * float(l["hours_per_tile"]), 0.05)})
+		transit.append({"id": st["id"], "kind": st["kind"], "at": st["at"], "routes": routes})
+	var rail_list: Array = []
+	for c: Vector2i in rails:
+		rail_list.append([c.x, c.y])
+	rm["stations"] = stations
+	rm["lines"] = lines
+	rm["rails"] = rail_list
+	rm["transit"] = transit
+
+
+## Shortest 4-way route from a to b over tiles `ok` accepts (b always allowed): [[x, y]...]
+## from a to b, or [] when there's none.
+static func _bfs(rm: Dictionary, a: Vector2i, b: Vector2i, ok: Callable) -> Array:
+	var prev := {a: a}
+	var queue: Array[Vector2i] = [a]
+	while not queue.is_empty():
+		var c: Vector2i = queue.pop_front()
+		if c == b:
+			var out: Array = []
+			while c != a:
+				out.push_front([c.x, c.y])
+				c = prev[c]
+			out.push_front([a.x, a.y])
+			return out
+		for n in _around(rm, c):
+			if not prev.has(n) and (n == b or ok.call(n)):
+				prev[n] = c
+				queue.append(n)
+	return []
+
+
+## Every tile reachable from a over tiles `ok` accepts.
+static func _flood(rm: Dictionary, a: Vector2i, ok: Callable) -> Dictionary:
+	var seen := {a: true}
+	var queue: Array[Vector2i] = [a]
+	while not queue.is_empty():
+		var c: Vector2i = queue.pop_front()
+		for n in _around(rm, c):
+			if not seen.has(n) and ok.call(n):
+				seen[n] = true
+				queue.append(n)
+	return seen
+
+
+static func _around(rm: Dictionary, c: Vector2i) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var n := c + d
+		if n.x >= 0 and n.y >= 0 and n.x < int(rm["size"][0]) and n.y < int(rm["size"][1]):
+			out.append(n)
+	return out
+
+
+static func _dist(a: Vector2i, b: Array) -> int:
+	return absi(int(b[0]) - a.x) + absi(int(b[1]) - a.y)
+
+
+static func _place_dict(kind: String, i: int, at: Vector2i, culture: String, rng: RandomNumberGenerator) -> Dictionary:
+	var name := kind.replace("_", " ")
+	if kind == "landmark":
+		var names: Array = LANDMARKS.get(culture, LANDMARKS[""])
+		name = str(names[rng.randi_range(0, names.size() - 1)])
+	var p := {"id": "%s_%d" % [kind, i], "kind": kind, "name": name, "at": [at.x, at.y],
+		"safe_point": kind in ["outpost", "safe_point", "pad", "port"]}
+	if bool(p["safe_point"]):
+		p["repair"] = "rig"
+	if PRINTER.has(kind):
+		p["printer_schedule"] = PRINTER[kind]
+	return p
 
 
 ## Options for MissionGenerator.area() when stepping into tile (x, y): the region's look, the
@@ -124,7 +384,18 @@ static func area_opts(rm: Dictionary, x: int, y: int) -> Dictionary:
 			place = str(AREA_PLACE.get(str(p["kind"]), "wilds"))
 	if place == "wilds" and str(rm["tiles"][y][x]) == "road":
 		place = "road"
-	return {"region": rm["region"], "at": [x, y], "place": place}
+	var out := {"region": rm["region"], "at": [x, y], "place": place}
+	# The ride stops here (drawn in the area: platform, depot, jetty, pad).
+	var kinds: Array = []
+	for st: Dictionary in rm.get("stations", []):
+		if int(st["at"][0]) == x and int(st["at"][1]) == y and not kinds.has(str(st["kind"])):
+			kinds.append(str(st["kind"]))
+	if not kinds.is_empty():
+		out["stations"] = kinds
+	for p: Dictionary in rm["places"]:
+		if int(p["at"][0]) == x and int(p["at"][1]) == y and p.has("printer_schedule"):
+			out["printer_schedule"] = p["printer_schedule"]
+	return out
 
 
 ## Hours to walk or drive from tile a to tile b along the cheapest straight-ish route (sum of

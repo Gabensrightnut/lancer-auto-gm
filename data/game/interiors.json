@@ -236,6 +236,28 @@
 			{"id": "license_vault", "room": "control", "kind": "safe", "lock": 2}
 		]
 	},
+	"printworks": {
+		"name": "printworks",
+		"size": [28.0, 20.0],
+		"floors": 1,
+		"floor_height": 9.0,
+		"rooms": {
+			"hall": {"name": "the print hall", "floor": 0, "rect": [-14.0, -4.0, 18.0, 14.0], "use": "printer", "public": true},
+			"benches": {"name": "the workbench bay", "floor": 0, "rect": [4.0, -4.0, 10.0, 14.0], "use": "workshop", "public": true},
+			"techs": {"name": "the technicians' room", "floor": 0, "rect": [-14.0, -10.0, 14.0, 6.0], "use": "office"},
+			"control": {"name": "the control room", "floor": 0, "rect": [0.0, -10.0, 14.0, 6.0], "use": "control"}
+		},
+		"doors": [
+			{"rooms": ["outside", "hall"], "at": [-5.0, 10.0], "width": 6.0, "lock": 1, "kind": "hatch"},
+			{"rooms": ["outside", "benches"], "at": [9.0, 10.0], "lock": 1, "kind": "door"},
+			{"rooms": ["hall", "benches"], "at": [4.0, 3.0], "width": 3.0, "lock": 0, "kind": "arch"},
+			{"rooms": ["hall", "techs"], "at": [-7.0, -4.0], "lock": 0, "kind": "door"},
+			{"rooms": ["techs", "control"], "at": [0.0, -7.0], "lock": 1, "kind": "door"}
+		],
+		"containers": [
+			{"id": "license_vault", "room": "control", "kind": "safe", "lock": 2}
+		]
+	},
 	"house": {
 		"name": "house",
 		"size": [9.0, 7.0],

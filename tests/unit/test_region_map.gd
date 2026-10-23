@@ -22,9 +22,9 @@ func test_starting_region_has_first_jobs_close_by() -> void:
 	var near := {}
 	for p: Dictionary in rm["places"]:
 		var at := Vector2i(p["at"][0], p["at"][1])
-		if p["kind"] in ["farm", "wreck", "outpost", "landmark"] and maxi(absi(at.x - town.x), absi(at.y - town.y)) <= 3:
+		if p["id"] != "town" and maxi(absi(at.x - town.x), absi(at.y - town.y)) <= 3:
 			near[p["kind"]] = true
-	expect_eq(near.size(), 4, "a farm, a wreck, an outpost and a landmark within walking distance: %s" % [near.keys()])
+	expect(near.size() >= 4 and near.has("farm") and near.has("landmark"), "four first-job places within walking distance, a farm and a landmark among them: %s" % [near.keys()])
 	for p: Dictionary in rm["places"]:
 		if p["id"] == "town":
 			continue
@@ -88,3 +88,80 @@ func test_every_place_kind_has_its_own_ground() -> void:
 		for c in map.cells():
 			found = found or map.column(c).has_tag(signs[kind])
 		expect(found, "a %s has its %s" % [kind, signs[kind]])
+
+
+func test_worlds_differ_by_culture_and_starts_vary() -> void:
+	var frontier := RegionMap.build({"seed": 5, "landscape": "desert_mesas", "culture": ""})
+	var core := RegionMap.build({"seed": 5, "landscape": "grassy_hills", "culture": "union"})
+	expect(core["places"].size() > frontier["places"].size(), "core worlds are more built-up (%d vs %d places)" % [core["places"].size(), frontier["places"].size()])
+	expect(core["road_style"] == "web" and frontier["road_style"] == "spokes", "and their roads join up differently")
+	var med := RegionMap.build({"seed": 5, "landscape": "grassy_hills", "culture": "medieval"})
+	var landmark: Array = med["places"].filter(func(p: Dictionary) -> bool: return p["kind"] == "landmark")
+	expect(not landmark.is_empty() and str(landmark[0]["name"]) in RegionMap.LANDMARKS["medieval"], "medieval landmarks: %s" % [landmark])
+	var starts := {}
+	for cs in range(6):
+		starts[RegionMap.build(_region(), {"start": true, "campaign_seed": cs})["start_layout"]] = true
+	expect_eq(starts.size(), 3, "three hand-tuned starts, picked by campaign seed: %s" % [starts.keys()])
+	var look: Dictionary = WorldMapGen.region(41, {"name": "Saltpan", "culture": "old_west", "landscape": "desert_mesas"})["look"]
+	expect(look.has("palette") and look.has("landmarks") and str(look["palette"]["top_a"]) != "", "the map view gets the world's palette and landmarks")
+
+
+func test_rides_link_the_places() -> void:
+	# Old West river town: a railway, haulers on the roads, a ferry from the port.
+	var r := WorldMapGen.region(41, {"name": "Saltpan", "culture": "old_west", "landscape": "grassy_hills", "start": true, "campaign_seed": 1})
+	var kinds := {}
+	var ids := {}
+	for st: Dictionary in r["stations"]:
+		ids[st["id"]] = st
+		expect(st.has("at") and st.has("line") and str(st["name"]) != "", "station %s has its place, line and name" % st["id"])
+	for l: Dictionary in r["lines"]:
+		kinds[l["kind"]] = true
+		expect((l["stops"] as Array).size() >= 2, "%s has two stops or more" % l["id"])
+		var path: Array = l["path"]
+		for i in range(1, path.size()):
+			expect_eq(absi(int(path[i][0]) - int(path[i - 1][0])) + absi(int(path[i][1]) - int(path[i - 1][1])), 1, "%s runs tile to tile" % l["id"])
+		for s: String in l["stops"]:
+			expect(ids.has(s), "%s stops at a real station" % l["id"])
+		expect(float(l["hours_per_tile"]) > 0.0 and int(l["max_size"]) >= 1, "%s has a speed and a size limit" % l["id"])
+	expect(kinds.has("road") and kinds.has("rail") and kinds.has("ferry"), "haulers, a railway and a ferry: %s" % [kinds.keys()])
+	var rail := 0
+	for k: String in r["tiles"]:
+		rail += 1 if r["tiles"][k].get("rail", false) else 0
+	expect(rail >= 4, "the railway is on the tiles: %d" % rail)
+	for t: Dictionary in r["transit"]:
+		for route: Dictionary in t["routes"]:
+			expect(float(route["hours"]) > 0.0 and ids.has(route["to"]), "%s rides to %s in %s hours" % [t["id"], route["to"], route["hours"]])
+	# Stepping onto a station's tile draws its stop in the area.
+	var town: Dictionary = r["sites"][0]
+	expect((town["area"] as Dictionary).has("stations"), "the town has its stops")
+	var a := MissionGenerator.area(2, (town["area"] as Dictionary).merged({"shape": "square", "size": 40}))
+	var drawn := {}
+	for s: Dictionary in a["stations"]:
+		drawn[s["kind"]] = true
+		expect((a["map"] as BattleMap).column(Vector2i(s["cell"][0], s["cell"][1])).has_tag("station_stop"), "a boarding spot for the %s" % s["kind"])
+	expect(drawn.has("road") and drawn.has("rail"), "the depot and the station are in the town area: %s" % [drawn.keys()])
+	# Dropships from a pad, on a world with no railway.
+	var pads := WorldMapGen.region(9, {"culture": "", "landscape": "moon"})
+	var pad_lines: Array = (pads["lines"] as Array).filter(func(l: Dictionary) -> bool: return l["kind"] == "pad")
+	var rail_lines: Array = (pads["lines"] as Array).filter(func(l: Dictionary) -> bool: return l["kind"] == "rail")
+	expect(not pad_lines.is_empty() and rail_lines.is_empty(), "a moon has dropships, no railway")
+
+
+func test_printers_by_place() -> void:
+	var r := WorldMapGen.region(41, {"name": "Saltpan", "culture": "old_west", "landscape": "grassy_hills", "start": true, "campaign_seed": 2})
+	var by_kind := {}
+	for s: Dictionary in r["sites"]:
+		by_kind[s["detail"]] = int(s["printer_schedule"])
+	expect_eq(by_kind["town"], 3, "the town's printworks is schedule 3 (Core p.377)")
+	expect_eq(by_kind.get("outpost", 2), 2, "an outpost's printer is schedule 2")
+	expect_eq(by_kind.get("farm", 0), 0, "a farm has none")
+	var region := {"seed": 7, "landscape": "grassy_hills", "culture": "old_west", "weather": ""}
+	for place: String in ["town", "outpost", "pad"]:
+		var a := MissionGenerator.area(3, {"region": region, "at": [1, 1], "place": place, "shape": "square", "size": 40})
+		var want: int = {"town": 3, "outpost": 2, "pad": 1}[place]
+		expect_eq(a["printer_schedule"], want, "a %s prints up to schedule %d" % [place, want])
+		var tagged := false
+		for c in (a["map"] as BattleMap).cells():
+			tagged = tagged or (a["map"] as BattleMap).column(c).has_tag("printer_schedule_%d" % want)
+		expect(tagged, "the %s's printer stands on the map" % place)
+		expect(not (a["safe_points"] as Array).is_empty() and int(a["safe_points"][0]["printer_schedule"]) == want, "its safe point says what it prints: %s" % [a["safe_points"]])
