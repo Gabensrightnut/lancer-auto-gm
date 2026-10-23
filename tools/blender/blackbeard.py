@@ -8,6 +8,7 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 from mathutils import Matrix, Vector  # noqa: E402
 
+import bpy  # noqa: E402
 import mechlib as L  # noqa: E402
 
 L.reset()
@@ -106,8 +107,8 @@ for s, side in ((1, "r"), (-1, "l")):
     L.loft("foot_" + side, [dict(y=0.0, w=0.1, d=0.13, n=3.2, x=A.x, z=A.z - 0.025), dict(y=0.045, w=0.095, d=0.11, n=3.2, x=A.x, z=A.z - 0.02), dict(y=0.075, w=0.07, d=0.08, n=3.0, x=A.x, z=A.z)], TAN, ankle, ring=20, sub=1)
     for k in range(3):
         base = Vector((A.x + (k - 1) * 0.034, 0.035, A.z - 0.075))
-        mid = base + Vector(((k - 1) * 0.008, 0.0, -0.05))
-        tip = mid + Vector(((k - 1) * 0.006, -0.03, -0.035))
+        mid = base + Vector(((k - 1) * 0.014, 0.0, -0.06))  # splayed, longer toes
+        tip = mid + Vector(((k - 1) * 0.01, -0.032, -0.045))
         between("toe%d_%s" % (k, side), base, mid, 0.03, 0.03, TAN, ankle, bevel_w=0.008, taper=0.85)
         between("claw%d_%s" % (k, side), mid, tip, 0.026, 0.024, SLATE, ankle, bevel_w=0.006, taper=0.4)
         L.cyl("toe_joint%d_%s" % (k, side), 0.016, 0.034, tuple(base), DARK, ankle, axis="x")
@@ -147,24 +148,27 @@ L.box("sensor_wedge", (0.13, 0.085, 0.1), (0, T0 + 0.425, -0.05), ORANGE, head, 
 L.cyl("sensor_collar", 0.08, 0.03, (0, T0 + 0.39, -0.03), DARK, head)
 L.sphere("sensor_lens", 0.012, (0, T0 + 0.43, -0.098), GLOW, head)
 L.joint("Eye", (0, T0 + 0.43, -0.1), head)
-for i in range(5):
-    pts = []
-    r = 0.088 + i * 0.012
-    for k in range(73):
-        t = math.tau * k / 72 * 1.0
-        pts.append((math.cos(t) * r * 1.05, T0 + 0.345 + i * 0.01 + 0.006 * math.sin(t * 3 + i), math.sin(t) * r * 0.92 - 0.02))
-    L.tube("rope_coil%d" % i, pts, 0.014, ROPE, torso, sides=8, ribs=0.15, rib_every=0.018)
-# Rope ends hanging down the chest.
-for i in range(9):
-    x = -0.13 + i * 0.033
-    top = (x * 0.85, T0 + 0.35, -0.09 + abs(x) * 0.25)
-    drop = 0.12 + 0.05 * ((i * 7) % 3)
-    pts = L.bezier(top, (top[0] + x * 0.1, top[1] - 0.04, top[2] - 0.04), (top[0] + x * 0.25, top[1] - drop * 0.6, top[2] - 0.04), (top[0] + x * 0.3, top[1] - drop, top[2] - 0.02), 12)
-    L.tube("rope_end%d" % i, L.resample(pts, 0.008), 0.0072, ROPE, torso, sides=6, ribs=0.2, rib_every=0.016)
+# One continuous cable coiled around the cockpit (the art's red coil), rising as it winds.
+coil = []
+for k in range(5 * 36 + 1):
+    t = math.tau * k / 36
+    r = 0.092 + 0.014 * (k / 36)
+    coil.append((math.cos(t) * r * 1.05, T0 + 0.33 + 0.013 * (k / 36) + 0.005 * math.sin(t * 2), math.sin(t) * r * 0.92 - 0.02))
+L.curve_tube("rope_coil", coil, 0.019, ROPE, torso)
+# Cords hanging from the coil down the chest and over the right shoulder box, sagging.
+for i in range(11):
+    x = -0.15 + i * 0.03
+    top = Vector((x * 0.9, T0 + 0.35, -0.09 + abs(x) * 0.25))
+    drop = 0.08 + 0.04 * ((i * 7) % 4)
+    L.curve_tube("rope_end%d" % i, [tuple(top), tuple(top + Vector((x * 0.1, -0.035, -0.04))), tuple(top + Vector((x * 0.25, -drop * 0.6, -0.045))),
+                                   tuple(top + Vector((x * 0.3, -drop, -0.02)))], 0.0075, ROPE, torso, bevel_res=2)
+for i in range(3):
+    top = Vector((0.2 + i * 0.03, T0 + 0.33, -0.06))
+    L.curve_tube("box_cord%d" % i, [tuple(top), tuple(top + Vector((0.01, -0.06, -0.02))), tuple(top + Vector((0.015, -0.13 - i * 0.03, -0.01)))], 0.006, ROPE, torso, bevel_res=2)
 
 # --- shoulder boxes ----------------------------------------------------------------------
 def shoulder_box(s, side):
-    c = Vector((s * 0.19, T0 + 0.27, 0.05))
+    c = Vector((s * 0.205, T0 + 0.27, 0.05))  # the blockout sets the boxes ~2 cm further out
     pad = L.joint("Pad_" + side, tuple(c), torso)
     tilt = (-18, s * -28, s * -6)
     R = L._rot_g(tilt)
@@ -184,11 +188,12 @@ def shoulder_box(s, side):
     vR = R @ L._rot_g((-38, 0, 0))
     V2 = lambda v: tuple(c + R @ vc + vR @ Vector(v))  # noqa: E731
     rim = L.torus("vent_rim_" + side, 0.068, 0.012, V2((0, 0.012, 0)), TAN2, pad, normal_g=tuple(vR @ Vector((0, 1, 0))))
+    L.cyl("vent_shroud_" + side, 0.072, 0.045, V2((0, -0.012, 0)), DARK, pad, rot_deg=(tilt[0] - 38, tilt[1], tilt[2]), bevel_w=0.003)
     L.cyl("vent_well_" + side, 0.064, 0.012, V2((0, 0.0, 0)), GLOW, pad, rot_deg=(tilt[0] - 38, tilt[1], tilt[2]), bevel_w=0)
     for k in range(14):
         a = math.tau * k / 14
         L.box("vent_fin%d_%s" % (k, side), (0.007, 0.012, 0.055), V2((math.sin(a) * 0.032, 0.01, math.cos(a) * 0.032)), DARK, pad,
-              rot_deg=(tilt[0] - 38, tilt[1] + math.degrees(a) + 12, tilt[2]), bevel_w=0)
+              rot_deg=(tilt[0] - 38 + 22, tilt[1] + math.degrees(a) + 12, tilt[2]), bevel_w=0)  # pitched blades
     L.cyl("vent_hub_" + side, 0.016, 0.014, V2((0, 0.014, 0)), DARK, pad, rot_deg=(tilt[0] - 38, tilt[1], tilt[2]))
     L.cyl("vent_spike_" + side, 0.011, 0.05, V2((0, 0.045, 0)), DARK, pad, rot_deg=(tilt[0] - 38, tilt[1], tilt[2]), top_r=0.0, bevel_w=0)
     # Coil drum on the outer face.
@@ -227,27 +232,49 @@ for side, (Sh, El, Ha, wdir) in ARMS.items():
     L.cyl("elbow_hub_" + side, 0.022, 0.046, tuple(El), TAN2, el, axis="x")
     between("fore_strut_" + side, El, Ha, 0.024, 0.024, SLATE, el, bevel_w=0.005)
     between("fore_shell_" + side, El + (Ha - El) * 0.15, Ha - (Ha - El) * 0.05, 0.056, 0.06, TAN, el, bevel_w=0.012, taper=1.25)
-    # Red hand with fingers wrapped around the haft.
+    # Red hand: a back plate and four two-segment fingers curled round the haft (which runs
+    # through the grip along wdir), a thumb closing from the other side.
     hand = L.box("hand_" + side, (0.05, 0.06, 0.05), tuple(Ha + d * 0.02), RED, ha, bevel_w=0.012)
+    axis = Vector(wdir).normalized()
+    grip = Ha + d * 0.05
+    u = axis.cross(Vector((0, 0, -1)))
+    if u.length < 0.1:
+        u = axis.cross(Vector((1, 0, 0)))
+    u.normalize()
+    w = axis.cross(u).normalized()
+    ring = lambda c, a, r: c + (u * math.cos(a) + w * math.sin(a)) * r  # noqa: E731
     for k in range(4):
-        L.box("finger%d_%s" % (k, side), (0.014, 0.034, 0.016), tuple(Ha + d * 0.045 + Vector(((k - 1.5) * 0.013, 0, -0.022))), DARK, ha, bevel_w=0.004)
+        c = grip + axis * ((k - 1.5) * 0.016)
+        a0, a1, a2 = math.radians(20), math.radians(110), math.radians(200)
+        between("finger%d_a_%s" % (k, side), ring(c, a0, 0.028), ring(c, a1, 0.028), 0.013, 0.015, DARK, ha, bevel_w=0.004)
+        between("finger%d_b_%s" % (k, side), ring(c, a1, 0.028), ring(c, a2, 0.026), 0.012, 0.014, DARK, ha, bevel_w=0.004, taper=0.8)
+    between("thumb_" + side, ring(grip - axis * 0.03, math.radians(-40), 0.03), ring(grip - axis * 0.01, math.radians(-120), 0.026), 0.014, 0.016, RED, ha, bevel_w=0.004)
     L.slot("Slot_hand_" + side, tuple(Ha + d * 0.03), wdir, ha)
     L.slot("Slot_forearm_" + side, tuple(El + (Ha - El) * 0.5 + Vector((0.03 if side == "r" else -0.03, 0, 0))), (0, 0, -1), el)
 
-# --- hydraulic hoses: loops up from the shoulder boxes and down to the arms -------------
-HOSES = [
-    ((0.17, T0 + 0.37, 0.06), (0.17, T0 + 0.46, 0.06), (0.36, T0 + 0.45, 0.03), (0.345, T0 + 0.23, 0.0), (0.285, T0 - 0.02, -0.04)),
-    ((-0.13, T0 + 0.38, 0.06), (-0.13, T0 + 0.46, 0.06), (-0.33, T0 + 0.46, 0.02), (-0.35, T0 + 0.38, -0.04), (-0.35, T0 + 0.32, -0.08)),
-]
-for i, hp in enumerate(HOSES):
-    a = L.bezier(hp[0], hp[1], hp[2], hp[3], 24)
-    d3 = Vector(hp[3]) - Vector(hp[2])
-    b = L.bezier(hp[3], tuple(Vector(hp[3]) + d3.normalized() * 0.06), tuple(Vector(hp[4]) + Vector((0, 0.08, 0))), hp[4], 14)
-    pts = L.resample(a + b[1:], 0.006)
-    L.tube("hose%d" % i, pts, 0.019, HOSE, torso, sides=12, ribs=0.12, rib_every=0.014)
-    for idx in (0, len(pts) // 4, len(pts) // 2, 3 * len(pts) // 4, len(pts) - 1):
-        p = Vector(pts[min(idx, len(pts) - 1)])
-        q = Vector(pts[min(idx + 1, len(pts) - 1)]) if idx < len(pts) - 1 else p + (p - Vector(pts[idx - 1]))
-        cuff, _ = between("hose_cuff%d_%d" % (i, idx), p - (q - p).normalized() * 0.015, p + (q - p).normalized() * 0.015, 0.05, 0.05, TAN2, torso, bevel_w=0.008)
+# --- hydraulic hoses: two big arcs from the back of the shoulder boxes up over the shoulders
+# and down the outside of the arms to the forearm cuffs (the art's routing). Real curve tubes,
+# each in two pieces so they follow two bones without stretching: the arc rides the torso,
+# the run down the arm rides the upper arm, and a cuff hides the join.
+HOSES = {
+    "r": [(0.15, T0 + 0.36, 0.09), (0.2, T0 + 0.44, 0.08), (0.33, T0 + 0.45, 0.05), (0.42, T0 + 0.38, 0.0), (0.4, T0 + 0.28, -0.02)],
+    "l": [(-0.14, T0 + 0.37, 0.09), (-0.19, T0 + 0.45, 0.07), (-0.32, T0 + 0.46, 0.03), (-0.43, T0 + 0.4, -0.02), (-0.43, T0 + 0.3, -0.05)],
+}
+ARM_RUN = {
+    "r": [(0.4, T0 + 0.28, -0.02), (0.37, T0 + 0.14, -0.03), (0.31, T0 + 0.0, -0.05), (0.29, T0 - 0.08, -0.05)],
+    "l": [(-0.43, T0 + 0.3, -0.05), (-0.42, T0 + 0.22, -0.07), (-0.39, T0 + 0.16, -0.08), (-0.36, T0 + 0.19, -0.09)],
+}
+for side, arc in HOSES.items():
+    L.curve_tube("hose_arc_" + side, arc, 0.02, HOSE, torso)
+    sh = bpy.data.objects["Shoulder_" + side]
+    L.curve_tube("hose_arm_" + side, ARM_RUN[side], 0.019, HOSE, sh)
+    for k, p in enumerate((arc[0], arc[2], arc[-1], ARM_RUN[side][2])):
+        q = Vector(p)
+        nxt = Vector(arc[min(k + 1, len(arc) - 1)]) if k < 2 else Vector(ARM_RUN[side][min(k, len(ARM_RUN[side]) - 1)])
+        d = (nxt - q).normalized() if (nxt - q).length > 1e-4 else Vector((0, -1, 0))
+        between("hose_cuff_%s%d" % (side, k), q - d * 0.016, q + d * 0.016, 0.052, 0.052, TAN2, torso if k < 3 else sh, bevel_w=0.008)
+    # A smaller secondary loop off the back of each box.
+    s = 1 if side == "r" else -1
+    L.curve_tube("hose_loop_" + side, [(s * 0.12, T0 + 0.34, 0.12), (s * 0.15, T0 + 0.42, 0.15), (s * 0.24, T0 + 0.41, 0.14), (s * 0.25, T0 + 0.33, 0.12)], 0.012, HOSE, torso)
 
 L.export(L.out_path("assets/mechs/mf_blackbeard.glb"))

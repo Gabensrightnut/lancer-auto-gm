@@ -4,7 +4,7 @@ extends TestCase
 
 
 func test_men_left_follows_hp() -> void:
-	var sq := {"kind": "squad", "hp": 4, "max_hp": 10}
+	var sq := {"kind": "npc", "soldier": "rifle_squad", "hp": 4, "max_hp": 10}
 	expect_eq(SquadModel.men_left(sq), 4, "4 of 10 HP: four standing")
 	expect_eq(SquadModel.men_left({"kind": "squad", "hp": 1, "max_hp": 10}), 1, "one HP: one man left")
 	expect_eq(SquadModel.men_left({"kind": "squad", "hp": 0, "max_hp": 10}), 0)
@@ -46,4 +46,15 @@ func test_garrisoned_squad_shows_men_at_the_windows() -> void:
 	expect_eq(m.standing().size(), SquadModel.WINDOW_MEN, "a few men at the windows, the rest inside")
 	m.set_garrison(null)
 	expect_eq(m.standing().size(), 10, "out again: all in formation")
+	m.free()
+
+
+func test_rules_soldier_fields() -> void:
+	expect_eq(SquadModel.soldier_kind({"kind": "npc", "loadout": {"on_foot": true, "soldier": "missile_team"}}), "missile_team", "from the loadout")
+	expect_eq(SquadModel.soldier_kind({"kind": "npc", "soldier": "medic_team"}), "medic_team", "from the public view field")
+	expect(SquadModel.is_squad({"kind": "npc", "soldier": "guard_squad"}), "a guard squad is ten men")
+	expect(not SquadModel.is_squad({"kind": "npc", "soldier": "soldier"}), "a soldier is one")
+	expect_eq(SquadModel.soldier_kind({"kind": "npc"}), "", "an ordinary NPC mech isn't infantry")
+	var m := SquadModel.build({"id": "mt", "kind": "npc", "soldier": "missile_team", "side": "enemies", "hp": 10, "max_hp": 10})
+	expect_eq(m.figures.size(), 10)
 	m.free()

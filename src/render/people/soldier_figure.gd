@@ -44,7 +44,8 @@ static func colors_for(fac: String, paint: Dictionary = {}) -> Dictionary:
 	return c
 
 
-func build(fac: String, colors: Dictionary, launcher: bool = false) -> SoldierFigure:
+## `kind_spec` (soldier_looks.json "kinds"): a squad kind's own armor set or pack.
+func build(fac: String, colors: Dictionary, launcher: bool = false, kind_spec: Dictionary = {}) -> SoldierFigure:
 	faction = fac
 	name = "Soldier"
 	if _scene == null and ResourceLoader.exists(SCENE):
@@ -53,7 +54,8 @@ func build(fac: String, colors: Dictionary, launcher: bool = false) -> SoldierFi
 		return self
 	_root = _scene.instantiate() as Node3D
 	add_child(_root)
-	var spec: Dictionary = (data().get("factions", {}) as Dictionary).get(fac, {})
+	var spec: Dictionary = ((data().get("factions", {}) as Dictionary).get(fac, {}) as Dictionary).duplicate()
+	spec.merge(kind_spec, true)
 	var helmet := String(spec.get("helmet", ""))
 	var armor := String(spec.get("armor", ""))
 	var scheme := "%s|%s" % [fac, JSON.stringify(colors)]

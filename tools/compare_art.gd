@@ -27,7 +27,7 @@ func _init() -> void:
 	_bottom = float(a[8]) if a.size() > 8 else 0.97
 	var db := ContentDB.new()
 	db.load_all()
-	var multi := art_path == "-"
+	var multi := art_path == "-" or art_path == "rom"
 	var art := Image.load_from_file(art_path) if not multi else null
 	var w := int(H * float(art.get_width()) / art.get_height()) if art else int(H * 0.95)
 	var frame := db.frame(frame_id)
@@ -38,7 +38,30 @@ func _init() -> void:
 	var model := MechBuilder.build(frame, {"mounts": mounts}, db)
 	model.scale = Vector3.ONE / model.size  # compare at unit height
 	var panels: Array = []
-	if multi:
+	if art_path == "rom":
+		# Range of motion: joints at their extremes, mostly side-on so each pivot can be seen
+		# turning around its joint piece (no gaps opening, nothing stretching or detaching).
+		var poses := [["rest", 90.0], ["stride_a", 90.0], ["stride_b", 90.0], ["arms_up", yaw], ["kneel", 90.0], ["kneel_aim", yaw + 30.0]]
+		w = int(H * 0.7)
+		for p: Array in poses:
+			var mm := MechBuilder.build(frame, {"mounts": mounts}, db)
+			mm.scale = Vector3.ONE / mm.size
+			match String(p[0]):
+				"stride_a", "stride_b":
+					mm.walk_amount = 1.0
+					mm.walk_phase = PI * (0.5 if p[0] == "stride_a" else 1.5)
+					mm._apply_walk()
+				"arms_up":
+					for s: String in ["r", "l"]:
+						mm.aim_arm(s, Vector3(0, mm.height * 1.4, -2.0))
+				"kneel":
+					mm.set_kneel(1.0)
+				"kneel_aim":
+					mm.set_kneel(0.6)
+					mm.aim_arm("r", Vector3(0, mm.height * 0.8, -2.0))
+			panels.append(await _render(mm, w, float(p[1]), pitch, null))
+
+	elif multi:
 		# No art: front, 3/4 and back views of the model.
 		for y: float in [yaw, yaw + 40.0, yaw + 180.0]:
 			var mm := MechBuilder.build(frame, {"mounts": mounts}, db)

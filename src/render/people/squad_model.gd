@@ -26,10 +26,13 @@ static func build(unit: Dictionary) -> SquadModel:
 	m.torso = body
 	var fac := SoldierFigure.faction_of(unit)
 	var colors := SoldierFigure.colors_for(fac, unit.get("paint", {}) if unit.get("paint") is Dictionary else {})
-	var count := int(d.get("men_per_squad", 10)) if String(unit.get("kind", "")) == "squad" else 1
-	var every := int(d.get("launcher_every", 5))
+	var count := int(d.get("men_per_squad", 10)) if is_squad(unit) else 1
+	var kind_spec: Dictionary = (d.get("kinds", {}) as Dictionary).get(soldier_kind(unit), {})
+	var every := int(kind_spec.get("launcher_every", d.get("launcher_every", 5)))
+	if kind_spec.has("trim"):
+		colors["trim"] = String(kind_spec["trim"])
 	for i in range(count):
-		var f := SoldierFigure.new().build(fac, colors, every > 0 and i % every == every - 1)
+		var f := SoldierFigure.new().build(fac, colors, every > 0 and i % every == every - 1, kind_spec)
 		f.scale = Vector3.ONE * (h / 1.75)
 		f.position = slot(i, count, m.size)
 		f.rotation.y = (MeshKit.hash01(String(unit.get("id", "")), i) - 0.5) * 0.5
@@ -62,7 +65,7 @@ static func slot(i: int, count: int, size: float) -> Vector3:
 
 ## Men still standing: the view's men_left, else ceil(hp / max_hp * 10), for a squad.
 static func men_left(unit: Dictionary) -> int:
-	var per := int(SoldierFigure.data().get("men_per_squad", 10)) if String(unit.get("kind", "")) == "squad" else 1
+	var per := int(SoldierFigure.data().get("men_per_squad", 10)) if is_squad(unit) else 1
 	if unit.has("men_left"):
 		return clampi(int(unit["men_left"]), 0, per)
 	var mx := float(unit.get("max_hp", 0))
@@ -160,3 +163,22 @@ func hit() -> void:
 func take_cover(on: bool) -> void:
 	for f in standing():
 		f.play("cover" if on else "idle")
+
+
+## The soldier kind a view unit is (rules: kind "npc" with loadout.on_foot and
+## loadout.soldier, and the public "soldier" field): rifle_squad, missile_team, guard_squad,
+## spotter_team, medic_team or soldier. "" if it isn't infantry. Older placeholder kinds
+## ("squad", "soldier") still work.
+static func soldier_kind(unit: Dictionary) -> String:
+	var k := String(unit.get("soldier", ""))
+	if k == "":
+		k = String((unit.get("loadout", {}) as Dictionary).get("soldier", ""))
+	if k == "" and String(unit.get("kind", "")) in ["squad", "soldier"]:
+		k = "rifle_squad" if String(unit.get("kind", "")) == "squad" else "soldier"
+	return k
+
+
+## Ten men in one space (every kind but the single "soldier").
+static func is_squad(unit: Dictionary) -> bool:
+	var k := soldier_kind(unit)
+	return k != "" and k != "soldier"

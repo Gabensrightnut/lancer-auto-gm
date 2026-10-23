@@ -932,8 +932,8 @@ func screenshot_stage(tag: String) -> void:
 			var e0: MechView = view.units["everest"]
 			var a := view.map.grid.from_world(e0.global_position + Vector3(1.6, 0, -0.6))
 			var b := view.map.grid.from_world(e0.global_position + Vector3(1.6, 0, -3.4))
-			var us := view.add_unit({"id": "sq_a", "name": "Union Squad", "kind": "squad", "side": "players", "faction": "union", "cell": [a.x, a.y], "level": view.map.ground_height(a), "hp": 10, "max_hp": 10, "size": 1})
-			var them := view.add_unit({"id": "sq_b", "name": "Pirate Squad", "kind": "squad", "side": "enemies", "faction": "pirate", "cell": [b.x, b.y], "level": view.map.ground_height(b), "hp": 4, "max_hp": 10, "size": 1})
+			var us := view.add_unit({"id": "sq_a", "name": "Union Squad", "kind": "npc", "soldier": "rifle_squad", "side": "players", "faction": "union", "cell": [a.x, a.y], "level": view.map.ground_height(a), "hp": 10, "max_hp": 10, "size": 1})
+			var them := view.add_unit({"id": "sq_b", "name": "Pirate Squad", "kind": "npc", "soldier": "missile_team", "side": "enemies", "faction": "pirate", "cell": [b.x, b.y], "level": view.map.ground_height(b), "hp": 4, "max_hp": 10, "size": 1})
 			us.face(them.global_position)
 			them.face(us.global_position)
 			view.tactical.look_at_point((us.global_position + them.global_position) * 0.5 + Vector3.UP * 0.2, 3.6)
