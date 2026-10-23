@@ -75,6 +75,11 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	if not boarding.is_empty():
 		landscape = str(BOARDING_MAPS.get(str(boarding.get("map", "docked")), "boarding"))
 		culture = ""
+	# Ships and stations are cramped: their maps are smaller, by the fight-length dial.
+	if doc == null and not opts.has("size") and landscape in SHIP_MAPS:
+		var k := float({"short": 0.7, "standard": 0.85, "long": 1.0}.get(settings.fight_length, 0.85))
+		w = maxi(24, int(round(w * k)))
+		h = maxi(24, int(round(h * k)))
 	if not region.is_empty():
 		if landscape == "":
 			landscape = str(region.get("landscape", ""))
@@ -335,6 +340,7 @@ static func _pick_weather(rng: RandomNumberGenerator, landscape: String, culture
 const WEATHER_FILE := "res://data/game/biomes/weather.json"
 ## Boarding map kinds (story's opts.boarding.map) to landscapes: two ships docked side by side,
 ## an enemy ship's interior (the squad boards it), the squad's own ship (pirates board it).
+const SHIP_MAPS := ["boarding", "boarding_assault", "boarding_defend", "station", "starship"]
 const BOARDING_MAPS := {"docked": "boarding", "enemy_ship": "boarding_assault", "own_ship": "boarding_defend"}
 ## Worlds whose own nature suggests a rules environment (weather suggests others: weather.json).
 const LANDSCAPE_ENVIRONMENTS := {"moon": "env_lowgravity", "asteroid": "env_lowgravity", "ocean": "env_oceanworld", "volcanic": "env_moltenworld"}

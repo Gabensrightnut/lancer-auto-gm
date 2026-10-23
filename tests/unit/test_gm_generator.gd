@@ -551,3 +551,25 @@ func test_no_two_towns_alike() -> void:
 		looks["%d|%s" % [int(float(style["light"]["sun_yaw"])), str(style["architecture"]["walls"])]] = true
 	expect_eq(layouts.size(), 20, "twenty different town layouts")
 	expect_eq(looks.size(), 20, "twenty different town looks")
+
+
+func test_ship_decks_have_a_spine_and_size_by_fight_length() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3
+	var map := TerrainGen.generate(rng, 30, 40, GridLayout.Shape.SQUARE, {}, "boarding_assault", "")
+	var open_spine := 0
+	var hatches := 0
+	for r in range(40):
+		if map.column(Vector2i(14, r)).ground == 0 and map.column(Vector2i(15, r)).ground == 0:
+			open_spine += 1
+		if map.column(Vector2i(13, r)).ground == 0:
+			hatches += 1
+	expect(open_spine >= 36, "a corridor runs the ship's length: %d" % open_spine)
+	expect(hatches >= 6, "hatches off the corridor into the rooms: %d" % hatches)
+	var short_s := GmSettings.from_preset("Standard")
+	short_s.fight_length = "short"
+	var long_s := GmSettings.from_preset("Standard")
+	long_s.fight_length = "long"
+	var small: GameState = _gen(8, {"landscape": "boarding_defend", "settings": short_s})["state"]
+	var big: GameState = _gen(8, {"landscape": "boarding_defend", "settings": long_s})["state"]
+	expect(small.map.cells().size() < big.map.cells().size(), "a short fight aboard is a smaller ship")

@@ -990,8 +990,26 @@ func _boarding() -> void:
 func _ship_interior(defend: bool) -> void:
 	_fill(func(_c: int, _r: int) -> int: return 0)
 	breakable_walls = 0.55
+	# The ship's spine: a narrow corridor (2 wide) from end to end down the middle, bulkheads
+	# either side with hatches into the rooms every few spaces; rooms fill both halves.
+	var mid := w / 2
 	var rooms: Array[Rect2i] = []
-	_split(Rect2i(1, 0, w - 2, h), 5, rooms, 0)
+	_split(Rect2i(1, 0, mid - 3, h), 5, rooms, 0)
+	_split(Rect2i(mid + 2, 0, w - mid - 3, h), 5, rooms, 0)
+	for r in range(h):
+		for c: int in [mid - 2, mid + 1]:
+			var cell := _cell(c, r)
+			if not map.has_cell(cell) or blocked.has(cell):
+				continue
+			var hatch := (r % 6) in [2, 3]
+			var col := map.column(cell)
+			col.ground = 0 if hatch else 3
+			col.tags = PackedStringArray(["deck"] if hatch else ["bulkhead"])
+		for c: int in [mid - 1, mid]:
+			var cell := _cell(c, r)
+			if map.has_cell(cell) and not blocked.has(cell):
+				map.column(cell).ground = 0
+				map.column(cell).tags = PackedStringArray(["deck"])
 	# Rooms by how deep they lie from the boarders' edge (the top when pirates board the
 	# squad's ship, the bottom when the squad boards): 0 at the breach, 1 at the far end.
 	for room in rooms:
