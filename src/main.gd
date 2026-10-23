@@ -1008,7 +1008,8 @@ func screenshot_stage(tag: String) -> void:
 			view.tactical.look_at_point(Vector3(5.5, 0.8, 8.0), 9.5)
 			view.tactical.snap()
 			await get_tree().process_frame
-			action_bar.hover("act_overcharge")
+			action_bar.toggle_group(4)  # the Quick actions sub-bar open
+			action_bar.hover("act_hide")
 		"cockpit":
 			player.play([ev["tech"][0]])
 			await Fx.wait(self, 0.2)

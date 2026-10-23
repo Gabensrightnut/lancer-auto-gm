@@ -4,14 +4,26 @@ extends Control
 ## Overcharge), a number-key hint, and a WoW-style lockout overlay. The overlay greys the
 ## button with a dark radial slice that shrinks like a clock hand as a timed wait runs down
 ## (animating to its new size each time a turn passes); waits with no fixed length stay fully
-## grey with their label. Drag a button onto another to swap them.
+## grey with their label. While the bar is unlocked, drag a button onto another slot to move
+## it there (the two swap).
 
 signal pressed(action: Dictionary)
 signal hovered(action: Dictionary, on: bool)
-signal swap_requested(from_id: String, to_id: String)
+signal move_requested(action_id: String, panel: int, index: int)
+## Right-click: turn auto-use on or off (AutoActions).
+signal auto_requested(action: Dictionary)
+
+## The bar's padlock: false while locked (no dragging, so clicks never move anything).
+static var drag_enabled := false
 
 var action: Dictionary = {}
 var hotkey := ""
+## Where this button sits on the bar (panel 1-9, slot index).
+var panel := 0
+var index := -1
+## On auto (the gold bead circles the slot).
+var auto := false
+var _bead := 0.0
 ## Fraction of the button still greyed (1 = fully locked, 0 = free); animated.
 var sweep := 0.0
 var _hover := false
@@ -60,6 +72,9 @@ static func lock_fraction(a: Dictionary) -> float:
 
 
 func _process(delta: float) -> void:
+	if auto:
+		_bead += delta
+		queue_redraw()
 	var lo: Dictionary = action.get("lockout", {})
 	if String(lo.get("kind", "")) == "recharge" and bool(lo.get("ready", false)) or _hover:
 		_pulse += delta
@@ -70,9 +85,14 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT and not event.double_click:
 		if not locked(action):
 			pressed.emit(action)
+	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+		auto_requested.emit(action)
+		accept_event()
 
 
 func _get_drag_data(_pos: Vector2) -> Variant:
+	if not drag_enabled:
+		return null
 	var preview := TextureRect.new()
 	preview.texture = Icons.tex(_icon_name(), 64)
 	preview.size = size * 0.7
@@ -83,11 +103,11 @@ func _get_drag_data(_pos: Vector2) -> Variant:
 
 
 func _can_drop_data(_pos: Vector2, data: Variant) -> bool:
-	return data is Dictionary and data.has("action_id") and data["action_id"] != action.get("id", "")
+	return drag_enabled and data is Dictionary and data.has("action_id") and data["action_id"] != action.get("id", "")
 
 
 func _drop_data(_pos: Vector2, data: Variant) -> void:
-	swap_requested.emit(String(data["action_id"]), String(action.get("id", "")))
+	move_requested.emit(String(data["action_id"]), panel, index)
 
 
 func _icon_name() -> String:
@@ -133,11 +153,20 @@ func _draw() -> void:
 			x -= badge * 0.8
 			draw_texture_rect(et, Rect2(Vector2(x, 5), Vector2(badge * 0.8, badge * 0.8)), false, Icons.color(String(e.get("icon", "heat"))))
 		x -= 4
-	# Name strip.
+	# Name strip: up to two lines, readable (the full name is on the hover card).
 	var name := String(action.get("short", action.get("name", "")))
-	var nfs := int(s.y * 0.15)
-	draw_rect(Rect2(Vector2(0, s.y - nfs - 6), Vector2(s.x, nfs + 6)), Color(0, 0, 0, 0.55))
-	draw_string(font, Vector2(4, s.y - 5), name, HORIZONTAL_ALIGNMENT_CENTER, s.x - 8, nfs, Color(0.92, 0.94, 0.97) if not is_locked else Color(0.6, 0.6, 0.65))
+	var nfs := int(maxf(11.0, s.y * 0.19))
+	# A single long word ("Overcharge") shrinks to fit rather than being cut.
+	var longest := 0.0
+	for word: String in name.split(" "):
+		longest = maxf(longest, font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, nfs).x)
+	if longest > s.x - 6:
+		nfs = int(maxf(9.0, nfs * (s.x - 6) / longest))
+	var lines := 1 if font.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, nfs).x <= s.x - 6 else 2
+	var strip := nfs * lines + 5
+	draw_rect(Rect2(Vector2(0, s.y - strip), Vector2(s.x, strip)), Color(0, 0, 0, 0.62))
+	draw_multiline_string(font, Vector2(3, s.y - strip + nfs), name, HORIZONTAL_ALIGNMENT_CENTER, s.x - 6, nfs, 2, Color(0.95, 0.96, 0.98) if not is_locked else Color(0.62, 0.62, 0.67))
+	nfs = strip - 5
 	# "Table" badge: the game doesn't (fully) apply this one; the table does.
 	if action.has("table"):
 		var tfs := int(s.y * 0.13)
@@ -147,7 +176,8 @@ func _draw() -> void:
 		draw_string(font, tr.position + Vector2(3, tfs), "TABLE", HORIZONTAL_ALIGNMENT_LEFT, -1, tfs, Color(0.06, 0.05, 0.03))
 	# Hotkey.
 	if hotkey != "":
-		draw_string(font, Vector2(s.x - fs * 0.9, s.y - nfs - 9), hotkey, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.6))
+		var hw := font.get_string_size(hotkey, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		draw_string(font, Vector2(s.x - hw - 3, s.y - nfs - 8), hotkey, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.7))
 	# Lockout overlay.
 	if sweep > 0.001 or is_locked:
 		_draw_lockout(font)
@@ -157,6 +187,29 @@ func _draw() -> void:
 		var a := 0.5 + 0.5 * sin(_pulse * 5.0)
 		draw_rect(r.grow(-1), Color(0.5, 1.0, 0.6, a), false, 3.0)
 	draw_rect(r, Color(0.45, 0.6, 0.75, 0.9 if _hover else 0.5), false, 1.0)
+	if auto:
+		_draw_bead(r)
+
+
+## Auto: a bright gold bead with a short fading trail circling the rim (once every 1.5 s)
+## and a faint gold edge glow.
+func _draw_bead(r: Rect2) -> void:
+	draw_rect(r.grow(-1), Color(1.0, 0.8, 0.25, 0.35), false, 2.0)
+	var per := 2.0 * (r.size.x + r.size.y)
+	var bead_r := maxf(2.5, r.size.y * 0.055)
+	for i in range(7):
+		var t := fposmod(_bead / 1.5 - i * 0.022, 1.0) * per
+		var p: Vector2
+		if t < r.size.x:
+			p = Vector2(t, 0)
+		elif t < r.size.x + r.size.y:
+			p = Vector2(r.size.x, t - r.size.x)
+		elif t < 2.0 * r.size.x + r.size.y:
+			p = Vector2(r.size.x - (t - r.size.x - r.size.y), r.size.y)
+		else:
+			p = Vector2(0, r.size.y - (t - 2.0 * r.size.x - r.size.y))
+		var k := 1.0 - i / 7.0
+		draw_circle(p, bead_r * (0.45 + 0.55 * k), Color(1.0, 0.86, 0.35, 0.95 * k))
 
 
 func _draw_lockout(font: Font) -> void:

@@ -786,6 +786,16 @@ func _show_reaction(q: Dictionary) -> void:
 	reaction_panel.visible = not q.is_empty()
 	if q.is_empty():
 		return
+	# Auto reaction (the action bar's gold bead, e.g. auto-Brace): answer it like a click.
+	var auto := AutoActions.reaction_answer(q, AutoActions.autos_for(str(q.get("unit", ""))))
+	if not auto.is_empty():
+		reaction_panel.visible = false
+		var why := session.answer_reaction(bool(auto.get("take", true)))
+		if why == "" and player and player.combat_log:
+			player.combat_log.add_line("[color=#ffd166]Auto: %s[/color]" % str(q.get("reaction", "")).capitalize())
+		if why == "":
+			return
+		reaction_panel.visible = true
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
 	reaction_panel.add_child(v)
