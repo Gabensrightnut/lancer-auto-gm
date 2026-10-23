@@ -168,7 +168,12 @@ static func side_jobs(story: StoryState, campaign: Campaign) -> Array:
 			h[k] = str(sj[k])
 	h["short_title"] = str(h["title"])
 	h["npc_templates"] = CampaignScript.script(campaign).get("enemy_mixes", {}).get(str(sj.get("foes", "")), h.get("npc_templates", []))
-	if bool(sj.get("in_town", false)):
+	if bool(sj.get("in_town", false)) and bool(story.hub.get("ship", false)):
+		# In the ship's own markets: fought on her decks.
+		h["boarding"] = {"kind": "defend", "map": "own_ship"}
+		h["landscape"] = ""
+		h["in_town"] = false
+	elif bool(sj.get("in_town", false)):
 		h["in_town"] = true
 		h["town_spot"] = "market"
 	h["ship_job"] = cid
