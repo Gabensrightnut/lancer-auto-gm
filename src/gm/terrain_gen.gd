@@ -288,6 +288,7 @@ func _town(hub: Dictionary, culture: String) -> void:
 			col.ground = 0
 			col.tags = PackedStringArray()
 	var doors: Array[Vector2i] = []
+	var door_ids: Array[String] = []
 	for spot: Dictionary in hub.get("spots", []):
 		var kind := str(spot.get("kind", ""))
 		var pos := Vector2(float(spot["pos"][0]), float(spot["pos"][1])) / TOWN_SCALE
@@ -310,11 +311,15 @@ func _town(hub: Dictionary, culture: String) -> void:
 			sd = t
 			c0 = cc + int(round(pos.x)) - sw / 2
 			r0 = cr + int(round(pos.y)) - sd / 2
+		# The hub's own building: its cells carry the spot id (the saloon you walked into on
+		# foot is the same building in the fight), its door where the hub's door is.
+		var sid := "spot_" + str(spot.get("id", kind))
 		for r in range(r0, r0 + sd):
 			for c in range(c0, c0 + sw):
-				mark.call(c, r, levels, ["building", BattleMap.TAG_DESTRUCTIBLE])
+				mark.call(c, r, levels, ["building", BattleMap.TAG_DESTRUCTIBLE, sid])
 		var door := Vector2(float(spot["door"][0]), float(spot["door"][1])) / TOWN_SCALE
 		doors.append(Vector2i(cc + int(round(door.x)), cr + int(round(door.y))))
+		door_ids.append(str(spot.get("id", kind)))
 	# Side streets: rows of small houses along the roads out of town.
 	var houses := 6 + rng.randi_range(0, 6)
 	for i in range(houses):
@@ -359,6 +364,14 @@ func _town(hub: Dictionary, culture: String) -> void:
 			var cell := _cell(clampi(c, 0, w - 1), clampi(r, 0, h - 1))
 			if used.has(cell):
 				built[cell] = true
+	# Each building's way in: the space in front of its door (open ground, look tags only).
+	for i in range(doors.size()):
+		var d := doors[i]
+		if d.x < 0 or d.y < 0 or d.x >= w or d.y >= h:
+			continue
+		var dc := _cell(d.x, d.y)
+		if map.has_cell(dc) and not map.column(dc).has_tag("building"):
+			map.column(dc).tags.append_array(["door", "door_" + door_ids[i]])
 
 
 var rng: RandomNumberGenerator
@@ -977,8 +990,26 @@ func _boarding() -> void:
 func _ship_interior(defend: bool) -> void:
 	_fill(func(_c: int, _r: int) -> int: return 0)
 	breakable_walls = 0.55
+	# The ship's spine: a narrow corridor (2 wide) from end to end down the middle, bulkheads
+	# either side with hatches into the rooms every few spaces; rooms fill both halves.
+	var mid := w / 2
 	var rooms: Array[Rect2i] = []
-	_split(Rect2i(1, 0, w - 2, h), 5, rooms, 0)
+	_split(Rect2i(1, 0, mid - 3, h), 5, rooms, 0)
+	_split(Rect2i(mid + 2, 0, w - mid - 3, h), 5, rooms, 0)
+	for r in range(h):
+		for c: int in [mid - 2, mid + 1]:
+			var cell := _cell(c, r)
+			if not map.has_cell(cell) or blocked.has(cell):
+				continue
+			var hatch := (r % 6) in [2, 3]
+			var col := map.column(cell)
+			col.ground = 0 if hatch else 3
+			col.tags = PackedStringArray(["deck"] if hatch else ["bulkhead"])
+		for c: int in [mid - 1, mid]:
+			var cell := _cell(c, r)
+			if map.has_cell(cell) and not blocked.has(cell):
+				map.column(cell).ground = 0
+				map.column(cell).tags = PackedStringArray(["deck"])
 	# Rooms by how deep they lie from the boarders' edge (the top when pirates board the
 	# squad's ship, the bottom when the squad boards): 0 at the breach, 1 at the far end.
 	for room in rooms:

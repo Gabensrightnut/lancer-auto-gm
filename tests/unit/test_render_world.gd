@@ -285,3 +285,37 @@ func test_hub_towns_follow_the_clock() -> void:
 	expect(lights.all(func(l: Light3D) -> bool: return l.visible), "lamps on at night")
 	expect(float(walls[0].get_shader_parameter("lit")) > lit_day, "more windows lit at night")
 	town.free()
+
+
+func test_buildings_show_their_damage_stages() -> void:
+	# Core p.68: a section has 10 HP; as it loses them the building looks it (cracks, scorching,
+	# dark windows, then holes). The damage reaches the building mesh, not only terrain blocks.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 2
+	var wr := RandomNumberGenerator.new()
+	wr.seed = 3
+	var bf := MissionGenerator.battlefield(rng, wr, "sitrep_standardcombat", 24, 22, GridLayout.Shape.HEX, "city", "retro")
+	var map: BattleMap = bf["map"]
+	var t := _build(map, "city/retro")
+	var target := Vector2i(-999, -999)
+	for c in map.cells():
+		if t.structure_cells.has(c) and map.column(c).has_tag(BattleMap.TAG_DESTRUCTIBLE):
+			target = c
+			break
+	expect(target != Vector2i(-999, -999), "a breakable building")
+	t.show_damage({"%d,%d" % [target.x, target.y]: 7})
+	var mi: MeshInstance3D = t.find_child("Buildings", true, false)
+	expect(mi != null, "the buildings are rebuilt")
+	var uv2: PackedVector2Array = mi.mesh.surface_get_arrays(0)[Mesh.ARRAY_TEX_UV2]
+	var worn := 0
+	for v in uv2:
+		worn += 1 if absf(v.x - 0.7) < 0.01 else 0
+	expect(worn > 0, "the damaged cell's walls carry 7 of 10 HP lost")
+	_free(t)
+
+func test_fights_follow_the_clock_and_weather() -> void:
+	var night := WorldStyle.resolve("grassy_hills/medieval+rain~night#4")
+	var day := WorldStyle.resolve("grassy_hills/medieval+rain#4")
+	expect_eq(night["kit"], "grassy_hills/medieval+rain~night#4", "the kit keeps weather, time and place")
+	expect(float(night["light"]["sun_energy"]) < float(day["light"]["sun_energy"]) * 0.3, "a night fight is dark")
+	expect_eq(night["weather"], "rain", "and still raining")
