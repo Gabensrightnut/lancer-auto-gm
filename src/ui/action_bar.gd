@@ -503,12 +503,12 @@ func _layout() -> void:
 	var s := slot_size()
 	for attempt in range(6):
 		var gap := maxf(3.0, s * 0.06)
-		var gw := s * 2.3  # group button
-		var gh := s * 0.95
+		var gw := s * 2.55  # group button
+		var gh := s * 1.05
 		var strip := s * 0.34  # padlock, reset, overflow
 		var bar_w := gw * 3 + gap * 4
 		var bar_h := strip + gh * 3 + gap * 4
-		var cluster_w := s * 4.6
+		var cluster_w := s * 4.95
 		var end_w := s * 1.3
 		var total := cluster_w + gap * 2 + bar_w + gap * 2 + end_w
 		if total > vp.x - 16.0 and attempt < 5:
@@ -610,7 +610,7 @@ func _hover(a: Dictionary, on: bool) -> void:
 	var shown := a
 	if AutoActions.can_auto(a) == "":
 		shown = a.duplicate()
-		shown["text"] = String(a.get("text", "")) + "\nRight-click: auto-use this whenever it's allowed."
+		shown["auto_hint"] = true
 	card.show_action(shown, clampf(vp.y / 1080.0, 0.75, 1.5) * _settings_scale)
 	var b: ActionButton = _buttons.get(a.get("id", ""))
 	var x := (b.global_position.x if b else _root.position.x)

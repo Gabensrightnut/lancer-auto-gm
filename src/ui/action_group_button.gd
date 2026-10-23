@@ -67,8 +67,12 @@ func _draw() -> void:
 	var col := Icons.color(icon) if not dim else Color(0.45, 0.47, 0.5)
 	if t:
 		draw_texture_rect(t, Rect2(Vector2(s.y * 0.12, (s.y - ip) * 0.5), Vector2(ip, ip)), false, col)
-	var fs := int(maxf(12.0, s.y * 0.24))
 	var tx := s.y * 0.12 + ip + 6
+	var room := s.x - tx - s.y * 0.42  # leave the keypad label clear
+	var fs := int(maxf(12.0, s.y * 0.24))
+	var tw := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	if tw > room:
+		fs = int(maxf(10.0, fs * room / tw))
 	draw_string(font, Vector2(tx, s.y * 0.44), title, HORIZONTAL_ALIGNMENT_LEFT, s.x - tx - 4, fs, Color(0.93, 0.95, 0.98) if not dim else Color(0.55, 0.57, 0.6))
 	var sub := "empty" if empty else ("%d" % count if usable == count else "%d/%d ready" % [usable, count])
 	draw_string(font, Vector2(tx, s.y * 0.78), sub, HORIZONTAL_ALIGNMENT_LEFT, s.x - tx - 4, int(fs * 0.85), Color(0.7, 0.78, 0.86, 0.9 if not dim else 0.5))
