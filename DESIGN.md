@@ -512,6 +512,12 @@ That gives a "kinda like fog of war" feel without adding rules that aren't in th
   learn the real rules. The engine leaves room for optional toggles to be added later.
 - Automated tests: a scenario suite that plays out rule situations (heat, structure,
   overcharge, cover, Hidden, statuses...) and checks the outcome.
+- **Characters go through the sanity checker too (user decision):** every pilot and mech,
+  whether made in the creator, loaded from a save, imported from a file, generated as a bot or
+  brought in online, is rebuilt from the book for the campaign's starting License Level. Nothing
+  numeric is trusted from a file. Anything illegal is removed, and a plain "Sanity check" report
+  lists what changed and why, with the rule reference. Only identity (name, look, personality,
+  background, play style) carries between campaigns; no money, items, LL, implants or bounties.
 
 ## 8. Learning to play (first-time players)
 
