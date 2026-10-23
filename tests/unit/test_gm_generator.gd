@@ -639,3 +639,23 @@ func test_safe_points_for_full_repairs() -> void:
 	expect(with_rig >= 3 and with_rig <= 5, "rigs spread over the region: %d of 9" % with_rig)
 	var sp := MissionGenerator.secure_camp(town, Vector2i(10, 10))
 	expect_eq(sp["kind"], "camp", "a secured camp becomes a safe point")
+
+
+func test_buildings_have_interiors_windows_and_entrances() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 22
+	var city := TerrainGen.generate(rng, 40, 40, GridLayout.Shape.HEX, {}, "city", "retro")
+	var cells := 0
+	var windows := 0
+	var entrances := 0
+	for c in city.cells():
+		var col := city.column(c)
+		if not col.has_tag("building"):
+			continue
+		cells += 1
+		expect(col.has_tag("interior") and col.has_tag("storeys_%d" % maxi(1, col.ground)), "%s: room inside, %d storeys" % [c, col.ground])
+		for t in col.tags:
+			windows += 1 if t.begins_with("window_") else 0
+		entrances += 1 if col.has_tag("entrance") else 0
+	expect(cells > 0 and windows > cells / 2, "windows on the open faces: %d over %d cells" % [windows, cells])
+	expect(entrances > 3, "each building has a way in: %d" % entrances)
