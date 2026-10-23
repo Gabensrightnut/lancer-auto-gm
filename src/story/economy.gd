@@ -506,6 +506,9 @@ static func eat(story: StoryState, campaign: Campaign, nights: int = 1, cut_off:
 				events.append_array(StoryEffects.harm(story, campaign, pid, 1, true))
 	sv["hungry"] = hun
 	story.flags[SURVIVAL] = sv
+	# The squad's own troops eat too: a ration per squad per day (Troops).
+	if not Troops.squads(story).is_empty():
+		events.append_array(Troops.feed(story, campaign, nights))
 	return events
 
 

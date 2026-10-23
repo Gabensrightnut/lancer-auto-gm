@@ -1,0 +1,54 @@
+{
+ "_note": "Our own writing. A soldier of the hub's garrison (Soldiers): the law here, what they've seen, and a warning if the squad's been trouble.",
+ "id": "soldier",
+ "start": "greet",
+ "nodes": {
+  "greet": {
+   "speaker": "npc",
+   "expression": "neutral",
+   "line": ["Lancers. Keep it peaceful and we'll get along.", "Something you need?", "On duty. Make it quick."],
+   "next": "menu",
+   "branch": [{"if": {"flag": "_caught"}, "next": "wary"}]
+  },
+  "wary": {
+   "speaker": "npc",
+   "expression": "angry",
+   "line": ["I know your face. We're watching you.", "Half the town's talking about you. Walk carefully."],
+   "next": "menu"
+  },
+  "menu": {
+   "speaker": "npc",
+   "line": ["Go on.", "What is it?"],
+   "choices": [
+    {"id": "law", "once": true, "text": "What's the law around here?", "tags": ["curious"], "next": "law"},
+    {"id": "seen", "once": true, "text": "Seen anything strange on your rounds?", "tags": ["curious"], "next": "seen"},
+    {"id": "push", "once": true, "tone": "push", "tags": ["push"], "text": "Who really runs this place?", "next": "pushed"},
+    {"id": "leave", "tone": "leave", "pinned": true, "tags": ["leave"], "text": ["Carry on.", "That's all."], "next": "farewell"}
+   ]
+  },
+  "law": {
+   "speaker": "npc",
+   "line": ["No fights in the street, no taking what isn't yours, and nobody goes into a private room uninvited. Break any of those where we can see, and we'll come for you.",
+            "Keep your weapons holstered and your hands to yourself. The night watch doesn't ask twice."],
+   "next": "menu"
+  },
+  "seen": {
+   "speaker": "npc",
+   "line": ["Lights in the back office after dark, some nights. Not my business who's working late.",
+            "Somebody's been sleeping rough by the landing pads. Might be nothing.",
+            "Quiet, mostly. The bar gets loud after dark. That's where trouble starts, if it starts."],
+   "next": "menu"
+  },
+  "pushed": {
+   "speaker": "npc",
+   "expression": "worried",
+   "line": ["I keep the peace. Who pays for it is above my pay grade.", "Ask the office. Not me."],
+   "next": "menu"
+  },
+  "farewell": {
+   "speaker": "npc",
+   "line": ["Stay out of trouble.", "Move along, then."],
+   "end": true
+  }
+ }
+}

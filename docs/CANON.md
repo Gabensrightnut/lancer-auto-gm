@@ -19,6 +19,9 @@ book in a way that changes the setting; parked.
 | New pilots start at LL0 with the Everest and GMS gear | Canon | Core p.31 |
 | Mechs are 3D-printed; printers ubiquitous on most occupied worlds | Canon | Core p.31, p.82 |
 | Full Repair: 10 hours in a secure location; prints a licensed mech | Canon | Core p.82 |
+| Mech damage (HP, structure, stress, Repairs, CORE power, Limited charges, destroyed gear, a wrecked mech) lasts from one mission to the next until a Full Repair | Canon | Damage persists until repaired; Full Repair restores it all and reprints (Core p.82) |
+| A repair bay in every hub (the mech gantries, a ship's hangar or engineering) where the squad does the Full Repair | Consistent | Printers and repair facilities on occupied worlds (Core p.31, p.82); hubs are secure locations |
+| What a Full Repair costs: the 10 hours pass on the clock (people's days move on), rations get eaten (food-and-water house rule), and the enemy regroups (one more at the next fight); not with the alarm up or enemies about; between fights in a mission only a Rest | Consistent (canon costs; the regroup is GM pacing) | 10 hours, secure location (Core p.82); the GM moves the world on and sets the opposition (Core p.42) |
 | One printed mech at a time; printing a new one shuts the old one down | Canon | Core p.82 |
 | You never lose access to licensed gear | Canon | Core p.31 |
 | Custom mech look and layout, no gameplay effect | Canon | Core p.32 |
@@ -134,6 +137,12 @@ book in a way that changes the setting; parked.
 | Soldier kinds: rifle squad, missile team, guard squad, spotter team, medic team, single soldier, using the book's NPC roles and pilot gear | Consistent (our placeholder pack) | Roles: NPC roles; weapons: pilot gear (pilot_gear.json); jobs limited by Core p.74 (no aiding mechs) |
 | Nobody gives soldiers orders; each acts by its own AI, weighted by its role and the sitrep | Consistent (the user's choice) | Core p.60 lets players choose when an allied NPC acts; who decides its actions is left to the table |
 | The Reinforcements reserve calls in a friendly NPC mech, not troops | Canon | Core p.52 (Tactical reserves table); reserves.json |
+| Every hub has a garrison keeping order: Union Navy marines in the Core, colonial militia on the frontier, a marshal's deputies, a baron's household guard, station or colony security | Consistent | The Union Navy and Auxiliaries (Core p.10-11), Karrakin Baronies' houses (p.92), frontier colonies and corpro holdings (p.10, p.21); our own names for local forces |
+| Guards by day, a night watch and patrols on rounds, who witness crimes and raise the alarm; the garrison turns out if it comes to a fight | Consistent | Witnesses and consequences are the GM's call (Core p.26-27, p.45) |
+| The squad's own troops (a pirate crew, a ship's captains, a merc company): squads of ten whose losses last until reinforced, fighting as allied units or through the Reinforcements reserve | Consistent | Infantry squads and the Reinforcements reserve (Core p.48); NPC allies are the GM's to run (p.42) |
+| Recruiting in person: a bar's regulars, a fixer, freed prisoners, a beaten crew changing sides; paid in manna (wallet house rule) or as a favour owed; refused where the squad's name is bad | Consistent (favours canon; pay is house rule) | Favours and standing are table play; money isn't tracked by the book (p.10) |
+| Troop upkeep: one ration per squad per day; hungry troops lose heart, desert, and side with whoever's stirring up trouble | Not a book rule (part of the food-and-water house rule, off) | The book doesn't track food (p.10) |
+| The campaigns' own forces: the Cadence's watch, the Reach's enforcers, Hask's boarding party, Union Navy marines hunting the squad, Marshal Vell's deputies, the Long Arrival's wardens | Consistent (our own story) | Union Navy (p.10-11), boarding actions (p.42); no Massif module content |
 
 ## When canon allows more than one answer
 

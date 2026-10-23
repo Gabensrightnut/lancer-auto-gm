@@ -43,7 +43,19 @@
    "culture": "old_west",
    "kind": "town",
    "landscape": "desert_mesas",
-   "hub": "Redwater"
+   "hub": "Redwater",
+   "garrison": {
+    "faction": "Marshal Vell's deputies",
+    "titles": [
+     "Deputy",
+     "Deputy",
+     "Night Deputy"
+    ],
+    "guards": 1,
+    "watch": 1,
+    "patrols": 1,
+    "squads": 1
+   }
   },
   "dock": {
    "name": "Long Arrival Dock",
@@ -68,6 +80,18 @@
       "control": "store"
      }
     }
+   },
+   "garrison": {
+    "faction": "the Long Arrival's wardens",
+    "titles": [
+     "Warden",
+     "Vault Warden",
+     "Night Warden"
+    ],
+    "guards": 1,
+    "watch": 1,
+    "patrols": 1,
+    "squads": 1
    }
   }
  },
@@ -1810,6 +1834,10 @@
     "boarding": {
      "kind": "seize",
      "map": "docked"
+    },
+    "soldiers": {
+     "faction": "the Long Arrival's wardens",
+     "squads": 1
     },
     "environments_if": [
      {

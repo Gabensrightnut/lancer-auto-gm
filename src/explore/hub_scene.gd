@@ -62,6 +62,7 @@ var _interior: Node3D
 var _iroom := ""
 var _mechs: Array = []  # parked mechs to aim at: [{pid, name, pos: Vector3}]
 var _inner_blockers: Array = []  # inside: furniture you walk around
+var _bay_armed := -100.0  # when the repair bay's "press E again" was shown (seconds)
 var _jump_h := 0.0
 var _jump_v := 0.0
 var _orbit := false  # third person: right mouse held, dragging turns the camera
@@ -603,8 +604,8 @@ func _fade_occluders(focus: Vector3) -> void:
 func _fp_use(rough: bool) -> void:
 	var pid := story.pilot_of_seat(local_seat)
 	var t := fp.target
-	if str(t.get("kind", "")) == "mech":
-		_check_mech(str(t["id"]))
+	if str(t.get("kind", "")) in ["mech", "bay"]:
+		_bay_use()
 		return
 	if not _inside.is_empty() and t.get("kind", "") != "npc":
 		if str(t.get("kind", "")) in ["item", "exit", "idoor"]:
@@ -980,6 +981,10 @@ func _update_near_thing(me: PilotFigure) -> void:
 			_near_thing = {"kind": "item", "id": it["id"], "name": it["name"], "container": it["container"]}
 	if not _near_thing.is_empty():
 		return
+	for b: Dictionary in _bays_inside():
+		if Vector2(b["pos"].x, b["pos"].z).distance_to(at) < 2.5 and absf(b["pos"].y - 1.2 - me.position.y) < 1.5:
+			_near_thing = b
+			return
 	var dr := HubInterior.door_near(_inside, at, me.position.y, 1.6)
 	if dr.is_empty():
 		return
@@ -1000,6 +1005,8 @@ func _thing_prompt() -> String:
 			return "[E] Take %s" % _near_thing["name"]
 		"exit":
 			return "[E] Go back out"
+		"bay":
+			return "[E] Repair bay: Full Repair (10 hours)"
 		"door":
 			var sr: Array = _inside["rooms"].get(str(_near_thing["room"]), ["", ""])
 			return "Locked: %s.   [E] Pick the lock   [R] Force it" % TownLife.room_name(story, str(sr[0]), str(sr[1]))
@@ -1015,6 +1022,11 @@ func _use_nearby(rough: bool) -> void:
 	var me: PilotFigure = avatars.get(local_seat)
 	if me == null:
 		return
+	for m: Dictionary in _mechs:
+		var root: Node3D = m["root"]
+		if is_instance_valid(root) and Vector2(root.position.x, root.position.z).distance_to(Vector2(me.position.x, me.position.z)) < 6.0:
+			_bay_use()
+			return
 	for spot: Dictionary in story.hub.get("spots", []):
 		if str(spot["kind"]) in ["plaza", "landing"]:
 			continue
@@ -1032,6 +1044,9 @@ func _inside_use(rough: bool) -> void:
 			a = {"type": "take", "params": {"pilot": pid, "item": _near_thing["id"]}}
 		"exit":
 			leave_building()
+			return
+		"bay":
+			_bay_use()
 			return
 		"door":
 			var sr: Array = _inside["rooms"][str(_near_thing["room"])]
@@ -1089,6 +1104,7 @@ func _push_inner(p: Vector2, y: float) -> Vector2:
 func _aim_targets() -> Array:
 	var out: Array = []
 	if not _inside.is_empty():
+		out.append_array(_bays_inside())
 		for it: Dictionary in _inside["items"]:
 			out.append({"kind": "item", "id": it["id"], "name": it["name"], "container": it["container"],
 				"pos": Vector3(float(it["pos"][0]), float(it["pos"][1]) + 1.0, float(it["pos"][2]))})
@@ -1111,17 +1127,43 @@ func _aim_targets() -> Array:
 	return out
 
 
-## Your parked mech: how it is (and whether it's waiting on a printer).
-func _check_mech(pid: String) -> void:
-	var m: Dictionary = {}
-	for x: Dictionary in _mechs:
-		if str(x["pid"]) == pid:
-			m = x
-	var wrecked := Economy.wrecked(story, campaign).has(pid)
-	hud.toast("%s: %s." % [m.get("name", "The mech"), "wrecked, waiting to be reprinted at a printer" if wrecked else "parked on the gantry, ready to go"],
-		StoryStyle.RED if wrecked else StoryStyle.BLUE)
+## Inside: rooms where mechs are worked on (a hangar, engineering, a printer floor) have a bay.
+func _bays_inside() -> Array:
+	var out: Array = []
+	var lay: Dictionary = _inside["layout"]
+	for id: String in lay["rooms"]:
+		if str(lay["rooms"][id].get("use", "")) in ["workshop", "engineering", "printer"]:
+			var c := _room_center(id)
+			out.append({"kind": "bay", "id": "bay_" + id, "name": "the repair bay", "pos": c + Vector3(0, 1.2, 0)})
+	return out
+
+
+## The repair bay (the gantries outside, a hangar or engineering inside): the first E shows
+## what a Full Repair would fix and what it costs; E again within a few seconds does it.
+func _bay_use() -> void:
+	var why := RepairBay.refusal(story, campaign)
+	if why != "":
+		hud.toast(why, StoryStyle.BLUE if not RepairBay.needed(story) else StoryStyle.RED)
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	if now - _bay_armed > 6.0:
+		_bay_armed = now
+		for line: String in RepairBay.summary(story, campaign):
+			hud.toast(line, StoryStyle.TEXT)
+		hud.toast(RepairBay.PLAIN + " Press E again to start.", StoryStyle.GOLD)
+		return
+	_bay_armed = -100.0
 	if fp != null:
 		fp.used()
+	var r := engine.submit(story, campaign, {"type": "full_repair", "seat": local_seat, "params": {}})
+	if not r["ok"]:
+		hud.toast(str(r["reason"]), StoryStyle.RED)
+		return
+	for e: Dictionary in r["events"]:
+		if e.has("text"):
+			hud.toast(str(e["text"]), StoryStyle.GOLD if str(e.get("type", "")) == "full_repair_done" else StoryStyle.TEXT)
+	_handle(r["events"])
+	rebuild()
 
 # --- UI ----------------------------------------------------------------------------------
 

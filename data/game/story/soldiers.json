@@ -1,0 +1,19 @@
+{
+  "_note": "Our own data. Who keeps order in a hub (DESIGN.md: soldiers in the living world): each culture's garrison, a canon or canon-consistent force (docs/CANON.md), with guards on the door by day, a night watch and patrols on rounds. They're people like any other in TownLife: on schedules, talkable, and witnesses who raise the alarm. When a crime turns into a fight, the garrison's squads join the other side (unit_template: the rules session's soldier squad; until it exists, none are added, PROVISIONAL). A campaign world can set its own garrison (worlds.<id>.garrison).",
+  "unit_template": "soldier_squad",
+  "garrisons": {
+    "union_core": {"faction": "Union Navy marines", "titles": ["Union Navy Marine", "Marine Corporal", "Union Auxiliary Trooper"], "guards": 1, "watch": 1, "patrols": 2, "squads": 2},
+    "frontier_colony": {"faction": "the colonial militia", "titles": ["Militia Volunteer", "Militia Sergeant", "Colony Guard"], "guards": 1, "watch": 1, "patrols": 1, "squads": 1},
+    "old_west": {"faction": "the marshal's deputies", "titles": ["Deputy", "Deputy Marshal", "Night Deputy"], "guards": 1, "watch": 1, "patrols": 1, "squads": 1},
+    "medieval_tech": {"faction": "the baron's household guard", "titles": ["Household Guard", "Man-at-Arms", "Sergeant of the Watch"], "guards": 1, "watch": 1, "patrols": 2, "squads": 2},
+    "cyberpunk": {"faction": "station security", "titles": ["Security Officer", "Corpro Security", "Duty Sergeant"], "guards": 1, "watch": 1, "patrols": 2, "squads": 2},
+    "retrofuturistic": {"faction": "colony security", "titles": ["Security Officer", "Patrol Officer", "Watch Captain"], "guards": 1, "watch": 1, "patrols": 1, "squads": 1},
+    "east_asian": {"faction": "the civic guard", "titles": ["Civic Guard", "Gate Warden", "Watch Sergeant"], "guards": 1, "watch": 1, "patrols": 1, "squads": 1},
+    "default": {"faction": "the town watch", "titles": ["Watchman", "Guard", "Sergeant of the Watch"], "guards": 1, "watch": 1, "patrols": 1, "squads": 1}
+  },
+  "schedules": {
+    "guard": {"dawn": ["office", "front"], "day": ["office", "front"], "evening": ["plaza", "square"], "night": ["office", "back", "asleep"]},
+    "watch": {"dawn": ["office", "back", "asleep"], "day": ["office", "back", "asleep"], "evening": ["office", "front"], "night": ["plaza", "square"]},
+    "patrol": {"dawn": ["landing", "pads"], "day": ["market", "floor"], "evening": ["bar", "main"], "night": ["plaza", "square"]}
+  }
+}
