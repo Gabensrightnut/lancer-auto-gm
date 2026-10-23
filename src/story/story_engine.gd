@@ -439,6 +439,10 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 				events.append({"type": "hub_entered", "hub": story.hub.duplicate(true)})
 			Sector.ensure(story, campaign)
 			TownLife.seed_items(story)
+			# The first town: how to get around, in plain words (once).
+			if story.mission_number <= 1 and campaign.history.is_empty() and not bool(story.flags.get("_controls_taught", false)):
+				story.flags["_controls_taught"] = true
+				events.append({"type": "tip", "text": str(Townsfolk.data().get("start_area", {}).get("tip", ""))})
 			if not bool(p.get("no_jobs", false)):
 				for h: Dictionary in MissionHooks.fill_board(story, campaign):
 					events.append({"type": "hook_added", "hook": h})
@@ -740,6 +744,7 @@ func _finish_mission(story: StoryState, campaign: Campaign, p: Dictionary) -> Ar
 			var dctx := {"npc": npc_id, "speaker": to}
 			events.append_array(StoryEffects.apply({"reserve": str(deal["reward"]), "to": "speaker", "source": "$npc.name", "note": "For the job you did for {npc}"}, story, campaign, dctx))
 			events.append_array(StoryEffects.apply({"standing": "$npc.faction", "add": 1}, story, campaign, dctx))
+		Townsfolk.remember(story, npc_id, "deal_kept" if won else "deal_lost", str(hook.get("title", "the job")))
 		events.append({"type": "deal_" + ("kept" if won else "off"), "npc": npc_id, "reward": deal["reward"], "rule_ref": "Core p.40-43: reserves"})
 	events.append_array(StoryArc.advance(story, campaign, hook, won))
 	# What became of the enemy commander (Rivals).

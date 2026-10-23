@@ -68,6 +68,11 @@ static func start(story: StoryState, campaign: Campaign, scene_id: String, ctx: 
 	story.dialogue = {"scene": scene_id, "node": "", "ctx": ctx.duplicate(true), "log": [], "votes": {}, "choices": []}
 	Tones.begin(story, str(ctx.get("npc", "")))
 	var events: Array = [{"type": "dialogue_started", "scene": scene_id, "npc": ctx.get("npc", ""), "speaker": ctx.get("speaker", "")}]
+	# They remember what you did, and say so first (Townsfolk).
+	var mem := Townsfolk.memory_line(story, str(ctx.get("npc", "")))
+	if mem != "":
+		(story.dialogue["log"] as Array).append({"speaker": "npc", "name": speaker_name(story, campaign, "npc"), "text": mem})
+		events.append({"type": "dialogue_line", "speaker": "npc", "name": speaker_name(story, campaign, "npc"), "text": mem, "memory": true, "choices": []})
 	events.append_array(_enter(story, campaign, str(sc.get("start", ""))))
 	return events
 
@@ -85,6 +90,10 @@ static func advance(story: StoryState, campaign: Campaign) -> Array:
 
 static func close(story: StoryState, why: String = "finished") -> Array:
 	var sc := str(story.dialogue.get("scene", ""))
+	# One more conversation with them: next time more of them opens up (Townsfolk).
+	var who: Dictionary = story.npcs.get(str(story.dialogue.get("ctx", {}).get("npc", "")), {})
+	if not who.is_empty():
+		who["talks"] = int(who.get("talks", 0)) + 1
 	_keep_transcript(story)
 	story.dialogue = {}
 	return [{"type": "dialogue_ended", "scene": sc, "reason": why}]
@@ -165,7 +174,8 @@ static func _enter(story: StoryState, campaign: Campaign, node_id: String) -> Ar
 		var npc: Dictionary = story.npcs.get(str(ctx.get("npc", "")), {})
 		story.dialogue["expression"] = str(node.get("expression", PortraitSpec.npc_expression(story, npc) if speaker == "npc" else "neutral"))
 		story.dialogue["votes"] = {}
-		var raw: Array = (node.get("choices", []) as Array) + BackgroundStory.options_for(story, campaign, ctx, node_id) + Troops.options_for(story, campaign, ctx, node_id)
+		var raw: Array = (node.get("choices", []) as Array) + BackgroundStory.options_for(story, campaign, ctx, node_id) + Troops.options_for(story, campaign, ctx, node_id) \
+			+ Townsfolk.options_for(story, campaign, ctx, node_id)
 		story.dialogue["choices"] = _build_choices(story, campaign, raw, ctx)
 		# Face to face or over comms (DESIGN: dialogue modes). Over comms, a Jammed pilot gets
 		# static and can't answer (statuses: Jammed, "can't use comms to talk to other characters").
@@ -206,7 +216,7 @@ static func _build_choices(story: StoryState, campaign: Campaign, raw: Array, ct
 			continue
 		if bool(c.get("once", false)) and (story.dialogue.get("asked", []) as Array).has(str(c.get("id", ""))):
 			continue
-		var cc := {"id": str(c.get("id", "c%d" % i)), "order": i, "tags": c.get("tags", []), "pinned": bool(c.get("pinned", false)), "extra": c.has("tone") and str(c["tone"]) in ["insult", "push"],
+		var cc := {"id": str(c.get("id", "c%d" % i)), "order": i, "tags": c.get("tags", []), "pinned": bool(c.get("pinned", false)), "extra": (c.has("tone") and str(c["tone"]) in ["insult", "push"]) or bool(c.get("extra", false)), "tf": bool(c.get("extra", false)),
 			"priority": int(c.get("priority", 2 if c.has("trigger") else 1))}
 		cc["text"] = StoryText.line(c.get("text", "..."), story, campaign, ctx)
 		if c.has("trigger"):
@@ -241,7 +251,7 @@ static func _build_choices(story: StoryState, campaign: Campaign, raw: Array, ct
 	# Tone replies (insult, push your luck) are always there on top of the cap: escalation is
 	# never squeezed out (DESIGN section 11).
 	var extras: Array = ranked.filter(func(o: Dictionary) -> bool: return bool(o.get("extra", false)))
-	var kept := ranked.filter(func(o: Dictionary) -> bool: return not bool(o.get("extra", false))).slice(0, MAX_CHOICES) + extras.slice(0, 2)
+	var kept := ranked.filter(func(o: Dictionary) -> bool: return not bool(o.get("extra", false))).slice(0, MAX_CHOICES) + extras.filter(func(o: Dictionary) -> bool: return not bool(o.get("tf", false))).slice(0, 2) + extras.filter(func(o: Dictionary) -> bool: return bool(o.get("tf", false)))
 	kept.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["order"] < b["order"])
 	return kept
 
@@ -252,7 +262,8 @@ static func resolve_choice(story: StoryState, campaign: Campaign, choice_id: Str
 	var ctx: Dictionary = story.dialogue["ctx"]
 	var c: Dictionary = {}
 	var here := str(story.dialogue.get("node", ""))
-	for raw: Dictionary in (node.get("choices", []) as Array) + BackgroundStory.options_for(story, campaign, ctx, here) + Troops.options_for(story, campaign, ctx, here):
+	for raw: Dictionary in (node.get("choices", []) as Array) + BackgroundStory.options_for(story, campaign, ctx, here) + Troops.options_for(story, campaign, ctx, here) \
+			+ Townsfolk.options_for(story, campaign, ctx, here):
 		if str(raw.get("id", "")) == choice_id:
 			c = raw
 	var shown: Dictionary = {}
@@ -270,6 +281,11 @@ static func resolve_choice(story: StoryState, campaign: Campaign, choice_id: Str
 	events.append_array(StoryEffects.apply_all(c.get("effects", []), story, campaign, ctx))
 	if not is_open(story):
 		return events
+	# A reply that gets an answer straight back (Townsfolk: who they are, what worries them).
+	if c.has("reply"):
+		var said := StoryText.fill(str(c["reply"]), story, campaign, ctx)
+		(story.dialogue["log"] as Array).append({"speaker": "npc", "name": speaker_name(story, campaign, "npc"), "text": said})
+		events.append({"type": "dialogue_line", "speaker": "npc", "name": speaker_name(story, campaign, "npc"), "text": said, "choices": []})
 	# How the reply's tone lands: temper and patience (Tones). It can end the talk, or start a fight.
 	events.append_array(Tones.land(story, campaign, c, ctx))
 	if not is_open(story):

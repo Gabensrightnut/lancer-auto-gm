@@ -181,6 +181,22 @@ static func fill_board(story: StoryState, campaign: Campaign, count: int = 3) ->
 		if not hook.is_empty():
 			story.hooks.append(hook)
 			added.append(hook)
+	# The first town: a couple of short local jobs you can walk out to (a reason to leave town
+	# before the first big mission).
+	if story.mission_number <= 1 and campaign.history.is_empty():
+		var n := int(Townsfolk.data().get("start_area", {}).get("local_jobs", 2))
+		for h: Dictionary in story.hooks:
+			if n <= 0:
+				break
+			if h.has("boarding") or bool(h.get("tutorial", false)):
+				continue
+			h["local"] = true
+			h["travel"] = "walk"
+			h["travel_hours"] = 0
+			h["travel_text"] = "It's close: walk out of town in your mechs."
+			if h.get("site") is Dictionary:
+				h["site"]["near"] = true
+			n -= 1
 	return added
 
 

@@ -1,0 +1,60 @@
+{
+  "_note": "Our own writing. Every person you can talk to is worth talking to (the user's rule): a backstory line (who they are and how they fit the place), what's worrying them, a tie to someone else in town, and something they can do for you (a job they need done, a rumour, a contact, training, a trade, a favour). Generated people draw from here (Townsfolk); no two people in one town want the same job done. Canon-consistent: no Massif named characters; factions and places come from the town itself.",
+  "more_wants": [
+    {"id": "sos", "text": "word about a distress beacon out past the ridge that nobody's answered", "hook": "answer_sos"},
+    {"id": "derelict", "text": "someone to look over the old wreck in the hills before scavengers strip it", "hook": "explore_derelict"},
+    {"id": "tip", "text": "someone to check out a tip about strange lights at the old mine", "hook": "investigate_tip"},
+    {"id": "dam", "text": "the relay tower that's jamming every radio in town taken down", "hook": "destroy_infrastructure"},
+    {"id": "distract", "text": "a distraction on the east road while something gets moved quietly", "hook": "create_diversion"},
+    {"id": "secure", "text": "the old survey station held until the surveyors can get there", "hook": "secure_site"},
+    {"id": "smuggle", "text": "a crate moved past the checkpoint, no questions", "hook": "smuggle_cargo"},
+    {"id": "rivals", "text": "a rival lance run out of the valley", "hook": "hunt_rivals"},
+    {"id": "evacuate", "text": "the farmers on the low road got out before the flood", "hook": "cover_evacuation"},
+    {"id": "extract", "text": "a friend pulled out of a company lockup", "hook": "extract_person"},
+    {"id": "train", "text": "a cargo train escorted through the canyons", "hook": "train_job"},
+    {"id": "data", "text": "a set of records lifted from a company office", "hook": "data_heist"},
+    {"id": "shrine", "text": "the shrine on the hill kept safe through the festival", "hook": "shrine_guard"},
+    {"id": "stolen", "text": "the parts someone stole from their workshop", "hook": "stolen_goods"},
+    {"id": "followed", "text": "the people who've been following them since the market off their back", "hook": "trouble_followed"},
+    {"id": "favor", "text": "an old favour repaid to someone who once saved their life", "hook": "favor_owed"},
+    {"id": "org", "text": "the trouble in their own outfit sorted out before it splits", "hook": "org_trouble"}
+  ],
+  "backstory": {
+    "bartender": ["{name} has kept the bar here since {event}; everyone ends up telling them something.", "{name} bought the bar with a dead partner's savings and has never quite paid the debt off in their head."],
+    "company_rep": ["{name} was sent out from head office to make this place profitable, and is starting to suspect they were sent out to fail.", "{name} came up from the loading docks to a desk job and hasn't forgotten what the docks are like."],
+    "faction_agent": ["{name} speaks for {faction} here, and has buried two predecessors who spoke too loudly.", "{name} grew up here, left, and came back wearing {faction}'s colours, which not everyone has forgiven."],
+    "quartermaster": ["{name} keeps the stores and the printer running, and knows exactly who owes what.", "{name} was a supply officer somewhere far bigger and far worse, and likes it small here."],
+    "mechanic": ["{name} learned on salvage and still talks to engines like they're animals.", "{name} keeps half the town's machines alive on spit and scrap, and is tired."],
+    "fixer": ["{name} knows who to ask for anything, which is why so many people want them gone.", "{name} started out running messages for {faction} and kept every name."],
+    "instructor": ["{name} trained pilots once, before an accident ended their own flying.", "{name} runs drills for anyone who'll stand still long enough to learn."],
+    "local": ["{name} has lived here since {event} and remembers what it looked like before.", "{name} came for the work and stayed for someone, who's since gone.", "{name} keeps a small plot and a smaller stall and hears everything that passes the road."],
+    "soldier": ["{name} signed on with {faction} for the pay and stayed for the people they serve with.", "{name} has walked this beat for years and can tell trouble by how a stranger stands."],
+    "default": ["{name} has been here since {event} and has opinions about all of it."]
+  },
+  "events": ["the mine closed", "the last flood", "the war ended", "the printer came", "the first ships landed", "the company took over", "the fever winter", "the old bridge fell"],
+  "worries": ["money's tight and getting tighter", "a family member who hasn't written in months", "the raiders seem to know too much about the convoys", "the company's surveyors were measuring their land", "an old debt that's come due", "the water's been tasting wrong", "a rumour that the garrison is being pulled out", "someone's been watching their place at night", "their eyesight's going and they can't afford the clinic", "a promise they made and can't keep"],
+  "ties": ["owes {other} more money than they'll admit", "is {other}'s cousin, and they don't talk", "was {other}'s partner, once", "trusts {other} with their life", "thinks {other} is hiding something", "taught {other} everything they know", "is quietly in love with {other}", "has a long-running feud with {other} over a fence line"],
+  "services": {
+    "bartender": "rumor", "company_rep": "contact", "faction_agent": "contact", "quartermaster": "trade", "mechanic": "training",
+    "fixer": "contact", "instructor": "training", "local": "rumor", "soldier": "intel", "default": "rumor"
+  },
+  "service_lines": {
+    "rumor": ["Word is {rumor}.", "I shouldn't say, but {rumor}."],
+    "intel": ["Off the record: {rumor}.", "Keep your eyes open: {rumor}."],
+    "training": ["Come by the workshop; I'll show you a trick or two.", "You hold it wrong. Here, let me show you."],
+    "trade": ["For you, I can knock a little off. Don't tell the others.", "I can find you parts, if you know what you want."],
+    "contact": ["If you need a door opened in this town, I'm who you ask.", "I know people. Tell me what you need."]
+  },
+  "rumors": ["the raiders on the ridge road get their ammunition from somebody in town", "the company's next shipment carries more than parts", "there's a wreck out in the hills nobody's claimed yet", "the marshal is closer to the company than she lets on", "the night watch is short-handed this month", "someone's been buying up every water filter in the market", "the old survey station still has power"],
+  "memory": {
+    "helped": ["You're the lancer who {what}. I haven't forgotten.", "{what}: that was you. Thank you."],
+    "crossed": ["I know what you did: {what}. Don't think I'll forget.", "After {what}? You've got some nerve."],
+    "robbed": ["Someone went through my things: {what}. I've got my suspicions.", "{what}. If I find out who, they'll regret it."],
+    "deal_kept": ["You did what you said you would. That's rare out here.", "The job's done and I'm still breathing. I owe you."],
+    "deal_lost": ["The job went bad. I'm not blaming you. Not out loud.", "I heard how the job went. Let's not talk about it."]
+  },
+  "start_area": {
+    "local_jobs": 2,
+    "tip": "WASD walks · V first person · E talks, uses, climbs in · Hold Alt for the mouse · J job board · M world map · B market · Tab downtime. Talk to people: everyone here has a story or a favour."
+  }
+}

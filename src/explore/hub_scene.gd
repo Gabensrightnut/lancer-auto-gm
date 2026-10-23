@@ -1399,6 +1399,8 @@ func _handle(events: Array) -> void:
 				hud.toast("New contact: %s" % e["name"], StoryStyle.DIM)
 			"hook_added":
 				hud.toast("New job on the board: %s" % e["hook"]["title"], StoryStyle.GOLD)
+			"tip":
+				hud.toast(str(e["text"]), StoryStyle.BLUE)
 			"obligation_added":
 				hud.toast("Favor owed: %s" % e["obligation"]["what"], StoryStyle.RED)
 			"pilot_harmed":
