@@ -811,8 +811,10 @@ at any time, even mid-campaign. The game stays canon until someone turns one on.
 - **Your ideas** (from this design, previously parked):
   - Tracked wallet: manna and local currency with prices for food, drinks, lodging, travel,
     information, pilot supplies and repair kits; mission pay; selling salvage.
-  - Printer scarcity: frontier worlds without printers, paying for printer access, a destroyed
-    mech staying destroyed until you reach a printer.
+  - Frontier printers (Joe's Rules): every world has printers (book), but frontier ones don't
+    always have the raw materials, power or crew to run them, and they break down more often.
+    So printing there can mean a queue, a materials or access fee, bringing your own scrap, or a
+    failed print that has to be redone. Core and well-funded worlds print reliably.
   - Paid travel: company/patron members ride free, independents buy passage.
   - "Can't afford it? Fight for it": an unaffordable deal becomes a generated combat job; lose
     and the deal is off, but you can come back and pay with scrap, a spare mech, manna or money.
