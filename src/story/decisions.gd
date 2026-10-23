@@ -74,7 +74,8 @@ static func vote(story: StoryState, campaign: Campaign, seat: String, accept: bo
 		if story.is_ai(s) and story.is_alive(story.pilot_of_seat(s)):
 			(sides["accept"] if yes.has(leader_of(story, s)) else sides["decline"]).append(s)
 	d["split"] = sides
-	return [{"type": "party_split", "id": d["id"], "sides": sides, "gather": true, "fight": d.get("fight", {}),
+	# The squad's own troops pick a side too: hungry ones follow a pilot with a grudge (Troops).
+	return [{"type": "party_split", "id": d["id"], "sides": sides, "gather": true, "fight": d.get("fight", {}), "troops": Troops.loyalties(story),
 		"text": "The squad can't agree: %s. It comes down to a fight between you." % d["prompt"]}]
 
 

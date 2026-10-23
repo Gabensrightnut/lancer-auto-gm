@@ -660,6 +660,11 @@
    "count": 2
   }
  ],
+ "troops": {
+  "if": {
+   "flag": "dr_hask_aboard"
+  }
+ },
  "lines": {
   "pro": [
    {
@@ -927,6 +932,13 @@
      {
       "trust": "hask",
       "add": 1
+     },
+     {
+      "recruit": {
+       "source": "crew",
+       "free": true,
+       "name": "the old Cadence hands"
+      }
      }
     ],
     "stranded": [
@@ -1089,6 +1101,33 @@
        {
         "renown": -2,
         "why": "the Brightwater's crew went out the airlock"
+       }
+      ]
+     },
+     {
+      "text": "Anyone who wants to can sign on with us. The rest get their lifeboats.",
+      "tone": "courteous",
+      "tags": [
+       "kind",
+       "practical"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_spared"
+       },
+       {
+        "set_flag": "dr_crew_joined"
+       },
+       {
+        "recruit": {
+         "source": "beaten_crew",
+         "free": true,
+         "name": "the Brightwater's turned crew"
+        }
+       },
+       {
+        "renown": 1,
+        "why": "the Brightwater's crew got a choice"
        }
       ]
      }

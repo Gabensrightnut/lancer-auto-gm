@@ -165,7 +165,7 @@ static func _enter(story: StoryState, campaign: Campaign, node_id: String) -> Ar
 		var npc: Dictionary = story.npcs.get(str(ctx.get("npc", "")), {})
 		story.dialogue["expression"] = str(node.get("expression", PortraitSpec.npc_expression(story, npc) if speaker == "npc" else "neutral"))
 		story.dialogue["votes"] = {}
-		var raw: Array = (node.get("choices", []) as Array) + BackgroundStory.options_for(story, campaign, ctx, node_id)
+		var raw: Array = (node.get("choices", []) as Array) + BackgroundStory.options_for(story, campaign, ctx, node_id) + Troops.options_for(story, campaign, ctx, node_id)
 		story.dialogue["choices"] = _build_choices(story, campaign, raw, ctx)
 		# Face to face or over comms (DESIGN: dialogue modes). Over comms, a Jammed pilot gets
 		# static and can't answer (statuses: Jammed, "can't use comms to talk to other characters").
@@ -251,7 +251,8 @@ static func resolve_choice(story: StoryState, campaign: Campaign, choice_id: Str
 	var node := current_node(story)
 	var ctx: Dictionary = story.dialogue["ctx"]
 	var c: Dictionary = {}
-	for raw: Dictionary in (node.get("choices", []) as Array) + BackgroundStory.options_for(story, campaign, ctx, str(story.dialogue.get("node", ""))):
+	var here := str(story.dialogue.get("node", ""))
+	for raw: Dictionary in (node.get("choices", []) as Array) + BackgroundStory.options_for(story, campaign, ctx, here) + Troops.options_for(story, campaign, ctx, here):
 		if str(raw.get("id", "")) == choice_id:
 			c = raw
 	var shown: Dictionary = {}

@@ -137,6 +137,8 @@ static func build_mission(campaign: Campaign, story: StoryState, db: ContentDB, 
 				_:
 					manual.append({"pilot": pid, "callsign": p.get("callsign", ""), "reserve": r.duplicate()})
 	mission.flavor["reserves"] = manual
+	# The squad's own troops fight at its side (Troops).
+	Troops.deploy(story, state, mission, int(hook.get("seed", 0)))
 	# The garrison turned out (Soldiers): their squads join the other side, once the rules
 	# session's soldier squad template exists (PROVISIONAL until then: none are added).
 	var sold: Dictionary = hook.get("soldiers", {})
@@ -371,4 +373,9 @@ static func finish_mission(campaign: Campaign, story: StoryState, engine: StoryE
 		story.flags["_regions"] = regions
 	# How the squad's mechs came out of it: that lasts until a Full Repair (RepairBay).
 	RepairBay.record(story, state)
-	return engine.submit(story, campaign, {"type": "mission_finished", "seat": "gm", "params": mission_result(state, mission, story, events)})
+	# And its troops: men lost stay lost (Troops).
+	var troop_events := Troops.after_battle(story, state)
+	var r := engine.submit(story, campaign, {"type": "mission_finished", "seat": "gm", "params": mission_result(state, mission, story, events)})
+	if not troop_events.is_empty() and r.has("events"):
+		r["events"] = troop_events + (r["events"] as Array)
+	return r
