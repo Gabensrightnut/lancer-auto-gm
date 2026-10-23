@@ -1123,6 +1123,14 @@ static func false_idol(state: GameState, actor: Unit, target: Unit) -> Dictionar
 		var owner := state.unit(String(o.counters.get("owner", "")))
 		var save := Combat.skill_check(state, actor, "systems", "Save vs False Idol", owner.save_target if owner != null else 10, 0, 0, [], true)
 		out["events"].append({"type": "skill_check", "unit": actor.id, "check": save, "rule_ref": "systems: H0R_OS System Upgrade II"})
+		if save["success"]:
+			# Seen through: its side knows the idol for what it is (PROVISIONAL: the book only
+			# says a failed save fools them).
+			var seen: Array = o.counters.get("idol_seen_through", [])
+			if not seen.has(actor.side):
+				seen.append(actor.side)
+			o.counters["idol_seen_through"] = seen
+			out["events"].append({"type": "illusion_revealed", "unit": o.id, "side": actor.side, "rule_ref": "systems: H0R_OS System Upgrade II"})
 		if not save["success"]:
 			out["fooled"] = true
 			out["events"].append_array(Effects.activate(state, actor, [{"kind": "fooled", "target": target.id, "label": "False Idol"}], "False Idol", "end_next_turn"))

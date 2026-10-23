@@ -52,6 +52,10 @@ func view_for(state: GameState, seat: String) -> Dictionary:
 	for id: String in state.units:
 		var u: Unit = state.units[id]
 		var d := u.to_dict()
+		var fake := disguise(state, u, seat_side) if not _is_gm(state, seat) else {}
+		if not fake.is_empty():
+			units[id] = fake  # a False Idol: it looks just like the real one to them
+			continue
 		if u.side == seat_side or _is_gm(state, seat) or knows_stats(seat_side, id, state):
 			units[id] = d
 			continue
@@ -74,6 +78,28 @@ func view_for(state: GameState, seat: String) -> Dictionary:
 	full["units"] = units
 	full["objectives"] = objectives_for(state, seat)
 	return full
+
+
+## H0R_OS II False Idol: to a side that hasn't seen through it, the idol looks exactly like the
+## character it copies (that character's public look, at the idol's place). {} if it doesn't
+## fool `side`. Its own side sees it as it is (illusion_of, revealed in Unit.to_dict).
+static func disguise(state: GameState, u: Unit, side: String) -> Dictionary:
+	var of := String(u.counters.get("idol_of", ""))
+	if of == "" or u.side == side or u.destroyed or (u.counters.get("idol_seen_through", []) as Array).has(side):
+		return {}
+	var t := state.unit(of)
+	if t == null:
+		return {}
+	var td := t.to_dict()
+	var out := {}
+	for key: String in PUBLIC_FIELDS:
+		out[key] = td[key]
+	out["id"] = u.id
+	out["cell"] = [u.cell.x, u.cell.y]
+	out["level"] = u.level
+	out["flying"] = u.flying
+	out["destroyed"] = false
+	return out
 
 
 ## The sitrep objectives a seat may know: Recon's True Control Zone only once its side has

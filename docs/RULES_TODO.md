@@ -187,7 +187,7 @@ Code: `src/content/soldiers.gd`, builds in `data/game/soldiers.json`, effects by
 | Squad and Human are Biological NPCs | no Heat Cap (heat becomes energy damage), immune to tech actions other than Scan and Lock On, can't take tech actions | Core p.282 Types of NPCs, p.322 |
 | Squad: Size 4 (1/2 individually), 10 members | one character; "men left" = ceil(HP / max HP x 10), for the look | p.322 Soldiers |
 | Squad Main Rifle | two attacks at a time (the second at `params.targets[1]` or the same target); one once it has lost more than half its HP, unless Disciplined | p.322 |
-| Strength in Numbers | Resistance to damage from attacks that aren't area attacks (Blast, Burst, Cone, Line); immune to Grapple, Ram, Knockback and Stunned. PROVISIONAL: the book shows the exempt attack types as icons our text copy lost; please confirm the icons on p.322 | p.322 |
+| Strength in Numbers | Resistance to damage from attacks that aren't area attacks (Blast, Burst, Cone, Line); immune to Grapple, Ram, Knockback and Stunned. user ruling: the icons were lost in our text copy | p.322 |
 | Spread Out | others move through and stop in its spaces; it moves like one of its members (Size 1/2 path) and may end overlapping obstructions, cover or characters while at least 2 of its spaces are free; it can't Grapple or Ram. PROVISIONAL: Engagement during its own move is checked for the moving member only | p.322 |
 | Undersize | always soft cover, even in the open; never hard cover (so window cover doesn't apply to squads) | p.322 |
 | Modules | Armored (+1 Armor), Ambushers (+2 to attacks, saves and checks in round 1), Duck and Cover (reaction when hit: Resistance, then Immobilized until the end of its next turn; the AI always takes it), Rapid Insertion (flies when it moves or Boosts), Disciplined | p.322 |
@@ -253,6 +253,21 @@ storey is a room (`BattleMap.rooms_open`).
 | Knockback into a building | walls and windows stop it like any obstruction; the door face lets it through (PROVISIONAL). Teleports into a room aren't wall-checked (no wall stops a teleport) | Core p.62 |
 | Standing on a building that's destroyed | the book's falling rule: falling starts at the end of the current turn, 3 AP per 3 spaces, up to 9 | Core p.63 |
 | Caught inside a collapse | house rule `hr_garrisoned_buildings`: damage as if they fell the building's height (the same numbers), then moved to the nearest free space | not in the book |
+
+## User rulings on abilities (docs/ABILITY_REPORT.md, batch 1)
+
+| Ability | User ruling |
+|---|---|
+| Personalizations | name one skill trigger when building the mech; +1 on checks with it |
+| Reinforced Cabling | walk onto and secure yourself on vertical building walls, or ceilings inside; move along that surface, can't fall or be knocked off, fight from there with the book's cover and line of sight (being built) |
+| False Idol | a successful save lets that side see through it |
+| OSIRIS First Gate | you move the target at once, up to its Speed, by normal movement; it provokes reactions as usual (being built) |
+| SCYLLA second trigger | pick the object when activating |
+| Interdiction Field | name who may teleport inside when activating (default: your side) |
+| Repulser Field | immune to all mines while you have it (being built) |
+| Lotus Projector | your side sees HP, Evasion, E-Defense and heat of characters in the field |
+| Squad Strength in Numbers | Resistance except against area attacks |
+| Blinkshield, Technophile 1 and 3 | the closest versions in the report stand |
 
 ## Non-lethal match (the user's PvP mode)
 

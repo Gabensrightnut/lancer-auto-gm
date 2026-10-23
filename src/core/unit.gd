@@ -110,6 +110,10 @@ func to_dict() -> Dictionary:
 ## Soldiers' kind and, for squads, how many of the squad's people are still standing (for
 ## the look only: ceil(hp / max_hp * squad size); no rules effect).
 func _soldier_fields() -> Dictionary:
+	if counters.has("idol_of"):
+		# H0R_OS II False Idol, for its own side's view: what it copies, and whether any
+		# hostile side has seen through it (ViewFilter.disguise shows the others a copy).
+		return {"illusion_of": String(counters["idol_of"]), "revealed": not (counters.get("idol_seen_through", []) as Array).is_empty()}
 	if not loadout.has("soldier"):
 		return {}
 	var out := {"soldier": String(loadout["soldier"])}
