@@ -820,7 +820,7 @@ at any time, even mid-campaign. The game stays canon until someone turns one on.
     and the deal is off, but you can come back and pay with scrap, a spare mech, manna or money.
   - Food and water as a survival need.
   - Building collapse saving roll after big hits (instead of only HP/Armor/AP, Core p.68).
-  - Stunned after a fall, and a "brace for the fall" reaction.
+  - A "brace for the fall" reaction (halves fall damage). (Stunned after a fall: removed by the user.)
 - **Lancer Tactics options** (see the table below): split barrage and the big-hit Brace prompt
   are ON by your pick; repeating quick tech stays OFF.
 - **Community house rules:** popular ones researched from the Lancer community (forums, Reddit,
