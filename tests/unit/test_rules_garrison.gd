@@ -113,3 +113,15 @@ func test_ai_seeks_windows_by_role() -> void:
 	var ai := TacticsAi.new()
 	expect(float(TacticsAi.priority(ai.priorities, "defender", "sitrep_holdout").get("garrison", 0)) > 1.0, "defenders hold buildings")
 	expect_eq(float(TacticsAi.priority(ai.priorities, "striker", "").get("garrison", 0)), 0.0, "strikers don't")
+
+
+func test_two_half_size_mechs_share_a_room_space() -> void:
+	var s := building()
+	var a := F.mech(s, "a", "players", Vector2i(0, 0), 0.5)
+	var b := F.mech(s, "b", "players", Vector2i(1, 0), 0.5)
+	var big := F.mech(s, "c", "players", Vector2i(2, 0))
+	expect(Garrison.fits([a, b]), "two Size 1/2 mechs fit one building space")
+	expect(not Garrison.fits([a, big]), "a Size 1 mech needs the space to itself")
+	expect(Garrison.fits([big]))
+	expect(Garrison.capacity_text(s, Vector2i(5, 5)).begins_with("Enterable: holds 2 half-size"), Garrison.capacity_text(s, Vector2i(5, 5)))
+	expect_eq(Garrison.capacity_text(s, Vector2i(0, 0)), "", "open ground isn't a building")
