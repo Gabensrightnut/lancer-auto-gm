@@ -567,6 +567,17 @@ func show_damage(d: Dictionary) -> void:
 	else:
 		old.free()
 	_build_blocks()
+	# Buildings show their damage stages too: rebuild their mesh (props stay).
+	var houses := _props.get_node_or_null("Buildings") if _props != null else null
+	if houses != null:
+		_props.remove_child(houses)
+		if is_inside_tree():
+			houses.queue_free()
+		else:
+			houses.free()
+		var city := CityBuilder.new(self)
+		city.claim()
+		city.build(_props, false)
 
 
 ## A hit on a terrain column (event terrain_damaged): splinters for wood, chips and dust for
