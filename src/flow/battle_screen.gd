@@ -239,7 +239,84 @@ func _explore_click(ev: InputEvent) -> bool:
 	return true
 
 
+# --- Pre-battle setup (BattleSession setup phase) -------------------------------------------
+
+## The unit a click places during setup, the banner, and the Ready button.
+var _placing := ""
+var _setup_label: Label
+var _ready_button: Button
+
+
+func _update_setup_banner() -> void:
+	var on := _loaded and not _ended and session.setup_open()
+	if on and _setup_label == null:
+		_setup_label = MenuTheme.label("", 18, Color(0.6, 0.95, 0.75))
+		_setup_label.add_theme_constant_override("outline_size", 6)
+		_setup_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+		_setup_label.position = Vector2(get_viewport().get_visible_rect().size.x / 2.0 - 380, 170)
+		ui.add_child(_setup_label)
+		_ready_button = Button.new()
+		_ready_button.theme = MenuTheme.theme()
+		_ready_button.focus_mode = Control.FOCUS_NONE
+		_ready_button.text = "READY"
+		_ready_button.custom_minimum_size = Vector2(200, 44)
+		_ready_button.position = Vector2(get_viewport().get_visible_rect().size.x / 2.0 - 100, 205)
+		_ready_button.tooltip_text = "You're done placing. The fight starts when everyone is ready."
+		_ready_button.pressed.connect(func() -> void: session.set_ready())
+		ui.add_child(_ready_button)
+	if _setup_label == null:
+		return
+	_setup_label.visible = on
+	_ready_button.visible = on
+	if not on:
+		return
+	var info := session.setup_info()
+	var ready: Array = info.get("ready", [])
+	var mine: Array = session.local_humans() if session.is_host else [session.seat]
+	var me_ready := ready.any(func(s: Variant) -> bool: return str(s) in mine)
+	_ready_button.disabled = me_ready
+	_ready_button.text = "READY ✓" if me_ready else "READY"
+	var when := "when everyone is ready"
+	if str(info.get("mode", "")) == "timer" and session.is_host and session.setup_left > 0.0:
+		when = "in %d s (or when everyone is ready)" % ceili(session.setup_left)
+	elif str(info.get("mode", "")) == "timer":
+		when = "when the timer runs out (or everyone is ready)"
+	var deploying := str((session.view.get("objectives", {}) as Dictionary).get("deploying", ""))
+	var wait := ""
+	if deploying != "" and deploying != _my_side():
+		wait = "\nThe other side deploys first in this sitrep: wait for them."
+	_setup_label.text = "SET UP: click one of your units, then a space in your zone (tinted) to place it. The fight starts %s.%s" % [when, wait]
+
+
+## Setup: a click on one of your units picks it; a click on a space places the picked unit there
+## (through the rules engine's deploy action: only inside your side's zone).
+func _setup_click(ev: InputEvent) -> bool:
+	if not (ev is InputEventMouseButton and ev.pressed and (ev as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT):
+		return false
+	if not session.setup_open():
+		return false
+	var cell: Variant = turn.cell_at_screen((ev as InputEventMouseButton).position)
+	if cell == null:
+		return false
+	var mine := _local_units()
+	for id: String in mine:
+		var u: Dictionary = session.view["units"].get(id, {})
+		if u.has("cell") and Vector2i(int(u["cell"][0]), int(u["cell"][1])) == cell:
+			_placing = id
+			show_banner("Placing %s: click a space in your zone." % str(u.get("name", id)))
+			return true
+	if not _placing in mine:
+		if mine.is_empty():
+			return false
+		_placing = str(mine[0])
+	var why := session.deploy(_placing, cell)
+	if why != "":
+		show_banner(why)
+	return true
+
+
 func _process(delta: float) -> void:
+	_update_setup_banner()
 	_update_explore_banner()
 	# The in-battle menu really pauses the AI when everyone in the game is at this screen.
 	session.busy = _draining or player.playing or turn.busy or narration.visible or (dialogue != null and dialogue.visible) or (menu_layer.visible and _can_pause())
@@ -1067,7 +1144,7 @@ func hovered_term() -> String:
 
 
 func _unhandled_input(ev: InputEvent) -> void:
-	if _explore_click(ev):
+	if _setup_click(ev) or _explore_click(ev):
 		get_viewport().set_input_as_handled()
 		return
 	if gm_panel != null and ev is InputEventKey and ev.pressed and not ev.echo and (ev as InputEventKey).keycode == KEY_G:

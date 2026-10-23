@@ -50,6 +50,10 @@ func _ready() -> void:
 	pb.add_child(auto)
 	pb.add_child(_slider("Split vote: seconds before the fight", s.split_countdown, 15.0, 30.0, func(v: float) -> void: s.split_countdown = roundf(v),
 		"When a squad vote splits, the two sides fight it out after this countdown (host)."))
+	pb.add_child(_choice("Before a battle", ["ready", "timer"], s.setup_mode, func(v: String) -> void: s.setup_mode = v,
+		{"ready": "Set up until everyone is Ready", "timer": "Timed setup"}))
+	pb.add_child(_slider("Timed setup: seconds", s.setup_seconds, 60.0, 120.0, func(v: float) -> void: s.setup_seconds = roundf(v),
+		"How long everyone has to place their mechs in their zone before round 1 (host)."))
 	# Gameplay (food and water house rule): pilots eat and drink from their own pack when low.
 	var eat := CheckButton.new()
 	eat.text = "Auto-eat and drink (food and water house rule)"

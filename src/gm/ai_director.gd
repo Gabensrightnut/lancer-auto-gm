@@ -77,6 +77,8 @@ func step() -> bool:
 		var first := mission.first_side if mission != null else Mission.PLAYERS
 		if mission != null and bool(mission.flavor.get("explore_first", false)):
 			return _explore_step(first)
+		if bool((state.objectives.get("setup", {}) as Dictionary).get("open", false)):
+			return _setup_step()
 		return (host.submit(NetHost.GM_SEAT, {"type": "start_combat", "params": {"first_side": first}})["result"] as RuleResult).ok
 	if mission != null:
 		var carry := mission.carry_action()
@@ -267,6 +269,18 @@ func _choose_activation(units: Array[Unit]) -> Unit:
 			best_score = score
 			best = u
 	return best
+
+
+# --- Pre-battle setup -------------------------------------------------------------------------
+
+## While the players set up (BattleSession's setup phase): the AI GM's units already stand where
+## the mission put them, so it says its side is done (deployment_done) and waits; the fight
+## starts when the setup closes (everyone Ready, or the timer).
+func _setup_step() -> bool:
+	var state := host.state
+	if (state.objectives.get("deployed_sides", []) as Array).has(Mission.ENEMIES):
+		return false
+	return (host.submit(NetHost.GM_SEAT, {"type": "deployment_done", "params": {"side": Mission.ENEMIES}})["result"] as RuleResult).ok
 
 
 # --- Exploring before the fight (DESIGN.md "Exploring vs. fighting") ------------------------
