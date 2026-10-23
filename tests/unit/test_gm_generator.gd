@@ -619,3 +619,23 @@ func test_holdout_has_something_to_protect() -> void:
 	col.ground -= 1
 	m._end_of_round(s, 1)
 	expect_eq(m.outcome, Mission.ENEMIES, "losing the %s loses the mission" % p["kind"])
+
+
+func test_safe_points_for_full_repairs() -> void:
+	# Core p.82: Full Repairs take ten hours in a secure location. The town's repair bay or
+	# printer is one; out in the country about one area in three has a field repair rig.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var hub := {"kind": "town", "culture": "old_west", "seed": 5, "spots": HubLayout.spots("town", rng)}
+	var town := MissionGenerator.area(5, {"hub": hub, "shape": "square", "size": 50})
+	expect(not (town["safe_points"] as Array).is_empty(), "the town has a safe point")
+	expect(str(town["safe_points"][0]["kind"]) in ["repair_bay", "printer"], "at its repair bay or printer")
+	var region := {"seed": 9, "landscape": "grassy_hills", "culture": "", "weather": ""}
+	var with_rig := 0
+	for ax in range(3):
+		for ay in range(3):
+			var a := MissionGenerator.area(ax * 10 + ay, {"region": region, "at": [ax, ay], "place": "wilds", "shape": "square", "size": 30})
+			with_rig += 1 if not (a["safe_points"] as Array).is_empty() else 0
+	expect(with_rig >= 3 and with_rig <= 5, "rigs spread over the region: %d of 9" % with_rig)
+	var sp := MissionGenerator.secure_camp(town, Vector2i(10, 10))
+	expect_eq(sp["kind"], "camp", "a secured camp becomes a safe point")

@@ -315,10 +315,63 @@ static func area(area_seed: int, opts: Dictionary = {}) -> Dictionary:
 	var kit := TerrainGen.kit(world[0], world[1]) + ("+" + weather if weather != "" else "") + ("~" + time if time in ["dawn", "evening", "night"] else "") + "#%d" % place
 	var cell := func(c: int, r: int) -> Array:
 		return [c - (r >> 1), r] if shape == GridLayout.Shape.HEX else [c, r]
-	return {"map": map, "kit": kit, "name": TerrainGen.describe(world[0], world[1]), "place": place_kind, "at": [ax, ay],
+	var safe := _safe_points(map, place_kind, gen_hub, region_seed, ax, ay, size, shape)
+	return {"map": map, "kit": kit, "name": TerrainGen.describe(world[0], world[1]), "place": place_kind, "at": [ax, ay], "safe_points": safe,
 		"region": {"seed": place, "landscape": world[0], "culture": world[1], "weather": weather},
 		"center": cell.call(size / 2, size / 2),
 		"entries": {"west": cell.call(0, size / 2), "east": cell.call(size - 1, size / 2), "north": cell.call(size / 2, 0), "south": cell.call(size / 2, size - 1)}}
+
+
+## Where the squad can make Full Repairs (Core p.82: ten hours in a secure location): the
+## town's repair bay or printer (by its door), or, out in the country, a field repair rig by
+## the road in about one area in three (spaced by the region's seed so most jobs have one
+## within an area or two). [{cell [x, y], kind "repair_bay" | "printer" | "field_rig", spot?}]
+static func _safe_points(map: BattleMap, place: String, hub: Dictionary, region_seed: int, ax: int, ay: int, size: int, shape: GridLayout.Shape) -> Array:
+	var out: Array = []
+	if not hub.is_empty():
+		for spot: Dictionary in hub.get("spots", []):
+			var kind := str(spot.get("kind", ""))
+			if not kind in ["workshop", "printer"]:
+				continue
+			for c in map.cells():
+				if map.column(c).has_tag("door_" + str(spot.get("id", kind))):
+					map.column(c).tags.append("safe_point")
+					out.append({"cell": [c.x, c.y], "kind": "repair_bay" if kind == "workshop" else "printer", "spot": str(spot.get("id", kind))})
+					break
+		if not out.is_empty():
+			return out
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([region_seed, "safe", ax, ay])
+	# Every third area along each row of the region, offset by row: never more than a step or
+	# two from the nearest rig.
+	if place == "town" or posmod(ax + ay * 2, 3) == 0:
+		var mid := size / 2
+		for k in range(2, 10):
+			for sgn: int in [1, -1]:
+				var c := mid + sgn * k
+				var r := mid + 2
+				var cell := SitrepLayout.cell_of(c, r, shape)
+				if map.has_cell(cell) and map.ground_height(cell) <= 1 and map.column(cell).tags.is_empty() or (map.has_cell(cell) and map.column(cell).has_tag("lot")):
+					var col := map.column(cell)
+					col.ground = map.ground_height(cell) + 1
+					col.tags = PackedStringArray(["machinery", "repair_rig", BattleMap.TAG_DESTRUCTIBLE])
+					var stand := SitrepLayout.cell_of(c, r - 1, shape)
+					if map.has_cell(stand):
+						map.column(stand).tags.append("safe_point")
+					out.append({"cell": [stand.x, stand.y], "kind": "field_rig"})
+					return out
+	return out
+
+
+## A camp the squad has secured (story, after clearing an area): that spot becomes a safe point
+## for Full Repairs (Core p.82). Marks the map cell and returns the safe point.
+static func secure_camp(area_result: Dictionary, cell: Vector2i) -> Dictionary:
+	var map: BattleMap = area_result["map"]
+	if map.has_cell(cell):
+		map.column(cell).tags.append("safe_point")
+	var sp := {"cell": [cell.x, cell.y], "kind": "camp"}
+	(area_result.get("safe_points", []) as Array).append(sp)
+	return sp
 
 
 ## One edge between two areas of a region: [[ground, tags], ...] along it, the same for both
