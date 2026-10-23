@@ -980,6 +980,76 @@ static func fade_roll(state: GameState, u: Unit) -> Array[Dictionary]:
 	return events
 
 
+## Area weapons that leave something behind. Daisy Cutter: soft cover (smoke and detritus) in
+## the cone until the end of your next turn. Plasma Thrower: flames in 3 free spaces of the area
+## (params.flames, else the first free ones) for the scene; starting a turn in one, or entering
+## one the first time in a round, deals 1d6 energy.
+static func area_left_behind(state: GameState, u: Unit, w: Dictionary, cells: Array, params: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	match String(w.get("id", "")):
+		"mw_daisy_cutter":
+			events.append_array(Zones.add(state, {"kind": "smoke", "owner": u.id, "label": "Daisy Cutter", "center": cells[0] if not cells.is_empty() else [u.cell.x, u.cell.y],
+				"cells": cells.duplicate(true), "expires": {"unit": u.id, "when": "end", "count": 2 if state.active_unit == u.id else 1}, "rule_ref": "weapons: Daisy Cutter"}))
+		"mw_plasma_thrower":
+			var picks: Array = []
+			for c: Variant in params.get("flames", []):
+				if cells.has([int(c[0]), int(c[1])]) and picks.size() < 3:
+					picks.append([int(c[0]), int(c[1])])
+			for c: Array in cells:
+				if picks.size() >= 3:
+					break
+				var cell := Vector2i(int(c[0]), int(c[1]))
+				var free := true
+				for o: Unit in state.units.values():
+					free = free and not (Combat.is_present(o) and state.map.grid.footprint(o.cell, o.size).has(cell))
+				if free and not picks.has(c):
+					picks.append(c)
+			if not picks.is_empty():
+				events.append_array(Zones.add(state, {"kind": "flames", "owner": u.id, "label": "Plasma flames", "center": picks[0], "cells": picks, "hit": {},
+					"rule_ref": "weapons: Plasma Thrower"}))
+	return events
+
+
+static func flames(state: GameState, z: Dictionary, t: Unit, starting: bool) -> Array[Dictionary]:
+	var hit: Dictionary = z.get("hit", {})
+	if not starting and int(hit.get(t.id, -1)) == state.round_number:
+		return [] as Array[Dictionary]
+	hit[t.id] = state.round_number
+	z["hit"] = hit
+	var roll := state.dice.roll("1d6")
+	var events: Array[Dictionary] = [{"type": "zone_triggered", "zone": z["id"], "unit": t.id, "rule_ref": "weapons: Plasma Thrower"}]
+	events.append_array(Combat.deal_damage(state, t, [{"type": "Energy", "amount": int(roll["total"])}], {"source": String(z.get("owner", ""))}))
+	return events
+
+
+## Lancaster Latch Drone: no normal attacks. A ranged attack (vs Evasion 8) on an allied mech
+## within Range and line of sight; on a hit you or it may spend 1 Repair (params.repair_from:
+## "self" or "target") to restore half its HP.
+static func check_latch(state: GameState, u: Unit, w: Dictionary, t: Unit) -> RuleResult:
+	var ref := "weapons: Latch Drone"
+	if t == null or t == u or t.side != u.side or t.kind != Unit.KIND_MECH or not Combat.is_present(t):
+		return RuleResult.deny("Choose an allied mech.", ref)
+	if Sight.unit_distance(state, u, t) > Weapons.range_for(u, w) or not Sight.unit_line_of_sight(state, u, t):
+		return RuleResult.deny("It must be within Range %d and in line of sight." % Weapons.range_for(u, w), ref)
+	return RuleResult.allow()
+
+
+static func latch(state: GameState, u: Unit, w: Dictionary, t: Unit, params: Dictionary) -> Array[Dictionary]:
+	var check := state.dice.check(u.grit, 0, 0, 8)
+	var events: Array[Dictionary] = [{"type": "attack_rolled", "attacker": u.id, "target": t.id, "weapon": w.get("key", ""), "weapon_name": "Latch Drone",
+		"kind": Attacks.KIND_RANGED, "check": check, "result": "hit" if check["success"] else "miss", "rule_ref": "weapons: Latch Drone"}]
+	if not check["success"]:
+		return events
+	var payer: Unit = t if String(params.get("repair_from", "self")) == "target" else u
+	if payer.repairs <= 0:
+		events.append({"type": "action_skipped", "unit": u.id, "action": "latch", "reason": "No Repairs left to spend.", "rule_ref": "weapons: Latch Drone"})
+		return events
+	payer.repairs -= 1
+	t.hp = mini(t.max_hp, t.hp + ceili(t.max_hp / 2.0))
+	events.append({"type": "hp_changed", "unit": t.id, "hp": t.hp, "overshield": t.overshield, "source": "Latch Drone"})
+	return events
+
+
 ## H0R_OS II False Idol: a decoy (Evasion 10, E-Defense 10, 1 HP, the target's Size) of you or
 ## an ally within Sensors (params.target, default you). Before a hostile action against that
 ## character, a character that can see the idol makes a Systems save; on a failure it keeps

@@ -14,7 +14,8 @@ static var _notes: Dictionary = {}
 
 ## Weapons whose special rules live in the rules code (by id) rather than weapon_effects.json.
 const CODE_WEAPONS := ["mw_autopod", "mw_vorpal_gun", "mw_mimic_gun", "mw_gravity_gun", "mw_ghoul_nexus", "mw_tachyon_lance",
-	"mw_prototype_1", "mw_prototype_2", "mw_prototype_3", "mw_raleigh_integrated", "mw_pinaka_missiles", "mw_ghast_nexus"]
+	"mw_prototype_1", "mw_prototype_2", "mw_prototype_3", "mw_raleigh_integrated", "mw_pinaka_missiles", "mw_ghast_nexus",
+	"mw_daisy_cutter", "mw_plasma_thrower", "mw_fuel_rod_gun", "mw_lancaster_integrated"]
 
 
 static func notes() -> Dictionary:
@@ -89,7 +90,7 @@ static func for_unit(db: ContentDB, u: Unit) -> Array:
 		var text := " ".join([_strip(raw.get("effect", "")), _strip(raw.get("on_hit", "")), _strip(raw.get("on_crit", "")), _strip(raw.get("on_attack", ""))]).strip_edges()
 		var wabil := (u.loadout.get("abilities", []) as Array).filter(func(a: Dictionary) -> bool: return a["source_key"] == "w:" + String(w["key"]))
 		var encoded: bool = w.has("rules") or w.has("data_on_hit") or w.has("data_on_crit") or CODE_WEAPONS.has(id) or not WeaponRules.rules(w).is_empty()
-		if not wabil.is_empty():
+		if not wabil.is_empty() and not CODE_WEAPONS.has(id):
 			encoded = wabil.all(func(a: Dictionary) -> bool: return a.get("automated", false))
 		var status := "automated" if text == "" or encoded else "manual"
 		var note := String(n.get(id, ""))

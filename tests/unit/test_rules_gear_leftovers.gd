@@ -440,3 +440,33 @@ func test_mimic_gun() -> void:
 	expect_eq(WeaponRules.damage_override(a, w, t)[0]["val"], "5", "1 + half of 8")
 	GearSystems.mimic_cycle(a)
 	expect_eq(Weapons.range_for(a, w), 12, "then Y")
+
+
+func test_daisy_cutter_plasma_fuel_rod_and_latch() -> void:
+	_setup([], Vector2i(3, 0))
+	a.loadout["weapons"] = [
+		{"key": "0:0", "id": "mw_daisy_cutter", "name": "Daisy Cutter", "mount": 0, "size": "Heavy", "type": "CQB", "damage": [{"type": "Kinetic", "val": "3d6"}], "range": [{"type": "Cone", "val": 7}], "tags": []},
+		{"key": "1:0", "id": "mw_plasma_thrower", "name": "Plasma Thrower", "mount": 1, "size": "Heavy", "type": "Cannon", "damage": [{"type": "Energy", "val": "1d6+2"}], "range": [{"type": "Cone", "val": 7}], "tags": []},
+		{"key": "2:0", "id": "mw_fuel_rod_gun", "name": "Fuel Rod Gun", "mount": 2, "size": "Main", "type": "CQB", "damage": [{"type": "Energy", "val": "1d3+2"}], "range": [{"type": "Range", "val": 3}], "tags": []},
+		{"key": "3:0", "id": "mw_lancaster_integrated", "name": "Latch Drone", "mount": 3, "size": "Main", "type": "Launcher", "damage": [], "range": [{"type": "Range", "val": 8}], "tags": []}]
+	F.load_dice(s, [1, 1, 1, 1])
+	F.act(e, s, "skirmish", "a", {"weapon": "0:0", "aim": [3, 0]})
+	expect(Zones.of_kind(s, "smoke").size() >= 1, "Daisy Cutter: smoke in the cone")
+	_next(a)
+	F.load_dice(s, [1, 1])
+	F.act(e, s, "skirmish", "a", {"weapon": "1:0", "aim": [3, 0]})
+	expect_eq(Zones.of_kind(s, "flames").size(), 1, "Plasma Thrower: flames left behind")
+	_next(a)
+	a.heat = 5
+	F.load_dice(s, [1])
+	F.act(e, s, "skirmish", "a", {"weapon": "2:0", "target": "t"})
+	expect_eq(a.heat, 1, "Fuel Rod Gun: clear 4 heat")
+	_next(a)
+	var ally := F.mech(s, "ally", "players", Vector2i(0, 4))
+	ally.hp = 2
+	a.repairs = 2
+	F.load_dice(s, [10])
+	var out := F.act(e, s, "skirmish", "a", {"weapon": "3:0", "target": "ally"})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(ally.hp, 7, "Latch Drone: half its HP back for 1 Repair")
+	expect_eq(a.repairs, 1)

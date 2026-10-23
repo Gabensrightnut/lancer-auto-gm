@@ -9,7 +9,7 @@ Partial = automated with a note for the table; manual = the table resolves it.
 |---|---|---|---|---|
 | frame traits and core systems | 102 | 99 | 3 | 0 |
 | mech systems | 124 | 105 | 18 | 1 |
-| weapons | 85 | 76 | 1 | 8 |
+| weapons | 85 | 84 | 1 | 0 |
 | talent ranks | 87 | 66 | 10 | 11 |
 | core bonuses | 30 | 30 | 0 | 0 |
 | weapon mods | 8 | 8 | 0 | 0 |
@@ -48,14 +48,6 @@ Partial = automated with a note for the table; manual = the table resolves it.
 
 ### weapons
 
-- Daisy Cutter (manual)
-- Autopod (manual)
-- Vorpal Gun (manual)
-- Mimic Gun (manual)
-- Plasma Thrower (manual)
-- Tachyon Lance (manual)
-- Fuel Rod Gun (manual)
-- Latch Drone (manual)
 - M35 Mjolnir (partial): Its free shot when you reload any weapon (1/round) is taken by hand.
 
 ### talent ranks
