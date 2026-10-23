@@ -321,6 +321,41 @@ def tube(name, points, radius, material, parent=None, sides=12, ribs=0.0, rib_ev
     return _mesh_obj(name, bm, material, parent)
 
 
+def curve_tube(name, points, radius, material, parent=None, bevel_res=2, smooth=True, res_u=6):
+    """A hose or cable as a real Blender curve: a smooth (NURBS-like, auto handles) curve through
+    game-space points with a round bevel, converted to a mesh. Cleaner than a polyline tube
+    for long routed hoses (no kinks where the route turns)."""
+    cu = bpy.data.curves.new(name + "_curve", "CURVE")
+    cu.dimensions = "3D"
+    cu.bevel_depth = radius
+    cu.bevel_resolution = bevel_res
+    cu.use_fill_caps = True
+    cu.resolution_u = res_u
+    sp = cu.splines.new("BEZIER")
+    sp.bezier_points.add(len(points) - 1)
+    for bp, p in zip(sp.bezier_points, points):
+        bp.co = V(p)
+        bp.handle_left_type = bp.handle_right_type = "AUTO" if smooth else "VECTOR"
+    ob = bpy.data.objects.new(name, cu)
+    bpy.context.scene.collection.objects.link(ob)
+    bpy.ops.object.select_all(action="DESELECT")
+    ob.select_set(True)
+    bpy.context.view_layer.objects.active = ob
+    bpy.ops.object.convert(target="MESH")
+    ob = bpy.context.active_object
+    ob.name = name
+    ob.data.materials.clear()
+    ob.data.materials.append(material)
+    for poly in ob.data.polygons:
+        poly.use_smooth = True
+    if parent is not None:
+        bpy.context.view_layer.update()
+        mw = ob.matrix_world.copy()
+        ob.parent = parent
+        ob.matrix_world = mw
+    return ob
+
+
 def resample(points, step):
     """Even spacing along a polyline (so corrugated tubes rib evenly)."""
     pts = [Vector(p) for p in points]

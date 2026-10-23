@@ -281,16 +281,21 @@ static func _gatling(ctx: Dictionary) -> Vector3:
 ## Signature: IPS-N chain axe as in the Blackbeard art: a long dark haft with a red-wrapped
 ## grip and a big hooked axe head.
 static func _chain_axe(ctx: Dictionary) -> Vector3:
-	_box(ctx, Vector3(0.022, 0.022, 0.42), Vector3(0, 0, -0.1), "body")
-	_box(ctx, Vector3(0.03, 0.03, 0.09), Vector3(0, 0, 0.0), "wrap")
+	# A long round haft with wraps and a butt cap (the art's axe reaches from hand to ankle).
+	var k0: float = ctx["k"]
+	MeshKit.part(ctx["root"], MeshKit.cylinder(0.017 * k0, 0.56 * k0, 10), ctx["body"], Vector3(0, 0, -0.06) * k0, Vector3(90, 0, 0))
+	MeshKit.part(ctx["root"], MeshKit.cylinder(0.024 * k0, 0.03 * k0, 10), ctx["blade"], Vector3(0, 0, 0.22) * k0, Vector3(90, 0, 0))
+	for wi in range(3):
+		MeshKit.part(ctx["root"], MeshKit.cylinder(0.021 * k0, 0.018 * k0, 10), ctx["wrap"], Vector3(0, 0, 0.05 + wi * 0.05) * k0, Vector3(90, 0, 0))
+	_box(ctx, Vector3(0.034, 0.034, 0.1), Vector3(0, 0, 0.0), "wrap")
 	# Axe head: a wide blade flaring to one side with a hook at the back.
 	var head := Node3D.new()
-	head.position = Vector3(0, 0, -0.27) * float(ctx["k"])
+	head.position = Vector3(0, 0, -0.32) * float(ctx["k"])
 	(ctx["root"] as Node3D).add_child(head)
 	var k: float = ctx["k"]
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var pts := [Vector2(0.0, 0.07), Vector2(0.06, 0.09), Vector2(0.17, 0.16), Vector2(0.15, -0.06), Vector2(0.06, -0.04), Vector2(0.0, -0.05)]
+	var pts := [Vector2(0.0, 0.08), Vector2(0.07, 0.1), Vector2(0.21, 0.2), Vector2(0.17, -0.1), Vector2(0.07, -0.05), Vector2(0.0, -0.06)]
 	var th := 0.008
 	var c := Vector2(0.08, 0.03)
 	for i in range(pts.size()):
@@ -305,13 +310,13 @@ static func _chain_axe(ctx: Dictionary) -> Vector3:
 	head.add_child(mi)
 	head.rotation_degrees = Vector3(0, 0, 90)
 	_box(ctx, Vector3(0.04, 0.012, 0.05), Vector3(0.0, 0.0, -0.06), "blade", Vector3(0, 0, 0), 0.4)
-	return Vector3(0.12, 0, -0.33)
+	return Vector3(0.14, 0, -0.4)
 
 
 ## Signature: IPS-N war pike as in the Nelson art: a long slate shaft with a red grip wrap,
 ## a leaf-shaped blade with a crossguard below it, and red banners near the butt.
 static func _war_pike(ctx: Dictionary) -> Vector3:
-	_box(ctx, Vector3(0.014, 0.014, 1.0), Vector3(0, 0, 0.12), "body")
+	_box(ctx, Vector3(0.022, 0.022, 1.05), Vector3(0, 0, 0.12), "body")
 	_box(ctx, Vector3(0.02, 0.02, 0.1), Vector3(0, 0, -0.18), "wrap")
 	_box(ctx, Vector3(0.12, 0.01, 0.01), Vector3(0, 0, -0.38), "body")
 	for s: float in [-1.0, 1.0]:
