@@ -96,6 +96,11 @@ func _show_session_zero() -> void:
 
 func _on_story_events(events: Array) -> void:
 	GameFlow.save_story(campaign, MenuSession.store)
+	for e: Dictionary in events:
+		if str(e.get("type", "")) == "pvp_requested" and story_client == null:
+			# A story choice split the squad: the two groups fight it out (host).
+			_start_pvp(e)
+			return
 	if events.any(func(e: Dictionary) -> bool: return str(e.get("type", "")) == "campaign_ended"):
 		hub.tutorial_panel.visible = false
 
@@ -188,6 +193,26 @@ func _on_mission_requested(_hook: Dictionary) -> void:
 	var net := MenuSession.net(self)
 	if net != null and GameFlow.story_host != null:
 		net.host = s.host  # keeps the room open; the battle drives the AI itself
+		net.director = null
+	MenuSession.go(self, "battle")
+
+
+## Story event pvp_requested {id, a: [seats], b: [seats], allies: {a, b}}: a battle between the
+## squad's two groups (GameFlow.start_pvp_mission). Everyone at this screen plays their seat;
+## friends online follow the host into it as with any battle.
+func _start_pvp(e: Dictionary) -> void:
+	var local: Array = []
+	for seat: String in GameFlow.story.seats:
+		if not GameFlow.story.is_ai(seat) and (GameFlow.story_host == null or GameFlow.story_host.seat_table().get(seat, {}).get("where", "local") != "remote"):
+			local.append(seat)
+	var s := GameFlow.start_pvp_mission(campaign, MenuSession.content(), MenuSession.store, {"a": e.get("a", []), "b": e.get("b", [])},
+		e.get("allies", {}) if e.get("allies") is Dictionary else {}, str(e.get("id", "")), local)
+	if s == null:
+		hub.hud.toast("The fight between the two sides couldn't start.", StoryStyle.RED)
+		return
+	var net := MenuSession.net(self)
+	if net != null and GameFlow.story_host != null:
+		net.host = s.host
 		net.director = null
 	MenuSession.go(self, "battle")
 

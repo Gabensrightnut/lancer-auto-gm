@@ -240,7 +240,12 @@ static func _doc_battlefield(doc: MapDoc, sitrep_id: String, rng: RandomNumberGe
 ## A map to explore in real time at mech scale (WorldSession / NetRoom areas: exploring, and
 ## fights that start right there on the same ground). opts: "hub" (story.hub: its town at mech
 ## scale in the middle), "region" (a flavor.region: landscape, culture, weather and look),
-## "landscape", "culture", "weather", "size" (default 60), "shape" ("hex"/"square").
+## "landscape", "culture", "weather", "size" (default 60), "shape" ("hex"/"square"),
+## "place" (where on the region the area lies: "town" (the hub's town, or a settlement),
+## "outskirts" (a village and its fields), "road" or "wilds" (open country on the road)),
+## "at" ([x, y]: the area's place on the region's grid of areas).
+## Neighbouring areas share their edge: the band along it is built from the region's seed and
+## that edge's place, so the ground (heights, woods, the road crossing it) continues across.
 ## Every area has roads along its middle row and column out to all four edges and a level band
 ## along the edges, so the areas of a region join up: walk off the east edge and come in on the
 ## next area's west edge on the same road. Returns {map, kit, region, name, center, entries:
@@ -263,17 +268,56 @@ static func area(area_seed: int, opts: Dictionary = {}) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([area_seed, "area"])
 	var world := TerrainGen.pick(rng, landscape, culture)
-	var map := TerrainGen.generate(rng, size, size, shape, {}, world[0], world[1], hub, true)
+	var place_kind := str(opts.get("place", "town" if not hub.is_empty() else "outskirts"))
+	var at: Array = opts.get("at", [0, 0])
+	var ax := int(at[0])
+	var ay := int(at[1])
+	var region_seed := int(region.get("seed", hub.get("seed", area_seed)))
+	var edges := {
+		"west": _edge_profile(region_seed, "v|%d|%d" % [ax, ay], size, world[0]),
+		"east": _edge_profile(region_seed, "v|%d|%d" % [ax + 1, ay], size, world[0]),
+		"north": _edge_profile(region_seed, "h|%d|%d" % [ax, ay], size, world[0]),
+		"south": _edge_profile(region_seed, "h|%d|%d" % [ax, ay + 1], size, world[0]),
+	}
+	# What the area holds by where it is: the town, a village at the outskirts, open country.
+	var gen_culture: String = world[1]
+	var gen_hub := hub if place_kind == "town" else {}
+	if place_kind in ["road", "wilds"]:
+		gen_culture = ""
+	var map := TerrainGen.generate(rng, size, size, shape, {}, world[0], gen_culture, gen_hub, true, edges)
 	var weather := str(opts.get("weather", region.get("weather", "?")))
 	weather = _pick_weather(rng, world[0], world[1], weather if weather != "" else "clear")
 	var place := int(region.get("seed", hub.get("seed", hash([area_seed, "place"]) & 0x7fffffff)))
 	var kit := TerrainGen.kit(world[0], world[1]) + ("+" + weather if weather != "" else "") + "#%d" % place
 	var cell := func(c: int, r: int) -> Array:
 		return [c - (r >> 1), r] if shape == GridLayout.Shape.HEX else [c, r]
-	return {"map": map, "kit": kit, "name": TerrainGen.describe(world[0], world[1]),
+	return {"map": map, "kit": kit, "name": TerrainGen.describe(world[0], world[1]), "place": place_kind, "at": [ax, ay],
 		"region": {"seed": place, "landscape": world[0], "culture": world[1], "weather": weather},
 		"center": cell.call(size / 2, size / 2),
 		"entries": {"west": cell.call(0, size / 2), "east": cell.call(size - 1, size / 2), "north": cell.call(size / 2, 0), "south": cell.call(size / 2, size - 1)}}
+
+
+## One edge between two areas of a region: [[ground, tags], ...] along it, the same for both
+## areas that share it (seeded by the region and the edge's place). Low rolls of ground, a few
+## stands of woods, and the road crossing it in the middle.
+static func _edge_profile(region_seed: int, key: String, n: int, landscape: String) -> Array:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([region_seed, "edge", key])
+	var noise := FastNoiseLite.new()
+	noise.seed = rng.randi()
+	noise.frequency = 0.12
+	var woods := 0.0 if landscape in ["desert_mesas", "salt_flats", "moon", "asteroid", "volcanic", "molten_world", "city"] else 0.12
+	var out: Array = []
+	for i in range(n):
+		if absi(i - n / 2) <= 1:
+			out.append([0, ["road", "road_x" if key.begins_with("v") else "road_z"] if i == n / 2 else []])
+			continue
+		var g := 1 if noise.get_noise_1d(i) > 0.3 else 0
+		var tags: Array = []
+		if absi(i - n / 2) > 3 and rng.randf() < woods:
+			tags = [Sight.TAG_SOFT_COVER, BattleMap.TAG_DIFFICULT, "woods"]
+		out.append([g, tags])
+	return out
 
 
 ## The weather for the kit ("" = clear), from opts.weather or a pick that suits the landscape.

@@ -1,12 +1,14 @@
 class_name CityStreets
 extends RefCounted
-## Street life on road cells, by culture (architecture.street): parked vehicles along the
-## curb, traffic lights at crossings, kiosks and steam vents, overhead wires (with lanterns
-## in East Asian towns), and moving traffic on the city's streets beyond the board. All of it
-## is scenery: vehicles are about a quarter of a mech's height, poles and wires are thin.
-## Nothing here is cover; the rules see none of it.
+## Street life on road cells, by culture (architecture.street): parked vehicles on the cells
+## the map marks `vehicle` (objects: soft cover, breakable; TerrainGen._parked_vehicles),
+## traffic lights at crossings, kiosks and steam vents, overhead wires (with lanterns in East
+## Asian towns), and moving traffic on the city's streets beyond the board. Apart from the
+## parked vehicles it is all scenery: poles and wires are thin, and the rules see none of it.
 
 const VEHICLE_HEIGHT := 0.28
+## Parked vehicles on the board are objects (cover): drawn about a cell long.
+const VEHICLE_SCALE := 1.45
 
 
 static func build(t: TerrainRenderer, root: Node3D) -> void:
@@ -40,8 +42,8 @@ static func _parked(t: TerrainRenderer, root: Node3D, roads: Array[Vector2i], ki
 	for c in roads:
 		var axis := _axis(t, c)
 		var key := "pk" + str(c)
-		if axis == "crossing" or WorldRand.f(key, 0) > 0.3:
-			continue
+		if axis == "crossing" or not t.map.column(c).has_tag("vehicle"):
+			continue  # only the map's own vehicles: what you see is what gives cover
 		var kind: String = kinds[int(WorldRand.f(key, 1) * kinds.size()) % kinds.size()]
 		var paint := Vehicles.paint_for(kind, WorldRand.f(key, 2))
 		var side := 1.0 if WorldRand.f(key, 3) < 0.5 else -1.0
@@ -50,7 +52,8 @@ static func _parked(t: TerrainRenderer, root: Node3D, roads: Array[Vector2i], ki
 		if WorldRand.f(key, 4) < 0.5:
 			yaw += PI
 		var off := Vector3(0, 0, side * 0.27) if axis == "x" else Vector3(side * 0.27, 0, 0)
-		var xf := Transform3D(Basis(Vector3.UP, yaw + (WorldRand.f(key, 5) - 0.5) * (0.5 if kind == "wreck" else 0.08)), base + off)
+		# At object scale: about a cell long, so it reads as the cover it is.
+		var xf := Transform3D(Basis(Vector3.UP, yaw + (WorldRand.f(key, 5) - 0.5) * (0.5 if kind == "wreck" else 0.08)) * Basis.from_scale(Vector3.ONE * VEHICLE_SCALE), base + off * 0.4)
 		var g := "%s|%s" % [kind, paint.to_html()]
 		if not groups.has(g):
 			groups[g] = [kind, paint, []]

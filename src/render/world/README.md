@@ -371,3 +371,15 @@ elevated deck. Crosswalks (`crosswalk`) sit on the last road cell before each in
 frontier, industrial, port, atomic-age and Union towns often have one past them on a level bed
 (embankments and cuttings), bridged over water, with level crossings where it meets a road;
 ballast, sleepers and two rails; look only (track is open ground).
+
+Parked vehicles are objects now: `vehicle` cells (TerrainGen._parked_vehicles, outer lanes of
+streets two lanes or wider, never at crossings, crosswalks, rail or the highway) are soft
+cover and breakable, drawn at object scale (about a cell long, `CityStreets.VEHICLE_SCALE`);
+there are no other parked cars, so what you see is what gives cover. PROVISIONAL reading,
+logged in docs/RULES_TODO.md. Flying traffic lanes (`horizon.traffic`) fly over the neon and
+Union core cities (scenery).
+Areas also take `place` ("town": the hub's town or a settlement; "outskirts": a village and its
+fields; "road" / "wilds": open country on the road) and `at` ([x, y] on the region's grid of
+areas). Each edge's band comes from the region seed and that edge's place
+(`MissionGenerator._edge_profile`: low rolls of ground, stands of woods, the road crossing in the
+middle), so two neighbouring areas build the same ground along the edge they share.

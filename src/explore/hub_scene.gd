@@ -150,7 +150,7 @@ func _environment() -> void:
 	sun.directional_shadow_max_distance = 80.0
 	_world.add_child(sun)
 	if _kits != null:
-		_kits.apply_hub_environment(_culture(), e, sun, TownLife.period(story))
+		_kits.apply_hub_environment(_culture(), e, sun, TownLife.period(story), int(story.hub.get("seed", 0)) & 0x7fffffff)
 
 
 func _ground(rng: RandomNumberGenerator) -> void:

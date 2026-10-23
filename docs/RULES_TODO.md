@@ -60,6 +60,7 @@ keeps the choices. An AI GM answers with the suggested reading and logs it. Code
 | Mines | A mine goes off after the triggering move resolves (the mover isn't stopped); `detect_mines` (quick, Systems check: every hostile mine within Sensors is detected; PROVISIONAL: one check for all) and `disarm_mine` (quick, adjacent, Systems check; a failure sets it off) | `abilities.gd` |
 | Deployables as cover | Solid deployed objects (type Deployable/Object) are hard cover like terrain; drones and mines aren't | `sight.gd` |
 | Drones and engagement | Drones don't engage or get Engaged | `combat.gd`, `movement.gd` |
+| Parked vehicles | Cars and trucks parked along city and town streets are objects: Evasion 5, 10 HP per Size, breakable (Core p.68). PROVISIONAL: soft cover (the book doesn't say whether something this much smaller than a mech covers it), not difficult terrain | `terrain_gen.gd` `_parked_vehicles` |
 | Manticore Unstable System | "At the end of its next turn" counted on the pilot's turns inside the wreck | `combat.gd`, `turn_rules.gd` |
 | Minotaur Invert Cockpit | Eject without Impaired; the first Mount or Dismount each round is free (`free_via: "invert_cockpit"`; one free use per round covers either) | `frame_effects.json` |
 | Balor Scouring Swarm | "Characters of its choice" read as every hostile character | `effects.gd` |
