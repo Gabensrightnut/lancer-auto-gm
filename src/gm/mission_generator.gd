@@ -99,7 +99,8 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 		bf = {"map": ib["map"], "layout": ib["layout"], "fairness": {"ok": true, "interior": inside},
 			"world": [landscape if landscape != "" else str(WorldKits.HUB_LANDSCAPE.get(culture, "grassy_hills")), culture]}
 	elif doc == null:
-		bf = battlefield(rng, world_rng, m.sitrep_id, w, h, shape, landscape, culture, maxi(0, int(settings.approach) + int(settings.fight("approach", 0))), hub)
+		bf = battlefield(rng, world_rng, m.sitrep_id, w, h, shape, landscape, culture, maxi(0, int(settings.approach) + int(settings.fight("approach", 0))), hub,
+			_secondary_kind(mission_seed, m.sitrep_id, str(opts.get("secondary", "?"))))
 	else:
 		bf = _doc_battlefield(doc, m.sitrep_id, rng)
 	state.map = bf["map"]
@@ -154,6 +155,9 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	_add_enemies(state, m, rng, cfg, players, settings, opts.get("npc_templates", UnitFactory.npc_templates()))
 	_setup_objectives(m, state, rng, cfg)
 	m.briefing = _briefing(m, w, h, players, state)
+	for o: Dictionary in m.flavor.get("objectives", []):
+		if bool(o.get("secondary", false)):
+			m.briefing += " Secondary (a GM objective, not the sitrep's): %s. Reward: %s. It never decides the mission." % [o["text"], o["reward_name"]]
 	return {"state": state, "mission": m, "fairness": fairness, "layout": layout}
 
 
@@ -232,8 +236,10 @@ static func _rect(c0: int, r0: int, cw: int, rh: int, w: int, h: int, shape: Gri
 ## sitrep's fortifications, then fairness repairs (MapFairness). `rng` lays out the zones;
 ## `world_rng` builds the terrain. Returns {map, layout, fairness, world: [landscape, culture]}.
 static func battlefield(rng: RandomNumberGenerator, world_rng: RandomNumberGenerator, sitrep_id: String, w: int, h: int,
-		shape: GridLayout.Shape, landscape: String = "", culture: String = "", approach: int = 0, hub: Dictionary = {}) -> Dictionary:
+		shape: GridLayout.Shape, landscape: String = "", culture: String = "", approach: int = 0, hub: Dictionary = {}, secondary: String = "") -> Dictionary:
 	var layout := SitrepLayout.layout(sitrep_id, w, h, shape, rng, approach)
+	if secondary != "":
+		_add_secondary(layout, secondary, w, h, shape, hash([w, h, sitrep_id, secondary]))
 	var blocked := {}  # cells kept clear of rocks and woods (deployment, zones, routes)
 	for list: Array in (layout["deployment"] as Dictionary).values() + (layout["zones"] as Dictionary).values() + [layout["clear"]]:
 		for c: Array in list:
@@ -422,6 +428,86 @@ static func _interior_kind(hub: Dictionary) -> String:
 		if str(spot.get("id", "")) == str(hub.get("at", "")) and str(spot.get("kind", "")) in Interiors.kinds():
 			return str(spot["kind"])
 	return ""
+
+
+## Deployment for an ambush: the squad on a band across the middle (the road), the
+## ambushers on the open ground nearest the woods, rocks or ruins along one flank.
+static func _ambush_deployment(map: BattleMap, shape: GridLayout.Shape, w: int, h: int, west: bool) -> Dictionary:
+	var squad: Array = []
+	var foes: Array = []
+	for r in range(h):
+		for c in range(w):
+			var cell := SitrepLayout.cell_of(c, r, shape)
+			if not map.has_cell(cell) or map.ground_height(cell) > 2 or map.column(cell).has_tag(BattleMap.TAG_IMPASSABLE):
+				continue
+			if absi(r - h / 2) <= 1 and absi(c - w / 2) <= w / 4:
+				squad.append([cell.x, cell.y])
+			var flank := c < w / 4 if west else c >= w - w / 4
+			if flank and absi(r - h / 2) <= h / 3:
+				var covered := false
+				for n in map.grid.neighbors(cell):
+					if map.has_cell(n) and (map.column(n).has_tag(Sight.TAG_SOFT_COVER) or map.ground_height(n) > map.ground_height(cell)):
+						covered = true
+				if covered and map.ground_height(cell) <= 1:
+					foes.append([cell.x, cell.y])
+	if foes.size() < 6:
+		# Little cover on that flank: they wait out on it anyway.
+		for r in range(h / 3, h - h / 3):
+			for c in (range(0, w / 4) if west else range(w - w / 4, w)):
+				var cell := SitrepLayout.cell_of(c, r, shape)
+				if map.has_cell(cell) and map.ground_height(cell) <= 1 and not map.column(cell).has_tag(BattleMap.TAG_IMPASSABLE):
+					foes.append([cell.x, cell.y])
+	return {Mission.PLAYERS: squad, Mission.ENEMIES: foes}
+
+
+## A secondary objective for this fight: opts.secondary "capture" / "defend" / "none", or "?"
+## for the GM's pick (about one fight in three, on sitreps with room for it).
+static func _secondary_kind(mission_seed: int, sitrep_id: String, wanted: String) -> String:
+	if wanted in ["capture", "defend"]:
+		return wanted
+	if wanted != "?" or not sitrep_id in ["sitrep_standardcombat", "sitrep_control", "sitrep_holdout", "sitrep_gauntlet"]:
+		return ""
+	var r := RandomNumberGenerator.new()
+	r.seed = hash([mission_seed, "secondary"])
+	if r.randf() > 0.33:
+		return ""
+	return "defend" if sitrep_id == "sitrep_standardcombat" and r.randf() < 0.5 else "capture"
+
+
+const SECONDARY := {
+	"capture": ["the comms tower", "a supply cache", "the relay mast", "the fuel depot"],
+	"defend": ["the landing zone", "the field hospital", "the supply dump"],
+}
+const SECONDARY_REWARDS := ["reserve_supplies", "reserve_ammo", "reserve_extra_repairs", "reserve_access", "reserve_knowledge"]
+
+
+## A secondary objective (main's rule: the book's sitrep is the primary and alone decides the
+## mission; this one is the GM's, marked as such, and only earns a reserve or has a story cost):
+## a 3x3 zone out on a flank, toward the enemy for a capture, on the squad's side for a defence.
+static func _add_secondary(layout: Dictionary, kind: String, w: int, h: int, shape: GridLayout.Shape, seed_value: int) -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = seed_value
+	var band: Array = layout.get("band", [0, h])
+	var top := int(band[0])
+	var bottom := int(band[1])
+	var c0 := int(w * 0.12) if r.randf() < 0.5 else int(w * 0.88) - 3
+	var r0 := (top + SitrepLayout.DEPTH + 1) if kind == "capture" else (bottom - SitrepLayout.DEPTH - 4)
+	r0 = clampi(r0, 0, h - 3)
+	layout["zones"]["secondary"] = SitrepLayout.rect(c0, r0, 3, 3, w, h, shape)
+	var what: String = SECONDARY[kind][r.randi_range(0, SECONDARY[kind].size() - 1)]
+	var reward: String = SECONDARY_REWARDS[r.randi_range(0, SECONDARY_REWARDS.size() - 1)]
+	var reward_name := reward
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/lancer-data/reserves.json"))
+	if data is Array:
+		for e: Dictionary in data:
+			if str(e.get("id", "")) == reward:
+				reward_name = str(e.get("name", reward))
+	var verb := "take and hold" if kind == "capture" else "keep the enemy out of"
+	var objectives: Array = layout.get("objectives", [])
+	objectives.append({"id": "secondary", "type": kind, "side": Mission.PLAYERS, "zone": "secondary", "secondary": true,
+		"what": what, "text": "%s %s" % [verb, what], "reward": reward, "reward_name": reward_name,
+		"failure": "%s is lost: the region pays for it later." % what.capitalize(), "state": "open"})
+	layout["objectives"] = objectives
 
 
 ## The weather for the kit ("" = clear), from opts.weather or a pick that suits the landscape.

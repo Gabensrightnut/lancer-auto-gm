@@ -512,8 +512,8 @@ func test_roads_have_a_hierarchy_and_no_bare_city_ground() -> void:
 			deck += 1
 		if col.ground == 0 and col.gap_top == 0 and col.tags.is_empty():
 			bare += 1
-	expect(widths.has(4), "a four-lane boulevard: %s" % widths.keys())
-	expect(widths.has(2) or widths.has(3), "streets: %s" % widths.keys())
+	expect(widths.has(4), "a four-lane boulevard: %s" % [widths.keys()])
+	expect(widths.has(2) or widths.has(3), "streets: %s" % [widths.keys()])
 	expect(deck > 20, "an elevated highway on pillars in the mega-city: %d" % deck)
 	expect_eq(bare, 0, "no bare ground in the city")
 	var ramps := 0
@@ -594,7 +594,7 @@ func test_on_foot_fights_inside_the_same_building() -> void:
 			if t.begins_with("room_"):
 				rooms[t] = true
 	expect(walls > 10 and doors >= 2 and street > 5, "the saloon's walls (%d), doors (%d) and the street (%d)" % [walls, doors, street])
-	expect(rooms.has("room_main") and rooms.has("room_back"), "the same rooms as on foot: %s" % rooms.keys())
+	expect(rooms.has("room_main") and rooms.has("room_back"), "the same rooms as on foot: %s" % [rooms.keys()])
 	var m: Mission = g["mission"]
 	expect(not (m.deployment[Mission.PLAYERS] as Array).is_empty() and not (m.deployment[Mission.ENEMIES] as Array).is_empty(), "both sides deploy")
 
@@ -660,3 +660,21 @@ func test_buildings_have_interiors_windows_and_entrances() -> void:
 		entrances += 1 if col.has_tag("entrance") else 0
 	expect(cells > 0 and windows > cells / 2, "windows on the open faces: %d over %d cells" % [windows, cells])
 	expect(entrances > 3, "each building has a way in: %d" % entrances)
+
+
+func test_secondary_objectives_never_decide_the_mission() -> void:
+	var g := _gen(21, {"sitrep": "sitrep_control", "secondary": "capture"})
+	var m: Mission = g["mission"]
+	var sec: Array = (m.flavor.get("objectives", []) as Array).filter(func(o: Dictionary) -> bool: return bool(o.get("secondary", false)))
+	expect_eq(sec.size(), 1, "one secondary GM objective")
+	expect(m.zones.has("secondary") and not m.sitrep_zones().has("secondary"), "its zone isn't one of the sitrep's")
+	expect(m.briefing.contains("Secondary (a GM objective"), "the briefing marks it as the GM's")
+	expect_eq(m.sitrep_zones().size(), 4, "Control still scores its four zones")
+	# The panel shows both in plain words.
+	var ls := ObjectivePanel.lines(m, 2)
+	expect(ls.size() == 2 and str(ls[0]["text"]).contains("more round"), "primary with its round counter: %s" % [ls])
+	expect(str(ls[1]["text"]).begins_with("Secondary: take and hold"), "then the secondary: %s" % ls[1]["text"])
+	# Deciding the mission settles the secondary but doesn't change who won.
+	m._decide(Mission.PLAYERS, "test")
+	expect_eq(m.outcome, Mission.PLAYERS)
+	expect_eq(str(sec[0]["state"]), "failed", "never held, so the secondary failed; the squad still won")
