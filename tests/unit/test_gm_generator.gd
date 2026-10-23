@@ -682,3 +682,19 @@ func test_secondary_objectives_never_decide_the_mission() -> void:
 	m._decide(Mission.PLAYERS, "test")
 	expect_eq(m.outcome, Mission.PLAYERS)
 	expect_eq(str(sec[0]["state"]), "failed", "never held, so the secondary failed; the squad still won")
+
+
+func test_deployment_zones_per_side_for_setup() -> void:
+	for sitrep: String in ["sitrep_standardcombat", "sitrep_holdout", "sitrep_gauntlet", "sitrep_control"]:
+		var s: GameState = _gen(14, {"sitrep": sitrep, "players": 2})["state"]
+		var o := s.objectives
+		expect(o.has("deploy_" + Mission.PLAYERS) and o.has("deploy_" + Mission.ENEMIES), "%s: a zone per side" % sitrep)
+		var mine := {}
+		for c: Array in o["deploy_" + Mission.PLAYERS]:
+			mine[Vector2i(c[0], c[1])] = true
+		var overlap := 0
+		for c: Array in o["deploy_" + Mission.ENEMIES]:
+			overlap += 1 if mine.has(Vector2i(c[0], c[1])) else 0
+		expect_eq(overlap, 0, "%s: the zones don't overlap" % sitrep)
+	var hold: GameState = _gen(14, {"sitrep": "sitrep_holdout", "players": 2})["state"]
+	expect_eq(hold.objectives["defender"], Mission.PLAYERS, "in a Holdout the squad holds the ground")

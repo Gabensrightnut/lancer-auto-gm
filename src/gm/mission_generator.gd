@@ -776,6 +776,15 @@ static func _place(state: GameState, u: Unit, free: Array) -> bool:
 ## GM in the Objective Zone) and Extraction Zone; Recon's True Control Zone, picked secretly.
 static func _setup_objectives(m: Mission, state: GameState, rng: RandomNumberGenerator, cfg: Dictionary) -> void:
 	var o := {"sitrep": m.sitrep_id, "zones": m.zones.duplicate(true), "deployment": m.deployment.duplicate(true)}
+	# Deployment zones per side for the setup phase (rules check placement, visuals colour them:
+	# your own green, the enemy's red, the rest neutral): "deploy_<side>" cell sets, and who holds
+	# ground here ("defender": the squad in a Holdout, the enemy in a Gauntlet, "" otherwise; their
+	# side gets the fortifications, an advantage the sitrep intends).
+	for side: String in m.deployment:
+		o["deploy_" + side] = (m.deployment[side] as Array).duplicate(true)
+	o["defender"] = {"sitrep_holdout": Mission.PLAYERS, "sitrep_gauntlet": Mission.ENEMIES}.get(m.sitrep_id, "")
+	if m.flavor.has("ambush"):
+		o["defender"] = Mission.ENEMIES  # dug in along the road
 	match m.sitrep_id:
 		"sitrep_escort", "sitrep_extraction":
 			o["extraction"] = (m.zones.get("extraction", m.deployment.get(Mission.PLAYERS, [])) as Array).duplicate(true)
