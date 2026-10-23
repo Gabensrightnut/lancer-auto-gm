@@ -53,6 +53,7 @@ func validate(state: GameState, action: Dictionary) -> RuleResult:
 	TurnRules._state_ref = weakref(state)
 	Combat.state_for_presence = weakref(state)
 	Environments.sync(state)  # standing environment effects (resistances, cover...)
+	Garrison.sync(state)  # building rooms open while the Garrisoned buildings house rule is on
 	# Terrain targets ("terrain:x,y") stand on the field as objects while the action is checked.
 	var made := TerrainDamage.materialize(state, action)
 	var r := _validate(state, action)

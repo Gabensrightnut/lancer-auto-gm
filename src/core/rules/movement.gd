@@ -85,7 +85,8 @@ static func surface_levels(state: GameState, size: float, anchor: Vector2i) -> A
 		var col := state.map.column(c)
 		if col == null:
 			return []
-		for lv in [col.ground, col.gap_bottom if col.gap_top > 0 else col.ground]:
+		var room := TerrainDamage.floor_of(col) if state.map.rooms_open and col.has_tag(Garrison.TAG_INTERIOR) else col.ground
+		for lv in [col.ground, col.gap_bottom if col.gap_top > 0 else col.ground, room]:
 			if not out.has(lv):
 				out.append(lv)
 	out.sort()
@@ -461,6 +462,8 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool, goals: Dicti
 				continue
 			if not _clearance(state, u.size, here, k.z, nb, lv):
 				continue
+			if state.map.rooms_open and not Garrison.step_ok(state.map, here, k.z, nb, lv):
+				continue  # into and out of buildings only through the door (house rule)
 			if step_zones and Zones.blocks_step(state, here, nb):
 				continue  # a Blinkshield's edge can't be crossed
 			var body := Sight.make_body(state, nb, lv, u.size)
@@ -765,6 +768,9 @@ static func push_path(state: GameState, u: Unit, origin: Vector2i, spaces: int) 
 		var place := placement(state, u.size, c, u.level)
 		if not place["ok"]:
 			break
+		var back: Variant = path.back()
+		if state.map.rooms_open and not Garrison.step_ok(state.map, Vector2i(back[0], back[1]), u.level, c, u.level):
+			break  # a building's wall stops it (the door lets it through)
 		var body := Sight.make_body(state, c, u.level, u.size)
 		if _blocked_by_unit(body, others, false):
 			break  # blocked by an obstruction: same Size or larger (Core p.62)

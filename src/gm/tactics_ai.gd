@@ -279,7 +279,7 @@ func _position_score(s: GameState, u: Unit, d: Dictionary, ctx: Dictionary, full
 			for z: Vector2i in ctx["zones"]:
 				zmin = minf(zmin, grid.distance(cell, z))
 			score -= ctx["zone_weight"] * minf(zmin, 12.0) / 12.0
-	if ctx["garrison"] > 0.0 and Garrison.on(s) and Garrison.is_room(s, cell, int(d["level"])) and Garrison.at_window(s, cell):
+	if ctx["garrison"] > 0.0 and Garrison.on(s) and Garrison.is_room(s.map, cell, int(d["level"])) and Garrison.at_window(s, cell):
 		score += ctx["garrison"]  # a firing position inside a building, at a window (hard cover)
 		notes["garrison"] = true
 	score -= int(d["cost"]) * 0.02  # Ties go to shorter moves.

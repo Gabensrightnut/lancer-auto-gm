@@ -46,6 +46,9 @@ class Column:
 
 var grid: GridLayout
 var _columns: Dictionary = {}  # Vector2i -> Column
+## Building cells ("interior") have an open ground-storey room (the rules' Garrisoned
+## buildings house rule; Garrison.sync sets it).
+var rooms_open := false
 
 
 func _init(grid_shape: GridLayout.Shape = GridLayout.Shape.HEX) -> void:
@@ -94,7 +97,10 @@ func to_dict() -> Dictionary:
 	var cols := {}
 	for cell: Vector2i in _columns:
 		cols["%d,%d" % [cell.x, cell.y]] = (_columns[cell] as Column).to_dict()
-	return {"shape": GridLayout.Shape.keys()[grid.shape], "columns": cols}
+	var d := {"shape": GridLayout.Shape.keys()[grid.shape], "columns": cols}
+	if rooms_open:
+		d["rooms_open"] = true
+	return d
 
 
 static func from_dict(d: Dictionary) -> BattleMap:
@@ -103,6 +109,7 @@ static func from_dict(d: Dictionary) -> BattleMap:
 	for key: String in cols:
 		var parts := key.split(",")
 		m._columns[Vector2i(int(parts[0]), int(parts[1]))] = Column.from_dict(cols[key])
+	m.rooms_open = bool(d.get("rooms_open", false))
 	return m
 
 

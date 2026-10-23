@@ -222,21 +222,26 @@ default except the two Lancer Tactics options the user picked. Each card names i
 | `hr_hide_hard_cover` | Community (lancer-rules.carrd.co) | hard cover from everyone who sees you is enough to Hide and stay Hidden |
 | `hr_npc_recharge_heat` | Community (Train Lightning) | NPC Recharge abilities cost 1 heat (4+/5+) or 2 (6+) |
 | `hr_overheated` | Community (Train Lightning) | Exposed from overheating also blocks Heat (Self) and Overkill until Stabilize |
-| `hr_garrisoned_buildings` (on) | Your idea | inside building rooms (`interior` tag) a space holds one Size 1+ unit alone, or two Size 1/2 units plus one squad; a collapse deals the book's falling damage for the building's height to everyone inside and moves them to the nearest free space (`garrison.gd`). Cover at windows is the book's (Core p.66), not part of the switch |
+| `hr_garrisoned_buildings` (on) | Your idea | a building cell's ground storey is a room, entered only by its door face; a room space holds one Size 1+ unit alone, or two Size 1/2 units plus one squad; when the room's section is destroyed, everyone inside takes the book's falling damage for the building's height and is moved to the nearest free space (`garrison.gd`). Off: buildings are solid. Cover at windows is the book's (Core p.66), not part of the switch |
 | `hr_origin_perks` | Your idea | former employer (`pilot.origin.former_employer`, a manufacturer id, or `employer` by name): +1 Accuracy on the first attack each scene against a frame from that manufacturer. NPC classes have no manufacturer, so it only meets player-built frames |
 
 ## Buildings, windows and collapses
 
-Code: `src/core/rules/garrison.gd`, `sight.gd`, `terrain_damage.gd`. Map tags agreed with the
-world session: `interior` (a room space: a column with a gap from the floor up), `window` (a
-wall with a window), `door` (a wall with a doorway: a gap from the floor up), `name:<text>`
-(what the collapse message calls it).
+Code: `src/core/rules/garrison.gd`, `sight.gd`, `movement.gd`, `terrain_damage.gd`. Map tags
+are the world session's (`TerrainGen._building_interiors`): every building cell `interior`
+(+ `storeys_N`), `window_<i>` on each outside face (i = the face's index in
+`GridLayout.neighbors`), one cell per building `entrance` + `door_face_<i>`; optional
+`name:<text>` for the collapse message. With the house rule on, a building cell's ground
+storey is a room (`BattleMap.rooms_open`).
 
 | Rule | Reading | Book |
 |---|---|---|
 | A unit at a window has hard cover (+2) and can shoot out through it | the window wall is hard cover it's adjacent to, and "a character in hard cover [who] could shoot over, through, or around the source of their cover" keeps its line of sight | Core p.66 |
 | Flanking beats window cover | an attacker with a line totally clear of hard cover (from inside, through the doorway, from the side) gets no cover penalty | Core p.66 |
 | Windows block movement | a window is part of a wall; nobody climbs through (PROVISIONAL: the book doesn't model windows) | - |
+| Sight through windows | only lines with one end inside a room; a line doesn't pass clean through a building by two windows (PROVISIONAL) | - |
+| Rooms of one building are open to each other | adjacent `interior` cells have no wall between them (the world tags no inner walls; PROVISIONAL) | - |
+| Knockback into a building | walls and windows stop it like any obstruction; the door face lets it through (PROVISIONAL). Teleports into a room aren't wall-checked (no wall stops a teleport) | Core p.62 |
 | Standing on a building that's destroyed | the book's falling rule: falling starts at the end of the current turn, 3 AP per 3 spaces, up to 9 | Core p.63 |
 | Caught inside a collapse | house rule `hr_garrisoned_buildings`: damage as if they fell the building's height (the same numbers), then moved to the nearest free space | not in the book |
 
