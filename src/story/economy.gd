@@ -31,21 +31,32 @@ static func start(story: StoryState, campaign: Campaign, id: String) -> Array:
 	match id:
 		R_WALLET:
 			if not story.flags.has(WALLET):
-				var w: Dictionary = cfg().get("wallet", {})
-				story.flags[WALLET] = {"manna": int(w.get("start_manna", 600)), "local": {money_key(story): int(w.get("start_local", 120))}, "salvage": 0}
-				return [{"type": "wallet_started", "text": "The squad has %s." % describe(story), "label": LABEL}]
+				# Every pilot has their own money (Inventory); the squad fund, for shared things,
+				# starts empty and anyone can pay into it.
+				story.flags[WALLET] = {"manna": 0, "local": {}, "salvage": 0}
+				Inventory.start_wallets(story, campaign)
+				var pid := str(_alive(story, campaign)[0]) if not _alive(story, campaign).is_empty() else ""
+				return [{"type": "wallet_started", "text": "Each pilot has their own money (%s to start); the squad fund for shared things is empty." % (describe(story, pid) if pid != "" else "some"), "label": LABEL}]
 		R_FOOD:
 			if not story.flags.has(SURVIVAL):
-				var n := int(cfg().get("survival", {}).get("start_rations_per_pilot", 3)) * _alive(story, campaign).size()
-				story.flags[SURVIVAL] = {"rations": n, "hungry": {}}
-				return [{"type": "rations_started", "text": "The squad has %d days of food and water." % n, "label": LABEL}]
+				story.flags[SURVIVAL] = {"started": true, "hungry": {}}
+				Inventory.start_food(story, campaign)
+				return [{"type": "rations_started", "text": "Each pilot carries %d field rations (a sealed day of food and water each)." % int(Inventory.data().get("pilot_start", {}).get("items", {}).get("ration", 3)), "label": LABEL}]
 	return []
 
 
 # --- Wallet ------------------------------------------------------------------------------
 
-static func wallet(story: StoryState) -> Dictionary:
+## The squad fund (no pilot), or one pilot's own money.
+static func wallet(story: StoryState, pid: String = "") -> Dictionary:
+	if pid != "":
+		return Inventory.wallet(story, pid)
 	return story.flags.get(WALLET, {})
+
+
+static func _store(story: StoryState, pid: String, w: Dictionary) -> void:
+	if pid == "":
+		story.flags[WALLET] = w
 
 
 ## Which world's money this is: each world has its own, good only there (the sector world, or
@@ -98,13 +109,13 @@ static func rate(story: StoryState) -> int:
 	return maxi(1, roundi(5.0 * (6 - wealth(story)) / 3.0))
 
 
-static func local(story: StoryState) -> int:
-	return int(wallet(story).get("local", {}).get(money_key(story), 0))
+static func local(story: StoryState, pid: String = "") -> int:
+	return int(wallet(story, pid).get("local", {}).get(money_key(story), 0))
 
 
 ## Exchanging at a hub: this world's money for manna or back (only here).
-static func exchange(story: StoryState, to_manna: bool, amount: int) -> Array:
-	var w: Dictionary = wallet(story)
+static func exchange(story: StoryState, to_manna: bool, amount: int, pid: String = "") -> Array:
+	var w: Dictionary = wallet(story, pid)
 	var loc: Dictionary = w.get("local", {})
 	var key := money_key(story)
 	if to_manna:
@@ -115,30 +126,30 @@ static func exchange(story: StoryState, to_manna: bool, amount: int) -> Array:
 		w["manna"] = int(w.get("manna", 0)) - amount
 		loc[key] = int(loc.get(key, 0)) + amount * rate(story)
 	w["local"] = loc
-	story.flags[WALLET] = w
-	return [{"type": "exchanged", "text": "Changed money. Now: %s." % describe(story), "label": LABEL}]
+	_store(story, pid, w)
+	return [{"type": "exchanged", "pilot": pid, "text": "Changed money. Now: %s." % describe(story, pid), "label": LABEL}]
 
 
-static func exchange_refusal(story: StoryState, campaign: Campaign, to_manna: bool, amount: int) -> String:
+static func exchange_refusal(story: StoryState, campaign: Campaign, to_manna: bool, amount: int, pid: String = "") -> String:
 	if not StoryHouseRules.on(campaign, R_WALLET):
 		return "Money isn't tracked (the wallet house rule is off)."
 	if communal(story):
 		return "Nobody here deals in anything but manna."
 	if amount <= 0:
 		return "How much?"
-	if to_manna and (local(story) < amount or amount < rate(story)):
+	if to_manna and (local(story, pid) < amount or amount < rate(story)):
 		return "You don't have that much %s (it's %d to a manna here)." % [currency(story), rate(story)]
-	if not to_manna and int(wallet(story).get("manna", 0)) < amount:
+	if not to_manna and int(wallet(story, pid).get("manna", 0)) < amount:
 		return "You don't have that much manna."
 	return ""
 
 
-static func describe(story: StoryState) -> String:
-	var w := wallet(story)
+static func describe(story: StoryState, pid: String = "") -> String:
+	var w := wallet(story, pid)
 	var cur := currency(story)
 	var t := "%d manna" % int(w.get("manna", 0))
 	if cur != "manna":
-		t += " and %d %s" % [local(story), cur]
+		t += " and %d %s" % [local(story, pid), cur]
 	var elsewhere := 0
 	for k: String in w.get("local", {}):
 		if k != money_key(story) and int(w["local"][k]) > 0:
@@ -176,18 +187,19 @@ static func _manna_text(v: float) -> String:
 
 ## Manna-equivalent of everything the squad can pay with: local money first, then manna, then
 ## salvage (with "fight for it": scrap is as good as money).
-static func can_pay(story: StoryState, campaign: Campaign, cost: Dictionary) -> bool:
+static func can_pay(story: StoryState, campaign: Campaign, cost: Dictionary, pid: String = "") -> bool:
 	if not StoryHouseRules.on(campaign, R_WALLET):
 		return false
-	var w := wallet(story)
+	var w := wallet(story, pid)
 	var salvage := int(w.get("salvage", 0)) if StoryHouseRules.on(campaign, R_FIGHT) else 0
 	if cost.has("local"):
-		return local(story) + (int(w.get("manna", 0)) + salvage) * rate(story) >= int(cost["local"])
-	return int(w.get("manna", 0)) + salvage + local(story) / rate(story) >= int(cost.get("manna", 0))
+		return local(story, pid) + (int(w.get("manna", 0)) + salvage) * rate(story) >= int(cost["local"])
+	return int(w.get("manna", 0)) + salvage + local(story, pid) / rate(story) >= int(cost.get("manna", 0))
 
 
-static func pay(story: StoryState, campaign: Campaign, cost: Dictionary, why: String) -> Array:
-	var w: Dictionary = wallet(story)
+## Pays from one pilot's money (pid), or the squad fund for shared things.
+static func pay(story: StoryState, campaign: Campaign, cost: Dictionary, why: String, pid: String = "") -> Array:
+	var w: Dictionary = wallet(story, pid)
 	var cur := money_key(story)
 	var loc: Dictionary = w.get("local", {})
 	if cost.has("local"):
@@ -208,8 +220,8 @@ static func pay(story: StoryState, campaign: Campaign, cost: Dictionary, why: St
 			need -= short
 		_take_manna(w, campaign, need)
 	w["local"] = loc
-	story.flags[WALLET] = w
-	return [{"type": "paid", "for": why, "cost": cost.duplicate(), "text": "Paid %s for %s. Left: %s." % [cost.get("text", ""), why, describe(story)], "label": LABEL}]
+	_store(story, pid, w)
+	return [{"type": "paid", "pilot": pid, "for": why, "cost": cost.duplicate(), "text": "Paid %s for %s. Left: %s." % [cost.get("text", ""), why, describe(story, pid)], "label": LABEL}]
 
 
 static func _take_manna(w: Dictionary, campaign: Campaign, n: int) -> void:
@@ -222,31 +234,34 @@ static func _take_manna(w: Dictionary, campaign: Campaign, n: int) -> void:
 		w["salvage"] = maxi(0, int(w.get("salvage", 0)) - (n - m))
 
 
-static func earn(story: StoryState, manna: int, why: String) -> Array:
-	var w: Dictionary = wallet(story)
+## Money in: to one pilot (pid), or the squad fund.
+static func earn(story: StoryState, manna: int, why: String, pid: String = "") -> Array:
+	var w: Dictionary = wallet(story, pid)
 	w["manna"] = int(w.get("manna", 0)) + manna
-	story.flags[WALLET] = w
-	return [{"type": "earned", "manna": manna, "for": why, "text": "+%d manna: %s. Now: %s." % [manna, why, describe(story)], "label": LABEL}]
+	_store(story, pid, w)
+	return [{"type": "earned", "pilot": pid, "manna": manna, "for": why, "text": "+%d manna: %s. Now: %s." % [manna, why, describe(story, pid)], "label": LABEL}]
 
 
 # --- Buying ------------------------------------------------------------------------------
 
 ## What the market offers right now, with prices ([] with every money rule off).
-static func offers(story: StoryState, campaign: Campaign) -> Array:
+static func offers(story: StoryState, campaign: Campaign, pid: String = "") -> Array:
 	var out: Array = []
 	if not StoryHouseRules.on(campaign, R_WALLET):
 		return out
-	for item: String in ["drink", "food", "meal", "street_food", "lodging", "information", "supplies", "repair_kit"]:
-		if item in ["food", "meal", "street_food"] and not StoryHouseRules.on(campaign, R_FOOD):
+	for item: String in ["drink", "food", "fresh_food", "water", "meal", "street_food", "lodging", "information", "supplies", "repair_kit"]:
+		if item in ["food", "fresh_food", "water", "meal", "street_food"] and not StoryHouseRules.on(campaign, R_FOOD):
 			continue
 		var p := price(story, campaign, item)
+		if p.is_empty():
+			continue
 		p["item"] = item
-		p["affordable"] = can_pay(story, campaign, p)
+		p["affordable"] = can_pay(story, campaign, p, pid)
 		out.append(p)
 	return out
 
 
-static func buy_refusal(story: StoryState, campaign: Campaign, item: String) -> String:
+static func buy_refusal(story: StoryState, campaign: Campaign, item: String, pid: String = "") -> String:
 	if not StoryHouseRules.on(campaign, R_WALLET):
 		return "Money isn't tracked (the wallet house rule is off)."
 	var p := price(story, campaign, item)
@@ -254,14 +269,16 @@ static func buy_refusal(story: StoryState, campaign: Campaign, item: String) -> 
 		return "That isn't for sale here."
 	if story.hub.is_empty():
 		return "There's nobody to buy from out here."
-	if not can_pay(story, campaign, p):
-		return "The squad can't afford %s (%s)." % [p["name"], p["text"]] + (" Ask to work it off instead." if StoryHouseRules.on(campaign, R_FIGHT) else "")
+	if not can_pay(story, campaign, p, pid):
+		return ("%s can't afford %s (%s). A squadmate could chip in (trade), or pay from the squad fund." % [campaign.pilots.get(pid, {}).get("callsign", "You"), p["name"], p["text"]] if pid != ""
+			else "The squad fund can't afford %s (%s)." % [p["name"], p["text"]]) + (" Ask to work it off instead." if StoryHouseRules.on(campaign, R_FIGHT) else "")
 	return ""
 
 
-static func buy(story: StoryState, campaign: Campaign, item: String, pid: String) -> Array:
+## `payer`: the pilot whose own money pays ("" = the squad fund); `pid` gets what's bought.
+static func buy(story: StoryState, campaign: Campaign, item: String, pid: String, payer: String = "") -> Array:
 	var p := price(story, campaign, item)
-	var events := pay(story, campaign, p, str(p["name"]).to_lower())
+	var events := pay(story, campaign, p, str(p["name"]).to_lower(), payer)
 	events.append_array(_deliver(story, campaign, item, pid))
 	return events
 
@@ -274,7 +291,14 @@ static func _deliver(story: StoryState, campaign: Campaign, item: String, pid: S
 		"drink":
 			events.append({"type": "bought", "item": item, "text": "Drinks all round at %s." % story.hub.get("name", "the bar")})
 		"food":
-			events.append_array(add_rations(story, campaign, int(def.get("rations", 2)) * _alive(story, campaign).size()))
+			start(story, campaign, R_FOOD)
+			Inventory.add(story, pid, "ration", int(def.get("rations", 2)))
+			events.append({"type": "rations", "pilot": pid, "text": "%s buys %d field rations (a sealed day of food and water each)." % [campaign.pilots.get(pid, {}).get("callsign", ""), int(def.get("rations", 2))], "label": LABEL})
+		"fresh_food", "water":
+			start(story, campaign, R_FOOD)
+			var what := "food" if item == "fresh_food" else "water"
+			Inventory.add(story, pid, what, int(def.get("n", 1)))
+			events.append({"type": "rations", "pilot": pid, "text": "%s buys %s." % [campaign.pilots.get(pid, {}).get("callsign", ""), str(def.get("name", what)).to_lower()], "label": LABEL})
 		"lodging":
 			story.flags["lodged:%d" % story.mission_number] = true
 			story.flags.erase("_sick")
@@ -314,7 +338,8 @@ static func after_mission(story: StoryState, campaign: Campaign, hook: Dictionar
 		var pays: Dictionary = cfg().get("wallet", {}).get("pay", {})
 		var amount := int(pays.get(str(hook.get("template", "")), pays.get("default", 400)))
 		if won and amount > 0 and not bool(hook.get("tutorial", false)):
-			events.append_array(earn(story, amount, "%s paid for the job" % hook.get("patron", "the patron")))
+			# The pay is split between the pilots (Inventory; the host can set shares).
+			events.append_array(Inventory.split_pay(story, campaign, amount, "%s paid for the job" % hook.get("patron", "the patron")))
 		var kills := int(summary.get("kills", 0))
 		if won and kills > 0:
 			var w: Dictionary = wallet(story)
@@ -373,7 +398,7 @@ static func printer_refusal(story: StoryState, campaign: Campaign, pid: String) 
 		return "There's no printer on this world. Travel somewhere with one (the map shows which)."
 	if StoryHouseRules.on(campaign, R_WALLET):
 		var p := price(story, campaign, "printer")
-		if not can_pay(story, campaign, p):
+		if not can_pay(story, campaign, p, pid):
 			return "Printer access costs %s." % p["text"] + (" Ask to work it off instead." if StoryHouseRules.on(campaign, R_FIGHT) else "")
 	return ""
 
@@ -383,7 +408,7 @@ static func use_printer(story: StoryState, campaign: Campaign, pid: String) -> A
 	if Plunder.has_printer(story, campaign):
 		pass  # The squad's own printer, aboard their ship.
 	elif StoryHouseRules.on(campaign, R_WALLET):
-		events.append_array(pay(story, campaign, price(story, campaign, "printer"), "printer access"))
+		events.append_array(pay(story, campaign, price(story, campaign, "printer"), "printer access", pid))
 	else:
 		events.append_array(StoryEffects.apply({"obligation": {"to": str(story.hub.get("faction", "")), "what": "Printer time at %s" % story.hub.get("name", "")}}, story, campaign, {}))
 	events.append_array(_reprint(story, campaign, pid))
@@ -455,57 +480,42 @@ static func fight_for(story: StoryState, campaign: Campaign, item: String, pid: 
 
 # --- Food and water ----------------------------------------------------------------------
 
-static func rations(story: StoryState) -> int:
-	return int(story.flags.get(SURVIVAL, {}).get("rations", 0))
+## Field rations carried: one pilot's, or everyone's (and the squad stash's) together.
+static func rations(story: StoryState, pid: String = "") -> int:
+	if pid != "":
+		return Inventory.count(story, pid, "ration")
+	var n := Inventory.count(story, Inventory.SQUAD, "ration")
+	for p: String in (story.flags.get(Inventory.KEY, {}) as Dictionary):
+		if p != Inventory.SQUAD and story.is_alive(p):
+			n += Inventory.count(story, p, "ration")
+	return n
 
 
 static func hungry(story: StoryState, campaign: Campaign, pid: String) -> bool:
-	return StoryHouseRules.on(campaign, R_FOOD) and int(story.flags.get(SURVIVAL, {}).get("hungry", {}).get(pid, 0)) > 0
+	return Survival.hungry(story, campaign, pid)
 
 
+## n field rations shared out between the pilots (bought for the squad, a friendly hub's
+## restock).
 static func add_rations(story: StoryState, campaign: Campaign, n: int) -> Array:
 	start(story, campaign, R_FOOD)
-	var sv: Dictionary = story.flags[SURVIVAL]
-	sv["rations"] = int(sv.get("rations", 0)) + n
-	var fed: Array = (sv.get("hungry", {}) as Dictionary).keys()
-	sv["hungry"] = {}
-	story.flags[SURVIVAL] = sv
-	return [{"type": "rations", "rations": sv["rations"], "text": "+%d days of food and water (%d now)%s." % [n, sv["rations"], ", and the hungry get to eat" if not fed.is_empty() else ""], "label": LABEL}]
+	var alive := _alive(story, campaign)
+	if alive.is_empty():
+		Inventory.add(story, Inventory.SQUAD, "ration", n)
+	else:
+		for i in range(n):
+			Inventory.add(story, str(alive[i % alive.size()]), "ration", 1)
+	var events: Array = [{"type": "rations", "rations": rations(story), "text": "+%d field rations, shared out (%d in the squad's packs now)." % [n, rations(story)], "label": LABEL}]
+	# Anyone running low eats now (auto-eat).
+	events.append_array(Survival.pass_hours(story, campaign, 0.01))
+	return events
 
 
-## A mission's nights of food and water (one each per pilot per night), from the mech's
-## cockpit storage. A pilot whose mech was lost, or who left it, only has their grab bag.
-static func eat(story: StoryState, campaign: Campaign, nights: int = 1, cut_off: Array = []) -> Array:
+## Time on the road or in the field: `nights` days of food and water from each pilot's own
+## stash (Survival), and the troops' upkeep from the squad stash (Troops).
+static func eat(story: StoryState, campaign: Campaign, nights: int = 1, _cut_off: Array = []) -> Array:
 	start(story, campaign, R_FOOD)
-	var sv: Dictionary = story.flags[SURVIVAL]
-	var events: Array = []
-	var hun: Dictionary = sv.get("hungry", {})
-	var bag := int(cfg().get("survival", {}).get("grab_bag_nights", 1))
-	for pid: String in _alive(story, campaign):
-		var away := cut_off.has(str(campaign.pilots[pid].get("callsign", "")))
-		var need := nights
-		var fed := 0
-		if away:
-			fed = mini(bag, need)
-			if need > fed:
-				events.append({"type": "cut_off", "pilot": pid, "text": "%s couldn't get back to the mech's stores: only a grab bag to live on." % campaign.pilots[pid].get("callsign", ""), "label": LABEL})
-		else:
-			fed = mini(int(sv["rations"]), need)
-			sv["rations"] = int(sv["rations"]) - fed
-			# A pilot with no mech of their own is last in line for the stores.
-			if wrecked(story, campaign).has(pid) and fed > 0:
-				fed = maxi(0, fed - ceili(need / 2.0))
-				events.append_array(Agendas.add(story, campaign, pid, "grievance", "short rations since their mech was wrecked"))
-		if fed >= need:
-			hun.erase(pid)
-		else:
-			hun[pid] = int(hun.get(pid, 0)) + 1
-			var cs := str(campaign.pilots[pid].get("callsign", ""))
-			events.append({"type": "hungry", "pilot": pid, "text": "%s is going hungry: +1 Difficulty on skill checks until they eat." % cs, "label": LABEL})
-			if int(hun[pid]) >= int(cfg().get("survival", {}).get("harm_after_hungry", 2)):
-				events.append_array(StoryEffects.harm(story, campaign, pid, 1, true))
-	sv["hungry"] = hun
-	story.flags[SURVIVAL] = sv
+	var events := Survival.pass_hours(story, campaign, nights * 24.0)
 	# The squad's own troops eat too: a ration per squad per day (Troops).
 	if not Troops.squads(story).is_empty():
 		events.append_array(Troops.feed(story, campaign, nights))
@@ -524,6 +534,7 @@ static func downtime_night(story: StoryState, campaign: Campaign) -> Array:
 	if not StoryHouseRules.on(campaign, R_FOOD):
 		return []
 	if hosted(story, campaign):
+		Survival.refill(story, campaign)
 		return [{"type": "rations", "rations": rations(story), "text": "Meals come with the stay tonight.", "label": LABEL}]
 	return eat(story, campaign, 1)
 
@@ -549,6 +560,7 @@ static func meal(story: StoryState, campaign: Campaign) -> Array:
 			events.append({"type": "meal", "pilot": pid, "text": "The food doesn't sit right with %s (+1 Difficulty on skill checks until they rest)." % cs, "label": LABEL})
 	story.flags["_mood"] = mood
 	story.flags["_sick"] = sick
+	Survival.refill(story, campaign)
 	if not sv.is_empty():
 		sv["hungry"] = {}
 		story.flags[SURVIVAL] = sv

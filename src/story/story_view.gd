@@ -25,6 +25,11 @@ static func view_for(story: StoryState, campaign: Campaign, seat: String = "") -
 	for k: String in story.flags:
 		if k != StoryState.KEY:
 			flags[k] = story.flags[k]
+	# Each player sees only their own pilots' money and stash, and trades they're part of.
+	if flags.has(Inventory.KEY):
+		flags[Inventory.KEY] = Inventory.view_for(story, seat)
+	if flags.has(Inventory.TRADES):
+		flags[Inventory.TRADES] = Inventory.trades_for(story, seat)
 	var pilots := {}
 	for pid: String in campaign.pilots:
 		var p: Dictionary = campaign.pilots[pid]

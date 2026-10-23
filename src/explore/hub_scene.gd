@@ -85,6 +85,11 @@ func setup(e: StoryEngine, s: StoryState, c: Campaign, content: ContentDB, seat:
 	local_seat = seat
 	BattleKeys.ensure()  # WASD / arrows and camera turning, even before any battle has run
 	_build_ui()
+	# This player's "Auto-eat and drink" setting, for the pilots they look after (Survival).
+	if StoryHouseRules.on(campaign, Economy.R_FOOD):
+		for pid: String in Inventory.mine_of(story, local_seat):
+			if bool(Inventory.of(story, pid).get("auto_eat", true)) != StorySettings.auto_eat():
+				engine.submit(story, campaign, {"type": "set_auto_eat", "seat": local_seat, "params": {"pilot": pid, "on": StorySettings.auto_eat()}})
 	rebuild()
 
 

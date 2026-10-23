@@ -118,10 +118,16 @@ func refresh() -> void:
 		t += "[color=#ffd166]Situation: %s (%d of %d)[/color]\n" % [story.arc["name"], int(story.arc["stage"]) + 1, n]
 	# House rules that are on (the user's own ideas, not book rules): one line, near the top.
 	var hr := PackedStringArray()
+	var me := story.pilot_of_seat(seat)
 	if StoryHouseRules.on(campaign, Economy.R_WALLET) and not Economy.wallet(story).is_empty():
-		hr.append(Economy.describe(story))
-	if StoryHouseRules.on(campaign, Economy.R_FOOD):
-		hr.append("food %d days" % Economy.rations(story))
+		hr.append("you: %s" % Economy.describe(story, me) if me != "" else Economy.describe(story))
+		hr.append("squad fund: %s" % Economy.describe(story))
+	if StoryHouseRules.on(campaign, Economy.R_FOOD) and me != "":
+		# Your food and water bars (Survival), and what you carry.
+		var b := Survival.bars(story, me)
+		var warn := float(Survival.cfg().get("warn_below", 35))
+		hr.append("[color=%s]food %d%%[/color] [color=%s]water %d%%[/color] (%d rations)" % ["#ff7b6b" if b.x < warn else "#e8c37a", roundi(b.x),
+			"#ff7b6b" if b.y < warn else "#9fd0ff", roundi(b.y), Economy.rations(story, me)])
 	if StoryHouseRules.on(campaign, Economy.R_PRINTERS):
 		hr.append("printer here" if Economy.has_printer(story) else "no printer here")
 		for wp: String in Economy.wrecked(story, campaign):

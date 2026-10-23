@@ -217,7 +217,7 @@ func test_the_pilot_on_short_rations_leads_the_mutiny() -> void:
 	expect_eq(chapter_id(t), "c11_factions")
 	# Kettle's mech was wrecked and never reprinted: short rations ever since.
 	s.flags[Economy.WRECKED] = [t["b"]]
-	s.flags[Economy.SURVIVAL]["rations"] = 30
+	Inventory.of(s, t["b"])["items"] = {}  # the supplies stowed in the wrecked mech are gone
 	Economy.eat(s, c, 2)
 	Economy.eat(s, c, 2)
 	expect_eq(Agendas.anyone(s, "grievance"), t["b"], "Kettle has a grudge")

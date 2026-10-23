@@ -130,13 +130,14 @@ static func work(story: StoryState, campaign: Campaign, id: String, pid: String)
 	var rec := NarrativeCheck.roll(story.dice, campaign.pilots[pid], Economy.check_opts(story, campaign, pid, opts))
 	var events: Array = [{"type": "narrative_check", "pilot": pid, "check": rec, "rule_ref": NarrativeCheck.REF}]
 	events.append_array(TownLife.advance(story, 1))
+	events.append_array(Survival.pass_hours(story, campaign, 6.0))
 	var cs := str(campaign.pilots[pid].get("callsign", ""))
 	if str(rec.get("outcome", "fail")) == "fail":
 		events.append({"type": "ship_work", "job": id, "pilot": pid, "success": false, "text": "%s: %s" % [cs, j.get("fail", "It doesn't go well.")]})
 		return events
 	events.append({"type": "ship_work", "job": id, "pilot": pid, "success": true, "text": "%s: %s" % [cs, j.get("text", "A shift's honest work.")]})
 	if StoryHouseRules.on(campaign, Economy.R_WALLET):
-		events.append_array(Economy.earn(story, int(j.get("pay", 40)), str(j.get("name", "ship's work"))))
+		events.append_array(Economy.earn(story, int(j.get("pay", 40)), str(j.get("name", "ship's work")), pid))
 	else:
 		events.append_array(StoryEffects.apply({"reserve": "custom", "name": "A favor from %s" % j.get("favor", "the crew"), "to": "speaker", "source": str(j.get("favor", "the crew")),
 			"note": str(j.get("name", ""))}, story, campaign, {"speaker": pid}))
