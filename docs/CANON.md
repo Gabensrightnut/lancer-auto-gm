@@ -152,3 +152,13 @@ procedural GM adds an objective on top, marked as its own: the zone holds someth
 defenders protect (a generator, a relay, a convoy truck, a civilian shelter), placed as an
 object with the book's object stats (Evasion 5, 10 HP per Size, Core p.68). If it is
 destroyed the mission is lost. The book's scoring is unchanged otherwise.
+
+## Secondary GM objectives
+
+The book's sitrep is always the primary objective and alone decides whether the mission is won.
+The procedural GM may add one secondary objective (about one fight in three): take and hold a
+point out on a flank, or keep the enemy out of one on the squad's side. It is marked in the
+briefing as the GM's own, never the sitrep's. Success earns a reserve (Supplies, Ammo, Extra
+repairs, Access or Knowledge, from the book's reserves); failure has a story consequence only.
+A Holdout's protected object is different: it is part of the primary and losing it loses.
+

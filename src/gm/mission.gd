@@ -143,16 +143,17 @@ func carry_action() -> Dictionary:
 
 
 func _end_of_round(state: GameState, r: int) -> void:
+	_track_secondary(state)
 	match sitrep_id:
 		"sitrep_control":
 			var held := {PLAYERS: 0, ENEMIES: 0}
-			for name: String in zones:
+			for name: String in sitrep_zones():
 				var side := _controller(state, name)
 				if held.has(side):
 					held[side] += 1
 					scores[side] += 1
 			for side: String in held:
-				if held[side] == zones.size():
+				if held[side] == sitrep_zones().size():
 					scores[side] += 1  # Controlling all four zones: +1 point.
 			if r >= rounds:
 				if scores[PLAYERS] == scores[ENEMIES]:
@@ -254,6 +255,33 @@ func _protected_lost(state: GameState) -> bool:
 func _decide(winner: String, why: String) -> void:
 	outcome = winner
 	outcome_reason = why
+	# Secondary GM objectives settle when the mission ends; they never change who won.
+	for o: Dictionary in flavor.get("objectives", []):
+		if not bool(o.get("secondary", false)):
+			continue
+		if str(o["type"]) == "capture":
+			o["state"] = "done" if str(o.get("held_by", "")) == PLAYERS else "failed"
+		elif str(o["state"]) != "failed":
+			o["state"] = "done"
+
+
+## The sitrep's own zones (a GM's secondary zone is never one of them).
+func sitrep_zones() -> Array:
+	return zones.keys().filter(func(z: String) -> bool: return z != "secondary")
+
+
+## Secondary objectives at each round's end: who holds the zone (capture: the squad must hold it
+## when the fight ends; defend: the enemy must never hold it at a round's end).
+func _track_secondary(state: GameState) -> void:
+	for o: Dictionary in flavor.get("objectives", []):
+		if not bool(o.get("secondary", false)) or not zones.has(str(o["zone"])):
+			continue
+		var who := _controller(state, str(o["zone"]))
+		o["held_by"] = who
+		if str(o["type"]) == "defend" and who == ENEMIES:
+			o["state"] = "failed"
+		elif str(o["type"]) == "capture":
+			o["state"] = "held" if who == PLAYERS else "open"
 
 
 ## The gm_end_mission action for the decided outcome.
@@ -267,7 +295,7 @@ func objective_for(side: String) -> Dictionary:
 	var weight := 0.0
 	match sitrep_id:
 		"sitrep_control":
-			for name: String in zones:
+			for name: String in sitrep_zones():
 				cells.append_array(zones[name])
 			weight = 2.0
 		"sitrep_holdout":
@@ -282,7 +310,7 @@ func objective_for(side: String) -> Dictionary:
 				cells = zones.get(str(flavor["true_zone"]), [])
 				weight = 2.0
 			else:
-				for name: String in zones:
+				for name: String in sitrep_zones():
 					cells.append_array(zones[name])
 				weight = 1.5
 		"sitrep_escort", "sitrep_extraction":
