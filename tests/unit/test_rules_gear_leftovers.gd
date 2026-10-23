@@ -470,3 +470,21 @@ func test_daisy_cutter_plasma_fuel_rod_and_latch() -> void:
 	expect(F.ok(out), F.reason(out))
 	expect_eq(ally.hp, 7, "Latch Drone: half its HP back for 1 Repair")
 	expect_eq(a.repairs, 1)
+
+
+func test_tesseract() -> void:
+	_setup(["ms_tesseract"], Vector2i(4, 0))
+	var out := F.act(e, s, "activate", "a", {"ability": _key("Spread Focus"), "aim": [4, 0]})
+	expect(F.ok(out), F.reason(out))
+	Environments.sync(s)
+	expect(t.has_status("Slowed"), "inside the zero-g area, no propulsion: Slowed")
+	_next(a)
+	F.load_dice(s, [3])
+	out = F.act(e, s, "activate", "a", {"ability": _key("Pinpoint Focus"), "target": "t"})
+	expect(F.ok(out), F.reason(out))
+	expect_eq(t.level, 6, "floats 6 spaces up")
+	expect(t.has_status("Immobilized"))
+	var hp := t.hp
+	t.counters["falling"] = true
+	Combat.fall_unit(s, t)
+	expect_eq(t.hp, hp, "sinks harmlessly")

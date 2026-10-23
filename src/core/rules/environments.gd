@@ -83,6 +83,10 @@ static func in_zero_g(state: GameState, u: Unit) -> bool:
 		var col := state.map.column(c)
 		if col != null and (col.has_tag("zero_g") or col.has_tag("vacuum")):
 			return true
+	for z: Dictionary in Zones.of_kind(state, "zero_g"):
+		if Zones.contains(state, z, u):
+			u.counters["soft_landing"] = true  # Tesseract: leaving it, you sink harmlessly
+			return true
 	return false
 
 

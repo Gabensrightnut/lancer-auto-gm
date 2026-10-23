@@ -692,8 +692,9 @@ static func fall_unit(state: GameState, u: Unit, max_drop: int = -1) -> Array[Di
 	u.counters.erase("fall_started")
 	u.counters.erase("fallen")
 	var dmg := mini(9, (total / 3) * 3)
-	if Environments.no_fall_damage(state):
-		dmg = 0  # low gravity
+	if Environments.no_fall_damage(state) or u.counters.get("soft_landing", false):
+		dmg = 0  # low gravity; Tesseract: sinks harmlessly to the ground
+	u.counters.erase("soft_landing")
 	if dmg > 0 and HouseRuleSwitches.on(state, "hr_brace_fall") and Reactions.can_react(u, "brace_fall", state).ok:
 		# House rule (your idea): brace for the fall with your reaction, taking half.
 		var d := Reactions.offer(state, u, "brace_fall", {"damage": dmg, "suggested": {"take": true}}, {"take": true})

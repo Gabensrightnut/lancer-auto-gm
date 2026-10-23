@@ -1050,6 +1050,47 @@ static func latch(state: GameState, u: Unit, w: Dictionary, t: Unit, params: Dic
 	return events
 
 
+## Tesseract Spread Focus: a Blast 3 area within Sensors (params.aim) becomes zero-g for the
+## scene; a new one replaces it. PROVISIONAL: the area's 6-space height isn't modelled.
+static func tesseract_zone(state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	for z: Dictionary in Zones.of_kind(state, "zero_g").duplicate():
+		if z.get("owner", "") == u.id:
+			for o: Unit in state.units.values():
+				if Zones.contains(state, z, o):
+					o.counters["soft_landing"] = true  # everything within floats harmlessly to the ground
+			events.append_array(Zones.remove(state, String(z["id"]), "dispersed"))
+	var aim: Vector2i = TurnAction.cell_param(params, "aim")
+	events.append_array(Zones.add(state, {"kind": "zero_g", "owner": u.id, "label": "Tesseract", "center": [aim.x, aim.y],
+		"cells": Zones.cells_around(state, [aim] as Array[Vector2i], 3), "rule_ref": "systems: Tesseract"}))
+	return events
+
+
+## Tesseract Pinpoint Focus: an ally (or a hostile that fails an Engineering save, 1/scene each)
+## floats 6 spaces up: Immobilized, flying and unable to fall. A hostile sinks harmlessly at the
+## end of its next turn; an ally stays up for the scene (PROVISIONAL: sinking at will is the
+## table's).
+static func pinpoint_focus(state: GameState, u: Unit, t: Unit) -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	var hostile := t.side != u.side
+	if hostile:
+		if t.counters.get("tesseract_scene", false):
+			return [{"type": "action_skipped", "unit": u.id, "action": "pinpoint_focus", "reason": "Each hostile can only be lifted once a scene.", "rule_ref": "systems: Tesseract"}] as Array[Dictionary]
+		t.counters["tesseract_scene"] = true
+		var save := Combat.skill_check(state, t, "engineering", "Save vs Pinpoint Focus", u.save_target, 0, 0, [], true)
+		events.append({"type": "skill_check", "unit": t.id, "check": save, "rule_ref": "systems: Tesseract"})
+		if save["success"]:
+			return events
+	var from := [t.cell.x, t.cell.y, t.level]
+	t.level += 6
+	t.flying = true
+	t.counters["soft_landing"] = true
+	events.append({"type": "moved", "unit": t.id, "path": [from, [t.cell.x, t.cell.y, t.level]], "mode": "fly", "cost": 0, "rule_ref": "systems: Tesseract"})
+	events.append_array(Effects.activate(state, t, [{"kind": "no_fall", "label": "Tesseract"}], "Tesseract", "end_next_turn" if hostile else "scene"))
+	events.append_array(Combat.add_status(state, t, "Immobilized", "Tesseract", t.id if hostile else ""))
+	return events
+
+
 ## H0R_OS II False Idol: a decoy (Evasion 10, E-Defense 10, 1 HP, the target's Size) of you or
 ## an ally within Sensors (params.target, default you). Before a hostile action against that
 ## character, a character that can see the idol makes a Systems save; on a failure it keeps

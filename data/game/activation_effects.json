@@ -1193,5 +1193,17 @@
         }
       ]
     }
+  ],
+  "ms_tesseract:Spread Focus": [
+    {
+      "op": "tesseract_zone",
+      "label": "Spread Focus"
+    }
+  ],
+  "ms_tesseract:Pinpoint Focus": [
+    {
+      "op": "pinpoint_focus",
+      "label": "Pinpoint Focus"
+    }
   ]
 }

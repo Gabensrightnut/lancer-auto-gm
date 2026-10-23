@@ -318,6 +318,10 @@ static func apply_ops(state: GameState, u: Unit, a: Dictionary, target: Unit, pa
 				events.append_array(GearSystems.shackle(u, target))
 			"fade":
 				events.append_array(GearSystems.fade(state, u, bool(op.get("on", true))))
+			"tesseract_zone":
+				events.append_array(GearSystems.tesseract_zone(state, u, params))
+			"pinpoint_focus":
+				events.append_array(GearSystems.pinpoint_focus(state, u, target))
 			"monitor":
 				events.append_array(GearSystems.monitor(state, u, target))
 			"roller_grenade":
@@ -576,6 +580,14 @@ static func check_ops(state: GameState, u: Unit, a: Dictionary, params: Dictiona
 			var ww := String(a["source_key"]).trim_prefix("mod:")
 			if not (u.turn.get("hits", {}).get(ww, []) as Array).has(String(params.get("target", ""))):
 				return RuleResult.deny("Only right after hitting that character with the wreathed weapon this turn.", "mods: Shock Wreath")
+		if op.get("op", "") == "tesseract_zone":
+			var ta: Variant = TurnAction.cell_param(params, "aim")
+			if ta == null or not state.map.has_cell(ta) or state.map.grid.distance(u.cell, ta) > u.sensors:
+				return RuleResult.deny("Choose the center of the area within Sensors (params.aim).", "systems: Tesseract")
+		if op.get("op", "") == "pinpoint_focus":
+			var pt := state.unit(String(params.get("target", "")))
+			if pt == null or pt == u or not Combat.is_present(pt) or pt.kind == Unit.KIND_DEPLOYABLE or Sight.unit_distance(state, u, pt) > u.sensors:
+				return RuleResult.deny("Choose a character within Sensors.", "systems: Tesseract")
 		if op.get("op", "") == "monitor":
 			var mt := state.unit(String(params.get("target", "")))
 			if mt == null or mt == u or mt.side != u.side or not Combat.is_present(mt) or Sight.unit_distance(state, u, mt) > 1:

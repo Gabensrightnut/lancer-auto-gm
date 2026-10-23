@@ -21,11 +21,12 @@ func _find(report: Array, id: String) -> Dictionary:
 func test_report_for_a_build() -> void:
 	var loadout := {"mounts": [{"weapons": ["mw_assault_rifle"]}, {}, {"weapons": ["mw_pinaka_missiles"]}],
 		"systems": ["ms_pattern_b_hex_charges", "ms_tesseract", "ms_ramjet"]}
-	var report := RulesQueries.automation_for_build(db(), "mf_standard_pattern_i_everest", loadout, {"ll": 6, "talents": {"t_brutal": 1, "t_leader": 2}})
+	var report := RulesQueries.automation_for_build(db(), "mf_standard_pattern_i_everest", loadout, {"ll": 6, "talents": {"t_brutal": 1, "t_leader": 2, "t_drone_commander": 3}})
 	expect_eq(_find(report, "Initiative")["status"], "automated")
 	expect_eq(_find(report, "ms_pattern_b_hex_charges")["status"], "automated")
-	var comp := _find(report, "ms_tesseract")
-	expect_eq(comp["status"], "manual", "Tesseract: zero-g isn't modelled")
+	expect_eq(_find(report, "ms_tesseract")["status"], "automated", "Tesseract's zero-g area and lift are automated")
+	var comp := _find(report, "t_drone_commander:3")
+	expect_eq(comp["status"], "manual", "Invigorate is played at the table")
 	expect(String(comp["guidance"]).contains("at the table"), "plain words about what to do")
 	var ram := _find(report, "ms_ramjet")
 	expect_eq(ram["status"], "partial")
@@ -40,11 +41,11 @@ func test_report_for_a_build() -> void:
 func test_manual_ability_on_the_action_bar() -> void:
 	var s := GameState.new(1, GridLayout.Shape.SQUARE)
 	s.map = BattleMap.flat(GridLayout.Shape.SQUARE, 8, 8)
-	var u := UnitFactory.build_mech(db(), "a", "mf_standard_pattern_i_everest", {"mounts": [], "systems": ["ms_tesseract"]})
+	var u := UnitFactory.build_mech(db(), "a", "mf_standard_pattern_i_everest", {"mounts": [], "systems": []}, {"ll": 6, "talents": {"t_drone_commander": 3}})
 	s.add_unit(u)
 	var found := false
 	for x: Dictionary in RulesQueries.available_actions(s, "a"):
-		if x.get("name", "") == "Spread Focus":
+		if x.get("name", "") == "Invigorate":
 			found = true
 			expect_eq(x["automation"], "manual")
 			expect(String(x["table_note"]).contains("GM"))
