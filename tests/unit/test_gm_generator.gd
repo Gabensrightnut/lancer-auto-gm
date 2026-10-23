@@ -262,6 +262,10 @@ func test_a_fight_in_town_uses_the_hub() -> void:
 		expect(door != Vector2i(-999, -999), "%s has its door" % sid)
 		var near := cells.any(func(c: Vector2i) -> bool: return s.map.grid.distance(c, door) <= 2)
 		expect(near, "%s's door is at its front" % sid)
+		var parked := false
+		for c in s.map.cells():
+			parked = parked or s.map.column(c).has_tag("parking_" + str(spot["id"]))
+		expect(parked, "%s has a mech parking spot outside" % sid)
 
 
 func test_materials_follow_the_culture() -> void:

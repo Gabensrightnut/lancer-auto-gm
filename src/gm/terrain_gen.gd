@@ -373,6 +373,18 @@ func _town(hub: Dictionary, culture: String) -> void:
 		var dc := _cell(d.x, d.y)
 		if map.has_cell(dc) and not map.column(dc).has_tag("building"):
 			map.column(dc).tags.append_array(["door", "door_" + door_ids[i]])
+		# The building's mech parking spot: the next open space out from the door, away from
+		# the building (where the squad left its mechs when they walked in).
+		var out := Vector2(d.x - cc, d.y - cr)
+		var step := Vector2i(signi(int(round(out.x))) if absf(out.x) >= absf(out.y) else 0, signi(int(round(out.y))) if absf(out.y) > absf(out.x) else 0)
+		for k in range(1, 4):
+			var q := d - step * k  # toward the square: the door faces it
+			if q.x < 0 or q.y < 0 or q.x >= w or q.y >= h:
+				break
+			var qc := _cell(q.x, q.y)
+			if map.has_cell(qc) and not map.column(qc).has_tag("building") and not map.column(qc).has_tag("door") and map.ground_height(qc) == 0:
+				map.column(qc).tags.append_array(["mech_parking", "parking_" + door_ids[i]])
+				break
 
 
 var rng: RandomNumberGenerator
