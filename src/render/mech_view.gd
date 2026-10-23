@@ -45,7 +45,7 @@ func setup(unit_dict: Dictionary, view: BattleView) -> void:
 		frame = {"id": unit.get("content_id", ""), "source": "GMS", "mechtype": ["Balanced"], "stats": {"size": unit.get("size", 1)}}
 	if String(unit.get("kind", "")) == "pilot":
 		model = pilot_model(unit)
-	elif String(unit.get("kind", "")) in ["squad", "soldier"]:
+	elif SquadModel.soldier_kind(unit) != "":
 		model = SquadModel.build(unit)  # infantry: figures in formation, men fall with HP
 	elif VisibleParts.is_deployable(unit):
 		# Drones, turrets, mines, cover...: their own look (data/game/visible_parts.json), in

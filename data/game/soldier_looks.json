@@ -21,5 +21,14 @@
     "militia": {"helmet": "Helmet_militia", "armor": "Armor_militia", "pack": true,
       "colors": {"uniform": "#5a5a3c", "armor": "#7a6a4a", "trim": "#b8b090", "visor": "#a0d070"}}
   },
+  "kinds": {
+    "_doc": "Per squad kind (rules' loadout.soldier), on top of the faction: launcher_every, pack, armor (a faction armor set), trim color. Shields and optics need new gear meshes in soldier_mh.py (next soldier pass).",
+    "rifle_squad": {},
+    "missile_team": {"launcher_every": 2},
+    "guard_squad": {"armor": "Armor_union", "launcher_every": 0},
+    "spotter_team": {"pack": false, "launcher_every": 0},
+    "medic_team": {"pack": true, "launcher_every": 0, "trim": "#e8e4dc"},
+    "soldier": {"launcher_every": 0}
+  },
   "by_side": {"players": "union", "enemies": "corpro", "neutral": "militia"}
 }
