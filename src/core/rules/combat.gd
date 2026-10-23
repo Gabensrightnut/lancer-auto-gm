@@ -160,7 +160,7 @@ static func skill_check(state: GameState, u: Unit, skill: String, label: String,
 ## opts: source (unit id), ap (ignores Armor), resist_all (Brace), no_mark_burn, roll.
 static func deal_damage(state: GameState, target: Unit, parts: Array, opts: Dictionary = {}) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
-	if target.destroyed:
+	if target.destroyed or target.counters.get("knocked_out", false):
 		return events
 	if GearSystems.intangible(target) or GearSystems.intangible(state.unit(String(opts.get("source", "")))):
 		return events  # FADE Cloak: no damage taken or dealt while intangible
@@ -275,7 +275,7 @@ static func lose_hp(state: GameState, u: Unit, amount: int, source: String) -> A
 		return events
 	# At 0 HP: 1 structure damage, a structure check, HP back to full, then the excess
 	# damage, which can cost more structure (Core p.80).
-	while u.hp <= 0 and not u.destroyed:
+	while u.hp <= 0 and not u.destroyed and not u.counters.get("knocked_out", false):
 		var excess := -u.hp
 		var frenzy := FrameSystems.frenzy_saves(state, u)
 		events.append_array(frenzy)
@@ -302,7 +302,7 @@ static func lose_hp(state: GameState, u: Unit, amount: int, source: String) -> A
 			events.append_array(destroy(state, u, "Reached 0 Structure."))
 			return events
 		events.append_array(structure_check(state, u))
-		if u.destroyed:
+		if u.destroyed or u.counters.get("knocked_out", false):
 			return events
 		u.hp = u.max_hp - excess
 		events.append({"type": "hp_changed", "unit": u.id, "hp": maxi(u.hp, 0), "overshield": u.overshield, "source": "structure reset"})
@@ -572,6 +572,8 @@ static func overheated_check(state: GameState, u: Unit) -> void:
 
 ## Reactor meltdown after `turns` of the unit's turns; -1 = at the end of its next turn.
 static func _start_meltdown(state: GameState, u: Unit, turns: int) -> Array[Dictionary]:
+	if nonlethal(state):
+		return knock_out(state, u, "Its reactor would melt down.")
 	if turns < 0:
 		turns = 2 if state.active_unit == u.id else 1
 	u.counters["meltdown"] = turns
@@ -598,6 +600,8 @@ static func tick_meltdown(state: GameState, u: Unit) -> Array[Dictionary]:
 static func destroy(state: GameState, u: Unit, why: String) -> Array[Dictionary]:
 	if u.destroyed:
 		return [] as Array[Dictionary]
+	if nonlethal(state) and u.kind != Unit.KIND_DEPLOYABLE and not u.counters.has("terrain"):
+		return knock_out(state, u, why)
 	u.destroyed = true
 	u.hp = 0
 	TalentRules.end_duel(state, u)  # Exemplar To The Death
@@ -618,6 +622,39 @@ static func destroy(state: GameState, u: Unit, why: String) -> Array[Dictionary]
 		events.append_array(remove_status(u, status, "destroyed"))
 	# The pilot stays in the wreck, no longer protected by it, and "may still exit it as normal"
 	# (Core p.74, 80): it takes its own turns and can Dismount.
+	events.append_array(refresh_engagement(state))
+	return events
+
+
+## A non-lethal match (the user's PvP mode; state.objectives["nonlethal"], set by PvpBattle):
+## the book's combat in every other way, but no one dies and no reactor melts down.
+static func nonlethal(state: GameState) -> bool:
+	return state != null and bool(state.objectives.get("nonlethal", false))
+
+
+const REF_NONLETHAL := "Match: non-lethal (your PvP mode)"
+
+
+## Instead of being destroyed (last Structure, a Direct Hit, a pilot killed while Down and
+## Out) or melting down (last Stress): knocked out, at 0 HP with 1 Structure and 1 Stress, out
+## of the fight for the rest of the match (Combat.is_present). All the damage stays.
+static func knock_out(state: GameState, u: Unit, why: String) -> Array[Dictionary]:
+	if u.counters.get("knocked_out", false):
+		return [] as Array[Dictionary]
+	u.counters["knocked_out"] = true
+	u.hp = 0
+	if u.max_structure > 0:
+		u.structure = maxi(1, u.structure)
+	if u.max_stress > 0:
+		u.stress = maxi(1, u.stress)
+	u.counters.erase("meltdown")
+	u.counters.erase("self_destruct")
+	TalentRules.end_duel(state, u)
+	var who := u.name if u.name != "" else u.id
+	var events: Array[Dictionary] = [{"type": "knocked_out", "unit": u.id, "reason": why,
+		"text": "%s is knocked out of the fight (%s). Nobody dies in this match." % [who, why.trim_suffix(".")], "rule_ref": REF_NONLETHAL}]
+	events.append({"type": "hp_changed", "unit": u.id, "hp": 0, "overshield": u.overshield, "source": "knocked out"})
+	events.append_array(Riders.on_destroyed(state, u))
 	events.append_array(refresh_engagement(state))
 	return events
 
@@ -780,8 +817,8 @@ static func is_present(u: Unit) -> bool:
 		return false  # Escort/Extraction sitreps: extracted, off the battlefield for good
 	if u != null and u.counters.has("folded"):
 		return false  # Fold Space: off the battlefield until the start of its next turn
-	if u == null or u.destroyed:
-		return false
+	if u == null or u.destroyed or u.counters.get("knocked_out", false):
+		return false  # knocked out of a non-lethal match: out of the fight
 	var inside := String(u.counters.get("mounted_in", u.counters.get("passenger_in", "")))
 	if inside == "":
 		return true

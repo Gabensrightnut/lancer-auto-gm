@@ -246,6 +246,21 @@ storey is a room (`BattleMap.rooms_open`).
 | Standing on a building that's destroyed | the book's falling rule: falling starts at the end of the current turn, 3 AP per 3 spaces, up to 9 | Core p.63 |
 | Caught inside a collapse | house rule `hr_garrisoned_buildings`: damage as if they fell the building's height (the same numbers), then moved to the nearest free space | not in the book |
 
+## Non-lethal match (the user's PvP mode)
+
+`state.objectives["nonlethal"]` (set by `PvpBattle.arena`). Code: `Combat.knock_out`,
+`Combat.nonlethal`. Not a house rule: it belongs to the match. The book has no sparring or
+yield rule; "Surrender and retreat are perfectly valid end-conditions for a fight" (Core p.60),
+which the side-wide Yield (`PvpBattle.yield_side`) uses.
+
+| Rule | Reading |
+|---|---|
+| Destroyed (last Structure, Direct Hit, Crushing Hit) | knocked out instead: 0 HP, 1 Structure, its Stress (at least 1), out of the fight for the rest of the match; no wreck, no reactor explosion |
+| Reactor meltdown (last Stress, Meltdown results) | knocked out instead, Stress 1, no countdown |
+| A pilot hit while Down and Out | knocked out instead of killed |
+| Self Destruct | refused |
+| Everything else | the book's combat; all damage stays afterwards (`PvpBattle.keep_damage`) |
+
 ## Environments
 
 `state.environments` (lancer-data environments.json ids; the mission generator sets them
