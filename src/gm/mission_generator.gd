@@ -108,6 +108,12 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	var fairness: Dictionary = bf["fairness"]
 	var world: Array = bf["world"]
 	m.deployment = layout["deployment"]
+	# An ambush on the road (WorldMapGen ambush spot): the squad caught on the road through the
+	# middle, the ambushers already in the cover along one flank.
+	if opts.get("ambush") is Dictionary:
+		m.deployment = _ambush_deployment(state.map, shape, w, h, int(opts["ambush"].get("at", [0, 0])[0]) % 2 == 0)
+		m.flavor["ambush"] = (opts["ambush"] as Dictionary).duplicate(true)
+		m.first_side = Mission.ENEMIES  # they sprang it
 	m.zones = layout["zones"]
 	if layout["first_side"] != "":
 		m.first_side = layout["first_side"]
