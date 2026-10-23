@@ -17,6 +17,7 @@ extends RefCounted
 ##   "town": MissionHooks.town_for(...) or "hub": story.hub (a fight in a hub's town: built
 ##     from its spots and culture; "at" = the spot id where the fight starts, which is put
 ##     in the middle of the battle band; "landscape" / "map_culture" when given),
+##   "time": the story clock's period ("dawn", "day", "evening", "night"): the fight's light,
 ##   "region": a previous mission's flavor.region ({seed, landscape, culture, weather}): the
 ##     next fight in the same stretch of world keeps its look, with new terrain,
 ##   "boarding": {kind, map}: a boarding fight; map "docked" (two ships side by side, landscape
@@ -115,12 +116,16 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	if place_seed < 0:
 		place_seed = hash([mission_seed, "place"]) & 0x7fffffff
 	var kit := TerrainGen.kit(world[0], world[1]) + ("+" + weather if weather != "" else "")
+	# The time of day (story clock: opts.time, else the region's): look only.
+	var time := str(opts.get("time", region.get("time", "day")))
+	if time in ["dawn", "evening", "night"]:
+		kit += "~" + time
 	if doc == null:
 		kit += "#%d" % place_seed
 	m.flavor = {"operation": names.operation(), "planet": names.planet(), "faction": names.faction(),
 		"team": names.team_name(), "cargo": names.cargo(), "kit": kit,
 		"terrain": TerrainGen.describe(world[0], world[1]), "weather": weather,
-		"region": {"seed": place_seed, "landscape": world[0], "culture": world[1], "weather": weather}}
+		"region": {"seed": place_seed, "landscape": world[0], "culture": world[1], "weather": weather}, "time": time}
 	if not boarding.is_empty():
 		m.flavor["boarding"] = boarding.duplicate()
 	_pick_environments(m, state, mission_seed, world[0], weather, settings, opts)
@@ -288,7 +293,8 @@ static func area(area_seed: int, opts: Dictionary = {}) -> Dictionary:
 	var weather := str(opts.get("weather", region.get("weather", "?")))
 	weather = _pick_weather(rng, world[0], world[1], weather if weather != "" else "clear")
 	var place := int(region.get("seed", hub.get("seed", hash([area_seed, "place"]) & 0x7fffffff)))
-	var kit := TerrainGen.kit(world[0], world[1]) + ("+" + weather if weather != "" else "") + "#%d" % place
+	var time := str(opts.get("time", region.get("time", "day")))
+	var kit := TerrainGen.kit(world[0], world[1]) + ("+" + weather if weather != "" else "") + ("~" + time if time in ["dawn", "evening", "night"] else "") + "#%d" % place
 	var cell := func(c: int, r: int) -> Array:
 		return [c - (r >> 1), r] if shape == GridLayout.Shape.HEX else [c, r]
 	return {"map": map, "kit": kit, "name": TerrainGen.describe(world[0], world[1]), "place": place_kind, "at": [ax, ay],

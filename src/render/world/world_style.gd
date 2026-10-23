@@ -49,6 +49,11 @@ static func resolve(kit: String) -> Dictionary:
 	if "#" in kit:
 		place = int(kit.get_slice("#", 1))
 		kit = kit.get_slice("#", 0)
+	# "~period": the time of day (story clock: dawn, day, evening, night) over the kit's look.
+	var period := ""
+	if "~" in kit:
+		period = kit.get_slice("~", 1)
+		kit = kit.get_slice("~", 0)
 	var weather := ""
 	if "+" in kit:
 		weather = kit.get_slice("+", 1)
@@ -98,6 +103,10 @@ static func resolve(kit: String) -> Dictionary:
 		style = merge(style, w)
 		style["weather"] = weather
 		style["kit"] += "+" + weather
+	if period != "" and period != "day":
+		WorldKits.time_of_day(style, period)
+		style["kit"] += "~" + period
+	style["time"] = period if period != "" else "day"
 	if place >= 0:
 		vary(style, place)
 		style["kit"] += "#%d" % place

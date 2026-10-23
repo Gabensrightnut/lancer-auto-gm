@@ -312,3 +312,10 @@ func test_buildings_show_their_damage_stages() -> void:
 		worn += 1 if absf(v.x - 0.7) < 0.01 else 0
 	expect(worn > 0, "the damaged cell's walls carry 7 of 10 HP lost")
 	_free(t)
+
+func test_fights_follow_the_clock_and_weather() -> void:
+	var night := WorldStyle.resolve("grassy_hills/medieval+rain~night#4")
+	var day := WorldStyle.resolve("grassy_hills/medieval+rain#4")
+	expect_eq(night["kit"], "grassy_hills/medieval+rain~night#4", "the kit keeps weather, time and place")
+	expect(float(night["light"]["sun_energy"]) < float(day["light"]["sun_energy"]) * 0.3, "a night fight is dark")
+	expect_eq(night["weather"], "rain", "and still raining")
