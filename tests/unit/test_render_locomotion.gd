@@ -52,3 +52,21 @@ func test_free_walker_moves_smoothly_and_turns() -> void:
 		w._physics_process(1.0 / 30.0)
 	expect(not w.is_moving(), "and stops at the point")
 	view.free()
+
+
+func test_kneel_for_mounting_and_stand_again() -> void:
+	var db := ContentDB.new()
+	db.load_all()
+	for fid: String in ["mf_standard_pattern_i_everest", "mf_goblin", "mf_hydra"]:
+		var m := MechBuilder.build(db.frame(fid), {}, db)
+		var rest := m.pelvis.position.y
+		var hips: Array = []
+		for leg: Dictionary in m.legs:
+			hips.append((leg["hip"] as Node3D).rotation_degrees.x)
+		m.set_kneel(1.0)
+		expect(m.pelvis.position.y < rest - 0.001, "%s lowers to kneel" % fid)
+		if not m.legs.is_empty():
+			expect(absf((m.legs[0]["hip"] as Node3D).rotation_degrees.x - float(hips[0])) > 20.0, "%s bends its legs" % fid)
+		m.set_kneel(0.0)
+		expect(absf(m.pelvis.position.y - rest) < 0.001, "%s stands back up" % fid)
+		m.free()

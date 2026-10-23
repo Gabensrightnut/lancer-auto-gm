@@ -1,0 +1,25 @@
+{
+  "_doc": [
+    "Infantry looks (read by src/render/people/soldier_figure.gd and squad_model.gd). Our own designs in",
+    "the spirit of the core book's people (Union troops, corpro security, pirates, frontier militia);",
+    "the models are assets/people/soldier.glb, built by tools/blender/soldier_mh.py.",
+    "factions: which helmet and armor set, and colors by material role (uniform, armor, trim, visor).",
+    "A unit's own paint (the crew/company scheme, MechPaint format) overrides: primary -> uniform,",
+    "secondary -> armor, glow -> visor, markings -> trim.",
+    "by_side: the faction when the unit doesn't say. launcher_every: every Nth man carries a launcher."
+  ],
+  "men_per_squad": 10,
+  "height": 0.42,
+  "launcher_every": 5,
+  "factions": {
+    "union": {"helmet": "Helmet_union", "armor": "Armor_union", "pack": true,
+      "colors": {"uniform": "#36424c", "armor": "#d6dbdf", "trim": "#2f8fb0", "visor": "#59d8ff"}},
+    "corpro": {"helmet": "Helmet_corpro", "armor": "Armor_corpro", "pack": false,
+      "colors": {"uniform": "#1d2026", "armor": "#2d3138", "trim": "#c8a040", "visor": "#ff5a40"}},
+    "pirate": {"helmet": "Helmet_pirate", "armor": "Armor_pirate", "pack": true,
+      "colors": {"uniform": "#4a3b2d", "armor": "#6d645c", "trim": "#9a2a20", "visor": "#e0a040"}},
+    "militia": {"helmet": "Helmet_militia", "armor": "Armor_militia", "pack": true,
+      "colors": {"uniform": "#5a5a3c", "armor": "#7a6a4a", "trim": "#b8b090", "visor": "#a0d070"}}
+  },
+  "by_side": {"players": "union", "enemies": "corpro", "neutral": "militia"}
+}

@@ -105,7 +105,7 @@ func sync_parts(view_units: Dictionary) -> void:
 	for id: String in units:
 		var mv: MechView = units[id]
 		var u: Dictionary = view_units.get(id, {})
-		for k: String in ["counters", "loadout", "mounts_lost"]:
+		for k: String in ["counters", "loadout", "mounts_lost", "men_left", "garrison"]:
 			if u.has(k):
 				mv.unit[k] = u[k]
 		if mv.model == null:

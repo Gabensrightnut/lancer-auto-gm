@@ -593,6 +593,16 @@ func _attack_anim(att: MechView, tgt: MechView, wid: String, w: Dictionary, styl
 	var muzzle := att.model.muzzle_position(wid)
 	var aim := tgt.body_center() if hit else _miss_point(att, tgt)
 	var glow: Color = WeaponBuilder.glow_color(w) if not w.is_empty() else Color(1, 0.8, 0.4)
+	if tgt.model is SquadModel:
+		(tgt.model as SquadModel).take_cover(String(e.get("cover", "none")) != "none")
+	if att.model is SquadModel and style != WeaponBuilder.STYLE_MELEE:
+		# Infantry: every standing man fires together.
+		await (att.model as SquadModel).volley(battle.fx_root, aim)
+		if is_instance_valid(tgt) and hit:
+			Fx.hit_flash(tgt.model)
+			if tgt.model is SquadModel:
+				(tgt.model as SquadModel).hit()
+		return
 	var path := WallFx.path_for(e, w, att.unit) if style != WeaponBuilder.STYLE_MELEE else ""
 	var cover_cells: Array = e.get("cover_cells", [])
 	if path == "" and String(e.get("cover", "")) == "none" and not cover_cells.is_empty():
@@ -1097,6 +1107,12 @@ func _destroyed(e: Dictionary) -> void:
 	var mv := _view(e["unit"])
 	_log("[b]%s is destroyed![/b]" % _name(e["unit"]))
 	if mv == null:
+		return
+	if mv.model is SquadModel:
+		# The last men fall; no explosion.
+		(mv.model as SquadModel).set_men(0)
+		mv.destroyed = true
+		await Fx.wait(self, 0.8)
 		return
 	if WallFx.is_barrier_deployable(String(mv.unit.get("name", ""))):
 		# Barriers and cover break apart instead of falling over like a mech.
