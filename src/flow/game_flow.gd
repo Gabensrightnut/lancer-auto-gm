@@ -262,7 +262,7 @@ const ARC_CHOICES := {1: "Short: 1 story", 2: "2 stories", 3: "Standard: 3 stori
 const MAIN_CAMPAIGN := "long_arrival"
 
 
-static func start_story_campaign(store: SaveStore, db: ContentDB, campaign_name: String, pilots: int, start_ll: int, preset: String, arcs: int = DEFAULT_ARCS, campaign_id: String = "", fight_length: String = "standard") -> Campaign:
+static func start_story_campaign(store: SaveStore, db: ContentDB, campaign_name: String, pilots: int, start_ll: int, preset: String, arcs: int = DEFAULT_ARCS, campaign_id: String = "", fight_length: String = "standard", squad: Array = []) -> Campaign:
 	var c := Campaign.create(campaign_name, {"start_ll": start_ll, "gm_preset": preset})
 	c.gm_settings["fight_length"] = fight_length
 	if campaign_id != "":
@@ -271,18 +271,29 @@ static func start_story_campaign(store: SaveStore, db: ContentDB, campaign_name:
 	c.options["campaign_arcs"] = arcs
 	c.options["teaching_hints"] = true
 	c.options["session_zero_pending"] = true
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash([c.id, "names"])
-	var names := NameGen.new(rng)
-	for i in range(maxi(pilots, 1)):
-		c.new_pilot(names.pilot_name(), names.callsign())
-	open_story(c, db)
-	var ids := c.pilots.keys()
 	var events: Array = []
-	for i in range(ids.size()):
-		var p: Dictionary = c.pilots[ids[i]]
-		events.append_array(story_engine.submit(story, c, {"type": "set_seat", "seat": "gm", "params": {"seat": "p%d" % (i + 1), "pilot": p["id"],
-			"ai": i > 0, "persona": Squadmate.suggest(p)}})["events"])
+	if squad.is_empty():
+		var rng := RandomNumberGenerator.new()
+		rng.seed = hash([c.id, "names"])
+		var names := NameGen.new(rng)
+		for i in range(maxi(pilots, 1)):
+			c.new_pilot(names.pilot_name(), names.callsign())
+		open_story(c, db)
+		var ids := c.pilots.keys()
+		for i in range(ids.size()):
+			var p: Dictionary = c.pilots[ids[i]]
+			events.append_array(story_engine.submit(story, c, {"type": "set_seat", "seat": "gm", "params": {"seat": "p%d" % (i + 1), "pilot": p["id"],
+				"ai": i > 0, "persona": Squadmate.suggest(p)}})["events"])
+	else:
+		# The squad-creation lobby's pilots (already sanity-checked), each in their slot.
+		for e: Dictionary in squad:
+			var p: Dictionary = (e["pilot"] as Dictionary).duplicate(true)
+			c.pilots[p["id"]] = p
+		open_story(c, db)
+		for e: Dictionary in squad:
+			var p: Dictionary = e["pilot"]
+			events.append_array(story_engine.submit(story, c, {"type": "set_seat", "seat": "gm", "params": {"seat": str(e["seat"]), "pilot": p["id"],
+				"ai": bool(e.get("ai", false)), "persona": str(p.get("persona", Squadmate.suggest(p)))}})["events"])
 	events.append_array(story_engine.submit(story, c, {"type": "enter_hub", "seat": "gm", "params": {"kind": "town", "seed": _first_hub_seed(c), "no_jobs": true}})["events"])
 	story_events = events
 	save_story(c, store)
@@ -397,8 +408,12 @@ static func start_pvp_mission(campaign: Campaign, db: ContentDB, store: SaveStor
 	var the_story := story
 	var ai_seats: Array = modes.keys().filter(func(s: String) -> bool: return modes[s] == "ai")
 	var lobby := LobbyModel.for_mission(campaign, db, modes, pilots, func(opts: Dictionary) -> Dictionary:
-		# A squad split by a vote fights on a compact arena where it stands, non-lethal.
-		var gen := PvpBattle.arena(campaign, the_story, db, absi(hash([campaign.id, id, campaign.history.size()])) % 100000, split.get("fight", {})) if not split.is_empty() 			else CampaignLoop.build_mission(campaign, the_story, db, {"shape": opts.get("shape", "hex"), "sitrep": "sitrep_standardcombat"})
+		# A squad split by a vote fights in a tiny sealed-off arena (PvpBattle.arena), non-lethal.
+		var gen: Dictionary
+		if not split.is_empty():
+			gen = PvpBattle.arena(campaign, the_story, db, absi(hash([campaign.id, id, campaign.history.size()])) % 100000, split.get("fight", {}), modes.size())
+		else:
+			gen = CampaignLoop.build_mission(campaign, the_story, db, {"shape": opts.get("shape", "hex"), "sitrep": "sitrep_standardcombat"})
 		PvpBattle.split(gen, groups, allies, id, ai_seats)
 		if not split.is_empty():
 			(gen["mission"] as Mission).flavor[PvpBattle.KEY]["vote"] = true  # a split vote: groups are its options

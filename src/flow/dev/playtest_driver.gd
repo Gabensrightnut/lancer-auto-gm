@@ -68,6 +68,7 @@ func _story_loop() -> void:
 	await click_text("Generated story")
 	if not await click_text("Create campaign"):
 		return
+	await _squad_lobby_quick()
 	if not await wait_scene("HubScreen", 20.0):
 		return
 	await wait(2.5)
@@ -195,6 +196,7 @@ func _gm_loop() -> void:
 	await shot("gm_form")
 	if not await click_text("Create campaign"):
 		return
+	await _squad_lobby_quick()
 	if not await wait_scene("HubScreen", 20.0):
 		return
 	await wait(2.5)
@@ -295,6 +297,7 @@ func _main_loop() -> void:
 	await shot("main_form")
 	if not await click_text("Create campaign"):
 		return
+	await _squad_lobby_quick()
 	if not await wait_scene("HubScreen", 20.0):
 		return
 	await wait(2.5)
@@ -332,6 +335,31 @@ func _main_loop() -> void:
 	await shot("main_after_battle")
 	await _dialogue_through(hub, "main_debrief")
 	await shot("main_debrief_done")
+
+
+## The squad-creation lobby, quickly: slot 1 is yours with a random pilot, the rest are bots,
+## Ready, Start.
+func _squad_lobby_quick() -> void:
+	if not await wait_scene("SquadLobbyScreen", 15.0):
+		return
+	await wait(1.0)
+	await shot("squad_lobby_empty")
+	var lobby: SquadLobby = current().lobby
+	lobby.claim("p1", "QA")
+	lobby.add_bot("p1", "p1")  # a random, sanity-checked pilot...
+	var made: Dictionary = lobby.slots["p1"]["pilot"]
+	lobby.release("p1")
+	lobby.claim("p1", "QA")
+	lobby.set_character("p1", CharacterRoster.from_pilot(made))  # ...as the player's own
+	lobby.set_ready("p1", true)
+	for seat: String in ["p2", "p3", "p4"]:
+		lobby.add_bot(seat, "p1")
+	await wait(0.8)
+	await shot("squad_lobby_filled")
+	if lobby.can_start() != "":
+		issue("squad", "Start stays locked: %s" % lobby.can_start(), "squad_lobby_filled")
+		return
+	await click_text("Start")
 
 
 ## Clicks through a conversation: the first reply when there's a choice, Space otherwise.

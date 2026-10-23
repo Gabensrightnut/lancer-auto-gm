@@ -529,6 +529,9 @@ func _problems(p: Dictionary, index: int) -> Array:
 	for id: String in p["talents"]:
 		if int(p["talents"][id]) > (db.get_entry("talents", id).get("ranks", [1, 2, 3]) as Array).size():
 			out.append("%s has only %d ranks." % [db.get_entry("talents", id).get("name", id), (db.get_entry("talents", id).get("ranks", []) as Array).size()])
+		elif int(p["talents"][id]) > 1 + int(p.get("ll", 0)):
+			# New pilots take talents at rank I; each License Level raises one talent one rank.
+			out.append("%s rank %d needs LL%d (talents go up one rank per License Level)." % [db.get_entry("talents", id).get("name", id), int(p["talents"][id]), int(p["talents"][id]) - 1])
 	if b["core_bonuses"]["used"] > b["core_bonuses"]["max"]:
 		out.append("Core bonuses: one per 3 License Levels (%d available)." % b["core_bonuses"]["max"])
 	var per_maker := {}
