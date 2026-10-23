@@ -347,6 +347,7 @@ func can_start() -> bool:
 ## What joining players see (sent over the network on every change).
 func summary() -> Dictionary:
 	return {"options": options.duplicate(), "rows": rows(), "problems": start_problems(), "started": started,
+		"house_rules": HouseRules.of_campaign(campaign),
 		"campaign": campaign.name, "packs": campaign.packs.duplicate(true),
 		"briefing": mission.briefing if mission != null else ""}
 

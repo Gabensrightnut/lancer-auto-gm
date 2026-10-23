@@ -105,3 +105,23 @@ func test_on_a_real_region() -> void:
 	expect(key != "" and region.areas.has(key), "into the site's area")
 	var spot_ids: Array = (r["ambush_spots"] as Array).map(func(a: Dictionary) -> String: return str(a["id"]))
 	expect(m.ambushes.list.all(func(a: Dictionary) -> bool: return spot_ids.has(str(a["id"]))), "ambushers only where world put cover")
+
+
+func test_travel_speed_and_route_preview() -> void:
+	var r := _region()
+	r["tiles"]["3,1"] = {"terrain": "hills", "class": "hills", "cost": 8.0, "mech": true, "foot": true}
+	for x in range(10):
+		r["tiles"]["%d,0" % x] = {"terrain": "road", "class": "road", "cost": 2.0, "mech": true, "foot": true}
+	var m := WorldMapSession.new(r)
+	m.add_seat("p1", Vector2(1, 1), 4)
+	var per := m.tiles_per_day("p1")
+	expect_eq(int(per.get("road", 0)), 20, "Speed 4 on roads (cost 2): 10 hours x 4 / 2")
+	expect_eq(int(per.get("hills", 0)), 5)
+	expect(m.speed_text("p1", "Everest").begins_with("Everest: about 20 tiles a day on road"), m.speed_text("p1", "Everest"))
+	var rt := m.route("p1", Vector2i(9, 1))
+	expect(not rt.is_empty() and (rt["path"] as Array).back() == Vector2i(9, 1))
+	expect(float(rt["hours"]) < 8.0 * 4 / 4.0 + 8, "goes round the hills by the road where that's quicker: %s h" % rt["hours"])
+	expect(str(rt["text"]).begins_with("About "), rt["text"])
+	m.add_seat("p2", Vector2(1, 1), 2)
+	expect_eq(int(m.tiles_per_day("p1").get("road", 0)), 10, "moving together: the slowest member's pace")
+	expect(m.route("p1", Vector2i(5, 5)).is_empty(), "no way for a mech across the canyon")

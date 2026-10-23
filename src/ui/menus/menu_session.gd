@@ -12,6 +12,7 @@ const SCREENS := {
 	"debrief": "res://scenes/flow/debrief.tscn",
 	"hub": "res://scenes/flow/hub.tscn",
 	"map_editor": "res://scenes/menus/map_editor_screen.tscn",
+	"squad_lobby": "res://scenes/menus/squad_lobby.tscn",
 }
 ## The battle screen (src/flow/battle_screen.gd: the 3D view and HUD on a BattleSession).
 const BATTLE_SCENE := "res://scenes/flow/battle.tscn"
@@ -27,6 +28,11 @@ static var back_to := "main"
 static var open_creator := false
 ## A map from the map editor to play: the next host lobby uses it (LobbyModel.set_map_doc).
 static var map_doc: MapDoc
+## The squad-creation lobby of a campaign being made, the slot whose character is in the
+## builder, and the new campaign's settings (from the New campaign form).
+static var squad_lobby: SquadLobby
+static var squad_seat := ""
+static var new_campaign_settings: Dictionary = {}
 static var _settings: GameSettings
 static var _db: ContentDB
 static var _db_key := "-"

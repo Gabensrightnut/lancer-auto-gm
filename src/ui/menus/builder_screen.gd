@@ -767,6 +767,12 @@ func _popup(title: String, lines: Array, color: Color) -> void:
 
 
 func _done() -> void:
+	if MenuSession.squad_lobby != null:
+		# The squad-creation lobby's "Create character": the character goes to its slot (and
+		# through the sanity check there); nothing is saved yet.
+		MenuSession.squad_lobby.set_character(MenuSession.squad_seat, CharacterRoster.from_pilot(model.pilot))
+		MenuSession.go(self, "squad_lobby")
+		return
 	var c := MenuSession.campaign
 	if c != null and c.pilots.has(model.pilot["id"]):
 		c.pilots[model.pilot["id"]] = model.pilot

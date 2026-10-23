@@ -133,24 +133,26 @@ func _leveled(ll: int, setup: Callable) -> Array:
 
 func test_spent_points_stay_spent_after_leveling() -> void:
 	var r := _leveled(0, func(b: BuilderModel) -> void:
-		b.set_talent("t_ace", 2)
+		b.set_talent("t_ace", 1)
+		b.set_talent("t_brawler", 1)
 		b.set_skill("sk_charm", 2))
 	var b: BuilderModel = r[1]
 	expect_eq(b.ll(), 1)
 	expect(b.can_reallocate(), "one reallocation at the level up")
-	var why := b.set_talent("t_ace", 1)
+	var why := b.set_talent("t_ace", 0)
 	expect(why.contains("stay spent"), why)
 	expect(b.set_skill("sk_charm", 1).contains("stay spent"), "skill points too")
-	expect_eq(b.set_talent("t_ace", 3), "", "new points can be spent")
+	expect(b.set_talent("t_ace", 3).contains("needs LL2"), "rank III needs LL2 (one rank per License Level)")
+	expect_eq(b.set_talent("t_ace", 2), "", "new points can be spent")
 
 
 func test_reallocate_a_talent_once() -> void:
-	var r := _leveled(0, func(b: BuilderModel) -> void: b.set_talent("t_ace", 2))
+	var r := _leveled(0, func(b: BuilderModel) -> void: b.set_talent("t_ace", 1))
 	var b: BuilderModel = r[1]
 	expect(b.reallocate("talent", "t_ace", "t_ace").contains("doesn't have"), "must move to a new talent")
 	expect_eq(b.reallocate("talent", "t_ace", "t_brawler"), "")
 	expect(not b.pilot["talents"].has("t_ace"))
-	expect_eq(b.pilot["talents"]["t_brawler"], 2, "all the ranks moved")
+	expect_eq(b.pilot["talents"]["t_brawler"], 1, "all the ranks moved")
 	expect(b.is_legal(), str(b.problems()))
 	expect(not b.can_reallocate())
 	expect(b.reallocate("talent", "t_brawler", "t_ace").contains("once"), "only once per level")

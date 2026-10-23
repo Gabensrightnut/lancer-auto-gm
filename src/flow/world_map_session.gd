@@ -160,6 +160,76 @@ func _pass_time() -> void:
 		travelled.emit(group, hours)
 
 
+# --- Travel speed, made visible --------------------------------------------------------------
+
+## Hours of marching in a travel day (the rest is camp; marching through the night is allowed,
+## the clock just runs on).
+const DAY_HOURS := 10.0
+
+
+## How far `seat` gets in a day on each kind of ground in this region: {class: tiles} (e.g.
+## {"road": 6, "hills": 3}), at the Speed it travels at now (the slowest with it).
+func tiles_per_day(seat: String) -> Dictionary:
+	var speed := float(speed_of(seat))
+	var by_class := {}
+	for key: String in region.get("tiles", {}):
+		var t: Dictionary = region["tiles"][key]
+		var cls := str(t.get("class", t.get("terrain", "")))
+		if by_class.has(cls) or not bool(t.get(str(seats[seat]["on"]), t.get("mech", true))):
+			continue
+		by_class[cls] = int(floor(DAY_HOURS * speed / maxf(0.01, float(t.get("cost", 1.0)))))
+	return by_class
+
+
+## The plain line for the map: "Everest: about 6 tiles a day on roads, 3 in hills."
+func speed_text(seat: String, who: String) -> String:
+	var per := tiles_per_day(seat)
+	var parts := PackedStringArray()
+	var keys := per.keys()
+	keys.sort_custom(func(a: String, b: String) -> bool: return int(per[a]) > int(per[b]))
+	for k: String in keys.slice(0, 3):
+		parts.append("%d in %s" % [per[k], k] if parts.size() > 0 else "about %d tiles a day on %s" % [per[k], k])
+	return "%s: %s." % [who, ", ".join(parts)]
+
+
+## A route preview to a tile: {path: [tiles], hours, days, text}, by the cheapest way a mech (or
+## a pilot on foot) can go, at the Speed it travels at now. {} if there's no way.
+func route(seat: String, to: Vector2i) -> Dictionary:
+	var s: Dictionary = seats.get(seat, {})
+	if s.is_empty() or not walkable(to, str(s["on"])):
+		return {}
+	var from := tile_of(s["at"])
+	var speed := float(speed_of(seat))
+	var dist := {from: 0.0}
+	var prev := {}
+	var open: Array = [from]
+	while not open.is_empty():
+		open.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return float(dist[a]) < float(dist[b]))
+		var c: Vector2i = open.pop_front()
+		if c == to:
+			break
+		for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n := c + d
+			if not walkable(n, str(s["on"])):
+				continue
+			var cost := float(dist[c]) + float(tile(n).get("cost", 1.0)) / speed
+			if not dist.has(n) or cost < float(dist[n]):
+				dist[n] = cost
+				prev[n] = c
+				if not open.has(n):
+					open.append(n)
+	if not dist.has(to):
+		return {}
+	var path: Array = [to]
+	while path[0] != from:
+		path.push_front(prev[path[0]])
+	var hours := float(dist[to])
+	var days := int(floor(hours / DAY_HOURS))
+	var left := hours - days * DAY_HOURS
+	var text := ("%d day%s and %d hours" % [days, "" if days == 1 else "s", roundi(left)]) if days > 0 else "%d hours" % roundi(hours)
+	return {"path": path, "hours": hours, "days": days, "text": "About %s of travel." % text}
+
+
 func _site(id: String) -> Dictionary:
 	for site: Dictionary in region.get("sites", []):
 		if str(site["id"]) == id:

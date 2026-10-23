@@ -155,28 +155,43 @@ static func yield_side(mission: Mission, state: GameState, seat: String) -> Dict
 	return {"outcome": left, "reason": "%s yield." % _names(state, p["groups"][group])}
 
 
-## A compact arena around where the squad is (MissionGenerator.area, the hub's town at mech
-## scale), with the two deployment zones close together: {state, mission} ready for split().
-## The fight is non-lethal (state.objectives["nonlethal"]: the rules knock mechs out instead of
-## destroying them or letting a reactor melt down).
-static func arena(campaign: Campaign, story: StoryState, db: ContentDB, seed_value: int, fight: Dictionary = {}) -> Dictionary:
-	var size := 30
-	var area := MissionGenerator.area(seed_value, {"hub": story.hub, "size": size, "place": str(fight.get("place", "town"))})
+## The arena for a split vote (the user's call): a tiny sealed-off pocket, about 10x10 (12x12
+## for four or more mechs), with the local look and a little cover. It isn't part of the town or
+## region: nothing done there is written back to the world, no guards or law, no witnesses or
+## bounties, and the clock barely moves (state.objectives.arena: story's TownLife and law hooks
+## skip it). Non-lethal (objectives.nonlethal: the rules knock mechs out instead). Returns
+## {state, mission} ready for split().
+static func arena(campaign: Campaign, story: StoryState, db: ContentDB, seed_value: int, fight: Dictionary = {}, mechs: int = 4) -> Dictionary:
+	var size := 10 if mechs < 4 else 12
+	var shape := GridLayout.Shape.SQUARE if str(fight.get("shape", "hex")) == "square" else GridLayout.Shape.HEX
 	var doc := MapDoc.new()
-	doc.map = area["map"]
+	doc.map = BattleMap.flat(shape, size, size)
 	doc.w = size
 	doc.h = size
-	doc.name = str(area.get("name", "Arena"))
-	var kit := str(area.get("kit", ""))
-	doc.landscape = kit.get_slice("+", 0).get_slice("/", 0)
-	doc.culture = kit.get_slice("+", 0).get_slice("/", 1) if "/" in kit else ""
+	doc.name = "The arena"
+	doc.landscape = str(story.hub.get("landscape", fight.get("landscape", "grassy_hills")))
+	doc.culture = str(story.hub.get("culture", ""))
 	doc.sitrep = "sitrep_standardcombat"
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
-	doc.deployment = SitrepLayout.layout("sitrep_standardcombat", size, size, doc.map.grid.shape, rng, 8)["deployment"]
+	doc.deployment = SitrepLayout.layout("sitrep_standardcombat", size, size, shape, rng, 0)["deployment"]
+	var taken := {}
+	for side: String in doc.deployment:
+		for c: Array in doc.deployment[side]:
+			taken[Vector2i(int(c[0]), int(c[1]))] = true
+	# A little cover in the middle ground: a few low walls and blocks.
+	var cover := 0
+	for c: Vector2i in doc.map.cells():
+		if cover >= size / 2 or taken.has(c):
+			continue
+		if rng.randf() < 0.12:
+			doc.map.set_column(c, 1 + rng.randi_range(0, 1))
+			cover += 1
 	var gen := MissionGenerator.generate(seed_value, {"squad": CampaignLoop.squad(campaign, story), "db": db, "map_doc": doc, "sitrep": "sitrep_standardcombat",
 		"environments": [], "settings": GmSettings.from_preset("Standard")})
-	(gen["state"] as GameState).objectives["nonlethal"] = true
+	var st: GameState = gen["state"]
+	st.objectives["nonlethal"] = true
+	st.objectives["arena"] = true
 	return gen
 
 

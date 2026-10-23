@@ -229,13 +229,15 @@ func _show_new() -> void:
 	go.pressed.connect(func() -> void:
 		MenuSession.lobby = null
 		if story_mode["on"]:
-			MenuSession.campaign = null
-			MenuSession.campaign = GameFlow.start_story_campaign(MenuSession.store, MenuSession.content(), name_edit.text.strip_edges(), pilots.get_selected_id(),
-				ll.get_selected_id(), LobbyModel.PRESETS[preset.selected], arcs.get_selected_id(), "", length_ids[length.selected])
+			# On to the squad-creation lobby: everyone makes (or loads) their pilot there.
+			var opts := {"explore_first": true, "human_gm": gm.selected > 0, "gm_where": "remote" if gm.selected == 2 else "local"}
 			if story_mode["main"]:
-				MenuSession.campaign.options["main_campaign"] = GameFlow.MAIN_CAMPAIGN  # begins after session zero
-			set_gm.call(MenuSession.campaign)
-			MenuSession.go(self, "hub")
+				opts["main_campaign"] = GameFlow.MAIN_CAMPAIGN  # begins after session zero
+			MenuSession.new_campaign_settings = {"name": name_edit.text.strip_edges(), "start_ll": ll.get_selected_id(), "preset": LobbyModel.PRESETS[preset.selected],
+				"arcs": arcs.get_selected_id(), "fight_length": length_ids[length.selected], "options": opts}
+			MenuSession.campaign = null
+			MenuSession.squad_lobby = null
+			MenuSession.go(self, "squad_lobby")
 			return
 		var c := MenuSession.new_campaign(name_edit.text.strip_edges(), pilots.get_selected_id(), ll.get_selected_id(), LobbyModel.PRESETS[preset.selected])
 		c.gm_settings["fight_length"] = length_ids[length.selected]

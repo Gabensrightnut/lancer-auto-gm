@@ -125,6 +125,24 @@ static func put(state: GameState, set: Dictionary) -> Array:
 	return changed
 
 
+## One line for the lobby: "Book only" when no house rule is on, else what's on by source,
+## e.g. "House rules on: Joe's Rules (3), Lancer Tactics (2)".
+static func summary(set: Dictionary) -> String:
+	var full := normalized(set)
+	var by_source := {}
+	for id: String in full:
+		if bool(full[id]):
+			var src := str(rule(id).get("source", ""))
+			by_source[src] = int(by_source.get(src, 0)) + 1
+	if by_source.is_empty():
+		return "Book only"
+	var parts := PackedStringArray()
+	for src: String in sources():
+		if by_source.has(src):
+			parts.append("%s (%d)" % [src, by_source[src]])
+	return "House rules on: " + ", ".join(parts)
+
+
 ## What a switch says in the log.
 static func announce(id: String, is_on: bool) -> String:
 	var r := rule(id)
