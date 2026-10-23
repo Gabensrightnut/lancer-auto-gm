@@ -86,6 +86,9 @@ static func for_host(net_host: NetHost, ai: AiDirector, the_mission: Mission, lo
 	s.engine.host = net_host
 	net_host.waiting_changed.connect(s._on_waiting)
 	net_host.action_resolved.connect(s._on_resolved)
+	net_host.lobby_message.connect(func(from: String, msg: Dictionary) -> void:
+		if bool(msg.get("pvp_yield", false)):
+			s._yield(from))
 	if ai != null:
 		ai.mission_over.connect(s._on_mission_over)
 		ai.ai_log.connect(s._on_ai_log)
@@ -268,6 +271,33 @@ func set_careful(on: bool) -> String:
 
 func careful() -> bool:
 	return str(view.get("turn_mode", "combat")) == "explore" and str(view.get("phase", "")) == GameState.PHASE_COMBAT
+
+
+## A fight between the squad's two sides (a split vote, PvpBattle).
+func is_split_fight() -> bool:
+	if is_host:
+		return PvpBattle.is_pvp(mission)
+	return GameFlow.story_client != null and GameFlow.story_client.story != null and Decisions.current(GameFlow.story_client.story).has("split")
+
+
+## "Yield": the person at this screen gives up for their side; once everyone on that side has,
+## the other side wins (PvpBattle.yield_side). Online, the host decides.
+func pvp_yield() -> void:
+	if is_host:
+		_yield(seat)
+	elif client != null:
+		client.transport.send(NetTransport.HOST_PEER, {"t": NetProtocol.LOBBY, "pvp_yield": true})
+
+
+func _yield(from: String) -> void:
+	if not is_host or mission == null:
+		return
+	var a := PvpBattle.yield_side(mission, host.state, from)
+	if not a.is_empty():
+		mission.outcome = str(a["params"]["outcome"])
+		mission.outcome_reason = str(a["params"]["reason"])
+		mission.ended = true
+		host.submit(NetHost.GM_SEAT, a)
 
 
 ## Who the game is waiting on, as the seat on screen may know it (NetHost.waiting_on).

@@ -48,6 +48,8 @@ func _ready() -> void:
 	auto.button_pressed = s.ai_squad_auto
 	auto.toggled.connect(func(on: bool) -> void: s.ai_squad_auto = on)
 	pb.add_child(auto)
+	pb.add_child(_slider("Split vote: seconds before the fight", s.split_countdown, 15.0, 30.0, func(v: float) -> void: s.split_countdown = roundf(v),
+		"When a squad vote splits, the two sides fight it out after this countdown (host)."))
 	left.add_child(play)
 	# Story text (StorySettings: kept on this computer, applied right away).
 	var story_panel := MenuTheme.panel("Story text", MenuTheme.maker_color("SSC").lightened(0.2), "compendium")

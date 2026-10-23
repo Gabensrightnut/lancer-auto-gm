@@ -34,6 +34,8 @@ var popup_duration := 1.0
 ## Solo and hot-seat: AI squadmates take their turns on their own once only they are left to
 ## act (people can still pick them earlier). Online games start with it off.
 var ai_squad_auto := true
+## Host: seconds between a vote that splits the squad and the fight that settles it (15-30).
+var split_countdown := 20.0
 ## action name -> keycode
 var keybinds: Dictionary = {}
 ## This player's house rules (HouseRules: id -> on). They're the game's when this player
@@ -59,6 +61,7 @@ static func load_settings(path: String = FILE) -> GameSettings:
 	s.animation_speed = _one_of(cfg.get_value("gameplay", "animation_speed", "normal"), ANIMATION, "normal")
 	s.popup_duration = clampf(float(cfg.get_value("gameplay", "popup_duration", 1.0)), 0.5, 2.0)
 	s.ai_squad_auto = bool(cfg.get_value("gameplay", "ai_squad_auto", true))
+	s.split_countdown = clampf(float(cfg.get_value("gameplay", "split_countdown", 20.0)), 15.0, 30.0)
 	if int(cfg.get_value("keys", "_version", 1)) == KEYS_VERSION:
 		for a: String in s.keybinds:
 			s.keybinds[a] = int(cfg.get_value("keys", a, s.keybinds[a]))
@@ -78,6 +81,7 @@ func save(path: String = FILE) -> Error:
 	cfg.set_value("gameplay", "animation_speed", animation_speed)
 	cfg.set_value("gameplay", "popup_duration", popup_duration)
 	cfg.set_value("gameplay", "ai_squad_auto", ai_squad_auto)
+	cfg.set_value("gameplay", "split_countdown", split_countdown)
 	cfg.set_value("keys", "_version", KEYS_VERSION)
 	for a: String in keybinds:
 		cfg.set_value("keys", a, keybinds[a])

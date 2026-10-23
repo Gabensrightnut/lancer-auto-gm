@@ -24,7 +24,7 @@ const KEY := "pvp"
 ## between the two groups: the generated NPC enemies leave, group b's seats and units change
 ## sides and deploy in the other zone, and each group gets its allies (group a's flown by the
 ## "allies" AI seat, group b's by the AI GM). Returns "" or why not.
-static func split(gen: Dictionary, groups: Dictionary, allies: Dictionary = {}, id: String = "") -> String:
+static func split(gen: Dictionary, groups: Dictionary, allies: Dictionary = {}, id: String = "", ai_seats: Array = []) -> String:
 	var state: GameState = gen["state"]
 	var mission: Mission = gen["mission"]
 	var a: Array = groups.get("a", [])
@@ -56,7 +56,10 @@ static func split(gen: Dictionary, groups: Dictionary, allies: Dictionary = {}, 
 				state.add_unit(u)  # no room there: it stays where it was
 	_add_allies(state, mission, allies.get("a", []), Mission.PLAYERS, ALLY_SEAT_A, "pa", rng)
 	_add_allies(state, mission, allies.get("b", []), Mission.ENEMIES, NetHost.GM_SEAT, "pb", rng)
-	mission.flavor[KEY] = {"id": id, "a": a.duplicate(), "b": b.duplicate()}
+	var ai := {}
+	for seat: Variant in ai_seats:
+		ai[str(seat)] = true
+	mission.flavor[KEY] = {"id": id, "a": a.duplicate(), "b": b.duplicate(), "ai": ai}
 	mission.briefing = "The squad is split. %s against %s: the last side standing decides it." % [_names(state, a), _names(state, b)]
 	return ""
 
@@ -77,6 +80,73 @@ static func winner(mission: Mission) -> String:
 static func result(mission: Mission) -> Dictionary:
 	var p: Dictionary = mission.flavor.get(KEY, {})
 	return {"id": str(p.get("id", "")), "winner": winner(mission), "reason": mission.outcome_reason, "a": p.get("a", []), "b": p.get("b", [])}
+
+
+## A compact arena around where the squad is (MissionGenerator.area, the hub's town at mech
+## scale), with the two deployment zones close together: {state, mission} ready for split().
+## The fight is non-lethal (state.objectives["nonlethal"]: the rules knock mechs out instead of
+## destroying them or letting a reactor melt down).
+static func arena(campaign: Campaign, story: StoryState, db: ContentDB, seed_value: int, fight: Dictionary = {}) -> Dictionary:
+	var size := 30
+	var area := MissionGenerator.area(seed_value, {"hub": story.hub, "size": size, "place": str(fight.get("place", "town"))})
+	var doc := MapDoc.new()
+	doc.map = area["map"]
+	doc.w = size
+	doc.h = size
+	doc.name = str(area.get("name", "Arena"))
+	var kit := str(area.get("kit", ""))
+	doc.landscape = kit.get_slice("+", 0).get_slice("/", 0)
+	doc.culture = kit.get_slice("+", 0).get_slice("/", 1) if "/" in kit else ""
+	doc.sitrep = "sitrep_standardcombat"
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	doc.deployment = SitrepLayout.layout("sitrep_standardcombat", size, size, doc.map.grid.shape, rng, 8)["deployment"]
+	var gen := MissionGenerator.generate(seed_value, {"squad": CampaignLoop.squad(campaign, story), "db": db, "map_doc": doc, "sitrep": "sitrep_standardcombat",
+		"environments": [], "settings": GmSettings.from_preset("Standard")})
+	(gen["state"] as GameState).objectives["nonlethal"] = true
+	return gen
+
+
+## A side gives up (a "Yield" button; every person on that side has to): the other side wins.
+## Returns the GM action that ends it, or {} while someone on that side still fights on.
+static func yield_side(mission: Mission, state: GameState, seat: String) -> Dictionary:
+	var p: Dictionary = mission.flavor.get(KEY, {})
+	var group := "a" if (p.get("a", []) as Array).has(seat) else ("b" if (p.get("b", []) as Array).has(seat) else "")
+	if group == "" or mission.outcome != "":
+		return {}
+	var yielded: Array = p.get("yielded", [])
+	if not yielded.has(seat):
+		yielded.append(seat)
+	p["yielded"] = yielded
+	var people: Array = (p[group] as Array).filter(func(s: Variant) -> bool: return not bool(p.get("ai", {}).get(str(s), false)))
+	if not people.all(func(s: Variant) -> bool: return yielded.has(s)):
+		return {}
+	var other := Mission.ENEMIES if group == "a" else Mission.PLAYERS
+	return {"type": "gm_end_mission", "params": {"outcome": other, "reason": "%s yield." % _names(state, p[group])}}
+
+
+## After a split fight everyone keeps the damage they took: each squad mech's condition goes
+## into its campaign record (mech["condition"]: hp, structure, stress, heat, destroyed weapons and
+## systems, knocked out) for the next mission and repairs to start from. Nothing is refunded.
+static func keep_damage(state: GameState, campaign: Campaign, story: StoryState) -> void:
+	for u: Unit in state.units.values():
+		if u.kind != Unit.KIND_MECH or not story.seats.has(u.controller):
+			continue
+		var p: Dictionary = campaign.pilots.get(story.pilot_of_seat(u.controller), {})
+		for mech: Dictionary in p.get("mechs", []):
+			if str(mech.get("id", "")) == str(p.get("active_mech", "")) or (p.get("mechs", []) as Array).size() == 1:
+				var weapons: Array = []
+				for key: String in u.counters.get("weapons", {}):
+					if bool(u.counters["weapons"][key].get("destroyed", false)):
+						weapons.append(key)
+				var systems: Array = []
+				for key: String in u.counters.get("systems", {}):
+					if bool(u.counters["systems"][key].get("destroyed", false)):
+						systems.append(key)
+				mech["condition"] = {"hp": u.hp, "max_hp": u.max_hp, "structure": u.structure, "stress": u.stress, "heat": u.heat,
+					"weapons_destroyed": weapons, "systems_destroyed": systems, "knocked_out": bool(u.counters.get("knocked_out", false)),
+					"from": "split fight"}
+				break
 
 
 static func is_pvp(mission: Mission) -> bool:
