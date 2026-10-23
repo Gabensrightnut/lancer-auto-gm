@@ -190,6 +190,36 @@ class Fight:
 		return Attacks.attack(state, u, w, state.unit(String(params["target"])), params)
 
 
+class Reload:
+	extends TurnAction
+	## Pilots (and soldiers) on foot: reload one pilot weapon with the Loading tag (Core p.74
+	## Reload, a quick action). params: {"weapon"}
+
+	func type() -> String:
+		return "reload"
+
+	func kinds() -> Array:
+		return [Unit.KIND_PILOT]
+
+	func cost() -> String:
+		return TurnRules.QUICK
+
+	func check(_state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		var w := Weapons.find(u, String(params.get("weapon", "")))
+		if w.is_empty():
+			return RuleResult.deny("Choose one of your weapons to reload (params.weapon).", "Core p.74 Reload")
+		if not Weapons.has_tag(w, "tg_loading"):
+			return RuleResult.deny("%s doesn't need reloading: only Loading weapons do." % w.get("name", ""), "Core p.74 Reload")
+		if Weapons.state_of(u, w).get("loaded", true):
+			return RuleResult.deny("%s is already loaded." % w.get("name", ""), "Core p.74 Reload")
+		return RuleResult.allow()
+
+	func apply(_state: GameState, u: Unit, params: Dictionary) -> Array[Dictionary]:
+		var w := Weapons.find(u, String(params["weapon"]))
+		Weapons.state_of(u, w)["loaded"] = true
+		return [{"type": "reloaded", "unit": u.id, "weapon": w.get("key", ""), "rule_ref": "Core p.74 Reload"}]
+
+
 class SelfDestruct:
 	extends TurnAction
 	## Quick action: the reactor explodes at the end of your next turn (delay 1) or the one

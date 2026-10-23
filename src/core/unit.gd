@@ -77,6 +77,13 @@ func has_status(status: String) -> bool:
 	return statuses.has(status)
 
 
+## Unmounted characters (Core p.74 Fighting on the Ground): pilots out of their mechs, and
+## soldiers (Soldiers: NPC squads and single humans, loadout["on_foot"]). They add Grit to
+## attacks and saves, are Biological, attack with Fight and don't Engage or block mechs.
+func on_foot() -> bool:
+	return kind == KIND_PILOT or bool(loadout.get("on_foot", false))
+
+
 func to_dict() -> Dictionary:
 	return {
 		"id": id, "name": name, "kind": kind, "side": side, "controller": controller,
@@ -91,7 +98,19 @@ func to_dict() -> Dictionary:
 		"burn": burn, "overcharge_count": overcharge_count, "destroyed": destroyed,
 		"statuses": statuses.duplicate(true), "loadout": loadout.duplicate(true),
 		"turn": turn.duplicate(true), "counters": counters.duplicate(true),
-	}
+	}.merged(_soldier_fields())
+
+
+## Soldiers' kind and, for squads, how many of the squad's people are still standing (for
+## the look only: ceil(hp / max_hp * squad size); no rules effect).
+func _soldier_fields() -> Dictionary:
+	if not loadout.has("soldier"):
+		return {}
+	var out := {"soldier": String(loadout["soldier"])}
+	var men := int(loadout.get("squad_men", 0))
+	if men > 0:
+		out["men_left"] = 0 if hp <= 0 or destroyed else ceili(float(hp) / maxf(1.0, max_hp) * men)
+	return out
 
 
 static func from_dict(d: Dictionary) -> Unit:

@@ -540,6 +540,26 @@ differently without an AI. Each game has a **seed**: share it to replay the same
 - **All of it is data:** tables, behaviors and presets live in editable data files, so new
   content and variety can be added without changing code.
 
+### Soldiers
+
+Soldiers are people fighting on foot on the mech battlefield: a **squad** (ten people sharing
+one pool of 10 HP in one space; how many are still standing shows on the model) or a single
+**soldier**. They follow the book's rules for anyone out of a mech (Core p.74): they add Grit to
+attacks and saves, can't be hacked (only Lock On and Scan work on them), take heat as energy
+damage, attack with Fight using pilot weapons, and mechs walk straight through them without
+being Engaged. Mech weapons hit them hard; their rifles barely scratch a mech, but a missile
+team's launcher can.
+
+Nobody gives soldiers orders, on either side. Each acts on its own AI, by what kind of squad it
+is (the book's NPC roles: a missile team fires from far back, medics stay hidden and patch up
+people on foot, a guard squad holds what it guards) and by the mission's objective: in a
+Holdout, guards stay on the zone instead of chasing kills. On your side you still choose when
+an allied squad takes its turn (Core p.60), and the combat log says in plain words what it's
+doing and why ("Guard Squad: moves into cover, fires its rifles at the Goblin (holding the
+zone)"). Weights are a table in `data/game/gm/objective_priorities.json`; kinds and their
+placeholder numbers in `data/game/soldiers.json`. A new player meets them as town guards and
+patrols, as garrisons in enemy bases, and as allied troops on missions that have them.
+
 ## 10. Around combat: the rest of the game
 
 ### Enemy (NPC) data

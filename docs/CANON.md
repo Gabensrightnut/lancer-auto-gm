@@ -130,6 +130,10 @@ book in a way that changes the setting; parked.
 | Split decisions: each human accepts or declines; AI squadmates follow their human; a split becomes a fight between players | Consistent (table procedure) | The book leaves table decisions to the group; PvP is our own mode |
 | World consequences: what the squad breaks (a dam, a depot, a town's streets) causes shortages and damage later, with a job to make it right | Consistent | Stakes and situations change with what players do (Core p.42-43) |
 | Personal agendas (a grudge from short rations on a wrecked mech) | Consistent; the rations part is house rule | Pilots' own goals are table play (p.20-27, p.43) |
+| Soldiers on foot (squads and single humans) fight under the rules for unmounted characters | Canon rules; our placeholder stats | Core p.59 (humans are Size 1/2), p.60 (allied NPCs in turn order), p.64 (characters on foot attack with Fight), p.74 (Fighting on the Ground); Human/Squad template numbers not in our free copy |
+| Soldier kinds: rifle squad, missile team, guard squad, spotter team, medic team, single soldier, using the book's NPC roles and pilot gear | Consistent (our placeholder pack) | Roles: NPC roles; weapons: pilot gear (pilot_gear.json); jobs limited by Core p.74 (no aiding mechs) |
+| Nobody gives soldiers orders; each acts by its own AI, weighted by its role and the sitrep | Consistent (the user's choice) | Core p.60 lets players choose when an allied NPC acts; who decides its actions is left to the table |
+| The Reinforcements reserve calls in a friendly NPC mech, not troops | Canon | Core p.52 (Tactical reserves table); reserves.json |
 
 ## When canon allows more than one answer
 
