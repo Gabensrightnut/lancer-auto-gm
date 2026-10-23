@@ -26,6 +26,27 @@ const MECH_BLOCKED := ["water"]
 const AREA_PLACE := {"town": "town", "outpost": "outpost", "farm": "farm", "port": "port", "pad": "pad",
 	"job_site": "camp", "wreck": "wreck", "landmark": "landmark", "safe_point": "camp", "mine": "mine", "ruins": "ruins", "relay": "relay"}
 
+## How built-up a world is by culture and era: frontier and Old West worlds are sparse, Union
+## core worlds crowded (multiplies the places beyond the starting few).
+const DENSITY := {"": 0.6, "old_west": 0.7, "medieval": 0.9, "east_asian": 1.0, "retro": 1.0, "industrial": 1.1, "port": 1.0,
+	"cyberpunk": 1.2, "union": 1.4, "ruins": 0.8, "burning": 0.8}
+## How the roads join the places: "spokes" (every road from the town: frontier), "chain" (each
+## place to its nearest neighbour: medieval lanes), "web" (spokes and chains both: core worlds).
+const ROADS := {"": "spokes", "old_west": "spokes", "medieval": "chain", "east_asian": "chain", "retro": "web", "industrial": "web",
+	"port": "web", "cyberpunk": "web", "union": "web", "ruins": "spokes", "burning": "spokes"}
+## What a world's landmarks are, by culture (look and name only: no lore).
+const LANDMARKS := {"": ["wrecked lander", "survey beacon"], "old_west": ["water tower", "windmill", "old mine head"],
+	"medieval": ["castle on the hill", "standing stones", "abbey ruins"], "east_asian": ["pagoda", "shrine gate", "terraced hill"],
+	"retro": ["dome colony", "saucer tower", "monorail station"], "union": ["white towers", "space elevator base", "monorail hub"],
+	"cyberpunk": ["arcology", "neon spire", "elevated rail yard"], "industrial": ["smokestacks", "slag heap"], "port": ["crane yard", "lighthouse"]}
+## Hand-tuned starting regions (the campaign seed picks one): the first jobs' places, at fixed
+## steps from the town, and a river or ridge that shapes the walk.
+const STARTS := [
+	{"name": "crossroads", "places": [["farm", 2, 0], ["wreck", 0, -3], ["outpost", -3, 1], ["landmark", 2, 2]]},
+	{"name": "river town", "places": [["port", 2, 1], ["farm", -2, 2], ["wreck", -3, -2], ["landmark", 1, -3]], "river": true},
+	{"name": "hill town", "places": [["mine", 3, -1], ["farm", -2, 1], ["outpost", 0, 3], ["landmark", -2, -3]], "ridge": true},
+]
+
 ## Terrain weights by landscape: what the open country is mostly made of.
 const LAND := {
 	"grassy_hills": {"plains": 5, "hills": 3, "forest": 3, "water": 1},
@@ -83,36 +104,77 @@ static func build(region: Dictionary, opts: Dictionary = {}) -> Dictionary:
 	var start := Vector2i(cols / 2, rows / 2)
 	_set_tile(tiles, start, "city" if landscape == "city" else "plains")
 	places.append({"id": "town", "kind": "town", "name": str(region.get("name", "the town")), "at": [start.x, start.y], "safe_point": true, "repair": "bay"})
-	var wanted: Array = ["farm", "wreck", "outpost", "landmark"] if bool(opts.get("start", false)) else []
-	wanted.append_array(["outpost", "job_site", "mine" if mix.has("hills") or mix.has("mountains") else "job_site", "ruins", "relay", "landmark", "port" if mix.has("water") else "pad", "safe_point"])
+	var culture := str(region.get("culture", ""))
 	var taken := {start: true}
+	var start_layout: Dictionary = {}
+	if bool(opts.get("start", false)):
+		# A hand-tuned start, picked by the campaign seed.
+		start_layout = STARTS[posmod(int(opts.get("campaign_seed", seed_value)), STARTS.size())]
+		if bool(start_layout.get("river", false)):
+			for y in range(rows):
+				_set_tile(tiles, Vector2i(clampi(start.x + 4 + int(round(sin(y * 0.6) * 1.0)), 0, cols - 1), y), "water")
+		if bool(start_layout.get("ridge", false)):
+			for x in range(cols):
+				_set_tile(tiles, Vector2i(x, clampi(start.y - 5 + int(round(sin(x * 0.5))), 0, rows - 1)), "hills")
+		for e: Array in start_layout["places"]:
+			var at := Vector2i(clampi(start.x + int(e[1]), 1, cols - 2), clampi(start.y + int(e[2]), 1, rows - 2))
+			taken[at] = true
+			if _tile(tiles, at) in ["water", "mountains"] and str(e[0]) != "port":
+				_set_tile(tiles, at, "plains")
+			places.append(_place_dict(str(e[0]), places.size(), at, culture, rng))
+	var extra: Array = ["outpost", "job_site", "mine" if mix.has("hills") or mix.has("mountains") else "job_site", "ruins", "relay", "landmark", "port" if mix.has("water") else "pad", "safe_point", "job_site", "camp"]
+	var n_extra := int(round(extra.size() * float(DENSITY.get(culture, 1.0))))
+	var wanted: Array = extra.slice(0, clampi(n_extra, 4, extra.size()))
 	for i in range(wanted.size()):
 		var kind: String = wanted[i]
-		# The starting town's first places are close (walking distance: 2-3 tiles); the rest spread out.
-		var near := bool(opts.get("start", false)) and i < 4
-		var at := _free_spot(rng, tiles, taken, start, 2 if near else 4, 3 if near else maxi(cols, rows) / 2)
+		var at := _free_spot(rng, tiles, taken, start, 4, maxi(cols, rows) / 2)
 		if at == Vector2i(-1, -1):
 			continue
 		taken[at] = true
 		_set_tile(tiles, at, "plains" if _tile(tiles, at) in ["water", "mountains"] else _tile(tiles, at))
-		var p := {"id": "%s_%d" % [kind, i], "kind": kind, "name": kind.replace("_", " "), "at": [at.x, at.y],
-			"safe_point": kind in ["outpost", "safe_point", "pad"], "repair": "rig" if kind in ["outpost", "safe_point", "pad"] else ""}
-		if str(p["repair"]) == "":
-			p.erase("repair")
-		places.append(p)
-	# Roads from the town to every place (not across water: around it or a bridge where it must).
-	var roads: Array = []
+		places.append(_place_dict(kind, places.size(), at, culture, rng))
+	# Roads by the culture's network: spokes from the town, chains between neighbours, or both.
+	var style := str(ROADS.get(culture, "spokes"))
+	var links: Array = []
 	for p: Dictionary in places:
 		if p["id"] == "town":
 			continue
-		for c in _path(start, Vector2i(p["at"][0], p["at"][1])):
+		var at := Vector2i(p["at"][0], p["at"][1])
+		if style != "chain":
+			links.append([start, at])
+		if style != "spokes":
+			var best := start
+			var best_d := 999
+			for q: Dictionary in places:
+				var qa := Vector2i(q["at"][0], q["at"][1])
+				var d := absi(qa.x - at.x) + absi(qa.y - at.y)
+				if qa != at and d < best_d:
+					best_d = d
+					best = qa
+			links.append([best, at])
+	var roads: Array = []
+	for l: Array in links:
+		for c in _path(l[0], l[1]):
 			if _tile(tiles, c) != "city":
 				_set_tile(tiles, c, "road")
 			if not roads.has([c.x, c.y]):
 				roads.append([c.x, c.y])
-	return {"seed": seed_value, "size": [cols, rows], "landscape": landscape, "culture": str(region.get("culture", "")),
+	return {"seed": seed_value, "size": [cols, rows], "landscape": landscape, "culture": culture,
+		"start_layout": str(start_layout.get("name", "")), "road_style": style,
 		"region": region.duplicate(), "tiles": tiles, "travel": TRAVEL.duplicate(), "mech_blocked": MECH_BLOCKED.duplicate(),
 		"places": places, "roads": roads, "start": [start.x, start.y]}
+
+
+static func _place_dict(kind: String, i: int, at: Vector2i, culture: String, rng: RandomNumberGenerator) -> Dictionary:
+	var name := kind.replace("_", " ")
+	if kind == "landmark":
+		var names: Array = LANDMARKS.get(culture, LANDMARKS[""])
+		name = str(names[rng.randi_range(0, names.size() - 1)])
+	var p := {"id": "%s_%d" % [kind, i], "kind": kind, "name": name, "at": [at.x, at.y],
+		"safe_point": kind in ["outpost", "safe_point", "pad"]}
+	if bool(p["safe_point"]):
+		p["repair"] = "rig"
+	return p
 
 
 ## Options for MissionGenerator.area() when stepping into tile (x, y): the region's look, the

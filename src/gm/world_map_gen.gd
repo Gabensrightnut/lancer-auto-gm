@@ -25,7 +25,7 @@ static func region(seed_value: int, world: Dictionary) -> Dictionary:
 	var culture := WorldKits.culture_id(str(world.get("map_culture", world.get("culture", ""))))
 	var profile := {"seed": seed_value, "landscape": str(world.get("landscape", "grassy_hills")), "culture": culture,
 		"weather": str(world.get("weather", "")), "season": str(world.get("season", "")), "name": str(world.get("name", "the town"))}
-	var rm := RegionMap.build(profile, {"start": bool(world.get("start", false))})
+	var rm := RegionMap.build(profile, {"start": bool(world.get("start", false)), "campaign_seed": int(world.get("campaign_seed", seed_value))})
 	var tiles := {}
 	var size: Array = rm["size"]
 	for y in range(int(size[1])):
@@ -43,8 +43,18 @@ static func region(seed_value: int, world: Dictionary) -> Dictionary:
 		sites.append(s)
 	var war: Variant = world.get("war") if world.get("war") is Dictionary else null
 	var ambush: Array = _ambush_spots(rm, war, seed_value, profile) if war != null else []
+	# The world's look for the map view: its kit (palette, sky) and its landmark set.
+	var kit := TerrainGen.kit(str(profile["landscape"]), culture) + "#%d" % seed_value
+	var style := WorldStyle.resolve(kit)
+	var palette := {}
+	for k: String in ["top_a", "top_b", "rock_a", "soil"]:
+		palette[k] = str(WorldStyle.value(style, "ground." + k, ""))
+	palette["leaves"] = (WorldStyle.value(style, "flora.leaf_colors", []) as Array).duplicate()
+	palette["water"] = str(WorldStyle.value(style, "liquid.shallow", ""))
 	return {"id": str(world.get("id", "region_%d" % seed_value)), "size": size, "tiles": tiles, "sites": sites,
-		"war": war, "ambush_spots": ambush, "start": rm["start"], "region": profile}
+		"war": war, "ambush_spots": ambush, "start": rm["start"], "region": profile,
+		"look": {"kit": kit, "palette": palette, "landmarks": (WorldStyle.value(style, "horizon.landmarks", []) as Array).duplicate(),
+			"road_style": rm["road_style"], "start_layout": rm["start_layout"]}}
 
 
 ## Ambushes along the routes of a region at war (story sets which regions and who's fighting;

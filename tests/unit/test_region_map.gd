@@ -22,9 +22,9 @@ func test_starting_region_has_first_jobs_close_by() -> void:
 	var near := {}
 	for p: Dictionary in rm["places"]:
 		var at := Vector2i(p["at"][0], p["at"][1])
-		if p["kind"] in ["farm", "wreck", "outpost", "landmark"] and maxi(absi(at.x - town.x), absi(at.y - town.y)) <= 3:
+		if p["id"] != "town" and maxi(absi(at.x - town.x), absi(at.y - town.y)) <= 3:
 			near[p["kind"]] = true
-	expect_eq(near.size(), 4, "a farm, a wreck, an outpost and a landmark within walking distance: %s" % [near.keys()])
+	expect(near.size() >= 4 and near.has("farm") and near.has("landmark"), "four first-job places within walking distance, a farm and a landmark among them: %s" % [near.keys()])
 	for p: Dictionary in rm["places"]:
 		if p["id"] == "town":
 			continue
@@ -88,3 +88,20 @@ func test_every_place_kind_has_its_own_ground() -> void:
 		for c in map.cells():
 			found = found or map.column(c).has_tag(signs[kind])
 		expect(found, "a %s has its %s" % [kind, signs[kind]])
+
+
+func test_worlds_differ_by_culture_and_starts_vary() -> void:
+	var frontier := RegionMap.build({"seed": 5, "landscape": "desert_mesas", "culture": ""})
+	var core := RegionMap.build({"seed": 5, "landscape": "grassy_hills", "culture": "union"})
+	expect(core["places"].size() > frontier["places"].size(), "core worlds are more built-up (%d vs %d places)" % [core["places"].size(), frontier["places"].size()])
+	expect(core["road_style"] == "web" and frontier["road_style"] == "spokes", "and their roads join up differently")
+	var med := RegionMap.build({"seed": 5, "landscape": "grassy_hills", "culture": "medieval"})
+	var landmark: Array = med["places"].filter(func(p: Dictionary) -> bool: return p["kind"] == "landmark")
+	expect(not landmark.is_empty() and str(landmark[0]["name"]) in RegionMap.LANDMARKS["medieval"], "medieval landmarks: %s" % [landmark])
+	var starts := {}
+	for cs in range(6):
+		starts[RegionMap.build(_region(), {"start": true, "campaign_seed": cs})["start_layout"]] = true
+	expect_eq(starts.size(), 3, "three hand-tuned starts, picked by campaign seed: %s" % [starts.keys()])
+	var look: Dictionary = WorldMapGen.region(41, {"name": "Saltpan", "culture": "old_west", "landscape": "desert_mesas"})["look"]
+	expect(look.has("palette") and look.has("landmarks") and str(look["palette"]["top_a"]) != "", "the map view gets the world's palette and landmarks")
+
