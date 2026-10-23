@@ -1,0 +1,79 @@
+{
+  "_doc": [
+    "How attacks and barriers look when they meet walls and cover (read by src/render/fx/wall_fx.gd).",
+    "Visual only, driven by engine events and state: the attack_rolled event (cover, cover_cells,",
+    "phase/via when the engine sends them), the weapon's tags and mod, terrain_damaged/destroyed,",
+    "zone_changed/removed, damage to barrier deployables. A hole stays in a wall only when the state",
+    "says the wall was damaged (terrain_damaged); the per-cell damage stages are drawn by the terrain",
+    "renderer (world).",
+    "paths: how the shot travels. Checked in this order: event flags, the weapon's mod, the weapon id,",
+    "  the weapon's tags, then what the attacker's effects say (ignores cover).",
+    "  phase       Phase-Ready: the shot sinks into the wall with a ripple and comes out behind it.",
+    "  throughbolt Throughbolt Rounds: one straight bolt that punches through everything on its line.",
+    "  arc         Arcing: lobbed high over whatever is in the way.",
+    "  seek        Seeking: curves around obstacles to reach the target.",
+    "  see_through ignores cover: a targeting line shows through the cover, the shot doesn't stop at it.",
+    "  teleport    the attacker or blade folds space (the moved event, mode teleport, shows the jump).",
+    "cover_hits: what a miss into cover looks like (the shot strikes the cover cell from cover_cells).",
+    "barriers: zone kinds and deployable names that shimmer where shots cross, flicker as they weaken",
+    "  (max_hp when the zone has HP) and shatter when destroyed.",
+    "items: every book item that interacts with walls or cover, with what it shows (or why nothing)."
+  ],
+  "paths": {
+    "by_event": {"phase": "phase", "throughbolt": "throughbolt", "via_phase": "phase", "via_throughbolt": "throughbolt", "via_arc": "arc", "via_seek": "seek", "ignores_cover": "see_through"},
+    "by_mod": {"wm_phase_ready_mod": "phase", "wm_throughbolt_rounds": "throughbolt"},
+    "by_weapon": {"mw_fold_knife": "teleport"},
+    "by_tag": {"tg_arcing": "arc", "tg_seeking": "seek"},
+    "by_effect": {"ignores_cover": "see_through"}
+  },
+  "looks": {
+    "phase": {"color": "#b48cff", "ripple": 0.5},
+    "throughbolt": {"color": "#ffe2a0", "width": 0.07},
+    "arc": {"apex": 1.6},
+    "seek": {"bend": 1.4},
+    "see_through": {"color": "#7fe8ff"}
+  },
+  "cover_hits": {"hard": "chips", "soft": "rustle"},
+  "barriers": {
+    "zones": {
+      "hardlight": {"color": "#59d9ff"},
+      "oasis": {"color": "#7fffd0"},
+      "blink": {"color": "#c0a0ff"},
+      "bunker": {"color": "#9aa4ad", "max_hp": 40},
+      "pcp": {"color": "#60ff9a", "max_hp": 20},
+      "mag_field": {"color": "#a0c4ff"}
+    },
+    "deployables": ["Stasis Barrier", "Aegis Shield Generator", "Jericho Deployable Cover", "Portable Bunker", "Fortress cover"]
+  },
+  "items": {
+    "wm_phase_ready_mod": "phase (Napoleon: fires through walls, no line of sight or cover needed)",
+    "wm_throughbolt_rounds": "throughbolt (Napoleon: a line through cover and terrain)",
+    "mw_fold_knife": "teleport (moved event, mode teleport)",
+    "tg_arcing": "arc (Howitzer, Mortar, Burst Launcher, Sharanga/Pinaka/Shatterhead missiles, Oracle LMG-I and anything else tagged)",
+    "tg_seeking": "seek (Gandiva Missiles, Swarm/Hive Nanites, Autopod, Smartgun and anything else tagged)",
+    "t_gunslinger": "see_through when the attack ignores cover",
+    "mf_pegasus": "see_through (By the Way, I Know Everything / Mimic Gun ignore cover)",
+    "ms_markerlight": "see_through (no soft cover while Locked On)",
+    "t_siege_specialist": "terrain_damaged / terrain_destroyed (holes and collapse drawn from state)",
+    "ms_bb_breach_blast_charges": "terrain_damaged / terrain_destroyed",
+    "mw_cutter_mkii_plasma_torch": "terrain_damaged (object damage)",
+    "mw_barbarossa_integrated": "terrain_damaged (object damage)",
+    "ms_hardlight_defense_system": "barrier zone hardlight",
+    "ms_oasis_wall": "barrier zone oasis",
+    "ms_stasis_barrier": "barrier deployable",
+    "ms_aegis_shield_generator": "barrier deployable",
+    "ms_portable_bunker": "barrier zone bunker",
+    "ms_perimeter_command_plate": "barrier zone pcp",
+    "ms_pattern_a_jericho_deployable_cover": "barrier deployable",
+    "ms_magnetic_shield": "barrier zone mag_field",
+    "ms_fade_cloak": "teleport/phase movement (moved event)",
+    "ms_singularity_motivator": "teleport (moved event)",
+    "ms_beckoner": "teleport (moved event)",
+    "ms_metafold_carver": "teleport (moved event)",
+    "ms_interdiction_field": "teleport (moved event)",
+    "ms_h0r_os_system_upgrade_iii": "teleport (moved event)",
+    "mf_dusk_wing": "teleport (moved event)",
+    "mf_mourning_cloak": "teleport (moved event)",
+    "mf_swallowtail": "teleport (moved event)"
+  }
+}

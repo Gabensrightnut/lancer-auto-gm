@@ -179,7 +179,9 @@ func play_event(e: Dictionary) -> void:
 			battle.zones.add_zone(z)
 			_log("%s: %s." % [_name(z.get("owner", "")), z.get("label", z.get("kind", "zone"))])
 		"zone_removed":
-			battle.zones.remove_zone(String(e.get("id", "")))
+			_zone_removed(e)
+		"zone_changed":
+			_zone_changed(e)
 		"manual_effect":
 			# Something the game doesn't apply: say what, and what the table should do.
 			var guide := String(e.get("guidance", e.get("note", "The table applies this.")))
@@ -565,7 +567,7 @@ func _attack(e: Dictionary) -> void:
 		return
 	if Fx.speed > 0.0:
 		firing.emit(e)
-		await _attack_anim(att, tgt, wid, w, style, hit, result == "crit")
+		await _attack_anim(att, tgt, wid, w, style, hit, result == "crit", e)
 	if not is_instance_valid(tgt) or not is_instance_valid(att):
 		return
 	impact.emit(e)
@@ -583,7 +585,40 @@ func _miss_point(att: MechView, tgt: MechView) -> Vector3:
 	return tgt.body_center() + side * (0.6 + tgt.model.height * 0.4) + to.normalized() * 2.5 + Vector3.DOWN * 0.4
 
 
-func _attack_anim(att: MechView, tgt: MechView, wid: String, w: Dictionary, style: String, hit: bool, crit: bool) -> void:
+## The shot, then what it did to barriers and cover on its way (data/game/terrain_effects.json):
+## special paths (phased through walls, punched through, lobbed over, curved around, through
+## cover it ignores) replace the straight shot; barriers it crossed shimmer; a miss into cover
+## strikes the cover. Holes that stay are the terrain renderer's, from terrain_damaged.
+func _attack_anim(att: MechView, tgt: MechView, wid: String, w: Dictionary, style: String, hit: bool, crit: bool, e: Dictionary = {}) -> void:
+	var muzzle := att.model.muzzle_position(wid)
+	var aim := tgt.body_center() if hit else _miss_point(att, tgt)
+	var glow: Color = WeaponBuilder.glow_color(w) if not w.is_empty() else Color(1, 0.8, 0.4)
+	var path := WallFx.path_for(e, w, att.unit) if style != WeaponBuilder.STYLE_MELEE else ""
+	var cover_cells: Array = e.get("cover_cells", [])
+	if path == "" and String(e.get("cover", "")) == "none" and not cover_cells.is_empty():
+		path = String((WallFx.data().get("paths", {}) as Dictionary).get("by_effect", {}).get("ignores_cover", ""))
+	if path in ["phase", "throughbolt", "arc", "seek", "see_through"]:
+		await WallFx.play_path(self, battle, path, muzzle, aim, glow)
+		if not is_instance_valid(tgt):
+			return
+		if hit:
+			Fx.sparks(battle.fx_root, aim, glow, 22)
+			Fx.hit_flash(tgt.model)
+		else:
+			Fx.impact_puff(battle.fx_root, aim)
+	else:
+		await _attack_style_anim(att, tgt, wid, w, style, hit, crit)
+	if not is_instance_valid(tgt) or not is_instance_valid(att):
+		return
+	for x: Dictionary in WallFx.barrier_crossings(battle, muzzle, aim):
+		WallFx.ripple(battle.fx_root, x["point"], x["color"], aim - muzzle)
+	if not hit and path == "" and not cover_cells.is_empty() and style != WeaponBuilder.STYLE_MELEE:
+		# The miss went into the cover that protected the target (cover_cells from the engine).
+		var cc: Array = cover_cells[0] if cover_cells[0] is Array else [0, 0]
+		battle.terrain.hit_terrain(Vector2i(int(cc[0]), int(cc[1])), 3, muzzle)
+
+
+func _attack_style_anim(att: MechView, tgt: MechView, wid: String, w: Dictionary, style: String, hit: bool, crit: bool) -> void:
 	var fx := battle.fx_root
 	var muzzle := att.model.muzzle_position(wid)
 	var aim := tgt.body_center() if hit else _miss_point(att, tgt)
@@ -705,6 +740,7 @@ func _melee(att: MechView, tgt: MechView, hit: bool, color: Color) -> void:
 # --- damage, heat, statuses ------------------------------------------------------------
 
 func _damage(e: Dictionary) -> void:
+	_barrier_hit(e)
 	var mv := _view(e["target"])
 	var amount := int(e.get("amount", 0))
 	var dtype := String(e.get("damage_type", "Kinetic"))
@@ -728,6 +764,61 @@ func _damage(e: Dictionary) -> void:
 	elif mv.unit.has("hp"):
 		mv.set_stat("hp", maxi(0, int(mv.unit["hp"]) - amount))
 	await Fx.wait(self, 0.4)
+
+
+## A barrier taking damage (data/game/terrain_effects.json "barriers"): a zone object like the
+## Portable Bunker (target "zone:<id>") or a barrier deployable flickers, harder the weaker it is.
+func _barrier_hit(e: Dictionary) -> void:
+	var tid := String(e.get("target", ""))
+	var amount := int(e.get("amount", 0))
+	if tid.begins_with("zone:") and battle.zones:
+		var zid := tid.substr(5)
+		var z: Dictionary = battle.zones.zones.get(zid, {})
+		var bz := WallFx.barrier_zone(String(z.get("kind", "")))
+		if bz.is_empty():
+			return
+		var max_hp := int(bz.get("max_hp", 0))
+		var hp := int(z.get("hp", max_hp)) - amount
+		z["hp"] = hp
+		var node: Node3D = battle.zones.get_node_or_null("Zone_" + zid)
+		if node and Fx.speed > 0.0:
+			WallFx.flicker(node, float(hp) / maxf(1.0, max_hp) if max_hp > 0 else 0.5)
+		return
+	var mv := _view(tid)
+	if mv and WallFx.is_barrier_deployable(String(mv.unit.get("name", ""))) and Fx.speed > 0.0:
+		var hp := int(e.get("hp", int(mv.unit.get("hp", 0)) - amount))
+		WallFx.ripple(battle.fx_root, mv.body_center(), Color(0.6, 0.9, 1.0))
+		WallFx.flicker(mv.model, float(hp) / maxf(1.0, float(mv.unit.get("max_hp", 10))))
+
+
+## A barrier zone changed (zone_changed: its hp, cells...): redraw it, flickering if it weakened.
+func _zone_changed(e: Dictionary) -> void:
+	var z: Dictionary = e.get("zone", {})
+	var id := String(z.get("id", ""))
+	if id == "" or battle.zones == null:
+		return
+	var before: Dictionary = battle.zones.zones.get(id, {})
+	battle.zones.add_zone(z)
+	var bz := WallFx.barrier_zone(String(z.get("kind", "")))
+	if not bz.is_empty() and z.has("hp") and int(z["hp"]) < int(before.get("hp", z["hp"])) and Fx.speed > 0.0:
+		var node: Node3D = battle.zones.get_node_or_null("Zone_" + id)
+		WallFx.flicker(node, float(z["hp"]) / maxf(1.0, float(bz.get("max_hp", 10))))
+
+
+## A barrier zone destroyed by the rules (zone_removed, reason destroyed) breaks apart.
+func _zone_removed(e: Dictionary) -> void:
+	var id := String(e.get("id", ""))
+	var z: Dictionary = battle.zones.zones.get(id, {}) if battle.zones else {}
+	var bz := WallFx.barrier_zone(String(z.get("kind", "")))
+	if not bz.is_empty() and String(e.get("reason", "")) == "destroyed" and Fx.speed > 0.0:
+		var sum := Vector3.ZERO
+		var cells := battle.zones.cells_of(z)
+		for c in cells:
+			sum += battle.cell_pos(c, battle.map.ground_height(c))
+		if not cells.is_empty():
+			WallFx.shatter(battle.fx_root, sum / cells.size() + Vector3.UP * 0.4, Color.html(String(bz.get("color", "#80d0ff"))), 1.4)
+	if battle.zones:
+		battle.zones.remove_zone(id)
 
 
 func _heat(e: Dictionary) -> void:
@@ -1006,6 +1097,13 @@ func _destroyed(e: Dictionary) -> void:
 	var mv := _view(e["unit"])
 	_log("[b]%s is destroyed![/b]" % _name(e["unit"]))
 	if mv == null:
+		return
+	if WallFx.is_barrier_deployable(String(mv.unit.get("name", ""))):
+		# Barriers and cover break apart instead of falling over like a mech.
+		if Fx.speed > 0.0:
+			WallFx.shatter(battle.fx_root, mv.body_center(), Color(0.6, 0.85, 1.0), maxf(1.0, mv.model.size))
+		mv.destroyed = true
+		mv.visible = false
 		return
 	if Fx.speed > 0.0:
 		Fx.explosion(battle.fx_root, mv.body_center(), 1.4 * maxf(1.0, mv.model.size))
