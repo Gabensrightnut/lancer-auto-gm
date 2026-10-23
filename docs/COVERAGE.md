@@ -8,7 +8,7 @@ Partial = automated with a note for the table; manual = the table resolves it.
 | Kind | Total | Automated | Partial | Manual |
 |---|---|---|---|---|
 | frame traits and core systems | 102 | 99 | 3 | 0 |
-| mech systems | 124 | 105 | 18 | 1 |
+| mech systems | 124 | 106 | 18 | 0 |
 | weapons | 85 | 84 | 1 | 0 |
 | talent ranks | 87 | 66 | 10 | 11 |
 | core bonuses | 30 | 30 | 0 | 0 |
@@ -42,7 +42,6 @@ Partial = automated with a note for the table; manual = the table resolves it.
 - SCYLLA-Class NHP (partial): The second trigger (a hostile attacking or using an object you chose) is the table's.
 - Interdiction Field (partial): Only characters you choose can teleport inside the field; the GM checks that.
 - Repulser Field (partial): You're immune to the mines it sets off; the GM undoes their effects on you.
-- Tesseract (manual)
 - Blinkshield (partial): Time flows differently inside, so characters inside and outside can't affect each other at all; the game blocks attacks, sight and movement across the edge.
 - ASURA-Class NHP (partial): Taking one extra full action instead of two quick actions isn't supported: take the quick actions.
 

@@ -148,13 +148,13 @@ class CarryObjective:
 		if obj == null or not Combat.is_present(obj):
 			return RuleResult.deny("There's no Objective on the field.", SitrepActions.ref(state))
 		if not to is Array or (to as Array).size() < 2:
-			return RuleResult.deny("Where to?", "")
+			return RuleResult.deny("Say where to carry the Objective (params.to = [x, y]).", SitrepActions.ref(state))
 		var cell := Vector2i(int(to[0]), int(to[1]))
 		if not state.map.has_cell(cell):
-			return RuleResult.deny("Off the map.", "")
+			return RuleResult.deny("That space is off the map.", SitrepActions.ref(state))
 		for o: Unit in state.units.values():
 			if o != obj and Combat.is_present(o) and state.map.grid.footprint(o.cell, o.size).has(cell):
-				return RuleResult.deny("That space is taken.", "")
+				return RuleResult.deny("That space is taken.", SitrepActions.ref(state))
 		return RuleResult.allow()
 
 	func resolve(state: GameState, action: Dictionary) -> Array[Dictionary]:

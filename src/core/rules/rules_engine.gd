@@ -122,7 +122,7 @@ func _answer(state: GameState, action: Dictionary) -> Dictionary:
 		return {"result": no, "events": [] as Array[Dictionary]}
 	var params: Variant = action.get("params", {})
 	if not params is Dictionary or not (params as Dictionary).has("take"):
-		var bad := RuleResult.deny("Answer with params.take = true or false.", "")
+		var bad := RuleResult.deny("Answer yes or no: take the reaction or let it pass (params.take = true or false).", "actions: Reactions")
 		return {"result": bad, "events": [] as Array[Dictionary]}
 	var decisions: Dictionary = (p.get("decisions", {}) as Dictionary).duplicate(true)
 	decisions[p["id"]] = params
