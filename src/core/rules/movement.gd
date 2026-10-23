@@ -505,7 +505,7 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool, goals: Dicti
 				continue
 			var stopper := _stopper(state, u, body, others, engaged_at_start)
 			nodes[nk] = {"cost": total, "parent": k, "stop": stopper.id if stopper else "",
-				"can_end": not _blocked_by_unit(body, others, true),
+				"can_end": not _blocked_by_unit(body, others, true) or Garrison.may_share(state, u, body, others),
 				"uneven": node["uneven"] or place["uneven"], "difficult": difficult and not fly,
 				"dangerous": dangerous, "climb": absi(lv - k.z) if not fly else 0, "rulings": flags}
 			_heap_push(heap_cost, heap_key, total, nk)
@@ -627,7 +627,8 @@ static func _why_not(state: GameState, u: Unit, dest: Vector2i, level: int) -> S
 		if not p["ok"]:
 			return p["reason"]
 		var body := Sight.make_body(state, dest, lv, u.size)
-		if _blocked_by_unit(body, _others(state, u), true):
+		var others := _others(state, u)
+		if _blocked_by_unit(body, others, true) and not Garrison.may_share(state, u, body, others):
 			return "That space is occupied."
 	return "No path there within your movement (blocked, too far, or an Engaged stop on the way)."
 

@@ -281,7 +281,9 @@ static func destroy_sections(state: GameState, c: Vector2i, n: int, source: Stri
 	var col := state.map.column(c)
 	var old := col.ground
 	var new_ground := maxi(floor_of(col), col.ground - n)
+	var room: Array = []
 	if col.gap_top > 0 and new_ground <= col.gap_top:
+		room = [col.gap_bottom, col.gap_top]
 		# The span over a gap is gone: down to the gap's floor.
 		new_ground = maxi(floor_of(col), col.gap_bottom)
 		col.gap_bottom = 0
@@ -293,6 +295,9 @@ static func destroy_sections(state: GameState, c: Vector2i, n: int, source: Stri
 		tags.remove_at(tags.find(BattleMap.TAG_DESTRUCTIBLE))
 		col.tags = tags
 	events.append({"type": "terrain_destroyed", "cells": [[c.x, c.y, col.ground]], "from": old, "source": source, "rule_ref": REF})
+	if not room.is_empty():
+		# A room's roof and walls came down on whoever was inside (house rule: Garrison).
+		events.append_array(Garrison.collapse(state, c, int(room[0]), int(room[1]), old, source))
 	# Anyone standing on what's gone has nothing under them now.
 	for u: Unit in state.units.values():
 		if u.destroyed or u.flying or u.level <= col.ground or u.level > old:

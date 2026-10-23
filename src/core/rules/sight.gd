@@ -23,6 +23,8 @@ extends RefCounted
 ## - Adjacency counts height (Core p.62); Range/Threat/Sensors with height follow the table's
 ##   "distance_3d" ruling (range_distance).
 ## - A column tagged "soft_cover" is soft cover over its whole height.
+## - A column tagged "window" (a wall with a window) lets lines of sight through but is hard
+##   cover, and whoever is next to it shoots out through it (Core p.66; Garrison).
 ## Only ranged attacks are affected by cover (Core p.64: melee and tech attacks ignore cover).
 
 ## BattleMap column tag for soft cover (smoke, foliage...). The whole column above the ground.
@@ -125,7 +127,7 @@ static func line_of_sight(state: GameState, from: Body, to: Body) -> bool:
 	var eyes := _points(state, from, true)
 	for p in _points(state, to, true):
 		for eye in eyes:
-			if not _trace(state, p, eye, skip, walls)["blocked"]:
+			if not _trace(state, p, eye, skip, walls, true)["blocked"]:
 				return true
 	return false
 
@@ -170,6 +172,8 @@ static func cover(state: GameState, attacker: Body, target: Body, guardians: Arr
 	var line_skip := skip.duplicate()
 	for c in _low_cover_near(state, attacker, target):
 		line_skip[c] = true
+	for c in _windows_near(state, attacker, target):
+		line_skip[c] = true  # it shoots out through its own window (Core p.66)
 	var r := _trace(state, _center(state, target), _center(state, attacker), line_skip, hard_objects)
 	if not flanked and r["blocked"]:
 		var block: Array[Vector2i] = [r["first_block"]]
@@ -240,6 +244,20 @@ static func _low_cover_near(state: GameState, b: Body, target: Body) -> Array[Ve
 	return out
 
 
+## Windows next to the attacker (and not next to the target): it fires through them.
+static func _windows_near(state: GameState, b: Body, target: Body) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for c in b.cells:
+		for n in state.map.grid.neighbors(c):
+			var col := state.map.column(n)
+			if col == null or not col.has_tag(Garrison.TAG_WINDOW) or out.has(n):
+				continue
+			var one: Array[Vector2i] = [n]
+			if state.map.grid.footprint_distance(target.cells, one) > 1:
+				out.append(n)
+	return out
+
+
 static func _skip_cells(a: Body, b: Body) -> Dictionary:
 	var skip := {}
 	for c in a.cells:
@@ -283,8 +301,9 @@ static func _points(state: GameState, b: Body, tops: bool) -> Array[Vector3]:
 
 
 ## Walks from p0 to p1. Returns {blocked, first_block (cell nearest p0), block_top (top level
-## of what blocks), soft}. `objects` are extra solid voxels (wrecks, Guardians).
-static func _trace(state: GameState, p0: Vector3, p1: Vector3, skip: Dictionary, objects: Dictionary = {}) -> Dictionary:
+## of what blocks), soft}. `objects` are extra solid voxels (wrecks, Guardians). `sight`: the
+## line is for line of sight, which passes through windows (cover lines don't).
+static func _trace(state: GameState, p0: Vector3, p1: Vector3, skip: Dictionary, objects: Dictionary = {}, sight: bool = false) -> Dictionary:
 	var n := maxi(1, ceili(p0.distance_to(p1) / STEP))
 	var soft := false
 	var grid := state.map.grid
@@ -304,7 +323,7 @@ static func _trace(state: GameState, p0: Vector3, p1: Vector3, skip: Dictionary,
 		var col := state.map.column(cell)
 		if col == null:
 			continue
-		if is_solid(state.map, cell, lvl):
+		if is_solid(state.map, cell, lvl) and not (sight and col.has_tag(Garrison.TAG_WINDOW)):
 			return {"blocked": true, "first_block": cell, "block_top": col.ground, "soft": soft}
 		if col.has_tag(TAG_SOFT_COVER) and lvl >= col.ground:
 			soft = true

@@ -133,6 +133,9 @@ book in a way that changes the setting; parked.
 | Soldiers on foot (squads and single humans) fight under the rules for unmounted characters | Canon rules; our placeholder stats | Core p.59 (humans are Size 1/2), p.60 (allied NPCs in turn order), p.64 (characters on foot attack with Fight), p.74 (Fighting on the Ground); Human/Squad template numbers not in our free copy |
 | Soldier kinds: rifle squad, missile team, guard squad, spotter team, medic team, single soldier, using the book's NPC roles and pilot gear | Consistent (our placeholder pack) | Roles: NPC roles; weapons: pilot gear (pilot_gear.json); jobs limited by Core p.74 (no aiding mechs) |
 | Nobody gives soldiers orders; each acts by its own AI, weighted by its role and the sitrep | Consistent (the user's choice) | Core p.60 lets players choose when an allied NPC acts; who decides its actions is left to the table |
+| Falling when the building under you is destroyed (3 AP per 3 spaces, up to 9) | Canon | Core p.63 |
+| A unit firing from a window has hard cover and can shoot through it | Canon | Core p.66 ("shoot over, through, or around the source of their cover") |
+| Garrisoned buildings: sharing room spaces (one Size 1+ alone, or two Size 1/2 plus a squad), entering by doors, being crushed in a collapse (falling damage for the building's height, then moved out) | Not canon: the user's choice, a house rule (on by default) | The book has no building interiors; nobody ends a move in an occupied space (Core p.62) |
 | The Reinforcements reserve calls in a friendly NPC mech, not troops | Canon | Core p.52 (Tactical reserves table); reserves.json |
 
 ## When canon allows more than one answer
