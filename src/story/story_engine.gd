@@ -309,9 +309,46 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 			if why_h != "":
 				return _no(why_h)
 		"exchange":
-			var why_x := Economy.exchange_refusal(story, campaign, bool(p.get("to_manna", true)), int(p.get("amount", 0)))
+			var xp := str(p.get("pilot", me)) if not bool(p.get("fund", false)) else ""
+			if xp != "" and seat != "gm" and not _looks_after(story, seat, xp):
+				return _no("Pick one of your pilots.")
+			var why_x := Economy.exchange_refusal(story, campaign, bool(p.get("to_manna", true)), int(p.get("amount", 0)), xp)
 			if why_x != "":
 				return _no(why_x)
+		"eat", "pack_ration", "unpack_ration", "sell_item", "fund_deposit", "set_auto_eat":
+			var ip := str(p.get("pilot", me))
+			if not campaign.pilots.has(ip) or (seat != "gm" and not _looks_after(story, seat, ip)):
+				return _no("Pick one of your pilots.")
+			var why_i := ""
+			match type:
+				"eat":
+					why_i = Survival.eat_refusal(story, campaign, ip, str(p.get("item", "")))
+				"pack_ration", "unpack_ration":
+					why_i = Inventory.pack_refusal(story, ip, int(p.get("n", 1)), type == "unpack_ration")
+				"sell_item":
+					why_i = Inventory.sell_refusal(story, campaign, ip, str(p.get("item", "")), int(p.get("n", 1)))
+				"fund_deposit":
+					why_i = Inventory.deposit_refusal(story, campaign, ip, int(p.get("manna", 0)), int(p.get("local", 0)))
+			if why_i != "":
+				return _no(why_i)
+		"trade_offer":
+			var tf := str(p.get("from", me))
+			if seat != "gm" and not _looks_after(story, seat, tf):
+				return _no("Pick one of your pilots.")
+			var why_t2 := Inventory.offer_refusal(story, campaign, tf, str(p.get("to", "")), p.get("give", {}), p.get("get", {}))
+			if why_t2 != "":
+				return _no(why_t2)
+		"trade_answer", "trade_cancel":
+			var why_a := Inventory.answer_refusal(story, str(p.get("trade", "")))
+			if why_a != "":
+				return _no(why_a)
+			var tr: Dictionary = story.flags.get(Inventory.TRADES, {})[str(p["trade"])]
+			var side := str(tr["to"]) if type == "trade_answer" else str(tr["from"])
+			if seat != "gm" and not _looks_after(story, seat, side):
+				return _no("That's for the other player to answer." if type == "trade_answer" else "That isn't your offer.")
+		"set_pay_split":
+			if seat != "gm":
+				return _no("The host sets how mission pay is split.")
 		"buy", "sell_salvage", "use_printer", "restock", "fight_for_it":
 			if story.phase == "mission":
 				return _no("Not in the middle of a mission.")
@@ -321,7 +358,7 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 			var why_e := ""
 			match type:
 				"buy":
-					why_e = Economy.buy_refusal(story, campaign, str(p.get("item", "")))
+					why_e = Economy.buy_refusal(story, campaign, str(p.get("item", "")), "" if bool(p.get("fund", false)) else who)
 				"sell_salvage":
 					why_e = "Nothing to sell." if not StoryHouseRules.on(campaign, Economy.R_WALLET) or int(Economy.wallet(story).get("salvage", 0)) <= 0 else ""
 				"use_printer":
@@ -359,7 +396,11 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 	var p: Dictionary = action.get("params", {})
 	var me := story.pilot_of_seat(seat)
 	if TownLife.handles(str(action["type"])):
-		return TownLife.apply(story, campaign, str(action["type"]), p, str(p.get("pilot", me)))
+		var tl := TownLife.apply(story, campaign, str(action["type"]), p, str(p.get("pilot", me)))
+		# Waiting passes the hours for everyone's food and water too (Survival, house rule).
+		if str(action["type"]) == "wait":
+			tl.append_array(Survival.pass_hours(story, campaign, 6.0 * maxi(1, int(p.get("periods", 1)))))
+		return tl
 	if GmTools.handles(str(action["type"])):
 		return GmTools.apply(story, campaign, str(action["type"]), p, _first_alive(story, campaign))
 	match str(action["type"]):
@@ -528,11 +569,32 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 		"house_rule":
 			return StoryHouseRules.set_rule(story, campaign, str(p["id"]), bool(p.get("on", true)))
 		"buy":
-			return Economy.buy(story, campaign, str(p["item"]), str(p.get("pilot", me)))
+			# Paid from the buyer's own money, or the squad fund ({fund: true}).
+			return Economy.buy(story, campaign, str(p["item"]), str(p.get("pilot", me)), "" if bool(p.get("fund", false)) else str(p.get("pilot", me)))
 		"sell_salvage":
 			return Economy.sell_salvage(story)
 		"exchange":
-			return Economy.exchange(story, bool(p.get("to_manna", true)), int(p["amount"]))
+			return Economy.exchange(story, bool(p.get("to_manna", true)), int(p["amount"]), str(p.get("pilot", me)) if not bool(p.get("fund", false)) else "")
+		"eat":
+			return Survival.consume(story, campaign, str(p.get("pilot", me)), str(p["item"]))
+		"pack_ration", "unpack_ration":
+			return Inventory.pack(story, str(p.get("pilot", me)), int(p.get("n", 1)), str(action["type"]) == "unpack_ration")
+		"sell_item":
+			return Inventory.sell(story, campaign, str(p.get("pilot", me)), str(p["item"]), int(p.get("n", 1)))
+		"fund_deposit":
+			return Inventory.deposit(story, campaign, str(p.get("pilot", me)), int(p.get("manna", 0)), int(p.get("local", 0)))
+		"set_auto_eat":
+			Inventory.of(story, str(p.get("pilot", me)))["auto_eat"] = bool(p.get("on", true))
+			return [{"type": "auto_eat", "pilot": str(p.get("pilot", me)), "on": bool(p.get("on", true))}]
+		"trade_offer":
+			return Inventory.offer(story, campaign, str(p.get("from", me)), str(p["to"]), p.get("give", {}), p.get("get", {}))
+		"trade_answer":
+			return Inventory.answer(story, campaign, str(p["trade"]), bool(p.get("accept", true)))
+		"trade_cancel":
+			return Inventory.cancel(story, str(p["trade"]))
+		"set_pay_split":
+			campaign.options["pay_split"] = (p.get("shares", {}) as Dictionary).duplicate()
+			return [{"type": "pay_split_set", "shares": campaign.options["pay_split"]}]
 		"use_printer":
 			return Economy.use_printer(story, campaign, str(p.get("pilot", me)))
 		"restock":
@@ -902,6 +964,11 @@ func _choice_pilot(story: StoryState, seat: String, p: Dictionary) -> String:
 
 func _controls(story: StoryState, seat: String, pid: String) -> bool:
 	return seat == "gm" or story.pilot_of_seat(seat) == pid
+
+
+## Money, packs and trades: a player also handles their AI squadmates' and their second pilot's.
+func _looks_after(story: StoryState, seat: String, pid: String) -> bool:
+	return _controls(story, seat, pid) or Inventory.mine_of(story, seat).has(pid)
 
 
 func _first_alive(story: StoryState, campaign: Campaign) -> String:

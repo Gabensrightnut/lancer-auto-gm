@@ -56,19 +56,21 @@ func test_the_wallet_starts_cleanly_and_pays_its_way() -> void:
 	var c: Campaign = t["campaign"]
 	var r := _rule(t, "hr_wallet")
 	expect((r["events"] as Array).any(func(x: Dictionary) -> bool: return x["type"] == "house_rule_changed" and bool(x["on"])), "announced")
-	expect_eq(int(Economy.wallet(s)["manna"]), 600, "a sensible start")
-	var before := Economy.local(s)
+	expect_eq(int(Economy.wallet(s, t["a"])["manna"]), 300, "each pilot starts with their own money")
+	expect_eq(int(Economy.wallet(s)["manna"]), 0, "the squad fund starts empty")
+	var before := Economy.local(s, t["a"])
 	expect(_sub(t, "buy", {"item": "drink", "pilot": t["a"]})["ok"])
-	expect(Economy.local(s) < before, "paid in this world's money (%s)" % Economy.currency(s))
+	expect(Economy.local(s, t["a"]) < before, "paid from Bluebird's own money, in this world's (%s)" % Economy.currency(s))
+	expect_eq(Economy.local(s, t["b"]), before, "Kettle's money is Kettle's")
 	r = _finish(t, s.hooks[0], true, {"rounds": 3, "kills": 2, "lost": []})
-	expect(int(Economy.wallet(s)["manna"]) > 600, "the patron pays")
-	expect(int(Economy.wallet(s)["salvage"]) == 80, "salvage from the wrecks")
+	expect(int(Economy.wallet(s, t["a"])["manna"]) > 300 and int(Economy.wallet(s, t["b"])["manna"]) > 300, "the patron's pay is split between the pilots")
+	expect(int(Economy.wallet(s)["salvage"]) == 80, "salvage from the wrecks, for the squad")
 	expect(_sub(t, "sell_salvage", {})["ok"] and int(Economy.wallet(s)["salvage"]) == 0)
-	var m := int(Economy.wallet(s)["manna"])
+	var m := int(Economy.wallet(s, t["a"])["manna"])
 	_rule(t, "hr_wallet", false)
 	expect(Economy.offers(s, c).is_empty() and not MarketPanel.available(c), "off: hidden again")
 	_rule(t, "hr_wallet", true)
-	expect_eq(int(Economy.wallet(s)["manna"]), m, "on again: the same wallet, no second handout")
+	expect_eq(int(Economy.wallet(s, t["a"])["manna"]), m, "on again: the same wallet, no second handout")
 
 
 func test_printers_and_paid_travel() -> void:
@@ -109,8 +111,8 @@ func test_fight_for_it_and_food_and_water() -> void:
 	var c: Campaign = t["campaign"]
 	_rule(t, "hr_wallet")
 	_rule(t, "hr_fight_for_it")
-	Economy.wallet(s)["manna"] = 0
-	Economy.wallet(s)["local"] = {}
+	Economy.wallet(s, t["a"])["manna"] = 0
+	Economy.wallet(s, t["a"])["local"] = {}
 	var r := _sub(t, "buy", {"item": "supplies", "pilot": t["a"]})
 	expect(not r["ok"] and str(r["reason"]).contains("work it off"), str(r["reason"]))
 	r = _sub(t, "fight_for_it", {"item": "supplies", "pilot": t["a"]})
@@ -120,8 +122,10 @@ func test_fight_for_it_and_food_and_water() -> void:
 	expect((s.reserves.get(t["a"], []) as Array).any(func(x: Dictionary) -> bool: return str(x["id"]) == "reserve_supplies"), "won it: the supplies are yours")
 	_rule(t, "hr_survival")
 	_rule(t, "hr_wallet", false)
-	expect_eq(Economy.rations(s), 6, "three days each to start")
-	s.flags[Economy.SURVIVAL]["rations"] = 0
+	expect_eq(Economy.rations(s), 6, "three field rations each to start")
+	for pid: String in [t["a"], t["b"]]:
+		Inventory.of(s, pid)["items"] = {}
+		Inventory.of(s, pid)["food"] = 20.0
 	r = _finish(t, s.hooks[0], true, {"rounds": 3, "kills": 0, "lost": []})
 	expect((r["events"] as Array).any(func(x: Dictionary) -> bool: return x["type"] == "hungry"), "no food: hungry")
 	var opts := Economy.check_opts(s, c, t["a"], {})
@@ -129,7 +133,7 @@ func test_fight_for_it_and_food_and_water() -> void:
 	s.phase = "downtime"
 	r = _sub(t, "restock", {})
 	expect(r["ok"], str(r["reason"]))
-	expect(not Economy.hungry(s, c, t["a"]) and Economy.rations(s) == 4, "a friendly hub feeds the squad")
+	expect(not Economy.hungry(s, c, t["a"]), "a friendly hub feeds the squad (and they eat at once)")
 	expect(not _sub(t, "restock", {})["ok"], "once per visit")
 
 
@@ -139,7 +143,8 @@ func test_every_world_has_its_own_money() -> void:
 	var c: Campaign = t["campaign"]
 	_rule(t, "hr_wallet")
 	var here := Economy.currency(s)
-	var start_local := Economy.local(s)
+	var a: String = t["a"]
+	var start_local := Economy.local(s, a)
 	expect(start_local > 0 and here.begins_with(str(Sector.current(s)["name"])), "named after this world: %s" % here)
 	expect(Economy.price(s, c, "drink")["text"].contains("manna"), "prices show both: %s" % Economy.price(s, c, "drink")["text"])
 	s.phase = "downtime"
@@ -151,11 +156,11 @@ func test_every_world_has_its_own_money() -> void:
 		return
 	expect(_sub(t, "travel", {"world": far["id"]})["ok"])
 	expect(Economy.currency(s) != here, "another world, another money: %s" % Economy.currency(s))
-	expect_eq(Economy.local(s), 0, "%s is no good here" % here)
-	expect(Economy.describe(s).contains("other world"), Economy.describe(s))
-	var m := int(Economy.wallet(s)["manna"])
-	expect(_sub(t, "exchange", {"to_manna": false, "amount": 10})["ok"], "change manna at the hub")
-	expect(Economy.local(s) == 10 * Economy.rate(s) and int(Economy.wallet(s)["manna"]) == m - 10)
+	expect_eq(Economy.local(s, a), 0, "%s is no good here" % here)
+	expect(Economy.describe(s, a).contains("other world"), Economy.describe(s, a))
+	var m := int(Economy.wallet(s, a)["manna"])
+	expect(_sub(t, "exchange", {"to_manna": false, "amount": 10, "pilot": a})["ok"], "change manna at the hub")
+	expect(Economy.local(s, a) == 10 * Economy.rate(s) and int(Economy.wallet(s, a)["manna"]) == m - 10)
 	Sector.current(s)["culture"] = "union_core"
 	expect(Economy.communal(s) and int(Economy.price(s, c, "food")["manna"]) == 0, "basics are free in the communal Union Core (Core p.10)")
 	Sector.current(s)["culture"] = "frontier_colony"
@@ -164,20 +169,21 @@ func test_every_world_has_its_own_money() -> void:
 	expect(Economy.rate(s) < poor, "manna buys less on a rich world (%d vs %d a manna)" % [Economy.rate(s), poor])
 
 
-func test_supplies_ride_in_the_mech_and_hosts_feed_you() -> void:
+func test_each_pilot_eats_from_their_own_pack_and_hosts_feed_you() -> void:
 	var t := Setup.setup(225)
 	var s: StoryState = t["story"]
 	var c: Campaign = t["campaign"]
 	_rule(t, "hr_survival")
-	var kettle := str(c.pilots[t["b"]]["callsign"])
-	s.flags[Economy.SURVIVAL]["rations"] = 10
-	var ev := Economy.eat(s, c, 3, [kettle])
-	expect(ev.any(func(x: Dictionary) -> bool: return x["type"] == "cut_off"), "cut off from the mech: only the grab bag")
-	expect(Economy.hungry(s, c, t["b"]) and not Economy.hungry(s, c, t["a"]), "the one who stayed with the mech ate")
-	expect_eq(Economy.rations(s), 7, "three nights for the pilot at the mech")
+	Inventory.of(s, t["b"])["items"] = {}
+	var ev := Economy.eat(s, c, 3)
+	expect(Economy.hungry(s, c, t["b"]) and not Economy.hungry(s, c, t["a"]), "Bluebird ate from their pack; Kettle's was empty")
+	expect(ev.any(func(x: Dictionary) -> bool: return x["type"] == "thirsty"), "water runs out first")
+	var left := Economy.rations(s)
 	c.options["patron"] = "company"
 	ev = Economy.downtime_night(s, c)
-	expect(str(ev[0]["text"]).contains("stay") and Economy.rations(s) == 7, "a patron's quarters: meals with the stay")
+	expect(str(ev[0]["text"]).contains("stay") and Economy.rations(s) == left, "a patron's quarters: meals with the stay")
+	expect(not Economy.hungry(s, c, t["b"]), "and everyone's fed")
+	Inventory.of(s, t["b"])["food"] = 10.0
 	c.options["patron"] = "pay"
 	_rule(t, "hr_wallet")
 	c.pilots[t["a"]]["origin"] = {"homeworld": "city"}

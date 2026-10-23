@@ -48,6 +48,13 @@ func _ready() -> void:
 	auto.button_pressed = s.ai_squad_auto
 	auto.toggled.connect(func(on: bool) -> void: s.ai_squad_auto = on)
 	pb.add_child(auto)
+	# Gameplay (food and water house rule): pilots eat and drink from their own pack when low.
+	var eat := CheckButton.new()
+	eat.text = "Auto-eat and drink (food and water house rule)"
+	eat.tooltip_text = "On: your pilots eat and drink from their own pack when a bar gets low. Off: you eat and drink yourself, from the market panel (B)."
+	eat.button_pressed = StorySettings.auto_eat()
+	eat.toggled.connect(func(on: bool) -> void: StorySettings.set_auto_eat(on))
+	pb.add_child(eat)
 	left.add_child(play)
 	# Story text (StorySettings: kept on this computer, applied right away).
 	var story_panel := MenuTheme.panel("Story text", MenuTheme.maker_color("SSC").lightened(0.2), "compendium")

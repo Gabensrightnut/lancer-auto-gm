@@ -4,51 +4,58 @@
     {
       "id": "hr_wallet",
       "name": "Tracked wallet",
-      "source": "Your idea",
+      "source": "joe",
       "label": "Your idea, not a book rule",
-      "text": "Every world has its own money, good only on that world: change it at a hub. Manna, Union's currency outside the Core (Core p.10), works everywhere, but what it buys depends on the world: a rich, well-supplied world gives you less for your manna than a poor frontier one. In the Union Core, which the book calls communal and post-capital (Core p.10), basics like food, drink and a bed cost nothing. Food, drinks, lodging, travel, information, pilot supplies and repair kits have prices; patrons pay for jobs; salvage from a won fight can be sold. The book doesn't track money: by the book, manna is there in the story but nobody counts it."
+      "text": "Each pilot has their own money (mission pay is split between them; the host can set the shares), and a squad fund anyone can pay into covers shared things: the ship, the troops, passage. Pilots can trade and give money and things to each other. Every world has its own money, good only on that world: change it at a hub. Manna, Union's currency outside the Core (Core p.10), works everywhere, but what it buys depends on the world: a rich, well-supplied world gives you less for your manna than a poor frontier one. In the Union Core, which the book calls communal and post-capital (Core p.10), basics like food, drink and a bed cost nothing. Food, drinks, lodging, travel, information, pilot supplies and repair kits have prices; patrons pay for jobs; salvage from a won fight can be sold. The book doesn't track money: by the book, manna is there in the story but nobody counts it."
     },
     {
       "id": "hr_printers",
       "name": "Printer scarcity",
-      "source": "Your idea",
+      "source": "joe",
       "label": "Your idea, not a book rule",
       "text": "Some frontier worlds have no printer. A mech wrecked in battle stays wrecked until the squad reaches a world with a printer and pays for printer access (with the wallet on) or calls in a favor. By the book, printers are everywhere and Full Repair reprints a wrecked mech (Core p.31, p.82)."
     },
     {
       "id": "hr_paid_travel",
       "name": "Paid travel",
-      "source": "Your idea",
+      "source": "joe",
       "label": "Your idea, not a book rule",
       "text": "Squads working for a company, Union or an order ride free; independents buy passage (manna with the wallet on, otherwise a favor owed). By the book travel is part of the story and has no cost."
     },
     {
       "id": "hr_fight_for_it",
       "name": "Can't afford it? Fight for it",
-      "source": "Your idea",
+      "source": "joe",
       "label": "Your idea, not a book rule",
       "text": "When the squad can't pay for something, the seller offers a job instead: win it and you get what you wanted. Lose, and the deal is off, but you can come back and pay with salvage or money."
     },
     {
       "id": "hr_survival",
       "name": "Food and water",
-      "source": "Your idea",
+      "source": "joe",
       "label": "Your idea, not a book rule",
-      "text": "The squad needs food and water: one of each per pilot per night. On a mission the supplies ride in the mech's cockpit storage, packed for the mission's planned length; pilots carry only a grab bag (one night's worth) when they get out. Lose the mech or run from it and the rest is out of reach. (What a pilot carries still follows the book's limits: one armor, two weapons, three other gear, Core p.28, p.108.) When the squad is hosted (a room at an inn, a patron's quarters, a ship's passage, the communal Union Core) meals come with the stay. Restaurants and stalls are cheap, but a dish may not sit right with someone from far away (+1 Difficulty until they rest) or become a favourite (+1 Accuracy on their next skill check). Without food pilots go hungry: +1 Difficulty on skill checks out of the mech until they eat, and 1 damage after a second hungry night in a row. By the book there's no survival meter."
+      "text": "Each pilot needs food and water and carries their own: a food bar and a water bar run down with the clock (water lasts about two to three days, food three to five). A field ration is a sealed pack, MRE-style: a full day's food and water in one, it keeps indefinitely and packs small, so it sells for more than loose food and water (you can pack and unpack them). With 'Auto-eat and drink' on (Settings), pilots eat from their own pack when a bar gets low; off, you eat yourself. Buy, sell and trade food and water at markets and with each other. The squad's troops eat from the squad stash, one ration per squad a day. When the squad is hosted (a room at an inn, a patron's quarters, a ship's passage, the communal Union Core) meals come with the stay; restaurants and stalls fill you up, though a strange dish may not sit right with someone from far away (+1 Difficulty until they rest) or become a favourite (+1 Accuracy on their next skill check). Going without gives clear warnings (Hungry, Parched, then Starving, Dehydrated) and +1 Difficulty on skill checks while hungry, but no combat penalties. By the book there's no survival meter."
     },
     {
       "id": "hr_clone_ll_penalty",
       "name": "Clones lose a License Level",
-      "source": "Your idea",
+      "source": "joe",
       "label": "Your idea, not a book rule",
       "text": "A pilot brought back as a clone loses one License Level. By the book a clone keeps all LL advancement (Core p.83)."
     },
     {
       "id": "hr_own_ship",
       "name": "The squad's own ship",
-      "source": "Your idea",
+      "source": "joe",
       "label": "Your idea, not a book rule",
       "text": "The squad has a ship of its own with upgrade slots: hull, engines, printer, cargo and boarding gear, bought with money (with the tracked wallet) or with loot from raids. With the tracked wallet on, loot sells for money. By the book there's no money to count: a raid's haul is a reserve, like Supplies (Core p.48)."
+    },
+    {
+      "id": "hr_cybernetics",
+      "name": "Cybernetic upgrades",
+      "source": "joe",
+      "label": "Your idea, not a book rule",
+      "text": "Implants beyond the book's own implant gear: small bonuses (never more than +1 on any one thing) and organs that cut how much food and water a pilot needs (stacking, never below a quarter of a ration a day). By the book, implants are only the pilot gear that says so (Stims, Dataplating, the Subjectivity-Enhancement Suite) and cosmetic cybernetics (Core p.32)."
     }
   ],
   "wallet": {
@@ -74,9 +81,17 @@
       "local": 6
     },
     "food": {
-      "name": "Mission food and water, packed in the mech (2 nights each)",
+      "name": "Two field rations (sealed packs: a day of food and water each)",
       "local": 12,
       "rations": 2
+    },
+    "fresh_food": {
+      "name": "A day's food",
+      "local": 5
+    },
+    "water": {
+      "name": "A day's water",
+      "local": 3
     },
     "lodging": {
       "name": "A room for the night (rest: half your HP back)",

@@ -98,9 +98,9 @@ func test_short_rations_build_a_grudge() -> void:
 	_sub(t, "house_rule", {"id": "hr_survival", "on": true})
 	_sub(t, "house_rule", {"id": "hr_printers", "on": true})
 	s.flags[Economy.WRECKED] = [t["b"]]
-	s.flags[Economy.SURVIVAL]["rations"] = 20
+	Inventory.of(s, t["b"])["items"] = {}  # the supplies stowed in the wrecked mech are gone
 	Economy.eat(s, c, 2)
 	Economy.eat(s, c, 2)
-	expect(Economy.hungry(s, c, t["b"]), "no mech of their own: short rations")
+	expect(Economy.hungry(s, c, t["b"]), "no mech of their own: going hungry")
 	expect(int(Agendas.of(s, t["b"]).get("strength", 0)) >= 2, "and a grudge that grows")
 	expect(StoryConditions.check({"agenda": "grievance"}, s, c, {}))

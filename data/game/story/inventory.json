@@ -1,0 +1,29 @@
+{
+  "_note": "Our own data. Each pilot's own stash and money (per-player wallets with the tracked-wallet house rule), the squad fund for shared things, and food and water (the food-and-water house rule). A ration is a sealed field pack, MRE-style: a full day's food and water in one, keeps indefinitely, packs small, so it sells for more than its parts. The book tracks none of this (Core p.10); all of it is the user's house rules, off by default.",
+  "items": {
+    "food": {"name": "Food", "plural": "food", "text": "A day's food, fresh or tinned. It can spoil if you keep it too long.", "price_local": 5, "bulk": 1.0},
+    "water": {"name": "Water", "plural": "water", "text": "A day's water in a sealed flask.", "price_local": 3, "bulk": 1.0},
+    "ration": {"name": "Field ration", "plural": "field rations", "text": "A sealed field pack, MRE-style: a full day's food and water in one. Keeps indefinitely and packs small.", "makes": {"food": 1, "water": 1}, "bonus": 1.25, "bulk": 0.5},
+    "repair_kit": {"name": "Repair kit", "plural": "repair kits", "text": "Tools and spares to patch up between fights.", "price_local": 60, "bulk": 1.0}
+  },
+  "sell_rate": 0.6,
+  "pilot_start": {"manna": 300, "local": 60, "items": {"ration": 3}},
+  "survival": {
+    "food_days": 4,
+    "water_days": 2.5,
+    "warn_below": 35,
+    "auto_eat_below": 50,
+    "floor": 0.25,
+    "lines": {
+      "hungry": "{name} is hungry.", "starving": "{name} hasn't eaten in days: they're weak and short-tempered.",
+      "parched": "{name} is parched.", "dehydrated": "{name} is badly dehydrated: dizzy, headaches, slurring words.",
+      "ate": "{name} eats.", "drank": "{name} drinks."
+    }
+  },
+  "need_mods": {
+    "_note": "What cuts a pilot's daily food and water need (fractions, they stack; never below the floor of a quarter a day). Implants come from the cybernetics clinic under the Cybernetic upgrades house rule.",
+    "metabolic_regulator": {"food": -0.25},
+    "water_recycler": {"water": -0.25},
+    "synthetic_organs": {"food": -0.15, "water": -0.15}
+  }
+}

@@ -148,13 +148,19 @@ static func reinforce(story: StoryState, campaign: Campaign) -> Array:
 ## One ration per squad per day (Economy.eat, food-and-water house rule).
 static func feed(story: StoryState, campaign: Campaign, nights: int) -> Array:
 	var events: Array = []
-	var sv: Dictionary = story.flags.get(Economy.SURVIVAL, {})
 	var lines: Dictionary = data().get("lines", {})
 	var r := roster(story)
 	var keep: Array = []
 	for s: Dictionary in r["squads"]:
-		var fed := mini(int(sv.get("rations", 0)), nights)
-		sv["rations"] = int(sv.get("rations", 0)) - fed
+		# From the squad stash: a field ration a day, or a food and a water.
+		var fed := 0
+		for n in range(nights):
+			if Inventory.take(story, Inventory.SQUAD, "ration", 1):
+				fed += 1
+			elif Inventory.count(story, Inventory.SQUAD, "food") > 0 and Inventory.count(story, Inventory.SQUAD, "water") > 0:
+				Inventory.take(story, Inventory.SQUAD, "food", 1)
+				Inventory.take(story, Inventory.SQUAD, "water", 1)
+				fed += 1
 		if fed >= nights:
 			s["morale"] = mini(int(s["morale"]) + 1, int(data().get("morale_max", 3)))
 			s.erase("hungry")
@@ -173,7 +179,6 @@ static func feed(story: StoryState, campaign: Campaign, nights: int) -> Array:
 				"text": _cap(str(lines.get("with_instigator", "")).replace("{name}", str(s["name"])).replace("{pilot}", str(campaign.pilots[sore].get("callsign", ""))))})
 		keep.append(s)
 	r["squads"] = keep
-	story.flags[Economy.SURVIVAL] = sv
 	return events
 
 

@@ -29,6 +29,8 @@ static var _invert_y := false
 ## The show-cursor key (show_cursor, Alt): "hold" while held, or "toggle" press to show/hide.
 static var _cursor_mode := "hold"
 static var _vote_picture := "pilot"
+## Food and water (house rule): your pilots eat and drink from their pack when a bar gets low.
+static var _auto_eat := true
 ## How many times the "Hold Alt to use the mouse" hint has been shown (stops after a few).
 static var _cursor_hints := 0
 static var _notifier: Notifier
@@ -61,6 +63,7 @@ static func _load() -> void:
 		_cursor_mode = "toggle" if str(cfg.get_value("walking", "cursor_mode", "hold")) == "toggle" else "hold"
 		_cursor_hints = int(cfg.get_value("walking", "cursor_hints", 0))
 		_vote_picture = "mech" if str(cfg.get_value("dialogue", "vote_picture", "pilot")) == "mech" else "pilot"
+		_auto_eat = bool(cfg.get_value("gameplay", "auto_eat", true))
 	if FileAccess.file_exists(SEEN_FILE):
 		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(SEEN_FILE))
 		if d is Array:
@@ -80,6 +83,7 @@ static func _save() -> void:
 	cfg.set_value("walking", "cursor_mode", _cursor_mode)
 	cfg.set_value("walking", "cursor_hints", _cursor_hints)
 	cfg.set_value("dialogue", "vote_picture", _vote_picture)
+	cfg.set_value("gameplay", "auto_eat", _auto_eat)
 	cfg.save(FILE)
 
 
@@ -167,6 +171,18 @@ static func vote_picture() -> String:
 static func set_vote_picture(v: String) -> void:
 	_load()
 	_vote_picture = "mech" if v == "mech" else "pilot"
+	_save()
+	notifier().changed.emit()
+
+
+static func auto_eat() -> bool:
+	_load()
+	return _auto_eat
+
+
+static func set_auto_eat(on: bool) -> void:
+	_load()
+	_auto_eat = on
 	_save()
 	notifier().changed.emit()
 

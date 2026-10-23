@@ -185,8 +185,7 @@ static func full_repair(story: StoryState, campaign: Campaign) -> Array:
 		"rule_ref": REF, "gather": true})
 	# The hours pass for everyone.
 	events.append_array(TownLife.advance(story, PERIODS))
-	if StoryHouseRules.on(campaign, Economy.R_FOOD):
-		events.append_array(Economy.eat(story, campaign, 1))
+	events.append_array(Survival.pass_hours(story, campaign, HOURS))
 	# The enemy uses the time too.
 	if int(story.flags.get(REGROUP, 0)) < 1:
 		story.flags[REGROUP] = 1
