@@ -93,6 +93,7 @@ static func start_combat(state: GameState, first_side: String, params: Dictionar
 			left_out.append(u.id)
 	state.turn_mode = String(params.get("mode", "combat"))
 	state.phase = GameState.PHASE_COMBAT
+	state.objectives["deployment_closed"] = true  # no more deploying once the fight starts
 	state.first_side = first_side
 	state.round_number = 0
 	Environments.sync(state)
