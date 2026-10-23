@@ -303,6 +303,9 @@ static func destroy_sections(state: GameState, c: Vector2i, n: int, source: Stri
 		tags.remove_at(tags.find(BattleMap.TAG_DESTRUCTIBLE))
 		col.tags = tags
 	events.append({"type": "terrain_destroyed", "cells": [[c.x, c.y, col.ground]], "from": old, "lost": int(state.terrain_lost[key(c)]), "source": source, "rule_ref": REF})
+	if col.has_tag(Garrison.TAG_INTERIOR) and old > Garrison.room_level(col) and col.ground <= Garrison.room_level(col):
+		# The building's ground storey came down on whoever was inside (house rule: Garrison).
+		events.append_array(Garrison.collapse(state, c, old, source))
 	# Anyone standing on what's gone has nothing under them now.
 	for u: Unit in state.units.values():
 		if u.destroyed or u.flying or u.level <= col.ground or u.level > old:

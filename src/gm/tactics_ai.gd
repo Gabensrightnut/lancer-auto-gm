@@ -116,12 +116,13 @@ func role_of(u: Unit, orders: Dictionary = {}) -> String:
 
 # --- Context -------------------------------------------------------------------------------
 
-## The role x sitrep weights for a unit (objective_priorities.json): the sitrep's row, else
-## the role's "_any" row, over the defaults. "intent" has the objective's name filled in.
+## The role x sitrep weights for a unit (objective_priorities.json): the defaults, then the
+## role's "_any" row, then its row for the sitrep. "intent" has the objective's name filled in.
 static func priority(table: Dictionary, role: String, sitrep: String) -> Dictionary:
 	var out: Dictionary = (table.get("default", {}) as Dictionary).duplicate()
 	var rows: Dictionary = table.get("roles", {}).get(role, {})
-	out.merge(rows.get(sitrep, rows.get("_any", {})), true)
+	out.merge(rows.get("_any", {}), true)
+	out.merge(rows.get(sitrep, {}), true)
 	var names: Dictionary = table.get("zone_names", {})
 	out["intent"] = String(out.get("intent", "")).replace("{zone}", String(names.get(sitrep, names.get("_any", "objective"))))
 	return out
@@ -166,7 +167,7 @@ func _context(know: AiKnowledge, u: Unit, orders: Dictionary) -> Dictionary:
 		"pref_range": _preferred_range(u, profile), "keep_away": int(profile.get("keep_away", 0)),
 		"zones": zones, "zone_weight": float(orders.get("zone_weight", 0.0)) * float(prio.get("zone", 1.0)), "rng": rng,
 		"no_hide": bool(orders.get("no_hide", false)), "hide_w": float(prio.get("hide", 1.0)), "intent": String(prio.get("intent", "")),
-		"foot": u.on_foot(),
+		"foot": u.on_foot(), "garrison": float(prio.get("garrison", 0.0)),
 	}
 
 
@@ -278,6 +279,9 @@ func _position_score(s: GameState, u: Unit, d: Dictionary, ctx: Dictionary, full
 			for z: Vector2i in ctx["zones"]:
 				zmin = minf(zmin, grid.distance(cell, z))
 			score -= ctx["zone_weight"] * minf(zmin, 12.0) / 12.0
+	if ctx["garrison"] > 0.0 and Garrison.on(s) and Garrison.is_room(s.map, cell, int(d["level"])) and Garrison.at_window(s, cell):
+		score += ctx["garrison"]  # a firing position inside a building, at a window (hard cover)
+		notes["garrison"] = true
 	score -= int(d["cost"]) * 0.02  # Ties go to shorter moves.
 	return {"score": score, "notes": notes, "threat": threat}
 
@@ -526,6 +530,8 @@ func _explain(u: Unit, ctx: Dictionary, best: Dictionary, boost: Dictionary, aft
 			where += " into hard cover"
 		elif float(notes.get("cover", 0.0)) >= 0.4:
 			where += " into cover"
+		if notes.get("garrison", false):
+			where += " into a building, at a window"
 		if notes.get("zone", false):
 			where += " onto the objective"
 		parts.append(where)

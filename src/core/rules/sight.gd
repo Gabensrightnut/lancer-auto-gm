@@ -23,6 +23,9 @@ extends RefCounted
 ## - Adjacency counts height (Core p.62); Range/Threat/Sensors with height follow the table's
 ##   "distance_3d" ruling (range_distance).
 ## - A column tagged "soft_cover" is soft cover over its whole height.
+## - Building rooms (Garrison, house rule on): a building cell's ground storey is open inside;
+##   lines cross its outside faces only at windows (line of sight) or the door (anything), so a
+##   character at a window has hard cover and still shoots out through it (Core p.66).
 ## Only ranged attacks are affected by cover (Core p.64: melee and tech attacks ignore cover).
 
 ## BattleMap column tag for soft cover (smoke, foliage...). The whole column above the ground.
@@ -65,6 +68,8 @@ static func is_solid(map: BattleMap, cell: Vector2i, level: int) -> bool:
 		return true
 	if level >= c.ground:
 		return false
+	if map.rooms_open and c.has_tag(Garrison.TAG_INTERIOR) and level == TerrainDamage.floor_of(c):
+		return false  # a building's ground-storey room (Garrison)
 	return not (c.gap_top > 0 and level >= c.gap_bottom and level < c.gap_top)
 
 
@@ -123,9 +128,11 @@ static func line_of_sight(state: GameState, from: Body, to: Body) -> bool:
 	var skip := _skip_cells(from, to)
 	var walls := _voxels(wreck_bodies(state), from, to)
 	var eyes := _points(state, from, true)
+	# Windows let sight in and out of a room, not clean through a building (Garrison).
+	var through := _in_room(state, from) or _in_room(state, to)
 	for p in _points(state, to, true):
 		for eye in eyes:
-			if not _trace(state, p, eye, skip, walls)["blocked"]:
+			if not _trace(state, p, eye, skip, walls, through)["blocked"]:
 				return true
 	return false
 
@@ -170,7 +177,11 @@ static func cover(state: GameState, attacker: Body, target: Body, guardians: Arr
 	var line_skip := skip.duplicate()
 	for c in _low_cover_near(state, attacker, target):
 		line_skip[c] = true
-	var r := _trace(state, _center(state, target), _center(state, attacker), line_skip, hard_objects)
+	# It shoots out through its own windows (Core p.66): those don't obscure its attack.
+	var own := {}
+	for c in attacker.cells:
+		own[c] = true
+	var r := _trace(state, _center(state, target), _center(state, attacker), line_skip, hard_objects, false, own)
 	if not flanked and r["blocked"]:
 		var block: Array[Vector2i] = [r["first_block"]]
 		var adjacent := state.map.grid.footprint_distance(target.cells, block) <= 1
@@ -240,6 +251,15 @@ static func _low_cover_near(state: GameState, b: Body, target: Body) -> Array[Ve
 	return out
 
 
+static func _in_room(state: GameState, b: Body) -> bool:
+	if not state.map.rooms_open:
+		return false
+	for c in b.cells:
+		if Garrison.is_room(state.map, c, b.level):
+			return true
+	return false
+
+
 static func _skip_cells(a: Body, b: Body) -> Dictionary:
 	var skip := {}
 	for c in a.cells:
@@ -278,17 +298,26 @@ static func _points(state: GameState, b: Body, tops: bool) -> Array[Vector3]:
 			out.append(base + Vector3(0, (k + 0.5) * GridLayout.LEVEL_HEIGHT, 0))
 	if tops:
 		for c in b.cells:
-			out.append(state.map.grid.to_world(c, b.level + b.height))
+			var top := state.map.grid.to_world(c, b.level + b.height)
+			if Garrison.is_room(state.map, c, b.level):
+				top.y -= 0.05 * GridLayout.LEVEL_HEIGHT  # under the room's ceiling, not in it
+			out.append(top)
 	return out
 
 
 ## Walks from p0 to p1. Returns {blocked, first_block (cell nearest p0), block_top (top level
-## of what blocks), soft}. `objects` are extra solid voxels (wrecks, Guardians).
-static func _trace(state: GameState, p0: Vector3, p1: Vector3, skip: Dictionary, objects: Dictionary = {}) -> Dictionary:
+## of what blocks), soft}. `objects` are extra solid voxels (wrecks, Guardians). `sight`: the
+## line passes through building windows (a line of sight with an end inside a room; cover
+## lines don't). `open`: cells whose windows the line passes anyway (the shooter's own,
+## Core p.66).
+static func _trace(state: GameState, p0: Vector3, p1: Vector3, skip: Dictionary, objects: Dictionary = {}, sight: bool = false, open: Dictionary = {}) -> Dictionary:
 	var n := maxi(1, ceili(p0.distance_to(p1) / STEP))
 	var soft := false
 	var grid := state.map.grid
 	var last := Vector3i(-99999, -99999, -99999)
+	var rooms: bool = state.map.rooms_open
+	var prev_cell := grid.from_world(p0)
+	var prev_lvl := floori(p0.y / GridLayout.LEVEL_HEIGHT + 0.0001)
 	for i in range(1, n):
 		var p := p0.lerp(p1, float(i) / n)
 		var cell := grid.from_world(p)
@@ -297,6 +326,14 @@ static func _trace(state: GameState, p0: Vector3, p1: Vector3, skip: Dictionary,
 		if key == last:
 			continue  # same space as the previous sample: same answer
 		last = key
+		if rooms and cell != prev_cell:
+			# A building room's outside walls: only its windows (for sight) and door are open.
+			var wall := Garrison.crossing(state.map, prev_cell, prev_lvl, cell, lvl, sight, open)
+			if wall != Garrison.OPEN:
+				var rc := prev_cell if Garrison.is_room(state.map, prev_cell, prev_lvl) else cell
+				return {"blocked": true, "first_block": rc, "block_top": state.map.column(rc).ground, "soft": soft}
+		prev_cell = cell
+		prev_lvl = lvl
 		if skip.has(cell):
 			continue
 		if objects.has(key):

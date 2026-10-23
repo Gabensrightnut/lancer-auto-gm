@@ -842,6 +842,11 @@ at any time, even mid-campaign. The game stays canon until someone turns one on.
 - **Clearly labeled:** every house rule shows where it comes from ("Your idea", "Community",
   "Lancer Tactics") and that it isn't a book rule. The codex marks them the same way.
 - **Your ideas** (from this design, previously parked):
+  - Garrisoned buildings (**on by default**, the user asked for it): squads and people on foot
+    go inside buildings through doors and fight from the windows (the window's hard cover is
+    the book's own rule, Core p.66). A room space holds one Size 1 unit, or two Size 1/2 units
+    plus a squad. A collapsing building lands on everyone inside: falling damage for its height,
+    then they're dropped out to the nearest free space.
   - Tracked wallet: manna and local currency with prices for food, drinks, lodging, travel,
     information, pilot supplies and repair kits; mission pay; selling salvage.
   - Frontier printers (Joe's Rules): every world has printers (book), but frontier ones don't

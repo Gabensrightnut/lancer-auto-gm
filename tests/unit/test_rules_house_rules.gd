@@ -26,7 +26,8 @@ func test_catalog_and_defaults() -> void:
 	var fresh := GameState.new(1)
 	for r: Dictionary in HouseRuleSwitches.listing(fresh):
 		expect(r.has("source") and r.has("text") and r.has("name"), String(r["id"]))
-		var expected: bool = r["id"] in ["lt_split_barrage", "lt_brace_prompt"]
+		# On by default only where the user asked: two Lancer Tactics picks and Garrisoned buildings.
+		var expected: bool = r["id"] in ["lt_split_barrage", "lt_brace_prompt", "hr_garrisoned_buildings"]
 		expect_eq(bool(r["on"]), expected, String(r["id"]) + " default")
 	expect(HouseRuleSwitches.listing(fresh).size() >= 10)
 

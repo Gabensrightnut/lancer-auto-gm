@@ -102,5 +102,13 @@
     "source_link": "",
     "default": false,
     "text": "Small combat perks from your pilot's origin. Former employer: +1 Accuracy on your first attack each scene against a frame from that manufacturer (you know their weak spots)."
+  },
+  {
+    "id": "hr_garrisoned_buildings",
+    "name": "Garrisoned buildings",
+    "source": "Your idea",
+    "source_link": "",
+    "default": true,
+    "text": "Units can go inside buildings through their doors. Inside, one space holds one unit of Size 1 or more on its own, or up to two Size 1/2 units (pilots, single soldiers, half-size mechs) plus one squad. If the building comes down, everyone inside takes damage as if they fell its height (3 armor-piercing kinetic per 3 spaces, up to 9, the book's falling numbers) and is moved to the nearest free space. (The book's own rules still decide cover: a unit at a window has hard cover and can shoot out through it, Core p.66.)"
   }
 ]
