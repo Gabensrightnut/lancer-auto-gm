@@ -88,7 +88,10 @@ static func for_host(net_host: NetHost, ai: AiDirector, the_mission: Mission, lo
 	net_host.action_resolved.connect(s._on_resolved)
 	net_host.lobby_message.connect(func(from: String, msg: Dictionary) -> void:
 		if bool(msg.get("pvp_yield", false)):
-			s._yield(from))
+			s._yield(from)
+		if bool(msg.get("setup_ready", false)):
+			s.set_ready(from))
+	s._open_setup()
 	if ai != null:
 		ai.mission_over.connect(s._on_mission_over)
 		ai.ai_log.connect(s._on_ai_log)
@@ -118,6 +121,10 @@ func start() -> void:
 
 ## Call every frame.
 func poll(delta: float) -> void:
+	if is_host and setup_left > 0.0:
+		setup_left -= delta
+		if setup_left <= 0.0:
+			_close_setup()  # time's up: everyone fights from where they stand
 	if not _walk.is_empty():
 		_walk_wait -= delta
 		if _walk_wait <= 0.0:
@@ -140,8 +147,8 @@ func poll(delta: float) -> void:
 ## in real time before the fight (mission flavor explore_first), or a unit of ours is outside
 ## the fight going on (counters.exploring).
 func exploring() -> bool:
-	if careful():
-		return false  # careful mode: moves take turns
+	if careful() or setup_open():
+		return false  # careful mode: moves take turns; setup: units are placed, not walked
 	var phase := str(view.get("phase", ""))
 	if phase == GameState.PHASE_SETUP:
 		return true
@@ -271,6 +278,101 @@ func set_careful(on: bool) -> String:
 
 func careful() -> bool:
 	return str(view.get("turn_mode", "combat")) == "explore" and str(view.get("phase", "")) == GameState.PHASE_COMBAT
+
+
+# --- Pre-battle setup -------------------------------------------------------------------------
+
+## Seconds left in a timed setup (-1: until everyone is Ready, or no setup). Host only.
+var setup_left := -1.0
+
+
+## Host: opens the pre-battle setup when the mission asks for one (mission.flavor["setup"]
+## {mode: "timer" | "ready", seconds}): everyone places their own units inside their side's
+## deployment zone (deploy, through the rules engine) until the timer ends or every person in
+## the battle has pressed Ready. The other side's placement stays hidden (ViewFilter). None for
+## missions that start exploring (fights start where people are) or ambushes.
+func _open_setup() -> void:
+	if mission == null or not mission.flavor.has("setup") or bool(mission.flavor.get("explore_first", false)):
+		return
+	if host.state.phase != GameState.PHASE_SETUP:
+		return  # a continued save that's already fighting
+	var cfg: Dictionary = mission.flavor["setup"]
+	var mode := "timer" if str(cfg.get("mode", "ready")) == "timer" else "ready"
+	var secs := clampi(int(cfg.get("seconds", 90)), 60, 120)
+	host.state.objectives["setup"] = {"open": true, "mode": mode, "seconds": secs, "ready": []}
+	setup_left = float(secs) if mode == "timer" else -1.0
+
+
+## True while this screen's battle is in its pre-battle setup.
+func setup_open() -> bool:
+	return str(view.get("phase", "")) == GameState.PHASE_SETUP and bool((view.get("objectives", {}).get("setup", {}) as Dictionary).get("open", false))
+
+
+## The setup as everyone sees it: {open, mode, seconds, ready: [seats]}.
+func setup_info() -> Dictionary:
+	return (view.get("objectives", {}).get("setup", {}) as Dictionary)
+
+
+## Places one of this screen's units during setup (anywhere inside its side's zone).
+## Host: "" or why not. Client: the answer comes back like any action.
+func deploy(unit_id: String, cell: Vector2i) -> String:
+	var a := {"type": "deploy", "actor": unit_id, "params": {"to": [cell.x, cell.y]}}
+	if not is_host:
+		client.submit(a)
+		return ""
+	var u := host.state.unit(unit_id)
+	if u == null:
+		return "No such unit."
+	var r: RuleResult = host.submit(u.controller, a)["result"]
+	return "" if r.ok else r.reason
+
+
+## "Ready": this player is done placing. The setup ends when every person in the battle is
+## ready (bots always are), or when the timer runs out.
+func set_ready(who: String = "") -> void:
+	if not is_host:
+		client.transport.send(NetTransport.HOST_PEER, {"t": NetProtocol.LOBBY, "setup_ready": true})
+		return
+	var st: Dictionary = host.state.objectives.get("setup", {})
+	if not bool(st.get("open", false)):
+		return
+	if who != "" and not host.state.seats.has(who):
+		return
+	var seats_ready: Array = [who] if who != "" else _local_humans
+	for s: String in seats_ready:
+		if not (st["ready"] as Array).has(s):
+			(st["ready"] as Array).append(s)
+	if _everyone_ready():
+		_close_setup()
+	else:
+		host.send_updates([])
+
+
+func _everyone_ready() -> bool:
+	var ready: Array = (host.state.objectives.get("setup", {}) as Dictionary).get("ready", [])
+	var table := host.seat_table()
+	for s: String in table:
+		if bool(table[s].get("ai", false)) or not bool(table[s].get("connected", false)):
+			continue
+		if s == NetHost.GM_SEAT and not host.human_gm:
+			continue
+		if not ready.has(s):
+			return false
+	return true
+
+
+## The setup is over: every side is done deploying, and the GM starts round 1 (the AI GM at
+## once; a human GM when they're ready to).
+func _close_setup() -> void:
+	var st: Dictionary = host.state.objectives.get("setup", {})
+	if not bool(st.get("open", false)):
+		return
+	st["open"] = false
+	setup_left = -1.0
+	for side: String in [Mission.PLAYERS, Mission.ENEMIES]:
+		if not (host.state.objectives.get("deployed_sides", []) as Array).has(side):
+			host.submit(NetHost.GM_SEAT, {"type": "deployment_done", "params": {"side": side}})
+	host.send_updates([])
 
 
 ## A fight between the squad's two sides (a split vote, PvpBattle).

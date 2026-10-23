@@ -18,7 +18,8 @@ func _cleanup() -> void:
 
 
 ## Plays what the people at this screen would: "I'll go" with their own mech when it's their
-## pick, a sensible turn when it's their turn, Ready on hot-seat handoffs.
+## pick, a sensible turn when it's their turn, Ready on hot-seat handoffs and
+## in the pre-battle setup.
 class ScriptedPlayer:
 	extends RefCounted
 	var session: BattleSession
@@ -36,8 +37,14 @@ class ScriptedPlayer:
 		handoffs += 1
 		session.confirm_handoff()
 
+	var readied := false
+
 	## Does one thing if it's this player's move. Returns true if it acted.
 	func act() -> bool:
+		if session.setup_open() and not readied:
+			readied = true
+			session.set_ready()  # pre-battle setup: happy where the mission put us
+			return true
 		var question := session.my_reaction()
 		if not question.is_empty():
 			var weapons: Array = question.get("context", {}).get("weapons", [])

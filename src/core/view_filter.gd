@@ -59,8 +59,9 @@ func view_for(state: GameState, seat: String) -> Dictionary:
 		if u.side == seat_side or _is_gm(state, seat) or knows_stats(seat_side, id, state):
 			units[id] = d
 			continue
-		if u.has_status("Hidden"):
-			# Statuses, Hidden: enemies only know their approximate location.
+		if u.has_status("Hidden") or setup_hides(state):
+			# Statuses, Hidden: enemies only know their approximate location. Pre-battle setup:
+			# the other side's placement stays secret until the fight starts.
 			units[id] = {"id": id, "side": u.side, "hidden": true}
 			continue
 		var visible := {}
@@ -132,6 +133,8 @@ func events_for(state: GameState, seat: String, events: Array) -> Array:
 		var hostile := u != null and u.side != seat_side
 		if hostile and e.get("type", "") == "moved" and u.has_status("Hidden"):
 			continue
+		if hostile and e.get("type", "") == "unit_deployed" and setup_hides(state):
+			continue  # where the other side deploys stays secret during setup
 		var seen_by: Variant = e.get("seen_by")
 		if seen_by is Array and not (seen_by as Array).has(seat_side):
 			continue  # Meant for other sides only (e.g. the GM's twist for the squad).
@@ -149,6 +152,11 @@ func events_for(state: GameState, seat: String, events: Array) -> Array:
 					copy.erase(key)
 		out.append(copy)
 	return out
+
+
+## True while a pre-battle setup is open (BattleSession): sides can't see each other's units.
+static func setup_hides(state: GameState) -> bool:
+	return state.phase == GameState.PHASE_SETUP and bool((state.objectives.get("setup", {}) as Dictionary).get("open", false))
 
 
 ## Mounts whose weapons System Trauma destroyed (Core p.80): what anyone looking at the mech

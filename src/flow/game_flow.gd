@@ -457,6 +457,9 @@ static func start_mission(lobby: LobbyModel, store: SaveStore) -> BattleSession:
 	local_seats.sort()
 	if bool(lobby.campaign.options.get("explore_first", false)):
 		(r["mission"] as Mission).flavor["explore_first"] = true  # walk in real time until contact
+	elif not (r["mission"] as Mission).flavor.has("ambush"):
+		# A pre-battle setup: everyone places their units in their zone (the host's Settings).
+		(r["mission"] as Mission).flavor["setup"] = {"mode": MenuSession.settings().setup_mode, "seconds": int(MenuSession.settings().setup_seconds)}
 	session = BattleSession.for_host(r["host"], r["director"], r["mission"], local_seats, save)
 	(r["host"] as NetHost).ai_squad_auto = bool(lobby.options.get("ai_squad_auto", true))
 	save.save_now()  # Even quitting before the first turn ends can be continued.
