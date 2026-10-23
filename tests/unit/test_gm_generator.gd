@@ -245,6 +245,23 @@ func test_a_fight_in_town_uses_the_hub() -> void:
 			expect(col.has_tag(BattleMap.TAG_DESTRUCTIBLE), "and can be knocked down")
 			expect(col.has_tag("material_wood") and col.has_tag("armor_0"), "Old West wood: no Armor (Core p.68)")
 	expect(buildings > 20, "the town's buildings take up their spaces (%d)" % buildings)
+	# The same buildings as on foot: each hub building's cells carry its id, its door in front.
+	for spot: Dictionary in hub["spots"]:
+		if spot["kind"] in ["plaza", "landing"]:
+			continue
+		var sid := "spot_" + str(spot["id"])
+		var cells: Array[Vector2i] = []
+		var door := Vector2i(-999, -999)
+		for c in s.map.cells():
+			if s.map.column(c).has_tag(sid):
+				cells.append(c)
+			if s.map.column(c).has_tag("door_" + str(spot["id"])):
+				door = c
+		if cells.is_empty():
+			continue  # off this map
+		expect(door != Vector2i(-999, -999), "%s has its door" % sid)
+		var near := cells.any(func(c: Vector2i) -> bool: return s.map.grid.distance(c, door) <= 2)
+		expect(near, "%s's door is at its front" % sid)
 
 
 func test_materials_follow_the_culture() -> void:
