@@ -81,6 +81,21 @@ game waits for people.
 - **Fights start with whoever is there.** Teammates elsewhere can travel to the fight and join it;
   they enter where they arrive, so arriving behind the enemy means starting behind the enemy.
   Late arrivals join the turn order from the next round (Lancer's alternating activations).
+- **No teleporting to missions (user decision):** you climb into your mech in the hangar and walk
+  out in it. If the job is close by on the same world, you walk there; you only fly, ride a
+  dropship or get driven when the place is far away, off-world or across terrain mechs can't cross.
+- **World map like Final Fantasy VII / X (feel only):** walk your mech (or your pilot) around a
+  region map. Each tile takes travel time on the clock, based on the slowest mech when the squad
+  moves together and on each mech's own Speed when players split up. Each player can roam the
+  map on their own until a major story event pulls the squad together. Towns, outposts, job
+  sites, safe points and landmarks sit on the map. Entering one drops you into that area in real
+  time, seamlessly.
+- **Encounters are mostly scripted:** they come from the job board, merc contracts, patrons and the
+  story, placed at real spots on the map. A few road events (patrols, bandits, a broken-down
+  convoy) come from the procedural GM's tables. Every fight still happens on the ground where
+  you met it.
+- **A starting area with depth:** the first town has people to meet, small jobs, places to
+  explore and a reason to walk out of town before the first mission.
 
 ## 1. Animations and visual feedback
 
