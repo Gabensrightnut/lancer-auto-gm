@@ -45,11 +45,13 @@ static func key_of(at: Vector2i) -> String:
 
 
 ## The NetHost of the area at `at` on the region's grid, made the first time it's needed.
-func area_at(at: Vector2i) -> NetHost:
+## `area_opts`: a site's own area description from the world map ({place, at, region}).
+func area_at(at: Vector2i, area_opts: Dictionary = {}) -> NetHost:
 	var key := key_of(at)
 	if areas.has(key):
 		return areas[key]["host"]
 	var o := opts.duplicate(true)
+	o.merge(area_opts, true)
 	o["at"] = [at.x, at.y]
 	if not o.has("place"):
 		o["place"] = "town" if at == Vector2i.ZERO and o.has("hub") else "wilds"

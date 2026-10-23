@@ -188,7 +188,7 @@ func enter(seat: String) -> String:
 	var at := Vector2i(int(area.get("at", [0, 0])[0]), int(area.get("at", [0, 0])[1]))
 	var key := ExploreRegion.key_of(at)
 	if explore != null:
-		explore.area_at(at)
+		explore.area_at(at, area)  # the site's own area ({place, at, region}: its look and shared edges)
 	s["in_area"] = key
 	s["site"] = str(site["id"])
 	s["target"] = null
