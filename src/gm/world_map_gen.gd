@@ -65,6 +65,12 @@ static func region(seed_value: int, world: Dictionary) -> Dictionary:
 			"road_style": rm["road_style"], "start_layout": rm["start_layout"]}}
 
 
+## A small sealed arena for split-vote fights (net's PvpBattle): see PocketArena.build.
+## opts {landscape, culture, size, shape, mechs} -> {map, kit, deployment: {players, enemies}, w, h}
+static func arena(seed_value: int, opts: Dictionary = {}) -> Dictionary:
+	return PocketArena.build(seed_value, opts)
+
+
 ## Ambushes along the routes of a region at war (story sets which regions and who's fighting;
 ## canon factions only): a tile of real cover (woods, hills, ruins, rock) beside a road, with
 ## the faction lying in wait and how big a force the GM fields there ("patrol" a few units,
