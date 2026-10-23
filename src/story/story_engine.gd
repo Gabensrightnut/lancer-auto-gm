@@ -555,6 +555,9 @@ func _combat_from_scene(story: StoryState, campaign: Campaign, spec: Dictionary)
 		hook["sitrep"] = str(spec["sitrep"])
 	hook["on_foot"] = bool(spec.get("on_foot", false))
 	hook["from_scene"] = true
+	# Caught at a crime: the garrison turns out (Soldiers).
+	if bool(spec.get("crime", false)):
+		Soldiers.turn_out(story, hook)
 	if hook.has("boarding") and not bool(spec.get("in_town", true)):
 		spec["in_town"] = false
 	# Aboard a ship that's the squad's hub (the Saint Cadence), a fight breaks out on her own

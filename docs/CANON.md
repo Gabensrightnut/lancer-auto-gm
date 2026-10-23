@@ -133,6 +133,9 @@ book in a way that changes the setting; parked.
 | Split decisions: each human accepts or declines; AI squadmates follow their human; a split becomes a fight between players | Consistent (table procedure) | The book leaves table decisions to the group; PvP is our own mode |
 | World consequences: what the squad breaks (a dam, a depot, a town's streets) causes shortages and damage later, with a job to make it right | Consistent | Stakes and situations change with what players do (Core p.42-43) |
 | Personal agendas (a grudge from short rations on a wrecked mech) | Consistent; the rations part is house rule | Pilots' own goals are table play (p.20-27, p.43) |
+| Every hub has a garrison keeping order: Union Navy marines in the Core, colonial militia on the frontier, a marshal's deputies, a baron's household guard, station or colony security | Consistent | The Union Navy and Auxiliaries (Core p.10-11), Karrakin Baronies' houses (p.92), frontier colonies and corpro holdings (p.10, p.21); our own names for local forces |
+| Guards by day, a night watch and patrols on rounds, who witness crimes and raise the alarm; the garrison turns out if it comes to a fight | Consistent | Witnesses and consequences are the GM's call (Core p.26-27, p.45) |
+| The campaigns' own forces: the Cadence's watch, the Reach's enforcers, Hask's boarding party, Union Navy marines hunting the squad, Marshal Vell's deputies, the Long Arrival's wardens | Consistent (our own story) | Union Navy (p.10-11), boarding actions (p.42); no Massif module content |
 
 ## When canon allows more than one answer
 

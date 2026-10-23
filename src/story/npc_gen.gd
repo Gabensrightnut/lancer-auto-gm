@@ -54,6 +54,8 @@ static func make_hub(story: StoryState, campaign: Campaign, hub_seed: int, kind:
 		story.npcs[npc["id"]] = npc
 		(hub["npcs"] as Array).append(npc["id"])
 		i += 1
+	# Who keeps order here (Soldiers): guards, a night watch, patrols.
+	Soldiers.post(story, campaign, hub, rng, names)
 	story.hub = hub
 	return hub
 

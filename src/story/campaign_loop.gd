@@ -137,6 +137,13 @@ static func build_mission(campaign: Campaign, story: StoryState, db: ContentDB, 
 				_:
 					manual.append({"pilot": pid, "callsign": p.get("callsign", ""), "reserve": r.duplicate()})
 	mission.flavor["reserves"] = manual
+	# The garrison turned out (Soldiers): their squads join the other side, once the rules
+	# session's soldier squad template exists (PROVISIONAL until then: none are added).
+	var sold: Dictionary = hook.get("soldiers", {})
+	if not sold.is_empty() and UnitFactory.npc_templates().has(str(sold.get("template", ""))):
+		var only := {str(sold["template"]): UnitFactory.npc_templates()[str(sold["template"])]}
+		_add_regrouped(state, mission, only, int(sold.get("squads", 1)), int(hook.get("seed", 0)) + 7)
+		mission.flavor["garrison"] = str(sold.get("faction", ""))
 	# The enemy regrouped while the squad spent ten hours on repairs.
 	var regroup := RepairBay.take_regroup(story)
 	if regroup > 0:
