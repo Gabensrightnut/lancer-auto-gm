@@ -319,7 +319,10 @@ static func area(area_seed: int, opts: Dictionary = {}) -> Dictionary:
 	var gen_hub := hub if place_kind == "town" else {}
 	if place_kind in ["road", "wilds"]:
 		gen_culture = ""
-	var map := TerrainGen.generate(rng, size, size, shape, {}, world[0], gen_culture, gen_hub, true, edges)
+	# A place on the world map (farm, wreck, outpost, landmark, port, pad, camp, mine, ruins,
+	# relay): its own feature instead of a village, in the region's materials.
+	var feature := place_kind if place_kind in TerrainGen.FEATURES else ""
+	var map := TerrainGen.generate(rng, size, size, shape, {}, world[0], gen_culture, gen_hub, true, edges, feature)
 	var weather := str(opts.get("weather", region.get("weather", "?")))
 	weather = _pick_weather(rng, world[0], world[1], weather if weather != "" else "clear")
 	var place := int(region.get("seed", hub.get("seed", hash([area_seed, "place"]) & 0x7fffffff)))

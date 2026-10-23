@@ -18,7 +18,7 @@ const LOOK := {"mountains": "mountain", "city": "urban", "water": "water", "road
 const PLAINS_BY_LAND := {"desert_mesas": "desert", "salt_flats": "salt", "tundra": "snow", "volcanic": "ash", "molten_world": "ash",
 	"moon": "rock", "asteroid": "rock", "crystal_fields": "rock", "grassy_hills": "grass", "autumn_forest": "grass", "jungle": "jungle"}
 const SITE_KIND := {"town": "town", "outpost": "outpost", "pad": "outpost", "port": "outpost", "farm": "job", "wreck": "job",
-	"job_site": "job", "safe_point": "safe", "landmark": "landmark"}
+	"job_site": "job", "safe_point": "safe", "landmark": "landmark", "mine": "job", "ruins": "landmark", "relay": "outpost"}
 
 
 static func region(seed_value: int, world: Dictionary) -> Dictionary:
