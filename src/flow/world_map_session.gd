@@ -26,15 +26,47 @@ const TOGETHER := 1.6
 var region: Dictionary = {}
 var explore: ExploreRegion
 var seats: Dictionary = {}
+## Ambushers hidden in cover in a region at war (Ambushes), and the story's dice for them.
+var ambushes := Ambushes.new()
+## Other people's mechs walking the roads (MapTraffic).
+var traffic := MapTraffic.new()
+var dice: Dice
 
 
-func _init(region_map: Dictionary, explore_region: ExploreRegion = null) -> void:
+func _init(region_map: Dictionary, explore_region: ExploreRegion = null, story_dice: Dice = null) -> void:
 	region = region_map
 	explore = explore_region
+	dice = story_dice if story_dice != null else Dice.new(int(hash([region.get("id", ""), "map"])))
+	ambushes = Ambushes.place(region, dice)
+	traffic = MapTraffic.place(region, dice)
+	travelled.connect(func(_g: Array, h: float) -> void: ambushes.pass_time(h))
 
 
-func add_seat(seat: String, at: Vector2, speed: int, on: String = "mech") -> void:
-	seats[seat] = {"at": at, "target": null, "on": on, "speed": maxi(1, speed), "in_area": "", "site": "", "hours": 0.0}
+func add_seat(seat: String, at: Vector2, speed: int, on: String = "mech", spot: int = 0) -> void:
+	seats[seat] = {"at": at, "target": null, "dir": Vector2.ZERO, "on": on, "speed": maxi(1, speed), "in_area": "", "site": "", "hours": 0.0, "spot": spot}
+
+
+## Follow a traffic group (a convoy, a patrol...): walk after it until told otherwise.
+func follow(seat: String, group_id: String) -> String:
+	var s: Dictionary = seats.get(seat, {})
+	if s.is_empty() or traffic.group(group_id).is_empty():
+		return "Nobody like that here."
+	s["follow"] = group_id
+	return ""
+
+
+## WASD / stick (the explore keybinds): walk in a direction for as long as it's held
+## (Vector2.ZERO stops). Clears a click-to-walk target.
+func move(seat: String, dir: Vector2) -> String:
+	var s: Dictionary = seats.get(seat, {})
+	if s.is_empty():
+		return "Nobody there."
+	if str(s["in_area"]) != "":
+		return "Leave %s first." % str(_site(str(s["site"])).get("name", "here"))
+	s["dir"] = dir.normalized() if dir.length() > 0.05 else Vector2.ZERO
+	s["target"] = null
+	s.erase("follow")
+	return ""
 
 
 func tile(t: Vector2i) -> Dictionary:
@@ -61,27 +93,36 @@ func walk_to(seat: String, t: Vector2i) -> String:
 	if not walkable(t, str(s["on"])):
 		return "You can't go there %s." % ("in a mech" if s["on"] == "mech" else "on foot")
 	s["target"] = t
+	s["dir"] = Vector2.ZERO
+	s.erase("follow")
 	return ""
 
 
 ## Moves everyone walking the map (`delta` seconds of real time); travel time builds up per tile.
 func tick(delta: float) -> void:
-	var moving: Array = seats.keys().filter(func(k: String) -> bool: return seats[k]["target"] != null and str(seats[k]["in_area"]) == "")
+	traffic.tick(region, delta)
+	for seat: String in seats:
+		var f := traffic.group(str(seats[seat].get("follow", "")))
+		if not f.is_empty() and (f["at"] as Vector2).distance_to(seats[seat]["at"]) > 1.2:
+			seats[seat]["target"] = tile_of(f["at"])  # keep a little way behind
+	var moving: Array = seats.keys().filter(func(k: String) -> bool: return (seats[k]["target"] != null or seats[k]["dir"] != Vector2.ZERO) and str(seats[k]["in_area"]) == "")
 	for seat: String in moving:
 		var s: Dictionary = seats[seat]
 		var from: Vector2 = s["at"]
-		var to := Vector2(s["target"])
+		var to: Vector2 = Vector2(s["target"]) if s["target"] != null else from + (s["dir"] as Vector2) * MAP_SPEED * delta
 		var step := minf(MAP_SPEED * delta, from.distance_to(to))
 		var next := from + (to - from).normalized() * step if step > 0.0 else from
 		if not walkable(tile_of(next), str(s["on"])):
 			s["target"] = null
+			s["dir"] = Vector2.ZERO
 			continue
 		if tile_of(next) != tile_of(from):
 			s["hours"] = float(s["hours"]) + float(tile(tile_of(next)).get("cost", 1.0)) / float(speed_of(seat))
 		s["at"] = next
-		if next.distance_to(to) < 0.01:
+		if s["target"] != null and next.distance_to(to) < 0.01:
 			s["target"] = null
 	_pass_time()
+	ambushes.tick(seats, dice, delta)
 
 
 ## The Speed a seat travels at: the slowest of those moving with it, else its own.
@@ -99,7 +140,7 @@ func group_of(seat: String) -> Array:
 	var out: Array = []
 	for other: String in seats:
 		var o: Dictionary = seats[other]
-		if str(o["in_area"]) == "" and (o["at"] as Vector2).distance_to(s["at"]) <= TOGETHER and o["target"] == s["target"]:
+		if str(o["in_area"]) == "" and (o["at"] as Vector2).distance_to(s["at"]) <= TOGETHER and o["target"] == s["target"] and o["dir"] == s["dir"]:
 			out.append(other)
 	return out
 
@@ -196,5 +237,5 @@ func view_for(_seat: String) -> Dictionary:
 	for seat: String in seats:
 		var s: Dictionary = seats[seat]
 		squad[seat] = {"at": [snappedf((s["at"] as Vector2).x, 0.01), snappedf((s["at"] as Vector2).y, 0.01)], "on": s["on"], "in_area": s["in_area"], "site": s["site"]}
-	return {"region": str(region.get("id", "")), "size": region.get("size", [0, 0]), "squad": squad,
+	return {"region": str(region.get("id", "")), "size": region.get("size", [0, 0]), "squad": squad, "ambushers": ambushes.view_for(_seat), "traffic": traffic.view_for(seats.get(_seat, {}).get("at", Vector2(-999, -999))),
 		"sites": (region.get("sites", []) as Array).map(func(site: Dictionary) -> Dictionary: return {"id": site["id"], "kind": site.get("kind", ""), "at": site["at"], "name": site.get("name", "")})}
