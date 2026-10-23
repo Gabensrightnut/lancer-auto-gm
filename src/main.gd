@@ -927,6 +927,21 @@ func screenshot_stage(tag: String) -> void:
 			player.play(ev["destroy"])
 			# The fireball at its peak, or the burning wreck once it settles.
 			await Fx.wait(self, 0.35 if tag == "destroy" else 2.6)
+		"drones":
+			# A Hydra launches its Snare OROCHI drone: it lifts off the body and the gap stays.
+			var ev_mv: MechView = view.units["everest"]
+			var hy := UnitFactory.build_mech(content, "hydra", "mf_hydra", {"mounts": [], "systems": [], "orochi": "Snare OROCHI Drone"})
+			hy.side = "players"
+			hy.cell = view.map.grid.from_world(ev_mv.global_position + Vector3(2.2, 0, 0))
+			hy.level = view.map.ground_height(hy.cell)
+			var hmv := view.add_unit(hy.to_dict())
+			hmv.face(hmv.global_position + Vector3(0, 0, -6))
+			player.local_units.append("hydra")
+			var to := view.map.grid.from_world(hmv.global_position + Vector3(1.2, 0, -2.0))
+			view.tactical.look_at_point(hmv.global_position + Vector3(0.5, 0.4, -0.9), 4.5)
+			view.tactical.snap()
+			await player.play([{"type": "deployed", "unit": "hydra", "object": {"id": "hydra_dep1", "kind": "drone", "name": "Snare OROCHI Drone", "cells": [[to.x, to.y, view.map.ground_height(to)]], "hp": 5}}])
+			await Fx.wait(self, 0.5)
 		"firetest":
 			var at: Vector3 = view.units["goblin"].global_position + Vector3(1.5, 0, 0)
 			view.units["goblin"].visible = false

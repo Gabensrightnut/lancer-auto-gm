@@ -45,6 +45,11 @@ func setup(unit_dict: Dictionary, view: BattleView) -> void:
 		frame = {"id": unit.get("content_id", ""), "source": "GMS", "mechtype": ["Balanced"], "stats": {"size": unit.get("size", 1)}}
 	if String(unit.get("kind", "")) == "pilot":
 		model = pilot_model(unit)
+	elif VisibleParts.is_deployable(unit):
+		# Drones, turrets, mines, cover...: their own look (data/game/visible_parts.json), in
+		# the owner's colors when the seat knows who that is.
+		var owner_mv: MechView = view.units.get(VisibleParts.owner_of(unit))
+		model = DeployableBuilder.build(unit, MechStyles.palette(owner_mv.model.manufacturer) if owner_mv and owner_mv.model else {})
 	else:
 		model = MechBuilder.build(frame, unit.get("loadout", {}), view.content, float(unit.get("size", -1)))
 	add_child(model)

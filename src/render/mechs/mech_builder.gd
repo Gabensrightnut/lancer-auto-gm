@@ -70,8 +70,47 @@ func _build(frame: Dictionary, loadout: Dictionary, content: ContentDB, size_ove
 		# Same draw-call diet as the Blender frames (the body only: weapons depend on loadout).
 		MechAsset._merge(body, "code:" + String(_m.frame_id))
 	_weapons(loadout, content)
+	_docks(loadout)
 	_m.collect_meshes()
 	return _m
+
+
+## Deployables that ride on the body until they're deployed (data/game/visible_parts.json):
+## drones on the back or shoulders, the Hydra's OROCHI drones, a weapon that deploys itself.
+func _docks(loadout: Dictionary) -> void:
+	var list := VisibleParts.docks_for(loadout)
+	var attach := VisibleParts.frame_attach(_m.frame_id)
+	if not attach.is_empty():
+		list.append(attach)
+	for d: Dictionary in list:
+		var where := String(d["dock"])
+		if where.begins_with("weapon:"):
+			var w: Node3D = _m.weapons.get(where.substr(7))
+			if w:
+				w.set_meta("dock", true)
+				w.set_meta("weapon_id", where.substr(7))
+				_m.docks[d["name"]] = w
+			continue
+		var parent: Node3D = _m.torso if where == "torso" else _m.slots.get(where)
+		if parent == null:
+			parent = _m.torso
+		if parent == null:
+			continue
+		var part := Node3D.new()
+		part.name = "Dock_" + String(d["name"]).validate_node_name()
+		parent.add_child(part)
+		# Built at world scale like the deployed piece, so it's the same size on and off the body.
+		var k := 1.0
+		var n: Node = parent
+		while n and n != _m:
+			k *= (n as Node3D).scale.x if n is Node3D else 1.0
+			n = n.get_parent()
+		part.scale = Vector3.ONE / maxf(0.01, k)
+		var back := 0.06 if where.begins_with("back") else 0.0
+		var up := 0.05 if where.begins_with("shoulder") else 0.0
+		part.position = Vector3(0, up, back) / maxf(0.01, k)
+		DeployableBuilder.shape(part, d["spec"], _pal, 0.5, _m)
+		_m.docks[d["name"]] = part
 
 
 func _top_of(n: Node, xf: Transform3D) -> float:
