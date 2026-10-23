@@ -597,3 +597,25 @@ func test_on_foot_fights_inside_the_same_building() -> void:
 	expect(rooms.has("room_main") and rooms.has("room_back"), "the same rooms as on foot: %s" % rooms.keys())
 	var m: Mission = g["mission"]
 	expect(not (m.deployment[Mission.PLAYERS] as Array).is_empty() and not (m.deployment[Mission.ENEMIES] as Array).is_empty(), "both sides deploy")
+
+
+func test_holdout_has_something_to_protect() -> void:
+	var g := _gen(12, {"sitrep": "sitrep_holdout", "landscape": "grassy_hills"})
+	var m: Mission = g["mission"]
+	var s: GameState = g["state"]
+	expect(m.flavor.has("protect") and m.flavor.has("objectives"), "a defend objective")
+	var p: Dictionary = m.flavor["protect"]
+	var cell := Vector2i(p["cell"][0], p["cell"][1])
+	var col := s.map.column(cell)
+	expect(col.has_tag("objective") and col.has_tag(BattleMap.TAG_DESTRUCTIBLE) and col.has_tag("hp_10"), "an object with the book's stats: %s" % col.tags)
+	var zone: Array = m.zones["zone"]
+	expect(zone.any(func(c: Array) -> bool: return Vector2i(c[0], c[1]) == cell), "it stands in the defend zone")
+	# A ring of cover with gaps round the zone (chokepoints), not a closed wall.
+	var walls := 0
+	for c in s.map.cells():
+		walls += 1 if s.map.column(c).has_tag("wall") else 0
+	expect(walls > 6, "cover round the zone: %d" % walls)
+	# Destroy it: the mission is lost at the end of the round.
+	col.ground -= 1
+	m._end_of_round(s, 1)
+	expect_eq(m.outcome, Mission.ENEMIES, "losing the %s loses the mission" % p["kind"])

@@ -161,6 +161,9 @@ func _end_of_round(state: GameState, r: int) -> void:
 					var winner := PLAYERS if scores[PLAYERS] > scores[ENEMIES] else ENEMIES
 					_decide(winner, "Final score %d-%d (squad-enemy) after round %d." % [scores[PLAYERS], scores[ENEMIES], r])
 		"sitrep_holdout":
+			if _protected_lost(state):
+				_decide(ENEMIES, "The %s was destroyed: there's nothing left to hold." % str(flavor["protect"]["kind"]))
+				return
 			if r >= rounds:
 				var inside := _count_in(state, "zone", ENEMIES)
 				scores[PLAYERS] = 4 - int(inside)
@@ -237,6 +240,15 @@ static func _weight(u: Unit) -> float:
 static func _counts(u: Unit) -> bool:
 	# A mech knocked out of a non-lethal fight (PvP, the rules' knockout) is out of it too.
 	return not u.destroyed and u.kind != Unit.KIND_DEPLOYABLE and not u.counters.has("extracted") and not bool(u.counters.get("knocked_out", false))
+
+
+## The Holdout's protected object (flavor.protect) is gone: its column lost its section.
+func _protected_lost(state: GameState) -> bool:
+	if not flavor.has("protect"):
+		return false
+	var p: Dictionary = flavor["protect"]
+	var cell := Vector2i(p["cell"][0], p["cell"][1])
+	return state.map.has_cell(cell) and state.map.ground_height(cell) < int(p.get("ground", 1))
 
 
 func _decide(winner: String, why: String) -> void:
