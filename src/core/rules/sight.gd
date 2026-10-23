@@ -30,6 +30,11 @@ extends RefCounted
 
 ## BattleMap column tag for soft cover (smoke, foliage...). The whole column above the ground.
 const TAG_SOFT_COVER := "soft_cover"
+## Parked cars and trucks (the world's street dressing): objects one level high whose Size is
+## the table's "vehicle_size" ruling. Hard cover only for characters that Size or smaller
+## next to it; bigger ones behind it get soft cover, like a low wall (Core p.66). They don't
+## block line of sight (PROVISIONAL), and obstruct movement like any object (Core p.62).
+const TAG_VEHICLE := "vehicle"
 const REF_COVER := "Core p.66 Cover"
 const REF_LOS := "Core p.65 Line of Sight"
 const HARD_COVER_DIFFICULTY := 2
@@ -158,6 +163,12 @@ static func cover(state: GameState, attacker: Body, target: Body, guardians: Arr
 	out["los"] = true
 	var hard_objects := wrecks.duplicate()
 	hard_objects.merge(_voxels(guardians, attacker, target))
+	var cars := vehicle_cells(state)
+	var car_size := vehicle_size(state)
+	for c: Vector2i in cars:
+		if not skip.has(c):
+			var g := state.map.ground_height(c)
+			hard_objects[Vector3i(c.x, c.y, g)] = g + 1
 	# Flanked: some line between a space of the attacker and a space of the target is
 	# totally clear of hard cover.
 	var flanked := false
@@ -177,6 +188,11 @@ static func cover(state: GameState, attacker: Body, target: Body, guardians: Arr
 	var line_skip := skip.duplicate()
 	for c in _low_cover_near(state, attacker, target):
 		line_skip[c] = true
+	for ac in attacker.cells:
+		for c in state.map.grid.neighbors(ac):
+			var one: Array[Vector2i] = [c]
+			if cars.has(c) and car_size <= attacker.size and state.map.grid.footprint_distance(target.cells, one) > 1:
+				line_skip[c] = true  # it shoots over a car no bigger than itself (Core p.66)
 	# It shoots out through its own windows (Core p.66): those don't obscure its attack.
 	var own := {}
 	for c in attacker.cells:
@@ -186,6 +202,8 @@ static func cover(state: GameState, attacker: Body, target: Body, guardians: Arr
 		var block: Array[Vector2i] = [r["first_block"]]
 		var adjacent := state.map.grid.footprint_distance(target.cells, block) <= 1
 		var big_enough := int(r["block_top"]) >= target.level + target.height
+		if cars.has(block[0]) and target.size > car_size:
+			big_enough = false  # a car is smaller than it: soft cover at most, like a low wall
 		if adjacent and big_enough:
 			out["cover"] = "hard"
 			out["difficulty"] = HARD_COVER_DIFFICULTY
@@ -231,7 +249,7 @@ static func fully_in_soft_cover(state: GameState, b: Body) -> bool:
 static func _in_soft_cover(state: GameState, b: Body) -> bool:
 	for c in b.cells:
 		var col := state.map.column(c)
-		if col != null and col.has_tag(TAG_SOFT_COVER):
+		if col != null and col.has_tag(TAG_SOFT_COVER) and not col.has_tag(TAG_VEHICLE):
 			return true
 	return false
 
@@ -249,6 +267,34 @@ static func _low_cover_near(state: GameState, b: Body, target: Body) -> Array[Ve
 			if state.map.grid.footprint_distance(target.cells, one) > 1:
 				out.append(n)
 	return out
+
+
+## A parked vehicle's Size (the table's "vehicle_size" ruling).
+static func vehicle_size(state: GameState) -> float:
+	return 1.0 if Rulings.choice_or_suggested(state, "vehicle_size") == "one" else 0.5
+
+
+static var _car_cache := {}
+
+
+## Cells with a parked vehicle (cached per map; vehicles are only street dressing).
+static func vehicle_cells(state: GameState) -> Dictionary:
+	var key := state.map.get_instance_id()
+	if not _car_cache.has(key):
+		if _car_cache.size() > 16:
+			_car_cache.clear()
+		var out := {}
+		for c in state.map.cells():
+			if state.map.column(c).has_tag(TAG_VEHICLE):
+				out[c] = true
+		_car_cache[key] = out
+	return _car_cache[key]
+
+
+## Is there a parked vehicle in this space (on the ground there)?
+static func vehicle_at(state: GameState, cell: Vector2i, level: int) -> bool:
+	var col := state.map.column(cell)
+	return col != null and col.has_tag(TAG_VEHICLE) and level == col.ground
 
 
 static func _in_room(state: GameState, b: Body) -> bool:
@@ -343,6 +389,6 @@ static func _trace(state: GameState, p0: Vector3, p1: Vector3, skip: Dictionary,
 			continue
 		if is_solid(state.map, cell, lvl):
 			return {"blocked": true, "first_block": cell, "block_top": col.ground, "soft": soft}
-		if col.has_tag(TAG_SOFT_COVER) and lvl >= col.ground:
+		if col.has_tag(TAG_SOFT_COVER) and lvl >= col.ground and not col.has_tag(TAG_VEHICLE):
 			soft = true
 	return {"blocked": false, "first_block": Vector2i.ZERO, "block_top": 0, "soft": soft}

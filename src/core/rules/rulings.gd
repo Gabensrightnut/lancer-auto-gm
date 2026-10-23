@@ -13,6 +13,10 @@ extends RefCounted
 ##   answers with {"type": "set_ruling", "params": {"id", "choice"}}.
 
 const CATALOG := {
+	"vehicle_size": {
+		"question": "How big is a parked car or truck? (The book lists vehicles like APCs and construction vehicles as Size 2, Core p.59, but not cars; cover depends on Size, Core p.66.)",
+		"options": {"half": "Size 1/2: hard cover for people on foot next to it; a mech behind it gets soft cover, like a low wall.", "one": "Size 1: hard cover for Size 1 mechs next to it too."},
+		"suggested": "half", "rule_ref": "Core p.59 Typical Sizes, p.66 Cover, p.68 Objects"},
 	"big_mech_uneven_ground": {
 		"question": "Can a Size 2+ mech stand with part of its footprint over lower ground?",
 		"options": {"allow": "Yes: it stands at the highest ground under it.", "forbid": "No: every space under it must be level."},

@@ -234,7 +234,9 @@ class SelfDestruct:
 	func kinds() -> Array:
 		return [Unit.KIND_MECH]
 
-	func check(_state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+	func check(state: GameState, u: Unit, params: Dictionary) -> RuleResult:
+		if Combat.nonlethal(state):
+			return RuleResult.deny("This is a non-lethal match: nobody blows up their reactor.", Combat.REF_NONLETHAL)
 		if u.counters.has("self_destruct"):
 			return RuleResult.deny("Already counting down.", "actions: Self Destruct")
 		var d := int(params.get("delay", 1))

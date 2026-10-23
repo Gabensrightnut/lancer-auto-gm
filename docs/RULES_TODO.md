@@ -17,6 +17,7 @@ keeps the choices. An AI GM answers with the suggested reading and logs it. Code
 | Ruling id | Question | Readings (suggested first) | Book |
 |---|---|---|---|
 | `big_mech_uneven_ground` | Can a Size 2+ mech stand partly over lower ground? | forbid / allow | p.59, 62 silent |
+| `vehicle_size` | How big is a parked car or truck? | Size 1/2 / Size 1 | p.59 lists vehicles (APCs) as Size 2, not cars; p.66 cover by Size |
 | `climb_cost` | Cost of a step up or down | 1 + 2 per level / 2 per level, step included | p.63 |
 | `flight_difficult` | Do flyers pay for difficult terrain below? | ignore / pay | p.62, 63 |
 | `distance_3d` | Range, Threat, Sensors when heights differ | spaces in any direction / along the ground | p.62, 63, 64 |
@@ -60,8 +61,8 @@ keeps the choices. An AI GM answers with the suggested reading and logs it. Code
 | Mines | A mine goes off after the triggering move resolves (the mover isn't stopped); `detect_mines` (quick, Systems check: every hostile mine within Sensors is detected; PROVISIONAL: one check for all) and `disarm_mine` (quick, adjacent, Systems check; a failure sets it off) | `abilities.gd` |
 | Deployables as cover | Solid deployed objects (type Deployable/Object) are hard cover like terrain; drones and mines aren't | `sight.gd` |
 | Drones and engagement | Drones don't engage or get Engaged | `combat.gd`, `movement.gd` |
-| Pilot-scale spaces | A fight on foot inside a building (InteriorBattle) uses 1.5 m per space; walls two levels high (hard cover, block sight, breakable), counters and tables one level (cover by height), doors keep their lock levels; ground floor only. PROVISIONAL table ruling: the book uses the same grid rules for pilots (Size 1/2) as for mechs but fixes no real-world scale | `interior_battle.gd` `SPACE_M` |
-| Parked vehicles | Cars and trucks parked along city and town streets are objects: Evasion 5, 10 HP per Size, breakable (Core p.68). PROVISIONAL: soft cover (the book doesn't say whether something this much smaller than a mech covers it), not difficult terrain | `terrain_gen.gd` `_parked_vehicles` |
+| Pilot-scale spaces | A fight on foot inside a building (InteriorBattle) uses 1.5 m per space; walls two levels high (hard cover, block sight, breakable), counters and tables one level (cover by height), doors keep their lock levels; ground floor only. CONFIRMED canon: a space is 10 feet (3 m) by default, "but the scale can be changed to represent different types of encounters" (Core p.59); Size, cover and movement rules stay the same at any scale. Note the book's default for fights without mechs is narrative: skill checks, no damage tracking (Core p.48); a gridded on-foot fight is our choice of presentation, using the mech-combat rules for people on foot (p.74) | `interior_battle.gd` `SPACE_M` |
+| Parked vehicles | Cars and trucks along streets (tag `vehicle`) are objects: Evasion 5, 10 HP per Size, breakable (Core p.68). Their Size is the table's `vehicle_size` ruling (suggested Size 1/2: the book lists vehicles like APCs as Size 2, p.59, but not cars). Cover by Size (p.66): hard cover for characters that Size or smaller next to it, soft cover (like a low wall) for bigger ones behind it; a character shoots over a car no bigger than itself. Movement by Size (p.62): it obstructs characters its Size or smaller, bigger ones pass through, nobody stops on it. PROVISIONAL: it doesn't block line of sight; attacking a car isn't wired (its column has no sections) | `sight.gd`, `movement.gd`, `terrain_gen.gd` `_parked_vehicles` |
 | Manticore Unstable System | "At the end of its next turn" counted on the pilot's turns inside the wreck | `combat.gd`, `turn_rules.gd` |
 | Minotaur Invert Cockpit | Eject without Impaired; the first Mount or Dismount each round is free (`free_via: "invert_cockpit"`; one free use per round covers either) | `frame_effects.json` |
 | Balor Scouring Swarm | "Characters of its choice" read as every hostile character | `effects.gd` |
@@ -244,6 +245,21 @@ storey is a room (`BattleMap.rooms_open`).
 | Knockback into a building | walls and windows stop it like any obstruction; the door face lets it through (PROVISIONAL). Teleports into a room aren't wall-checked (no wall stops a teleport) | Core p.62 |
 | Standing on a building that's destroyed | the book's falling rule: falling starts at the end of the current turn, 3 AP per 3 spaces, up to 9 | Core p.63 |
 | Caught inside a collapse | house rule `hr_garrisoned_buildings`: damage as if they fell the building's height (the same numbers), then moved to the nearest free space | not in the book |
+
+## Non-lethal match (the user's PvP mode)
+
+`state.objectives["nonlethal"]` (set by `PvpBattle.arena`). Code: `Combat.knock_out`,
+`Combat.nonlethal`. Not a house rule: it belongs to the match. The book has no sparring or
+yield rule; "Surrender and retreat are perfectly valid end-conditions for a fight" (Core p.60),
+which the side-wide Yield (`PvpBattle.yield_side`) uses.
+
+| Rule | Reading |
+|---|---|
+| Destroyed (last Structure, Direct Hit, Crushing Hit) | knocked out instead: 0 HP, 1 Structure, its Stress (at least 1), out of the fight for the rest of the match; no wreck, no reactor explosion |
+| Reactor meltdown (last Stress, Meltdown results) | knocked out instead, Stress 1, no countdown |
+| A pilot hit while Down and Out | knocked out instead of killed |
+| Self Destruct | refused |
+| Everything else | the book's combat; all damage stays afterwards (`PvpBattle.keep_damage`) |
 
 ## Environments
 
