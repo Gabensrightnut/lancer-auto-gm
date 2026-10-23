@@ -197,7 +197,7 @@ static func loyalties(story: StoryState) -> Dictionary:
 
 ## Up to deploy_max squads fight at the squad's side (allied units), as many men as they have.
 static func deploy(story: StoryState, state: GameState, mission: Mission, seed_value: int) -> void:
-	var tid := str(Soldiers.data().get("unit_template", ""))
+	var tid := str(Garrisons.data().get("unit_template", ""))
 	var templates := UnitFactory.npc_templates()
 	if squads(story).is_empty():
 		return

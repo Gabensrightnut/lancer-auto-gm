@@ -1,4 +1,4 @@
-class_name Soldiers
+class_name Garrisons
 extends RefCounted
 ## Soldiers in the living world (data/game/story/soldiers.json): every hub has a garrison that
 ## keeps order: guards on the office door by day, a night watch, patrols that do their rounds
