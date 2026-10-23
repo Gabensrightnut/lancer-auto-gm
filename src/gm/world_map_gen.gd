@@ -8,7 +8,11 @@ extends RefCounted
 ##     sites: [{id, kind "town" | "outpost" | "job" | "safe" | "landmark", at [x, y], name,
 ##              area: {place, at, region} (feed it to MissionGenerator.area(seed, area)),
 ##              safe_point, repair?, printer_schedule (0 none, 1-3: Core p.377)}],
-##     war: {factions: [...]} or null, ambush_spots: [{id, at, cover, faction, force}] }
+##     war: {factions: [...]} or null, ambush_spots: [{id, at, cover, faction, force}],
+##     stations: [{id, kind "rail" | "road" | "ferry" | "pad" | "port", at, line, lines, name, place?}],
+##     lines: [{id, kind, stops [station ids], path [[x, y]...], steps, hours_per_tile, max_size}],
+##     transit: [{id, kind, at, routes: [{to, line, hours, max_size}]}] (the same, by station) }
+## Tiles on the railway carry rail: true. Rides are look and travel only (PROVISIONAL numbers).
 ##
 ## world: a Sector world {id?, name, culture (story kit), map_culture?, landscape, weather?,
 ## start? (the campaign's first region), war? {factions}}. Same seed and world, same region.
@@ -33,6 +37,8 @@ static func region(seed_value: int, world: Dictionary) -> Dictionary:
 			var t := str(rm["tiles"][y][x])
 			tiles["%d,%d" % [x, y]] = {"terrain": _look(t, profile), "class": t, "cost": float(rm["travel"].get(t, 1.0)),
 				"mech": not (rm["mech_blocked"] as Array).has(t), "foot": t != "water"}
+	for c: Array in rm["rails"]:
+		tiles["%d,%d" % [c[0], c[1]]]["rail"] = true
 	var sites: Array = []
 	for p: Dictionary in rm["places"]:
 		var area := RegionMap.area_opts(rm, int(p["at"][0]), int(p["at"][1]))
@@ -54,6 +60,7 @@ static func region(seed_value: int, world: Dictionary) -> Dictionary:
 	palette["water"] = str(WorldStyle.value(style, "liquid.shallow", ""))
 	return {"id": str(world.get("id", "region_%d" % seed_value)), "size": size, "tiles": tiles, "sites": sites,
 		"war": war, "ambush_spots": ambush, "start": rm["start"], "region": profile,
+		"stations": rm["stations"], "lines": rm["lines"], "transit": rm["transit"],
 		"look": {"kit": kit, "palette": palette, "landmarks": (WorldStyle.value(style, "horizon.landmarks", []) as Array).duplicate(),
 			"road_style": rm["road_style"], "start_layout": rm["start_layout"]}}
 

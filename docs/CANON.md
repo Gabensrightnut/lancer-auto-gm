@@ -34,6 +34,7 @@ book in a way that changes the setting; parked.
 | Core-world landmarks (white towers, space elevator) and frontier ones (water towers, mine headframes, monorails, pagodas) | Consistent | Core and frontier worlds differ greatly (p.21); unnamed scenery, no lore |
 | Alien worlds: giant drifting sky creatures, colossal unnamed ruins, crystal fields, toxic seas | Consistent | Diaspora worlds vary widely (p.10, p.21); unnamed horizon scenery only; ruins never named or explained |
 | Printer schedules 1-3 by place: a schedule 3 printworks in each region's town, schedule 2 units at outposts and ports, schedule 1 at pads and safe points | Canon | Core p.377 (schedules, sizes, crews); printers ubiquitous (p.31, p.82) |
+| Railways, road haulers, ferries and dropship pads between a region's places | Consistent | Look and travel only; dropships are everyday in the book. Whether rides cost anything stays with "Paid passage" below |
 | Tracked wallet with prices | Not canon | Book doesn't track currency (p.18). Parked. |
 | Scarce printers / paying for printer access | Not canon | Printers ubiquitous, access never lost (p.31, p.82). Parked. |
 | Paid passage vs free company rides | Not canon (not stated) | Parked. |

@@ -106,6 +106,47 @@ func test_worlds_differ_by_culture_and_starts_vary() -> void:
 	expect(look.has("palette") and look.has("landmarks") and str(look["palette"]["top_a"]) != "", "the map view gets the world's palette and landmarks")
 
 
+func test_rides_link_the_places() -> void:
+	# Old West river town: a railway, haulers on the roads, a ferry from the port.
+	var r := WorldMapGen.region(41, {"name": "Saltpan", "culture": "old_west", "landscape": "grassy_hills", "start": true, "campaign_seed": 1})
+	var kinds := {}
+	var ids := {}
+	for st: Dictionary in r["stations"]:
+		ids[st["id"]] = st
+		expect(st.has("at") and st.has("line") and str(st["name"]) != "", "station %s has its place, line and name" % st["id"])
+	for l: Dictionary in r["lines"]:
+		kinds[l["kind"]] = true
+		expect((l["stops"] as Array).size() >= 2, "%s has two stops or more" % l["id"])
+		var path: Array = l["path"]
+		for i in range(1, path.size()):
+			expect_eq(absi(int(path[i][0]) - int(path[i - 1][0])) + absi(int(path[i][1]) - int(path[i - 1][1])), 1, "%s runs tile to tile" % l["id"])
+		for s: String in l["stops"]:
+			expect(ids.has(s), "%s stops at a real station" % l["id"])
+		expect(float(l["hours_per_tile"]) > 0.0 and int(l["max_size"]) >= 1, "%s has a speed and a size limit" % l["id"])
+	expect(kinds.has("road") and kinds.has("rail") and kinds.has("ferry"), "haulers, a railway and a ferry: %s" % [kinds.keys()])
+	var rail := 0
+	for k: String in r["tiles"]:
+		rail += 1 if r["tiles"][k].get("rail", false) else 0
+	expect(rail >= 4, "the railway is on the tiles: %d" % rail)
+	for t: Dictionary in r["transit"]:
+		for route: Dictionary in t["routes"]:
+			expect(float(route["hours"]) > 0.0 and ids.has(route["to"]), "%s rides to %s in %s hours" % [t["id"], route["to"], route["hours"]])
+	# Stepping onto a station's tile draws its stop in the area.
+	var town: Dictionary = r["sites"][0]
+	expect((town["area"] as Dictionary).has("stations"), "the town has its stops")
+	var a := MissionGenerator.area(2, (town["area"] as Dictionary).merged({"shape": "square", "size": 40}))
+	var drawn := {}
+	for s: Dictionary in a["stations"]:
+		drawn[s["kind"]] = true
+		expect((a["map"] as BattleMap).column(Vector2i(s["cell"][0], s["cell"][1])).has_tag("station_stop"), "a boarding spot for the %s" % s["kind"])
+	expect(drawn.has("road") and drawn.has("rail"), "the depot and the station are in the town area: %s" % [drawn.keys()])
+	# Dropships from a pad, on a world with no railway.
+	var pads := WorldMapGen.region(9, {"culture": "", "landscape": "moon"})
+	var pad_lines: Array = (pads["lines"] as Array).filter(func(l: Dictionary) -> bool: return l["kind"] == "pad")
+	var rail_lines: Array = (pads["lines"] as Array).filter(func(l: Dictionary) -> bool: return l["kind"] == "rail")
+	expect(not pad_lines.is_empty() and rail_lines.is_empty(), "a moon has dropships, no railway")
+
+
 func test_printers_by_place() -> void:
 	var r := WorldMapGen.region(41, {"name": "Saltpan", "culture": "old_west", "landscape": "grassy_hills", "start": true, "campaign_seed": 2})
 	var by_kind := {}

@@ -325,7 +325,9 @@ static func area(area_seed: int, opts: Dictionary = {}) -> Dictionary:
 	# The biggest printer here (Core p.377): the region passes its place's; otherwise a town or
 	# hub has a schedule 3 printworks, a village a schedule 1 unit, outposts and ports 2, pads 1.
 	var printer := int(opts.get("printer_schedule", PLACE_PRINTER.get(place_kind, 0)))
-	var map := TerrainGen.generate(rng, size, size, shape, {}, world[0], gen_culture, gen_hub, true, edges, feature, printer)
+	# Where a ride stops here (RegionMap stations): drawn beside the road.
+	var stops: Array = opts.get("stations", [])
+	var map := TerrainGen.generate(rng, size, size, shape, {}, world[0], gen_culture, gen_hub, true, edges, feature, printer, stops)
 	var weather := str(opts.get("weather", region.get("weather", "?")))
 	weather = _pick_weather(rng, world[0], world[1], weather if weather != "" else "clear", str(opts.get("season", region.get("season", ""))))
 	var place := int(region.get("seed", hub.get("seed", hash([area_seed, "place"]) & 0x7fffffff)))
@@ -350,12 +352,25 @@ static func area(area_seed: int, opts: Dictionary = {}) -> Dictionary:
 		var wp := map.grid.to_world(Vector2i(first["cell"][0], first["cell"][1]))
 		flat["repair_bay"] = [wp.x, wp.z]
 	var result := {"map": map, "kit": kit, "name": TerrainGen.describe(world[0], world[1]), "place": place_kind, "at": [ax, ay], "safe_points": safe,
-		"printer_schedule": sched,
+		"printer_schedule": sched, "stations": _stations(map),
 		"region": {"seed": place, "landscape": world[0], "culture": world[1], "weather": weather},
 		"center": cell.call(size / 2, size / 2),
 		"entries": {"west": cell.call(0, size / 2), "east": cell.call(size - 1, size / 2), "north": cell.call(size / 2, 0), "south": cell.call(size / 2, size - 1)}}
 	result.merge(flat)
 	return result
+
+
+## Where to board each ride in the area: [{kind, cell [x, y]}].
+static func _stations(map: BattleMap) -> Array:
+	var out: Array = []
+	for c in map.cells():
+		var col := map.column(c)
+		if not col.has_tag("station_stop"):
+			continue
+		for t in col.tags:
+			if t.begins_with("station_") and t != "station_stop":
+				out.append({"kind": t.trim_prefix("station_"), "cell": [c.x, c.y]})
+	return out
 
 
 ## The biggest printer each kind of place has when the region doesn't say (Core p.377).

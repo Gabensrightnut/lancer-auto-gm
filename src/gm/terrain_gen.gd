@@ -134,7 +134,7 @@ static func kit(landscape: String, culture: String) -> String:
 
 
 static func generate(rng: RandomNumberGenerator, w: int, h: int, shape: GridLayout.Shape, blocked: Dictionary, landscape: String, culture: String,
-		hub: Dictionary = {}, area: bool = false, edges: Dictionary = {}, feature: String = "", printer: int = 0) -> BattleMap:
+		hub: Dictionary = {}, area: bool = false, edges: Dictionary = {}, feature: String = "", printer: int = 0, stations: Array = []) -> BattleMap:
 	var g := TerrainGen.new()
 	g.edges = edges
 	# The biggest printer here (Core p.377): towns and hubs 3, smaller places 1-2; city maps
@@ -199,6 +199,8 @@ static func generate(rng: RandomNumberGenerator, w: int, h: int, shape: GridLayo
 	if area and landscape not in ["city", "station", "starship", "boarding", "boarding_defend", "boarding_assault"]:
 		g._area_ways()
 	g._clear_rock_near_built()
+	for i in range(mini(stations.size(), 3)):
+		g._stop(str(stations[i]), i)
 	if g.printer > 0 and landscape not in ["station", "starship", "boarding", "boarding_defend", "boarding_assault"]:
 		g._printer_site()
 	g._place_outcrops()
@@ -1914,6 +1916,50 @@ func _feature(kind: String, culture: String) -> void:
 	_road(track, "road_z")
 
 
+## Where a ride stops in an area (RegionMap stations), in one of three slots clear of the
+## crossroads, the place's feature (north-east) and a hub's town: west of the road south,
+## west north, east south. rail: a station house and platform at the end of a spur line;
+## road: a depot shed and a yard for the haulers; pad: a dropship pad and its hut; ferry and
+## port: a jetty out into a basin and a harbour shed. One space beside it is the boarding
+## spot ("station_stop").
+func _stop(kind: String, slot: int) -> void:
+	var c0: int = [4, 4, w - 14][slot]
+	var r0: int = [h / 2 + 2, h / 2 - 8, h / 2 + 2][slot]
+	var base := clampi(_ground_at(c0 + 4, r0 + 2), 0, 1)
+	for r in range(r0, r0 + 6):
+		for c in range(c0, c0 + 10):
+			_put(c, r, base, [])
+	var tag := "station_" + kind
+	var stand := Vector2i(c0 + 4, r0 + 2)
+	match kind:
+		"rail":
+			var line: Array = []
+			for c in range(c0, c0 + 10):
+				line.append(Vector2i(c, r0 + 4))
+			_rail(line, base)
+			_box(c0 + 1, r0 + 3, 7, 1, base + 1, ["platform", "station", tag])
+			_box(c0 + 2, r0, 3, 2, base + 1, ["building", "station", tag, BattleMap.TAG_DESTRUCTIBLE])
+			stand = Vector2i(c0 + 6, r0 + 2)
+		"road":
+			_box(c0 + 1, r0, 3, 2, base + 1, ["building", "station", tag, BattleMap.TAG_DESTRUCTIBLE])
+			_lot(c0, r0 + 2, 10, 4)
+		"pad":
+			_box(c0 + 4, r0 + 1, 5, 5, base, ["deck", "landing_pad", "station", tag])
+			_box(c0, r0, 2, 2, base + 1, ["building", "station", tag, BattleMap.TAG_DESTRUCTIBLE])
+			stand = Vector2i(c0 + 3, r0 + 3)
+		"ferry", "port":
+			_box(c0 + 3, r0, 7, 6, 0, [BattleMap.TAG_DIFFICULT, "water"])
+			_box(c0 + 5, r0 + 2, 5, 1, base, ["deck", "station", tag])
+			_box(c0, r0, 2, 2, base + 1, ["building", "station", tag, BattleMap.TAG_DESTRUCTIBLE])
+			stand = Vector2i(c0 + 2, r0 + 3)
+	_put(stand.x, stand.y, base, ["lot", "station_stop", tag])
+	for r in range(r0, r0 + 6):
+		for c in range(c0, c0 + 10):
+			var cell := _cell(clampi(c, 0, w - 1), clampi(r, 0, h - 1))
+			if map.has_cell(cell):
+				built[cell] = true
+
+
 ## Look tags for a printer of this schedule (the size it prints up to, Core p.377).
 func _printer_tags(sched: int) -> Array:
 	printer = maxi(printer, sched)
@@ -1971,7 +2017,7 @@ func _printer_fits(c0: int, r0: int, span: Vector2i, strict: bool) -> bool:
 				return false
 			if edge:
 				continue
-			if col.ground > 2 or col.has_tag("safe_point") or col.has_tag("objective") or col.has_tag("keep"):
+			if col.ground > 2 or col.has_tag("safe_point") or col.has_tag("objective") or col.has_tag("keep") or col.has_tag("station"):
 				return false
 			for t in col.tags:
 				if t.begins_with("spot_") or t.begins_with("place_"):
