@@ -81,6 +81,21 @@ game waits for people.
 - **Fights start with whoever is there.** Teammates elsewhere can travel to the fight and join it;
   they enter where they arrive, so arriving behind the enemy means starting behind the enemy.
   Late arrivals join the turn order from the next round (Lancer's alternating activations).
+- **No teleporting to missions (user decision):** you climb into your mech in the hangar and walk
+  out in it. If the job is close by on the same world, you walk there; you only fly, ride a
+  dropship or get driven when the place is far away, off-world or across terrain mechs can't cross.
+- **World map like Final Fantasy VII / X (feel only):** walk your mech (or your pilot) around a
+  region map. Each tile takes travel time on the clock, based on the slowest mech when the squad
+  moves together and on each mech's own Speed when players split up. Each player can roam the
+  map on their own until a major story event pulls the squad together. Towns, outposts, job
+  sites, safe points and landmarks sit on the map. Entering one drops you into that area in real
+  time, seamlessly.
+- **Encounters are mostly scripted:** they come from the job board, merc contracts, patrons and the
+  story, placed at real spots on the map. A few road events (patrols, bandits, a broken-down
+  convoy) come from the procedural GM's tables. Every fight still happens on the ground where
+  you met it.
+- **A starting area with depth:** the first town has people to meet, small jobs, places to
+  explore and a reason to walk out of town before the first mission.
 
 ## 1. Animations and visual feedback
 
@@ -203,7 +218,15 @@ them, and they disappear when the turn moves on.
   procedurally in our own code, so nothing in it is someone else's art.
 - 3D scene in Godot with switchable camera modes, changeable
   any time in game:
-  - **Tactical (default):** angled, rotatable overhead view of the whole board.
+  - **The core idea (user decision):** a first-person / third-person / top-down TTRPG. You
+    can control your own character directly in every view, but battles stay turn-based, on
+    the hex/square grid, with movement limited by the book (Speed, Boost, terrain, Engagement).
+  - **Top-down (the base way to play, the default):** overhead like a tabletop map, the
+    clearest view of the grid, zones, ranges and areas. Mouse-first: click to move and target,
+    WASD and screen edges pan, Q/E rotate, wheel zooms (down to an angled tactical view).
+  - **First and third person (optional camera angles):** identical controls, only the camera
+    differs (eyes/cockpit vs over the shoulder). Mouse look and aim, WASD steps space by space
+    along the grid, hold right mouse to aim down sights (zoom only, never reveals more).
   - **First person:** cockpit view from your mech's eye level, with a HUD (heat, HP,
     structure, selected weapon, range). Attacks, hacks and effects play out from inside the
     cockpit. A minimap shows the grid so moves and ranges stay readable.
@@ -215,6 +238,11 @@ them, and they disappear when the turn moves on.
     enemy to target it (range, line of sight, cover and hit chance on the HUD), and pick
     actions from a cockpit action panel (Quick/Full actions, Overcharge, Brace, tech, etc.).
     Nothing happens in real time; nothing resolves until you confirm.
+  - **Direct control in every view:** on your turn, WASD walks your mech one space at a time
+    in the direction you face or the camera points. Each step snaps to the grid, costs
+    movement per the book, and shows "Moves left: 3". You can't step past your Speed (or Boost)
+    or into illegal spaces; a wall or an Engagement stops you with the reason. Undo steps until
+    you confirm. Click-to-move works in every view too.
   - Other players can use different cameras at the same time.
 - **Every model matches what's actually equipped.** Mechs are assembled from the pilot's
   real loadout data, not a fixed model per frame:
@@ -540,6 +568,26 @@ differently without an AI. Each game has a **seed**: share it to replay the same
 - **All of it is data:** tables, behaviors and presets live in editable data files, so new
   content and variety can be added without changing code.
 
+### Soldiers
+
+Soldiers are people fighting on foot on the mech battlefield: a **squad** (ten people sharing
+one pool of 10 HP in one space; how many are still standing shows on the model) or a single
+**soldier**. They follow the book's rules for anyone out of a mech (Core p.74): they add Grit to
+attacks and saves, can't be hacked (only Lock On and Scan work on them), take heat as energy
+damage, attack with Fight using pilot weapons, and mechs walk straight through them without
+being Engaged. Mech weapons hit them hard; their rifles barely scratch a mech, but a missile
+team's launcher can.
+
+Nobody gives soldiers orders, on either side. Each acts on its own AI, by what kind of squad it
+is (the book's NPC roles: a missile team fires from far back, medics stay hidden and patch up
+people on foot, a guard squad holds what it guards) and by the mission's objective: in a
+Holdout, guards stay on the zone instead of chasing kills. On your side you still choose when
+an allied squad takes its turn (Core p.60), and the combat log says in plain words what it's
+doing and why ("Guard Squad: moves into cover, fires its rifles at the Goblin (holding the
+zone)"). Weights are a table in `data/game/gm/objective_priorities.json`; kinds and their
+placeholder numbers in `data/game/soldiers.json`. A new player meets them as town guards and
+patrols, as garrisons in enemy bases, and as allied troops on missions that have them.
+
 ## 10. Around combat: the rest of the game
 
 ### Enemy (NPC) data
@@ -796,14 +844,16 @@ at any time, even mid-campaign. The game stays canon until someone turns one on.
 - **Your ideas** (from this design, previously parked):
   - Tracked wallet: manna and local currency with prices for food, drinks, lodging, travel,
     information, pilot supplies and repair kits; mission pay; selling salvage.
-  - Printer scarcity: frontier worlds without printers, paying for printer access, a destroyed
-    mech staying destroyed until you reach a printer.
+  - Frontier printers (Joe's Rules): every world has printers (book), but frontier ones don't
+    always have the raw materials, power or crew to run them, and they break down more often.
+    So printing there can mean a queue, a materials or access fee, bringing your own scrap, or a
+    failed print that has to be redone. Core and well-funded worlds print reliably.
   - Paid travel: company/patron members ride free, independents buy passage.
   - "Can't afford it? Fight for it": an unaffordable deal becomes a generated combat job; lose
     and the deal is off, but you can come back and pay with scrap, a spare mech, manna or money.
   - Food and water as a survival need.
   - Building collapse saving roll after big hits (instead of only HP/Armor/AP, Core p.68).
-  - Stunned after a fall, and a "brace for the fall" reaction.
+  - A "brace for the fall" reaction (halves fall damage). (Stunned after a fall: removed by the user.)
 - **Lancer Tactics options** (see the table below): split barrage and the big-hit Brace prompt
   are ON by your pick; repeating quick tech stays OFF.
 - **Community house rules:** popular ones researched from the Lancer community (forums, Reddit,

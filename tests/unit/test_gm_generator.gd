@@ -262,6 +262,10 @@ func test_a_fight_in_town_uses_the_hub() -> void:
 		expect(door != Vector2i(-999, -999), "%s has its door" % sid)
 		var near := cells.any(func(c: Vector2i) -> bool: return s.map.grid.distance(c, door) <= 2)
 		expect(near, "%s's door is at its front" % sid)
+		var parked := false
+		for c in s.map.cells():
+			parked = parked or s.map.column(c).has_tag("parking_" + str(spot["id"]))
+		expect(parked, "%s has a mech parking spot outside" % sid)
 
 
 func test_materials_follow_the_culture() -> void:
@@ -512,8 +516,8 @@ func test_roads_have_a_hierarchy_and_no_bare_city_ground() -> void:
 			deck += 1
 		if col.ground == 0 and col.gap_top == 0 and col.tags.is_empty():
 			bare += 1
-	expect(widths.has(4), "a four-lane boulevard: %s" % widths.keys())
-	expect(widths.has(2) or widths.has(3), "streets: %s" % widths.keys())
+	expect(widths.has(4), "a four-lane boulevard: %s" % [widths.keys()])
+	expect(widths.has(2) or widths.has(3), "streets: %s" % [widths.keys()])
 	expect(deck > 20, "an elevated highway on pillars in the mega-city: %d" % deck)
 	expect_eq(bare, 0, "no bare ground in the city")
 	var ramps := 0
@@ -594,7 +598,7 @@ func test_on_foot_fights_inside_the_same_building() -> void:
 			if t.begins_with("room_"):
 				rooms[t] = true
 	expect(walls > 10 and doors >= 2 and street > 5, "the saloon's walls (%d), doors (%d) and the street (%d)" % [walls, doors, street])
-	expect(rooms.has("room_main") and rooms.has("room_back"), "the same rooms as on foot: %s" % rooms.keys())
+	expect(rooms.has("room_main") and rooms.has("room_back"), "the same rooms as on foot: %s" % [rooms.keys()])
 	var m: Mission = g["mission"]
 	expect(not (m.deployment[Mission.PLAYERS] as Array).is_empty() and not (m.deployment[Mission.ENEMIES] as Array).is_empty(), "both sides deploy")
 
@@ -619,3 +623,62 @@ func test_holdout_has_something_to_protect() -> void:
 	col.ground -= 1
 	m._end_of_round(s, 1)
 	expect_eq(m.outcome, Mission.ENEMIES, "losing the %s loses the mission" % p["kind"])
+
+
+func test_safe_points_for_full_repairs() -> void:
+	# Core p.82: Full Repairs take ten hours in a secure location. The town's repair bay or
+	# printer is one; out in the country about one area in three has a field repair rig.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var hub := {"kind": "town", "culture": "old_west", "seed": 5, "spots": HubLayout.spots("town", rng)}
+	var town := MissionGenerator.area(5, {"hub": hub, "shape": "square", "size": 50})
+	expect(not (town["safe_points"] as Array).is_empty(), "the town has a safe point")
+	expect(str(town["safe_points"][0]["kind"]) in ["repair_bay", "printer"], "at its repair bay or printer")
+	expect(town["safe_point"] == true and town["repair"] == "bay" and (town["repair_bay"] as Array).size() == 2, "story's fields: safe_point, repair, repair_bay")
+	var region := {"seed": 9, "landscape": "grassy_hills", "culture": "", "weather": ""}
+	var with_rig := 0
+	for ax in range(3):
+		for ay in range(3):
+			var a := MissionGenerator.area(ax * 10 + ay, {"region": region, "at": [ax, ay], "place": "wilds", "shape": "square", "size": 30})
+			with_rig += 1 if not (a["safe_points"] as Array).is_empty() else 0
+	expect(with_rig >= 3 and with_rig <= 5, "rigs spread over the region: %d of 9" % with_rig)
+	var sp := MissionGenerator.secure_camp(town, Vector2i(10, 10))
+	expect_eq(sp["kind"], "camp", "a secured camp becomes a safe point")
+
+
+func test_buildings_have_interiors_windows_and_entrances() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 22
+	var city := TerrainGen.generate(rng, 40, 40, GridLayout.Shape.HEX, {}, "city", "retro")
+	var cells := 0
+	var windows := 0
+	var entrances := 0
+	for c in city.cells():
+		var col := city.column(c)
+		if not col.has_tag("building"):
+			continue
+		cells += 1
+		expect(col.has_tag("interior") and col.has_tag("storeys_%d" % maxi(1, col.ground)), "%s: room inside, %d storeys" % [c, col.ground])
+		for t in col.tags:
+			windows += 1 if t.begins_with("window_") else 0
+		entrances += 1 if col.has_tag("entrance") else 0
+	expect(cells > 0 and windows > cells / 2, "windows on the open faces: %d over %d cells" % [windows, cells])
+	expect(entrances > 3, "each building has a way in: %d" % entrances)
+
+
+func test_secondary_objectives_never_decide_the_mission() -> void:
+	var g := _gen(21, {"sitrep": "sitrep_control", "secondary": "capture"})
+	var m: Mission = g["mission"]
+	var sec: Array = (m.flavor.get("objectives", []) as Array).filter(func(o: Dictionary) -> bool: return bool(o.get("secondary", false)))
+	expect_eq(sec.size(), 1, "one secondary GM objective")
+	expect(m.zones.has("secondary") and not m.sitrep_zones().has("secondary"), "its zone isn't one of the sitrep's")
+	expect(m.briefing.contains("Secondary (a GM objective"), "the briefing marks it as the GM's")
+	expect_eq(m.sitrep_zones().size(), 4, "Control still scores its four zones")
+	# The panel shows both in plain words.
+	var ls := ObjectivePanel.lines(m, 2)
+	expect(ls.size() == 2 and str(ls[0]["text"]).contains("more round"), "primary with its round counter: %s" % [ls])
+	expect(str(ls[1]["text"]).begins_with("Secondary: take and hold"), "then the secondary: %s" % ls[1]["text"])
+	# Deciding the mission settles the secondary but doesn't change who won.
+	m._decide(Mission.PLAYERS, "test")
+	expect_eq(m.outcome, Mission.PLAYERS)
+	expect_eq(str(sec[0]["state"]), "failed", "never held, so the secondary failed; the squad still won")

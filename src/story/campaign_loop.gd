@@ -32,8 +32,8 @@ static func squad(campaign: Campaign, story: StoryState) -> Array:
 		if p.is_empty() or not story.is_alive(pid):
 			continue
 		# Printer scarcity (house rule): a wrecked mech stays wrecked until it's reprinted.
-		if Economy.wrecked(story, campaign).has(pid):
-			continue
+		if Economy.wrecked(story, campaign).has(pid) or RepairBay.wrecked(story, pid):
+			continue  # wrecked: printed again at the next Full Repair (Core p.82)
 		var mech: Dictionary = {}
 		for m: Dictionary in p.get("mechs", []):
 			if m["id"] == p.get("active_mech", "") or mech.is_empty():
@@ -115,6 +115,8 @@ static func build_mission(campaign: Campaign, story: StoryState, db: ContentDB, 
 			continue
 		var p: Dictionary = entry["pilot"]
 		var pid := str(p.get("id", ""))
+		# Damage lasts until a Full Repair (RepairBay).
+		RepairBay.apply(story, pid, mech)
 		var pu := UnitFactory.build_pilot(db, seat + "_pilot", _pilot_for_battle(db, p), mech.side, seat)
 		pu.name = str(p.get("callsign", pu.name))
 		pu.hp = clampi(StoryEffects.current_hp(story, campaign, pid), 0, pu.max_hp)
@@ -135,6 +137,19 @@ static func build_mission(campaign: Campaign, story: StoryState, db: ContentDB, 
 				_:
 					manual.append({"pilot": pid, "callsign": p.get("callsign", ""), "reserve": r.duplicate()})
 	mission.flavor["reserves"] = manual
+	# The squad's own troops fight at its side (Troops).
+	Troops.deploy(story, state, mission, int(hook.get("seed", 0)))
+	# The garrison turned out (Soldiers): their squads join the other side, once the rules
+	# session's soldier squad template exists (PROVISIONAL until then: none are added).
+	var sold: Dictionary = hook.get("soldiers", {})
+	if not sold.is_empty() and UnitFactory.npc_templates().has(str(sold.get("template", ""))):
+		var only := {str(sold["template"]): UnitFactory.npc_templates()[str(sold["template"])]}
+		_add_regrouped(state, mission, only, int(sold.get("squads", 1)), int(hook.get("seed", 0)) + 7)
+		mission.flavor["garrison"] = str(sold.get("faction", ""))
+	# The enemy regrouped while the squad spent ten hours on repairs.
+	var regroup := RepairBay.take_regroup(story)
+	if regroup > 0:
+		_add_regrouped(state, mission, gen_opts.get("npc_templates", UnitFactory.npc_templates()), regroup, int(hook.get("seed", 0)))
 	# Allies who came because of what the squad did (the main campaign's finales).
 	var allies: Array = (hook.get("allies", []) as Array).duplicate()
 	if hook.has("boarding"):
@@ -143,6 +158,22 @@ static func build_mission(campaign: Campaign, story: StoryState, db: ContentDB, 
 	# Someone leads the enemy force (Rivals): mission.flavor["commander"].
 	Rivals.setup_battle(story, campaign, state, mission)
 	return gen
+
+
+## Extra enemies who regrouped while the squad repaired (RepairBay), in the enemy's deployment.
+static func _add_regrouped(state: GameState, mission: Mission, templates: Dictionary, n: int, seed_value: int) -> void:
+	if templates.is_empty():
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([seed_value, "regroup"])
+	var free := MissionGenerator._free_cells(mission.deployment.get(Mission.ENEMIES, []), rng)
+	var ids: Array = templates.keys()
+	for i in range(n):
+		var u := MissionGenerator.build_enemy({"template": str(ids[rng.randi() % ids.size()])}, templates, "regroup%d" % i, 90 + i)
+		u.side = Mission.ENEMIES
+		u.controller = "gm"
+		MissionGenerator._place(state, u, free)
+	mission.flavor["regrouped"] = n
 
 
 ## Allied NPC units on the squad's side, run by the AI as the "allies" seat.
@@ -340,4 +371,11 @@ static func finish_mission(campaign: Campaign, story: StoryState, engine: StoryE
 		var regions: Dictionary = story.flags.get("_regions", {})
 		regions[region_key(story, mission.flavor.get("hook", {}))] = (mission.flavor["region"] as Dictionary).duplicate()
 		story.flags["_regions"] = regions
-	return engine.submit(story, campaign, {"type": "mission_finished", "seat": "gm", "params": mission_result(state, mission, story, events)})
+	# How the squad's mechs came out of it: that lasts until a Full Repair (RepairBay).
+	RepairBay.record(story, state)
+	# And its troops: men lost stay lost (Troops).
+	var troop_events := Troops.after_battle(story, state)
+	var r := engine.submit(story, campaign, {"type": "mission_finished", "seat": "gm", "params": mission_result(state, mission, story, events)})
+	if not troop_events.is_empty() and r.has("events"):
+		r["events"] = troop_events + (r["events"] as Array)
+	return r

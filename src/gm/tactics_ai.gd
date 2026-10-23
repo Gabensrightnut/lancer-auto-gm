@@ -23,6 +23,9 @@ const UNKNOWN_RANGE := 8
 var settings: GmSettings
 var roles: Dictionary
 var stances: Dictionary
+## Role x sitrep weights and plain intents (data/game/gm/objective_priorities.json).
+var priorities: Dictionary
+const PRIORITIES_FILE := "res://data/game/gm/objective_priorities.json"
 ## Mixed into the noise seed (the director sets the real game seed) so replays match.
 var seed_salt := 0
 
@@ -32,6 +35,7 @@ func _init(gm: GmSettings = null) -> void:
 	var b := GmSettings.load_json(GmSettings.BEHAVIORS_FILE)
 	roles = b.get("roles", {})
 	stances = b.get("stances", {})
+	priorities = GmSettings.load_json(PRIORITIES_FILE)
 
 
 ## Returns {"steps": [action dicts to submit in order], "log": String, "score": float}.
@@ -112,11 +116,26 @@ func role_of(u: Unit, orders: Dictionary = {}) -> String:
 
 # --- Context -------------------------------------------------------------------------------
 
+## The role x sitrep weights for a unit (objective_priorities.json): the sitrep's row, else
+## the role's "_any" row, over the defaults. "intent" has the objective's name filled in.
+static func priority(table: Dictionary, role: String, sitrep: String) -> Dictionary:
+	var out: Dictionary = (table.get("default", {}) as Dictionary).duplicate()
+	var rows: Dictionary = table.get("roles", {}).get(role, {})
+	out.merge(rows.get(sitrep, rows.get("_any", {})), true)
+	var names: Dictionary = table.get("zone_names", {})
+	out["intent"] = String(out.get("intent", "")).replace("{zone}", String(names.get(sitrep, names.get("_any", "objective"))))
+	return out
+
+
 func _context(know: AiKnowledge, u: Unit, orders: Dictionary) -> Dictionary:
 	var s := know.state
 	var stance: Dictionary = stances.get(str(orders.get("stance", "")), {})
 	var role := role_of(u, orders)
-	var profile: Dictionary = roles.get(role, roles.get("striker", {}))
+	var profile: Dictionary = (roles.get(role, roles.get("striker", {})) as Dictionary).duplicate()
+	# The mission's objective and this unit's job weigh every choice (objective_priorities.json).
+	var prio := priority(priorities, role, str(orders.get("sitrep", "")))
+	for k: Array in [["cover_weight", "cover"], ["threat_weight", "threat"], ["attack_weight", "attack"]]:
+		profile[k[0]] = float(profile.get(k[0], 1.0)) * float(prio.get(k[1], 1.0))
 	var aggression := settings.aggression + float(stance.get("aggression", 0.0))
 	var caution := settings.caution + float(stance.get("caution", 0.0))
 	var hurt := _hurt(u)
@@ -145,7 +164,9 @@ func _context(know: AiKnowledge, u: Unit, orders: Dictionary) -> Dictionary:
 		"tech_bonus": float(stance.get("tech_bonus", 0.0)), "ally_bonus": float(stance.get("ally_bonus", 0.0)),
 		"enemies": enemies, "allies": know.allies_of(u), "reach": reach, "hurt": hurt,
 		"pref_range": _preferred_range(u, profile), "keep_away": int(profile.get("keep_away", 0)),
-		"zones": zones, "zone_weight": float(orders.get("zone_weight", 0.0)), "rng": rng, "no_hide": bool(orders.get("no_hide", false)),
+		"zones": zones, "zone_weight": float(orders.get("zone_weight", 0.0)) * float(prio.get("zone", 1.0)), "rng": rng,
+		"no_hide": bool(orders.get("no_hide", false)), "hide_w": float(prio.get("hide", 1.0)), "intent": String(prio.get("intent", "")),
+		"foot": u.on_foot(),
 	}
 
 
@@ -296,7 +317,7 @@ func _best_package(know: AiKnowledge, u: Unit, ctx: Dictionary) -> Dictionary:
 			var factor := _target_factor(know, t, ctx, p["hit_chance"] * dmg)
 			var lock_chance: float = p["hit_chance"]
 			var lockable := false
-			if not t.has_status("Lock On") and Attacks.tech_target_check(s, u, t).ok:
+			if not ctx["foot"] and not t.has_status("Lock On") and Attacks.tech_target_check(s, u, t).ok:
 				lockable = true
 				lock_chance = RulesQueries.hit_chance(p["bonus"], p["accuracy"] - p["difficulty"] + 1, p["target_number"])
 			shots.append({"w": w, "t": t, "chance": p["hit_chance"], "dmg": dmg, "factor": factor,
@@ -305,8 +326,10 @@ func _best_package(know: AiKnowledge, u: Unit, ctx: Dictionary) -> Dictionary:
 	var skirm: Array = shots.filter(func(x: Dictionary) -> bool: return x["w"].get("size", "") != "Superheavy")
 	if not skirm.is_empty():
 		var top: Dictionary = skirm[0]
-		var sk_step := _act(u, "skirmish", {"weapon": top["w"]["key"], "target": top["t"].id})
-		var base := {"value": top["value"], "steps": [sk_step], "attacks": true, "quick_left": 1,
+		# People on foot attack with Fight: a full action, or quick with a Sidearm (Core p.74).
+		var quick_fight: bool = Weapons.has_tag(top["w"], "tg_sidearm")
+		var sk_step := _act(u, "fight" if ctx["foot"] else "skirmish", {"weapon": top["w"]["key"], "target": top["t"].id})
+		var base := {"value": top["value"], "steps": [sk_step], "attacks": true, "quick_left": 1 if not ctx["foot"] or quick_fight else 0,
 			"text": "fires %s at %s (%d%% to hit)" % [top["w"]["name"], _name(top["t"]), roundi(top["chance"] * 100)],
 			"kind": "skirmish", "target": top["t"].id, "chance": top["chance"]}
 		options.append(base)
@@ -322,12 +345,12 @@ func _best_package(know: AiKnowledge, u: Unit, ctx: Dictionary) -> Dictionary:
 				break
 		# Shoot, then Scan an enemy we know nothing about.
 		for t: Unit in ctx["enemies"]:
-			if not know.knows_stats(t.id) and Attacks.tech_target_check(s, u, t).ok:
+			if not ctx["foot"] and not know.knows_stats(t.id) and Attacks.tech_target_check(s, u, t).ok:
 				options.append(_with(base, _act(u, "scan", {"target": t.id}), 0.5 * tech_w, ", then scans %s" % _name(t)))
 				break
 		# Shoot, then Hide if nobody can see us here.
-		if not ctx["no_hide"] and Combat.can_hide(s, u).ok:
-			options.append(_with(base, _act(u, "hide"), 0.9 * ctx["caution"], ", then hides"))
+		if not ctx["no_hide"] and base["quick_left"] >= 1 and Combat.can_hide(s, u).ok:
+			options.append(_with(base, _act(u, "hide"), 0.9 * ctx["caution"] * ctx["hide_w"], ", then hides"))
 	# Barrage: two different weapons (each at its best target), or one Superheavy.
 	var by_weapon := {}
 	for x: Dictionary in shots:
@@ -335,6 +358,8 @@ func _best_package(know: AiKnowledge, u: Unit, ctx: Dictionary) -> Dictionary:
 			by_weapon[x["w"]["key"]] = x
 	var picks: Array = by_weapon.values()
 	picks.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["value"] > b["value"])
+	if ctx["foot"]:
+		picks = []  # no Barrage on foot
 	if not picks.is_empty() and picks[0]["w"].get("size", "") == "Superheavy":
 		options.append(_barrage(u, [picks[0]]))
 	else:
@@ -344,9 +369,9 @@ func _best_package(know: AiKnowledge, u: Unit, ctx: Dictionary) -> Dictionary:
 	# No attack: Hide, Lock On for allies, Scan.
 	if shots.is_empty():
 		if not ctx["no_hide"] and Combat.can_hide(s, u).ok:
-			options.append({"value": 1.0 * ctx["caution"], "steps": [_act(u, "hide")], "attacks": false, "quick_left": 0, "text": "hides", "kind": "hide"})
+			options.append({"value": 1.0 * ctx["caution"] * ctx["hide_w"], "steps": [_act(u, "hide")], "attacks": false, "quick_left": 0, "text": "hides", "kind": "hide"})
 		for t: Unit in ctx["enemies"]:
-			if Attacks.tech_target_check(s, u, t).ok:
+			if not ctx["foot"] and Attacks.tech_target_check(s, u, t).ok:
 				if not know.knows_stats(t.id):
 					options.append({"value": 0.6 * tech_w, "steps": [_act(u, "scan", {"target": t.id})], "attacks": false,
 						"quick_left": 1, "text": "scans %s" % _name(t), "kind": "scan"})
@@ -354,12 +379,14 @@ func _best_package(know: AiKnowledge, u: Unit, ctx: Dictionary) -> Dictionary:
 					options.append({"value": 0.4 * tech_w, "steps": [_act(u, "lock_on", {"target": t.id})], "attacks": false,
 						"quick_left": 1, "text": "locks on to %s for its allies" % _name(t), "kind": "lock_on"})
 				break
+	if ctx["foot"]:
+		options.append_array(_foot_options(s, u, ctx, shots))
 	# Cool down when heat is high (also reloads).
 	if u.heat_cap > 0 and u.heat >= ceili(u.heat_cap * 0.6):
 		var v: float = float(u.heat) / u.heat_cap * 3.0 * (0.5 + ctx["caution"])
 		options.append({"value": v, "steps": [_act(u, "stabilize", {"main": "cool", "extra": "reload"})], "attacks": false,
 			"quick_left": 0, "text": "vents heat (Stabilize)", "kind": "stabilize", "reason": "heat is high"})
-	elif _needs_reload(u) and shots.size() <= 1:
+	elif _needs_reload(u) and shots.size() <= 1 and not ctx["foot"]:
 		var main := "cool" if u.kind != Unit.KIND_NPC else ""
 		options.append({"value": 0.8, "steps": [_act(u, "stabilize", {"main": main, "extra": "reload"})], "attacks": false,
 			"quick_left": 0, "text": "reloads (Stabilize)", "kind": "stabilize", "reason": "its weapons need reloading"})
@@ -452,6 +479,36 @@ static func _act(u: Unit, type: String, params: Dictionary = {}) -> Dictionary:
 	return {"type": type, "actor": u.id, "params": params}
 
 
+## People on foot: Reload a Loading pilot weapon (Core p.74), Patch a hurt person on foot
+## (pilot gear), Search for a Hidden enemy (Core p.70).
+func _foot_options(s: GameState, u: Unit, ctx: Dictionary, shots: Array) -> Array:
+	var out: Array = []
+	for w: Dictionary in u.loadout.get("weapons", []):
+		if Weapons.has_tag(w, "tg_loading") and not Weapons.state_of(u, w).get("loaded", true):
+			out.append({"value": 0.9 if shots.size() <= 1 else 0.3, "steps": [_act(u, "reload", {"weapon": w["key"]})], "attacks": false,
+				"quick_left": 1, "text": "reloads its %s" % w.get("name", "weapon"), "kind": "reload", "reason": "its weapon needs reloading"})
+			break
+	for a: Dictionary in u.loadout.get("abilities", []):
+		if not (a.get("ops", []) as Array).any(func(o: Dictionary) -> bool: return o.get("op", "") == "patch"):
+			continue
+		var best: Unit = null
+		var worst := 0.35
+		for p: Unit in [u] + ctx["allies"]:
+			if p.on_foot() and not p.has_status("Down and Out") and Sight.unit_distance(s, u, p) <= 1 and _hurt(p) > worst:
+				worst = _hurt(p)
+				best = p
+		if best != null:
+			out.append({"value": 3.0 * worst, "steps": [_act(u, "activate", {"ability": a["key"], "target": best.id})], "attacks": false,
+				"quick_left": 0, "text": "patches up %s" % ("its own people" if best == u else _name(best)), "kind": "patch", "reason": "they're hurt"})
+		break
+	for t: Unit in s.units.values():
+		if t.side != u.side and t.has_status("Hidden") and not t.destroyed and s.map.grid.distance(u.cell, t.cell) <= u.sensors:
+			out.append({"value": 0.8 * ctx["hide_w"], "steps": [_act(u, "search", {"target": t.id})], "attacks": false,
+				"quick_left": 1, "text": "searches for a hidden enemy", "kind": "search"})
+			break
+	return out
+
+
 static func _name(u: Unit) -> String:
 	return u.name if u.name != "" else u.id
 
@@ -487,6 +544,8 @@ func _explain(u: Unit, ctx: Dictionary, best: Dictionary, boost: Dictionary, aft
 		why = "focus target"
 	elif ctx["stance"] != "":
 		why = "%s stance" % ctx["stance"]
+	elif ctx["intent"] != "":
+		why = ctx["intent"]  # its job and the mission's objective (objective_priorities.json)
 	elif notes.get("zone", false):
 		why = "holding the objective"
 	else:

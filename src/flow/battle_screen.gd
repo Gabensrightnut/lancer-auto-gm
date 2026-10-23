@@ -16,6 +16,7 @@ var player: EventPlayer
 var rolls: RollPopups
 var combat_log: CombatLog
 var order_bar: TurnOrderBar
+var objectives: ObjectivePanel
 var bar: ActionBar
 var turn: PlayerTurn
 var ui: CanvasLayer
@@ -648,6 +649,7 @@ func _refresh_hud() -> void:
 	var active: Dictionary = v.get("units", {}).get(v.get("active_unit", ""), {})
 	order_bar.set_data({"round": maxi(1, int(v.get("round", 1))), "picking_side": v.get("turn_side", ""),
 		"local_side": my_side if session.my_pick() else "", "active_name": str(active.get("name", "")), "units": list})
+	objectives.show_mission(session.mission, maxi(1, int(v.get("round", 1))))
 
 
 func _render_portraits(v: Dictionary) -> void:
@@ -900,6 +902,8 @@ func _build_ui() -> void:
 	combat_log.position = Vector2(1920 - 500, 160)
 	order_bar = TurnOrderBar.new()
 	ui.add_child(order_bar)
+	objectives = ObjectivePanel.new()
+	ui.add_child(objectives)
 	bar = ActionBar.new()
 	bar.visible = false
 	ui.add_child(bar)

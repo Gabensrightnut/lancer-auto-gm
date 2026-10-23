@@ -183,8 +183,8 @@ func show(story: StoryState, me_pid: String, near_room: String) -> void:
 			t = "[E] Go back out"
 		"idoor":
 			t = ("[E] Pick the lock   [R] Force it" if bool(target.get("locked", false)) else "")
-		"mech":
-			t = "[E] Check %s" % target["name"]
+		"mech", "bay":
+			t = "[E] Repair bay: Full Repair (10 hours)"
 	if t == "" and inside_prompt != "":
 		t = inside_prompt
 	_prompt.text = t

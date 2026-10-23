@@ -407,6 +407,8 @@ func set_seat_reserved(seat: String, on: bool) -> void:
 ## a seat set to AI is played by the AI otherwise (also a local one); with "fill empty seats"
 ## on, any seat nobody is sitting in (and not reserved) gets the AI too.
 func is_ai_seat(seat: String) -> bool:
+	if Soldiers.is_soldier_seat(state, seat):
+		return true  # soldiers act on their own on either side; nobody takes their seat
 	if seat == GM_SEAT and human_gm:
 		return true  # the AI still runs the enemies for a human GM
 	if _seat_peer.has(seat):
@@ -539,7 +541,7 @@ func _on_hello(peer: int, msg: Dictionary) -> void:
 
 
 func _seat_is_open(seat: String) -> bool:
-	return state.seats.has(seat) and not seat in local_seats and not _seat_token.has(seat)
+	return state.seats.has(seat) and not seat in local_seats and not _seat_token.has(seat) and not Soldiers.is_soldier_seat(state, seat)
 
 
 func _refuse(peer: int, code: String, reason: String) -> void:

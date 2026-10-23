@@ -31,6 +31,7 @@ extends RefCounted
 ##   store_template {pilot, kind} / wake_clone {pilot} / add_second_pilot {seat, name, callsign, relation}
 ##   set_active_pilot {seat, pilot}                     death, cloning and a second pilot (Cloning)
 ##   ship_work {job, pilot}                              a shift's work aboard the squad's ship (ShipLife)
+##   full_repair {}                                      10 hours at a repair bay somewhere secure (RepairBay, Core p.82)
 ##   buy_upgrade {slot}                                   the squad's own ship (house rule; Plunder)
 ##   decide {accept}  / split_resolved {winner}           squad decisions and party splits (Decisions)
 ##   travel {world}                                   go to another world of the sector (between missions; Sector)
@@ -145,6 +146,10 @@ func validate(story: StoryState, campaign: Campaign, action: Dictionary) -> Dict
 				var push := NarrativeCheck.push_level(str(story.failed_goals.get(goal, "normal")), bool(campaign.options.get("allow_heroic_push", true)))
 				if not push["ok"]:
 					return _no(push["reason"], push["rule_ref"])
+		"full_repair":
+			var why_r := RepairBay.refusal(story, campaign)
+			if why_r != "":
+				return _no(why_r, RepairBay.REF)
 		"rest":
 			if story.phase == "mission":
 				return _no("Resting happens out of combat, with an hour of nothing strenuous.", "Core p.49")
@@ -415,6 +420,8 @@ func _resolve(story: StoryState, campaign: Campaign, action: Dictionary) -> Arra
 			var events: Array = [{"type": "narrative_check", "pilot": me, "check": rec, "rule_ref": NarrativeCheck.REF}]
 			events.append_array(StoryEffects.apply_all(p.get("success_effects" if rec["success"] else "fail_effects", []), story, campaign, {"speaker": me}))
 			return events
+		"full_repair":
+			return RepairBay.full_repair(story, campaign)
 		"rest":
 			return StoryEffects.apply({"rest": "squad"}, story, campaign, {})
 		"set_pilot_gear":
@@ -548,6 +555,9 @@ func _combat_from_scene(story: StoryState, campaign: Campaign, spec: Dictionary)
 		hook["sitrep"] = str(spec["sitrep"])
 	hook["on_foot"] = bool(spec.get("on_foot", false))
 	hook["from_scene"] = true
+	# Caught at a crime: the garrison turns out (Soldiers).
+	if bool(spec.get("crime", false)):
+		Garrisons.turn_out(story, hook)
 	if hook.has("boarding") and not bool(spec.get("in_town", true)):
 		spec["in_town"] = false
 	# Aboard a ship that's the squad's hub (the Saint Cadence), a fight breaks out on her own

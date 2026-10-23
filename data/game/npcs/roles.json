@@ -147,6 +147,14 @@
         "nobles"
       ]
     },
+    "soldier": {
+      "name": "Soldier",
+      "scene": "soldier",
+      "spot": "office",
+      "faction": "hub",
+      "titles": ["Guard"],
+      "tags": ["soldier"]
+    },
     "local": {
       "name": "Local",
       "scene": "local",

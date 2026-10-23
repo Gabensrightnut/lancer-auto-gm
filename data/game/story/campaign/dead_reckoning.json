@@ -106,6 +106,18 @@
     "flash_vat": true,
     "ship": true
    },
+   "garrison": {
+    "faction": "the Cadence's watch",
+    "titles": [
+     "Deck Watch",
+     "Watch Officer",
+     "Night Watch"
+    ],
+    "guards": 1,
+    "watch": 1,
+    "patrols": 1,
+    "squads": 1
+   },
    "interiors": {
     "office": {
      "kind": "ship_deck",
@@ -166,7 +178,19 @@
    "culture": "cyberpunk",
    "kind": "station",
    "landscape": "station",
-   "hub": "Gallows Reach"
+   "hub": "Gallows Reach",
+   "garrison": {
+    "faction": "the Reach's enforcers",
+    "titles": [
+     "Enforcer",
+     "Dock Enforcer",
+     "Night Enforcer"
+    ],
+    "guards": 1,
+    "watch": 1,
+    "patrols": 2,
+    "squads": 2
+   }
   },
   "colony": {
    "name": "Saltmarrow",
@@ -636,6 +660,11 @@
    "count": 2
   }
  ],
+ "troops": {
+  "if": {
+   "flag": "dr_hask_aboard"
+  }
+ },
  "lines": {
   "pro": [
    {
@@ -862,7 +891,11 @@
      "kind": "defend",
      "map": "own_ship"
     },
-    "commander": "hask_cmd"
+    "commander": "hask_cmd",
+    "soldiers": {
+     "faction": "Hask's boarding party",
+     "squads": 2
+    }
    },
    "aftermath_scene": {
     "scene": "dr_lifeboat",
@@ -899,6 +932,13 @@
      {
       "trust": "hask",
       "add": 1
+     },
+     {
+      "recruit": {
+       "source": "crew",
+       "free": true,
+       "name": "the old Cadence hands"
+      }
      }
     ],
     "stranded": [
@@ -1061,6 +1101,33 @@
        {
         "renown": -2,
         "why": "the Brightwater's crew went out the airlock"
+       }
+      ]
+     },
+     {
+      "text": "Anyone who wants to can sign on with us. The rest get their lifeboats.",
+      "tone": "courteous",
+      "tags": [
+       "kind",
+       "practical"
+      ],
+      "effects": [
+       {
+        "set_flag": "dr_spared"
+       },
+       {
+        "set_flag": "dr_crew_joined"
+       },
+       {
+        "recruit": {
+         "source": "beaten_crew",
+         "free": true,
+         "name": "the Brightwater's turned crew"
+        }
+       },
+       {
+        "renown": 1,
+        "why": "the Brightwater's crew got a choice"
        }
       ]
      }
@@ -2729,7 +2796,11 @@
     ],
     "sitrep": "sitrep_gauntlet",
     "landscape": "station",
-    "commander": "dey_cmd"
+    "commander": "dey_cmd",
+    "soldiers": {
+     "faction": "Union Navy marines",
+     "squads": 2
+    }
    },
    "branch": "b17",
    "outcomes": [

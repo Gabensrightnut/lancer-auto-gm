@@ -1,25 +1,42 @@
 {
-  "_doc": [
-    "Infantry looks (read by src/render/people/soldier_figure.gd and squad_model.gd). Our own designs in",
-    "the spirit of the core book's people (Union troops, corpro security, pirates, frontier militia);",
-    "the models are assets/people/soldier.glb, built by tools/blender/soldier_mh.py.",
-    "factions: which helmet and armor set, and colors by material role (uniform, armor, trim, visor).",
-    "A unit's own paint (the crew/company scheme, MechPaint format) overrides: primary -> uniform,",
-    "secondary -> armor, glow -> visor, markings -> trim.",
-    "by_side: the faction when the unit doesn't say. launcher_every: every Nth man carries a launcher."
-  ],
-  "men_per_squad": 10,
-  "height": 0.42,
-  "launcher_every": 5,
-  "factions": {
-    "union": {"helmet": "Helmet_union", "armor": "Armor_union", "pack": true,
-      "colors": {"uniform": "#36424c", "armor": "#d6dbdf", "trim": "#2f8fb0", "visor": "#59d8ff"}},
-    "corpro": {"helmet": "Helmet_corpro", "armor": "Armor_corpro", "pack": false,
-      "colors": {"uniform": "#1d2026", "armor": "#2d3138", "trim": "#c8a040", "visor": "#ff5a40"}},
-    "pirate": {"helmet": "Helmet_pirate", "armor": "Armor_pirate", "pack": true,
-      "colors": {"uniform": "#4a3b2d", "armor": "#6d645c", "trim": "#9a2a20", "visor": "#e0a040"}},
-    "militia": {"helmet": "Helmet_militia", "armor": "Armor_militia", "pack": true,
-      "colors": {"uniform": "#5a5a3c", "armor": "#7a6a4a", "trim": "#b8b090", "visor": "#a0d070"}}
-  },
-  "by_side": {"players": "union", "enemies": "corpro", "neutral": "militia"}
+  "_note": "Our own PLACEHOLDER soldiers. The rules are the book's rules for unmounted characters (Core p.74 Fighting on the Ground: Grit to attacks and saves, Biological, attack with Fight, don't Engage or block mechs) and Size (Core p.59: humans are Size 1/2). Weapons and gear are the book's pilot gear (data/lancer-data/pilot_gear.json). The numbers (HP, Grit by tier, defenses) are placeholders: the book's Human and Squad NPC templates are in the full core book's GM section, which our free copy doesn't have (docs/RULES_TODO.md 'Soldiers'). Roles are the book's NPC roles; a squad's job is only what its gear and actions allow (unmounted characters can't aid mechs, Core p.74, so no squad repairs mechs).",
+  "squad_men": 10,
+  "kinds": {
+    "rifle_squad": {
+      "name": "Rifle Squad", "form": "squad", "role": "striker", "size": 1,
+      "hp": 10, "evasion": 10, "edef": 10, "speed": 4, "sensors": 5, "save_target": 10, "grit": [1, 2, 3],
+      "weapons": ["pg_medium_signature", "pg_light_a_c"], "damage_type": "Kinetic", "gear": [],
+      "job": "Ten soldiers with rifles. They close to rifle range and shoot."
+    },
+    "missile_team": {
+      "name": "Missile Team", "form": "squad", "role": "artillery", "size": 1,
+      "hp": 10, "evasion": 10, "edef": 10, "speed": 4, "sensors": 5, "save_target": 10, "grit": [1, 2, 3],
+      "weapons": ["pg_heavy_signature", "pg_light_a_c"], "damage_type": "Explosive", "gear": [],
+      "job": "A crew with a heavy launcher. They fire from as far away as they can, keep line of sight and stay out of reach."
+    },
+    "guard_squad": {
+      "name": "Guard Squad", "form": "squad", "role": "defender", "size": 1,
+      "hp": 10, "evasion": 10, "edef": 10, "speed": 4, "sensors": 5, "save_target": 10, "grit": [1, 2, 3],
+      "weapons": ["pg_medium_signature", "pg_medium_a_c"], "damage_type": "Kinetic", "gear": [],
+      "job": "Soldiers who hold a place: they stay on or near what they guard and fight from cover."
+    },
+    "spotter_team": {
+      "name": "Spotter Team", "form": "squad", "role": "controller", "size": 1,
+      "hp": 10, "evasion": 10, "edef": 10, "speed": 4, "sensors": 5, "save_target": 10, "grit": [1, 2, 3],
+      "weapons": ["pg_medium_signature"], "damage_type": "Kinetic", "gear": [],
+      "job": "Scouts who stay hidden and Search for hidden enemies."
+    },
+    "medic_team": {
+      "name": "Medic Team", "form": "squad", "role": "support", "size": 1,
+      "hp": 10, "evasion": 10, "edef": 10, "speed": 4, "sensors": 5, "save_target": 10, "grit": [1, 2, 3],
+      "weapons": ["pg_light_signature"], "damage_type": "Kinetic", "gear": ["pg_patch"],
+      "job": "Medics who stay hidden and patch up people on foot (they can't repair mechs: Core p.74)."
+    },
+    "soldier": {
+      "name": "Soldier", "form": "human", "role": "striker", "size": 0.5,
+      "hp": 6, "evasion": 10, "edef": 10, "speed": 4, "sensors": 5, "save_target": 10, "grit": [1, 2, 3],
+      "weapons": ["pg_medium_signature"], "damage_type": "Kinetic", "gear": [],
+      "job": "One soldier on foot (a guard, a sentry, an officer)."
+    }
+  }
 }

@@ -2,12 +2,12 @@ class_name SoldierFigure
 extends Node3D
 ## One soldier (assets/people/soldier.glb, tools/blender/soldier_mh.py): the faction's helmet and
 ## armor shown, the rest of the gear hidden, recolored by material role from
-## data/game/soldiers.json or the unit's own paint. The glb is loaded once and shared, and
+## data/game/soldier_looks.json or the unit's own paint. The glb is loaded once and shared, and
 ## materials are cached per scheme, so ten squads of ten stay cheap. Animations: idle, walk,
 ## run, aim, fire, cover, hit, fall.
 
 const SCENE := "res://assets/people/soldier.glb"
-const FILE := "res://data/game/soldiers.json"
+const FILE := "res://data/game/soldier_looks.json"
 const LOOPS := ["idle", "walk", "run", "sneak", "talk"]
 
 static var _scene: PackedScene

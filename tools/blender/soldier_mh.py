@@ -4,7 +4,7 @@ see CREDITS.md) with our own Lancer-style military gear, sharing the people rig 
 keys, no hair, the body decimated and painted as a uniform (no cloth shells), 512 px textures.
 
 Gear, one set per faction (shown/hidden and recolored in game by SoldierFigure from
-data/game/soldiers.json): Helmet_<faction>, Armor_<faction>; Weapon_rifle in the right hand,
+data/game/soldier_looks.json): Helmet_<faction>, Armor_<faction>; Weapon_rifle in the right hand,
 Weapon_launcher on the shoulder, Gear_pack. Material names are roles the game recolors:
 uniform, armor, trim, skin, dark, metal, visor.
 

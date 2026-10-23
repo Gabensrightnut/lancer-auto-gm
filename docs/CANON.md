@@ -19,6 +19,9 @@ book in a way that changes the setting; parked.
 | New pilots start at LL0 with the Everest and GMS gear | Canon | Core p.31 |
 | Mechs are 3D-printed; printers ubiquitous on most occupied worlds | Canon | Core p.31, p.82 |
 | Full Repair: 10 hours in a secure location; prints a licensed mech | Canon | Core p.82 |
+| Mech damage (HP, structure, stress, Repairs, CORE power, Limited charges, destroyed gear, a wrecked mech) lasts from one mission to the next until a Full Repair | Canon | Damage persists until repaired; Full Repair restores it all and reprints (Core p.82) |
+| A repair bay in every hub (the mech gantries, a ship's hangar or engineering) where the squad does the Full Repair | Consistent | Printers and repair facilities on occupied worlds (Core p.31, p.82); hubs are secure locations |
+| What a Full Repair costs: the 10 hours pass on the clock (people's days move on), rations get eaten (food-and-water house rule), and the enemy regroups (one more at the next fight); not with the alarm up or enemies about; between fights in a mission only a Rest | Consistent (canon costs; the regroup is GM pacing) | 10 hours, secure location (Core p.82); the GM moves the world on and sets the opposition (Core p.42) |
 | One printed mech at a time; printing a new one shuts the old one down | Canon | Core p.82 |
 | You never lose access to licensed gear | Canon | Core p.31 |
 | Custom mech look and layout, no gameplay effect | Canon | Core p.32 |
@@ -100,7 +103,7 @@ book in a way that changes the setting; parked.
 | The GM reveals, hides or rewrites a twist | Canon | Goals and situations can change mid-mission (Core p.43) |
 | The GM sets faction standing | Not a book rule (labelled) | Our bookkeeping |
 | Fights in town: defending the hub, a standoff outside a building, talks gone wrong, being jumped before leaving town; the battle uses the hub's own layout | Canon / Consistent | Switching from narrative play to mech combat where the characters are (Core p.45); goals change mid-mission (p.43); our own jobs and text |
-| House rules (off by default, labelled "Your idea, not a book rule"): tracked wallet, printer scarcity, paid travel, fight-for-it deals, food and water | Not canon (house rules) | The user's parked ideas (DESIGN.md "House rules"); the book tracks none of them (manna exists but isn't counted, printers are everywhere, Core p.10, p.31, p.82). Only active when switched on |
+| House rules (off by default, labelled "Your idea, not a book rule"): tracked wallet, frontier printers (there but short on materials, crew or reliability), paid travel, fight-for-it deals, food and water | Not canon (house rules) | The user's parked ideas (DESIGN.md "House rules"); the book tracks none of them (manna exists but isn't counted, printers are everywhere, Core p.10, p.31, p.82). Only active when switched on |
 | Sneaking, following, lockpicking, pickpocketing, breaking in, knocking someone out: narrative skill checks | Canon | Skill triggers Act Unseen or Unheard, Hack or Fix, Get a Hold of Something, Apply Fists to Faces, Blow Something Up (Core p.26), Take Someone Out, Spot (p.27); difficult and risky checks (p.45-46) |
 | Who sees it and what follows (standing, bounty, the alarm, a fight on foot) | Consistent | The GM decides what failure costs (p.45); switching to mech combat (p.45); our own defaults |
 | Hub clock, waiting, NPC schedules and where things are kept | Consistent | Our own bookkeeping for narrative play |
@@ -130,6 +133,16 @@ book in a way that changes the setting; parked.
 | Split decisions: each human accepts or declines; AI squadmates follow their human; a split becomes a fight between players | Consistent (table procedure) | The book leaves table decisions to the group; PvP is our own mode |
 | World consequences: what the squad breaks (a dam, a depot, a town's streets) causes shortages and damage later, with a job to make it right | Consistent | Stakes and situations change with what players do (Core p.42-43) |
 | Personal agendas (a grudge from short rations on a wrecked mech) | Consistent; the rations part is house rule | Pilots' own goals are table play (p.20-27, p.43) |
+| Soldiers on foot (squads and single humans) fight under the rules for unmounted characters | Canon rules; our placeholder stats | Core p.59 (humans are Size 1/2), p.60 (allied NPCs in turn order), p.64 (characters on foot attack with Fight), p.74 (Fighting on the Ground); Human/Squad template numbers not in our free copy |
+| Soldier kinds: rifle squad, missile team, guard squad, spotter team, medic team, single soldier, using the book's NPC roles and pilot gear | Consistent (our placeholder pack) | Roles: NPC roles; weapons: pilot gear (pilot_gear.json); jobs limited by Core p.74 (no aiding mechs) |
+| Nobody gives soldiers orders; each acts by its own AI, weighted by its role and the sitrep | Consistent (the user's choice) | Core p.60 lets players choose when an allied NPC acts; who decides its actions is left to the table |
+| The Reinforcements reserve calls in a friendly NPC mech, not troops | Canon | Core p.52 (Tactical reserves table); reserves.json |
+| Every hub has a garrison keeping order: Union Navy marines in the Core, colonial militia on the frontier, a marshal's deputies, a baron's household guard, station or colony security | Consistent | The Union Navy and Auxiliaries (Core p.10-11), Karrakin Baronies' houses (p.92), frontier colonies and corpro holdings (p.10, p.21); our own names for local forces |
+| Guards by day, a night watch and patrols on rounds, who witness crimes and raise the alarm; the garrison turns out if it comes to a fight | Consistent | Witnesses and consequences are the GM's call (Core p.26-27, p.45) |
+| The squad's own troops (a pirate crew, a ship's captains, a merc company): squads of ten whose losses last until reinforced, fighting as allied units or through the Reinforcements reserve | Consistent | Infantry squads and the Reinforcements reserve (Core p.48); NPC allies are the GM's to run (p.42) |
+| Recruiting in person: a bar's regulars, a fixer, freed prisoners, a beaten crew changing sides; paid in manna (wallet house rule) or as a favour owed; refused where the squad's name is bad | Consistent (favours canon; pay is house rule) | Favours and standing are table play; money isn't tracked by the book (p.10) |
+| Troop upkeep: one ration per squad per day; hungry troops lose heart, desert, and side with whoever's stirring up trouble | Not a book rule (part of the food-and-water house rule, off) | The book doesn't track food (p.10) |
+| The campaigns' own forces: the Cadence's watch, the Reach's enforcers, Hask's boarding party, Union Navy marines hunting the squad, Marshal Vell's deputies, the Long Arrival's wardens | Consistent (our own story) | Union Navy (p.10-11), boarding actions (p.42); no Massif module content |
 
 ## When canon allows more than one answer
 
@@ -148,3 +161,13 @@ procedural GM adds an objective on top, marked as its own: the zone holds someth
 defenders protect (a generator, a relay, a convoy truck, a civilian shelter), placed as an
 object with the book's object stats (Evasion 5, 10 HP per Size, Core p.68). If it is
 destroyed the mission is lost. The book's scoring is unchanged otherwise.
+
+## Secondary GM objectives
+
+The book's sitrep is always the primary objective and alone decides whether the mission is won.
+The procedural GM may add one secondary objective (about one fight in three): take and hold a
+point out on a flank, or keep the enemy out of one on the squad's side. It is marked in the
+briefing as the GM's own, never the sitrep's. Success earns a reserve (Supplies, Ammo, Extra
+repairs, Access or Knowledge, from the book's reserves); failure has a story consequence only.
+A Holdout's protected object is different: it is part of the primary and losing it loses.
+

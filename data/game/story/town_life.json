@@ -33,7 +33,7 @@
     "take_out": {"label": "Put them down quietly", "skills": ["sk_take_someone_out", "sk_apply_fists_to_faces"], "risky": true, "ref": "Core p.27: Take Someone Out", "consequence": "They get a shout out first."},
     "slip_away": {"label": "Get out before anyone stops you", "skills": ["sk_get_somewhere_quickly", "sk_act_unseen_or_unheard"], "ref": "Core p.26: Get Somewhere Quickly", "consequence": "They block the way out."}
   },
-  "witness": {"guards": ["faction_agent", "company_rep", "instructor"], "bounty_per_value": 1},
+  "witness": {"guards": ["faction_agent", "company_rep", "instructor", "soldier"], "bounty_per_value": 1},
   "lines": {
     "wait": ["Time passes. It's {period} now.", "You wait. {period} comes on slowly.", "The town turns over into {period}."],
     "seen": ["{witness} sees it happen.", "A shout: {witness} saw you.", "{witness} is staring right at you."],
