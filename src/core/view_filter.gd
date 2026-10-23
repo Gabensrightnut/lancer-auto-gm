@@ -65,6 +65,8 @@ func view_for(state: GameState, seat: String) -> Dictionary:
 		var lost := mounts_lost(u)
 		if not lost.is_empty():
 			visible["mounts_lost"] = lost  # torn off for everyone to see (no stats)
+		if u.kind in [Unit.KIND_DEPLOYABLE, "drone"] and u.counters.has("owner"):
+			visible["owner"] = str(u.counters["owner"])  # you see which mech a drone left
 		units[id] = visible
 	full["units"] = units
 	full["objectives"] = objectives_for(state, seat)
@@ -105,6 +107,13 @@ func events_for(state: GameState, seat: String, events: Array) -> Array:
 		if seen_by is Array and not (seen_by as Array).has(seat_side):
 			continue  # Meant for other sides only (e.g. the GM's twist for the squad).
 		var copy := e.duplicate(true)
+		if hostile and e.get("type", "") == "deployed" and e.get("object") is Dictionary:
+			# A Hidden mine or snare (tags: Mine; Webjaw Snare): the other side sees it thrown,
+			# not where it landed.
+			var placed := state.unit(str(e["object"].get("id", "")))
+			if placed != null and placed.has_status("Hidden"):
+				(copy["object"] as Dictionary).erase("cells")
+				(copy["object"] as Dictionary).erase("id")
 		if hostile and not knows_stats(seat_side, uid, state):
 			for key in ["hp", "overshield", "total"]:
 				if e.get("type", "") in ["hp_changed", "heat_changed"]:
