@@ -190,6 +190,24 @@ static func _stopper(state: GameState, u: Unit, body: Sight.Body, others: Array[
 	return null
 
 
+const CAR_NONE := 0
+const CAR_PASS := 1    # smaller than the mover: it passes through, but can't stop there
+const CAR_BLOCKS := 2  # its Size or bigger: an obstruction
+
+
+## Parked vehicles (Sight.TAG_VEHICLE, Size from the "vehicle_size" ruling) are objects:
+## they obstruct characters their Size or smaller, and nobody ends a move in their space
+## (Core p.62).
+static func _car(state: GameState, u: Unit, anchor: Vector2i, level: int) -> int:
+	var out := CAR_NONE
+	for c in state.map.grid.footprint(anchor, u.size):
+		if Sight.vehicle_at(state, c, level):
+			if u.size <= Sight.vehicle_size(state):
+				return CAR_BLOCKS
+			out = CAR_PASS
+	return out
+
+
 static func _blocked_by_unit(body: Sight.Body, others: Array[Dictionary], ending: bool) -> bool:
 	for o in others:
 		if (o["blocks"] or ending) and _overlaps(body, o["body"]):
@@ -464,6 +482,9 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool, goals: Dicti
 				continue
 			if state.map.rooms_open and not Garrison.step_ok(state.map, here, k.z, nb, lv):
 				continue  # into and out of buildings only through the door (house rule)
+			var car := _car(state, u, nb, lv)
+			if car == CAR_BLOCKS:
+				continue  # a parked vehicle its Size or bigger is an obstruction (Core p.62)
 			if step_zones and Zones.blocks_step(state, here, nb):
 				continue  # a Blinkshield's edge can't be crossed
 			var body := Sight.make_body(state, nb, lv, u.size)
@@ -508,7 +529,7 @@ static func _search(state: GameState, u: Unit, cap: int, fly: bool, goals: Dicti
 				continue
 			var stopper := _stopper(state, u, body, others, engaged_at_start)
 			nodes[nk] = {"cost": total, "parent": k, "stop": stopper.id if stopper else "",
-				"can_end": not _blocked_by_unit(body, others, true) or Garrison.may_share(state, u, body, others),
+				"can_end": car == CAR_NONE and (not _blocked_by_unit(body, others, true) or Garrison.may_share(state, u, body, others)),
 				"uneven": node["uneven"] or place["uneven"], "difficult": difficult and not fly,
 				"dangerous": dangerous, "climb": absi(lv - k.z) if not fly else 0, "rulings": flags}
 			_heap_push(heap_cost, heap_key, total, nk)
@@ -629,6 +650,8 @@ static func _why_not(state: GameState, u: Unit, dest: Vector2i, level: int) -> S
 		var p := placement(state, u.size, dest, lv)
 		if not p["ok"]:
 			return p["reason"]
+		if _car(state, u, dest, lv) != CAR_NONE:
+			return "A parked vehicle is in that space: nobody ends a move on an object (Core p.62)."
 		var body := Sight.make_body(state, dest, lv, u.size)
 		var others := _others(state, u)
 		if _blocked_by_unit(body, others, true) and not Garrison.may_share(state, u, body, others):
@@ -768,6 +791,8 @@ static func push_path(state: GameState, u: Unit, origin: Vector2i, spaces: int) 
 		var place := placement(state, u.size, c, u.level)
 		if not place["ok"]:
 			break
+		if _car(state, u, c, u.level) == CAR_BLOCKS:
+			break  # a parked vehicle its Size or bigger stops it
 		var back: Variant = path.back()
 		if state.map.rooms_open and not Garrison.step_ok(state.map, Vector2i(back[0], back[1]), u.level, c, u.level):
 			break  # a building's wall stops it (the door lets it through)
@@ -778,7 +803,7 @@ static func push_path(state: GameState, u: Unit, origin: Vector2i, spaces: int) 
 	# It can pass smaller characters and allies but can't end in an occupied space.
 	while path.size() > 1:
 		var last: Array = path.back()
-		if not _blocked_by_unit(Sight.make_body(state, Vector2i(last[0], last[1]), u.level, u.size), others, true):
+		if _car(state, u, Vector2i(last[0], last[1]), u.level) == CAR_NONE and not _blocked_by_unit(Sight.make_body(state, Vector2i(last[0], last[1]), u.level, u.size), others, true):
 			break
 		path.pop_back()
 	return path
