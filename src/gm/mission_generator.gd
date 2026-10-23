@@ -17,6 +17,7 @@ extends RefCounted
 ##   "town": MissionHooks.town_for(...) or "hub": story.hub (a fight in a hub's town: built
 ##     from its spots and culture; "at" = the spot id where the fight starts, which is put
 ##     in the middle of the battle band; "landscape" / "map_culture" when given),
+##   "time": the story clock's period ("dawn", "day", "evening", "night"): the fight's light,
 ##   "region": a previous mission's flavor.region ({seed, landscape, culture, weather}): the
 ##     next fight in the same stretch of world keeps its look, with new terrain,
 ##   "boarding": {kind, map}: a boarding fight; map "docked" (two ships side by side, landscape
@@ -74,6 +75,11 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	if not boarding.is_empty():
 		landscape = str(BOARDING_MAPS.get(str(boarding.get("map", "docked")), "boarding"))
 		culture = ""
+	# Ships and stations are cramped: their maps are smaller, by the fight-length dial.
+	if doc == null and not opts.has("size") and landscape in SHIP_MAPS:
+		var k := float({"short": 0.7, "standard": 0.85, "long": 1.0}.get(settings.fight_length, 0.85))
+		w = maxi(24, int(round(w * k)))
+		h = maxi(24, int(round(h * k)))
 	if not region.is_empty():
 		if landscape == "":
 			landscape = str(region.get("landscape", ""))
@@ -86,7 +92,13 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 		if landscape == "":
 			landscape = "station" if str(hub.get("kind", "")) == "station" else str(WorldKits.HUB_LANDSCAPE.get(culture, "grassy_hills"))
 	var bf: Dictionary
-	if doc == null:
+	var inside := _interior_kind(hub)
+	if doc == null and inside != "":
+		# On foot inside a hub building: the fight map is that building's own interior.
+		var ib := InteriorBattle.build(inside, culture, int(hub.get("seed", 0)), shape, m.sitrep_id)
+		bf = {"map": ib["map"], "layout": ib["layout"], "fairness": {"ok": true, "interior": inside},
+			"world": [landscape if landscape != "" else str(WorldKits.HUB_LANDSCAPE.get(culture, "grassy_hills")), culture]}
+	elif doc == null:
 		bf = battlefield(rng, world_rng, m.sitrep_id, w, h, shape, landscape, culture, maxi(0, int(settings.approach) + int(settings.fight("approach", 0))), hub)
 	else:
 		bf = _doc_battlefield(doc, m.sitrep_id, rng)
@@ -115,14 +127,23 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	if place_seed < 0:
 		place_seed = hash([mission_seed, "place"]) & 0x7fffffff
 	var kit := TerrainGen.kit(world[0], world[1]) + ("+" + weather if weather != "" else "")
+	# The time of day (story clock: opts.time, else the region's): look only.
+	var time := str(opts.get("time", region.get("time", "day")))
+	if time in ["dawn", "evening", "night"]:
+		kit += "~" + time
 	if doc == null:
 		kit += "#%d" % place_seed
 	m.flavor = {"operation": names.operation(), "planet": names.planet(), "faction": names.faction(),
 		"team": names.team_name(), "cargo": names.cargo(), "kit": kit,
 		"terrain": TerrainGen.describe(world[0], world[1]), "weather": weather,
-		"region": {"seed": place_seed, "landscape": world[0], "culture": world[1], "weather": weather}}
+		"region": {"seed": place_seed, "landscape": world[0], "culture": world[1], "weather": weather}, "time": time}
 	if not boarding.is_empty():
 		m.flavor["boarding"] = boarding.duplicate()
+	# Defend objectives (Holdout's protected object): for the mission, the AI and the HUD.
+	if layout.has("protect"):
+		m.flavor["protect"] = (layout["protect"] as Dictionary).duplicate()
+	if layout.has("objectives"):
+		m.flavor["objectives"] = (layout["objectives"] as Array).duplicate(true)
 	_pick_environments(m, state, mission_seed, world[0], weather, settings, opts)
 	var players := clampi(int(opts.get("players", 4)), 1, 4)
 	state.seats["gm"] = {"name": "GM", "side": Mission.ENEMIES, "gm": true}
@@ -221,6 +242,8 @@ static func battlefield(rng: RandomNumberGenerator, world_rng: RandomNumberGener
 	var map := TerrainGen.generate(world_rng, w, h, shape, blocked, world[0], world[1], hub)
 	if sitrep_id in ["sitrep_holdout", "sitrep_gauntlet"]:
 		_fortify(map, rng, layout["zones"]["zone"], shape)
+	if layout.has("protect"):
+		_place_protected(map, layout["protect"])
 	var fairness := MapFairness.repair(map, layout, w, h, shape, blocked, world_rng, TerrainGen.cover_tags(world[0]))
 	return {"map": map, "layout": layout, "fairness": fairness, "world": world}
 
@@ -288,7 +311,8 @@ static func area(area_seed: int, opts: Dictionary = {}) -> Dictionary:
 	var weather := str(opts.get("weather", region.get("weather", "?")))
 	weather = _pick_weather(rng, world[0], world[1], weather if weather != "" else "clear")
 	var place := int(region.get("seed", hub.get("seed", hash([area_seed, "place"]) & 0x7fffffff)))
-	var kit := TerrainGen.kit(world[0], world[1]) + ("+" + weather if weather != "" else "") + "#%d" % place
+	var time := str(opts.get("time", region.get("time", "day")))
+	var kit := TerrainGen.kit(world[0], world[1]) + ("+" + weather if weather != "" else "") + ("~" + time if time in ["dawn", "evening", "night"] else "") + "#%d" % place
 	var cell := func(c: int, r: int) -> Array:
 		return [c - (r >> 1), r] if shape == GridLayout.Shape.HEX else [c, r]
 	return {"map": map, "kit": kit, "name": TerrainGen.describe(world[0], world[1]), "place": place_kind, "at": [ax, ay],
@@ -320,6 +344,18 @@ static func _edge_profile(region_seed: int, key: String, n: int, landscape: Stri
 	return out
 
 
+## The interior kind a fight inside a building happens in: the hub spot the fight starts at
+## (opts.town "at" with "inside": true), when it has an interior (Interiors); "" otherwise.
+## ("on_foot" alone only means the pilots start dismounted beside their mechs.)
+static func _interior_kind(hub: Dictionary) -> String:
+	if hub.is_empty() or not bool(hub.get("inside", false)):
+		return ""
+	for spot: Dictionary in hub.get("spots", []):
+		if str(spot.get("id", "")) == str(hub.get("at", "")) and str(spot.get("kind", "")) in Interiors.kinds():
+			return str(spot["kind"])
+	return ""
+
+
 ## The weather for the kit ("" = clear), from opts.weather or a pick that suits the landscape.
 static func _pick_weather(rng: RandomNumberGenerator, landscape: String, culture: String, wanted: String) -> String:
 	var w := wanted if wanted != "?" else TerrainGen.pick_weather(rng, landscape, culture)
@@ -329,6 +365,7 @@ static func _pick_weather(rng: RandomNumberGenerator, landscape: String, culture
 const WEATHER_FILE := "res://data/game/biomes/weather.json"
 ## Boarding map kinds (story's opts.boarding.map) to landscapes: two ships docked side by side,
 ## an enemy ship's interior (the squad boards it), the squad's own ship (pirates board it).
+const SHIP_MAPS := ["boarding", "boarding_assault", "boarding_defend", "station", "starship"]
 const BOARDING_MAPS := {"docked": "boarding", "enemy_ship": "boarding_assault", "own_ship": "boarding_defend"}
 ## Worlds whose own nature suggests a rules environment (weather suggests others: weather.json).
 const LANDSCAPE_ENVIRONMENTS := {"moon": "env_lowgravity", "asteroid": "env_lowgravity", "ocean": "env_oceanworld", "volcanic": "env_moltenworld"}
@@ -374,20 +411,64 @@ static func _tag(col: BattleMap.Column, tags: Array) -> void:
 
 ## Sitreps: "The area around the Control Zone is fortified with Size 1-2 hard cover."
 ## Short walls (1 level above the ground) just outside the zone, with gaps to walk through.
+## A defended zone: a low wall ring round it (sandbags and barriers, one level: cover to fight
+## from) broken by a two-space gap on each side, so attackers have to come through chokepoints,
+## and a few barricades further out on the approaches to break their lines of fire.
 static func _fortify(map: BattleMap, rng: RandomNumberGenerator, zone: Array, _shape: GridLayout.Shape) -> void:
 	var inside := {}
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
 	for c: Array in zone:
-		inside[Vector2i(c[0], c[1])] = true
+		var cell := Vector2i(c[0], c[1])
+		inside[cell] = true
+		var p := map.grid.to_world(cell)
+		lo = Vector2(minf(lo.x, p.x), minf(lo.y, p.z))
+		hi = Vector2(maxf(hi.x, p.x), maxf(hi.y, p.z))
+	var centre := (lo + hi) * 0.5
 	var ring := {}
 	for cell: Vector2i in inside:
 		for n in map.grid.neighbors(cell):
 			if map.has_cell(n) and not inside.has(n):
 				ring[n] = true
 	for cell: Vector2i in ring:
-		if rng.randf() < 0.45:
+		var p := map.grid.to_world(cell)
+		var d := Vector2(p.x, p.z) - centre
+		# The gaps: straight out from the middle of each side (north, west, east, south).
+		var gap := absf(d.x) < 1.1 or absf(d.y) < 0.9
+		var col := map.column(cell)
+		if gap or col.has_tag(BattleMap.TAG_IMPASSABLE) or col.gap_top > 0:
+			continue
+		col.ground += 1
+		col.tags = PackedStringArray(["wall"])
+	# Barricades out on the approaches, staggered so there's no clean line to the zone.
+	var outer := {}
+	for cell: Vector2i in ring:
+		for n in map.grid.cells_within(cell, 4):
+			if map.has_cell(n) and not inside.has(n) and not ring.has(n) and map.grid.distance(n, cell) >= 3:
+				outer[n] = true
+	var cells := outer.keys()
+	cells.sort()
+	for cell: Vector2i in cells:
+		if rng.randf() < 0.06:
 			var col := map.column(cell)
-			col.ground += 1 if rng.randf() < 0.7 else 2
-			col.tags = PackedStringArray(["wall"])
+			if col.ground <= 1 and col.gap_top == 0 and not col.has_tag(BattleMap.TAG_IMPASSABLE) and not col.has_tag("building"):
+				col.ground += 1
+				col.tags = PackedStringArray(["wall"])
+
+
+## The thing a Holdout's defenders protect stands in the zone: a Size 1 object (Core p.68:
+## Evasion 5, 10 HP) the enemy can target. Lose it and the mission is lost (Mission).
+static func _place_protected(map: BattleMap, protect: Dictionary) -> void:
+	var cell := Vector2i(protect["cell"][0], protect["cell"][1])
+	if not map.has_cell(cell):
+		return
+	var col := map.column(cell)
+	var look: String = {"generator": "machinery", "relay": "machinery", "convoy truck": "container", "civilian shelter": "container"}.get(str(protect["kind"]), "container")
+	col.ground = map.ground_height(cell) + 1
+	col.gap_bottom = 0
+	col.gap_top = 0
+	col.tags = PackedStringArray([look, "objective", BattleMap.TAG_DESTRUCTIBLE, "hp_%d" % int(protect.get("hp", 10)), "armor_0"])
+	protect["ground"] = col.ground
 
 
 # --- Forces ------------------------------------------------------------------------------

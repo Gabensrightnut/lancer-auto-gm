@@ -839,6 +839,18 @@ static func build_pilot(db: ContentDB, id: String, pilot: Dictionary, side: Stri
 		"edef": r.get("base_pilot_edef", 10), "speed": r.get("base_pilot_speed", 4),
 		"sensors": r.get("base_pilot_sensors", 5), "save_target": r.get("base_pilot_save_target", 10)}
 	var p := Pilots.make_pilot(id, String(pilot.get("name", id)), side, controller, grit(int(pilot.get("ll", 0))), base)
+	# A flat pilot_gear list (COMP/CON import) is sorted into weapons, armor and gear by type.
+	pilot = pilot.duplicate()
+	for pg: Variant in pilot.get("pilot_gear", []):
+		var e := db.get_entry("pilot_gear", String(pg))
+		match String(e.get("type", "")):
+			"Weapon":
+				pilot["weapons"] = (pilot.get("weapons", []) as Array) + [String(pg)]
+			"Armor":
+				if String(pilot.get("armor", "")) == "":
+					pilot["armor"] = String(pg)
+			"Gear":
+				pilot["gear"] = (pilot.get("gear", []) as Array) + [String(pg)]
 	var weapons: Array = []
 	var i := 0
 	for gid: String in pilot.get("weapons", []):
@@ -849,8 +861,43 @@ static func build_pilot(db: ContentDB, id: String, pilot: Dictionary, side: Stri
 		# Pilot gear has no weapon type; a weapon with only a Threat is melee.
 		prof["type"] = "Melee" if Weapons.range_value(prof, "Range") == 0 else "Ranged"
 		prof["size"] = "Pilot"
+		if gid.contains("signature"):
+			# Signature weapons: the damage type chosen when it was acquired (pilot.signature_damage).
+			for d: Dictionary in prof.get("damage", []):
+				d["type"] = String(pilot.get("signature_damage", {}).get(gid, d.get("type", "Kinetic")))
 		weapons.append(prof)
 		i += 1
-	p.loadout = {"weapons": weapons, "systems": [], "effects": []}
-	_add_gear_effects(p, pilot.get("gear", []), {})
+	# Personal armor and gear (pilot gear, Core p.40s): armor bonuses change the pilot's stats;
+	# gear with actions or deployables becomes abilities (Limited uses from its tags).
+	var gear_ids: Array = (pilot.get("gear", []) as Array).duplicate()
+	if String(pilot.get("armor", "")) != "":
+		gear_ids.append(String(pilot["armor"]))
+	var systems: Array = []
+	var n := 0
+	for gid: Variant in gear_ids:
+		var g := db.get_entry("pilot_gear", String(gid))
+		if g.is_empty():
+			continue
+		for b: Dictionary in g.get("bonuses", []):
+			var v := int(b.get("val", 0))
+			match String(b.get("id", "")):
+				"pilot_hp":
+					p.max_hp += v
+					p.hp = p.max_hp
+				"pilot_armor":
+					p.armor += v
+				"pilot_evasion":
+					p.evasion = v if b.get("replace", false) else p.evasion + v
+				"pilot_edef":
+					p.edef = v if b.get("replace", false) else p.edef + v
+				"pilot_speed":
+					p.speed = v if b.get("replace", false) else p.speed + v
+		systems.append({"key": "pg%d" % n, "id": String(gid), "name": g.get("name", gid), "tags": (g.get("tags", []) as Array).duplicate(true)})
+		n += 1
+	p.loadout = {"weapons": weapons, "systems": systems, "effects": []}
+	_add_gear_effects(p, gear_ids, {})
+	var abilities: Array = []
+	for s: Dictionary in systems:
+		_add_source(abilities, db.get_entry("pilot_gear", String(s["id"])), String(s["key"]), String(s["name"]), String(s["id"]))
+	p.loadout["abilities"] = abilities
 	return p

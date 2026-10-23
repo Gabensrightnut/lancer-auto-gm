@@ -37,6 +37,7 @@ uniform float rim_glow = 0.0;
 
 varying vec4 vc;
 varying vec4 cu;
+varying float dmg;  // UV2.x: how worn the cell's top section is (lost HP / 10, Core p.68)
 varying vec3 wpos;
 varying vec3 wnrm;
 
@@ -57,6 +58,7 @@ float fbm(vec2 p) {
 void vertex() {
 	vc = vec4(pow(COLOR.rgb, vec3(2.2)), COLOR.a);
 	cu = CUSTOM0;
+	dmg = UV2.x;
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	wnrm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 }
@@ -338,6 +340,21 @@ void fragment() {
 		float lum = dot(col, vec3(0.3, 0.59, 0.11));
 		col = mix(col, vec3(lum), 0.35) * 0.6;
 		emit *= 0.55;
+	}
+	// Damage stages as a section loses its HP: cracks, then scorching and windows going dark,
+	// then holes punched through near the top.
+	if (dmg > 0.01) {
+		float dn = fbm(vec2(wpos.x + wpos.z, wpos.y) * 1.4 + 3.0);
+		float crack = smoothstep(0.03, 0.0, abs(fract(fbm(vec2(wpos.x - wpos.z, wpos.y) * 2.2) * 5.0) - 0.5) - 0.42) * smoothstep(0.05, 0.3, dmg);
+		float scorch = smoothstep(1.05 - dmg, 1.3 - dmg, dn);
+		col *= 1.0 - 0.55 * crack;
+		col = mix(col, col * 0.18 + vec3(0.03, 0.025, 0.02), scorch * 0.85);
+		emit *= 1.0 - clamp(dmg * 1.3, 0.0, 1.0) * step(0.3, fract(dn * 7.0));
+		float hole = step(0.55, dmg) * smoothstep(0.66, 0.7, fbm(vec2(wpos.x + wpos.z, wpos.y) * 0.9 + 11.0)) * smoothstep(0.4, 0.75, (UV.y - cu.z) / max(cu.y - cu.z, 0.01));
+		col = mix(col, vec3(0.015), hole);
+		emit *= 1.0 - hole;
+		h -= hole * 0.8 + crack * 0.3;
+		rough = mix(rough, 1.0, scorch);
 	}
 	// Bump from the height pattern.
 	vec3 dpx = dFdx(wpos);

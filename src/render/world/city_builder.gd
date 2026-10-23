@@ -121,7 +121,7 @@ static func make_material(arch: Dictionary) -> ShaderMaterial:
 	return m
 
 
-func build(root: Node3D) -> void:
+func build(root: Node3D, with_props: bool = true) -> void:
 	if buildings.is_empty():
 		return
 	material = make_material(arch)
@@ -144,6 +144,8 @@ func build(root: Node3D) -> void:
 		vcol.a = b["seed"]
 		for c: Vector2i in b["cells"]:
 			var center := t.map.grid.to_world(c)
+			# Damage on the cell's top section (Core p.68: 10 HP a section) for the shader's stages.
+			st.set_uv2(Vector2(clampf(float(t.damage.get("%d,%d" % [c.x, c.y], 0)) / 10.0, 0.0, 0.95), 0.0))
 			# Roof.
 			var custom := Color(1.0, top, 0.0, float(b["type"]))
 			_fan(st, center, corners, top, vcol, custom)
@@ -166,7 +168,8 @@ func build(root: Node3D) -> void:
 	mi.mesh = st.commit()
 	mi.material_override = material
 	root.add_child(mi)
-	CityProps.build(self, root, faces)
+	if with_props:
+		CityProps.build(self, root, faces)
 
 
 ## The roof's rim along one open edge, in the culture's style (all under 0.15 high):

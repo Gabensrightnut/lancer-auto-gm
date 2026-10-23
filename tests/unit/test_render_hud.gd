@@ -298,3 +298,48 @@ func test_keybind_file_matches_the_code() -> void:
 	for a: String in BattleKeys.ACTIONS:
 		expect(d.has(a), "keybinds.json has %s" % a)
 		expect_eq((d[a] as Array).slice(1), (BattleKeys.ACTIONS[a] as Array).slice(1), "%s keys match" % a)
+
+
+func test_cockpit_aim_turns_and_picks_the_crosshair_target() -> void:
+	# The look direction and its angles round-trip, and dragging can't flip the view over.
+	var d := PlayerTurn.aim_dir(0.7, -0.3)
+	var ang := PlayerTurn.aim_angles(d)
+	expect(absf(ang.x - 0.7) < 0.001 and absf(ang.y + 0.3) < 0.001, "angles round-trip: %s" % ang)
+	expect(PlayerTurn.aim_dir(0.0, 0.0).is_equal_approx(Vector3(0, 0, -1)), "yaw 0 looks toward -Z")
+	# The crosshair picks the unit the aim passes through, not one behind or off to the side.
+	var cands := [{"id": "near_side", "center": Vector3(6, 1, -10), "height": 2.0},
+		{"id": "ahead", "center": Vector3(0.3, 1.2, -12), "height": 2.0},
+		{"id": "behind", "center": Vector3(0, 1, 8), "height": 2.0}]
+	expect_eq(PlayerTurn.unit_on_ray(Vector3(0, 1, 0), Vector3(0, 0, -1), cands), "ahead")
+	expect_eq(PlayerTurn.unit_on_ray(Vector3(0, 1, 0), Vector3(0, 0, 1), cands), "behind")
+	expect_eq(PlayerTurn.unit_on_ray(Vector3(0, 1, 0), Vector3(0, 1, 0), cands), "", "nothing under the crosshair")
+
+
+func test_cockpit_aim_click_goes_through_the_rules() -> void:
+	# Aiming only picks the target: a target out of range shows the rules' refusal, one in
+	# range goes to Confirm as a normal Skirmish.
+	var s := F.state(GridLayout.Shape.SQUARE, 30, 6)
+	var me := F.mech(s, "me", "players", Vector2i(1, 2))
+	me.loadout["weapons"] = [F.weapon("gun", "Short Gun", "Main", "Rifle", "1d6", 5)]
+	F.mech(s, "far", "enemies", Vector2i(20, 2))
+	F.mech(s, "near", "enemies", Vector2i(4, 2))
+	var engine := RulesEngine.new()
+	F.begin(engine, s, me)
+	var pt := PlayerTurn.new()
+	var ui := CanvasLayer.new()
+	pt.bar = ActionBar.new()
+	pt.setup(ui)
+	pt.state = s
+	pt.engine = engine
+	pt.unit_id = "me"
+	pt.selected = {"kind": "attack", "weapon": "gun", "name": "Short Gun"}
+	pt.choose_target("far")
+	expect(pt.pending.is_empty(), "nothing to confirm when the rules refuse")
+	expect(pt._prompt_text.text.contains("Can't fire Short Gun"), pt._prompt_text.text)
+	pt.selected = {"kind": "attack", "weapon": "gun", "name": "Short Gun"}
+	pt.choose_target("near")
+	expect_eq(pt.pending.get("type"), "skirmish")
+	expect_eq(pt.pending["params"]["target"], "near")
+	pt.bar.free()
+	pt.free()
+	ui.free()

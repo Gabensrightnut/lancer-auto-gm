@@ -194,6 +194,12 @@ static func check_path(state: GameState, mover: Unit, path: Array) -> Array[Dict
 					events.append_array(_enter(state, z, mover))
 			"hardlight":
 				events.append_array(hardlight_crossing(state, mover, path))
+			"flames":
+				for i in range(1, path.size()):
+					var c := Vector2i(int(path[i][0]), int(path[i][1]))
+					if state.map.grid.footprint(c, mover.size).any(func(f: Vector2i) -> bool: return _has_cell(z, f)):
+						events.append_array(GearSystems.flames(state, z, mover, false))
+						break
 			"pcp":
 				for i in range(1, path.size()):
 					var c := Vector2i(int(path[i][0]), int(path[i][1]))
@@ -334,6 +340,9 @@ static func _caltrops(state: GameState, z: Dictionary, u: Unit) -> Array[Diction
 
 static func turn_started(state: GameState, u: Unit) -> Array[Dictionary]:
 	var events: Array[Dictionary] = hardlight_turn_start(state, u)
+	for z: Dictionary in of_kind(state, "flames"):
+		if Combat.is_present(u) and u.kind != Unit.KIND_DEPLOYABLE and contains(state, z, u):
+			events.append_array(GearSystems.flames(state, z, u, true))  # Plasma Thrower: starting a turn in the flames
 	for z: Dictionary in of_kind(state, "bunker"):
 		if z.get("phase", "") == "folded" and String(z.get("unfold", {}).get("unit", "")) == u.id:
 			z["phase"] = "up"

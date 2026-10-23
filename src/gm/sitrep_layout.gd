@@ -17,6 +17,9 @@ extends RefCounted
 const DEPTH := 4
 
 
+## What a Holdout's defenders protect (GM objective on top of the book's sitrep, docs/CANON.md).
+const PROTECT_KINDS := ["generator", "relay", "convoy truck", "civilian shelter"]
+
 ## `approach` (GM dial, GmSettings.approach): the most rows between the two deployment zones
 ## (0 = deploy at the map edges), for every sitrep: on big maps the fight still starts close
 ## (first contact by about the second turn for Speed 4 mechs), and the rest is flanking room.
@@ -53,6 +56,12 @@ static func layout(sitrep_id: String, w: int, h: int, shape: GridLayout.Shape, r
 			var zc := w / 2 - 5
 			var zone := rect(zc, zr, 10, 5, w, h, shape)
 			out["zones"]["zone"] = zone
+			# Something to protect in the middle of the zone (a GM objective on top of the book's
+			# Holdout: docs/CANON.md). An object: Evasion 5, 10 HP per Size (Core p.68).
+			var kind: String = PROTECT_KINDS[rng.randi_range(0, PROTECT_KINDS.size() - 1)]
+			var mid := cell_of(zc + 5, zr + 2, shape)
+			out["protect"] = {"cell": [mid.x, mid.y], "kind": kind, "size": 1, "hp": 10, "evasion": 5}
+			out["objectives"] = [{"id": "hold", "type": "defend", "side": Mission.PLAYERS, "zone": "zone", "protect": kind}]
 			out["deployment"][Mission.PLAYERS] = zone  # PCs deploy in the Control Zone.
 			# Attackers can come from three sides, `g` spaces out from the zone.
 			var g := clampi(approach / 2 if approach > 0 else 99, 4, 14)

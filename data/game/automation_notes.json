@@ -1,7 +1,7 @@
 {
   "_note": "What the table still handles for gear and talents the engine only partly automates (src/core/rules/automation.gd). Keys: system/weapon id, or talent id:rank. Plain language for players.",
   "ms_ramjet": "While it's on you must move your full Speed in straight lines; move that way yourself.",
-  "ms_portable_bunker": "The bunker's own 40 HP isn't tracked; if it's attacked, the GM keeps count.",
+  "ms_portable_bunker": "Attack the bunker as zone:<id> (40 HP, Evasion 5).",
   "ms_tracking_bug": "Removing the bug takes the target an Engineering check as a quick action; resolve that at the table.",
   "ms_lotus_projector": "It shows you HP, Evasion, E-Defense and heat of characters in its field; ask the GM for them.",
   "ms_interdiction_field": "Only characters you choose can teleport inside the field; the GM checks that.",

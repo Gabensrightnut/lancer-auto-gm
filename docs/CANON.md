@@ -140,3 +140,11 @@ option, and support all of them as player choices instead of picking one.
 | Question | Canon options | How the game handles it |
 |---|---|---|
 | Carry your mech or reprint it? | Both: printers are everywhere and Full Repair prints any licensed mech; nothing forbids keeping one (p.31, p.82) | Your mech travels with the squad by default; reprint at a printer when destroyed or to change builds |
+
+## Holdout with something to protect (GM objective)
+
+The book's HOLDOUT sitrep has the defenders hold a Control Zone for a number of rounds. Our
+procedural GM adds an objective on top, marked as its own: the zone holds something the
+defenders protect (a generator, a relay, a convoy truck, a civilian shelter), placed as an
+object with the book's object stats (Evasion 5, 10 HP per Size, Core p.68). If it is
+destroyed the mission is lost. The book's scoring is unchanged otherwise.

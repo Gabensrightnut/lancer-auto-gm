@@ -17,7 +17,7 @@ extends RefCounted
 ## with one human, it stands at once. `fight` says where a split is fought out (for the flow).
 
 const KEY := "_decision"
-const GATHER := ["chapter_started", "decision_started", "party_split", "campaign_ending_due", "boots_on_the_ground"]
+const GATHER := ["chapter_started", "decision_started", "party_split", "campaign_ending_due", "boots_on_the_ground", "boarded", "combat_requested"]
 
 
 static func current(story: StoryState) -> Dictionary:
