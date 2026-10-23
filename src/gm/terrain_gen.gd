@@ -1721,9 +1721,16 @@ func _building_interiors() -> void:
 					stack.append(n)
 		var entrance := Vector2i(-1, -1)
 		var entrance_face := -1
+		# A hub building's name for the rules' messages ("The saloon came down on ...").
+		var name := ""
+		for t in map.column(part[0]).tags:
+			if t.begins_with("spot_"):
+				name = t.trim_prefix("spot_")
 		for c in part:
 			var col := map.column(c)
 			col.tags.append_array(["interior", "storeys_%d" % maxi(1, col.ground)])
+			if name != "":
+				col.tags.append("name:" + name)
 			var ns := map.grid.neighbors(c)
 			for i in range(ns.size()):
 				var n: Vector2i = ns[i]

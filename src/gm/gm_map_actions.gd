@@ -30,6 +30,8 @@ static func known_tag(t: String) -> bool:
 		return t.substr(t.find("_") + 1).is_valid_int()
 	if t.begins_with("material_"):
 		return t.substr(9) in MATERIALS
+	if t.begins_with("name:"):
+		return true  # a building's name for the rules' messages
 	if t.begins_with("window_") or t.begins_with("storeys_"):
 		return t.substr(t.find("_") + 1).is_valid_int()  # building interiors (look; rules read them)
 	if t.begins_with("spot_") or t.begins_with("door_") or t.begins_with("parking_"):
