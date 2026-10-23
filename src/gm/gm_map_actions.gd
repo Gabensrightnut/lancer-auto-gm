@@ -13,7 +13,7 @@ const RULES_TAGS := ["difficult", "dangerous", "impassable", "destructible", "so
 	"dangerous_energy", "dangerous_explosive", "dangerous_burn"]
 const LOOK_TAGS := ["rock", "woods", "building", "wall", "water", "ice", "lava", "toxic", "crystal",
 	"rubble", "chasm", "bulkhead", "container", "machinery", "platform", "deck",
-	"road", "road_x", "road_z", "crossing", "farm", "dry", "house", "keep", "void", "lot", "plaza", "highway", "ramp", "crosswalk", "rail", "rail_x", "rail_z", "door", "vehicle", "safe_point", "repair_rig", "objective", "interior", "entrance", "mech_parking",
+	"road", "road_x", "road_z", "crossing", "farm", "dry", "house", "keep", "void", "lot", "plaza", "highway", "ramp", "crosswalk", "rail", "rail_x", "rail_z", "door", "vehicle", "safe_point", "repair_rig", "objective", "interior", "entrance", "mech_parking", "wreckage", "watchtower", "landing_pad", "monolith", "hangar", "tent", "vehicle_park", "barricade", "headframe", "open_cut", "ruin", "relay_mast",
 	"hull", "breach", "torpedo", "airlock", "console", "bunk", "table", "galley"]
 const MAX_GROUND := 10
 const REF := "GM: battlefield edit (human GM seat)"
@@ -30,6 +30,10 @@ static func known_tag(t: String) -> bool:
 		return t.substr(t.find("_") + 1).is_valid_int()
 	if t.begins_with("material_"):
 		return t.substr(9) in MATERIALS
+	if t.begins_with("place_"):
+		return true  # what a world-map place's buildings are (look only)
+	if t.begins_with("name:"):
+		return true  # a building's name for the rules' messages
 	if t.begins_with("window_") or t.begins_with("storeys_"):
 		return t.substr(t.find("_") + 1).is_valid_int()  # building interiors (look; rules read them)
 	if t.begins_with("spot_") or t.begins_with("door_") or t.begins_with("parking_"):

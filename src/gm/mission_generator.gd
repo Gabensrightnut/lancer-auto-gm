@@ -125,7 +125,7 @@ static func generate(mission_seed: int, opts: Dictionary = {}) -> Dictionary:
 	var wanted_weather := str(opts.get("weather", doc.weather if doc and doc.weather != "" else ("clear" if doc else str(region.get("weather", "?")) if region.has("weather") else "?")))
 	if wanted_weather == "":
 		wanted_weather = "clear"
-	var weather := _pick_weather(world_rng, world[0], world[1], wanted_weather)
+	var weather := _pick_weather(world_rng, world[0], world[1], wanted_weather, str(opts.get("season", region.get("season", ""))))
 	# The place's own look (WorldStyle.vary): the region's seed, the hub's for a town fight,
 	# else one of its own.
 	var place_seed := int(region.get("seed", -1))
@@ -319,9 +319,12 @@ static func area(area_seed: int, opts: Dictionary = {}) -> Dictionary:
 	var gen_hub := hub if place_kind == "town" else {}
 	if place_kind in ["road", "wilds"]:
 		gen_culture = ""
-	var map := TerrainGen.generate(rng, size, size, shape, {}, world[0], gen_culture, gen_hub, true, edges)
+	# A place on the world map (farm, wreck, outpost, landmark, port, pad, camp, mine, ruins,
+	# relay): its own feature instead of a village, in the region's materials.
+	var feature := place_kind if place_kind in TerrainGen.FEATURES else ""
+	var map := TerrainGen.generate(rng, size, size, shape, {}, world[0], gen_culture, gen_hub, true, edges, feature)
 	var weather := str(opts.get("weather", region.get("weather", "?")))
-	weather = _pick_weather(rng, world[0], world[1], weather if weather != "" else "clear")
+	weather = _pick_weather(rng, world[0], world[1], weather if weather != "" else "clear", str(opts.get("season", region.get("season", ""))))
 	var place := int(region.get("seed", hub.get("seed", hash([area_seed, "place"]) & 0x7fffffff)))
 	var time := str(opts.get("time", region.get("time", "day")))
 	var kit := TerrainGen.kit(world[0], world[1]) + ("+" + weather if weather != "" else "") + ("~" + time if time in ["dawn", "evening", "night"] else "") + "#%d" % place
@@ -517,8 +520,8 @@ static func _add_secondary(layout: Dictionary, kind: String, w: int, h: int, sha
 
 
 ## The weather for the kit ("" = clear), from opts.weather or a pick that suits the landscape.
-static func _pick_weather(rng: RandomNumberGenerator, landscape: String, culture: String, wanted: String) -> String:
-	var w := wanted if wanted != "?" else TerrainGen.pick_weather(rng, landscape, culture)
+static func _pick_weather(rng: RandomNumberGenerator, landscape: String, culture: String, wanted: String, season: String = "") -> String:
+	var w := wanted if wanted != "?" else TerrainGen.pick_weather(rng, landscape, culture, season)
 	return "" if w == "clear" else w
 
 
@@ -776,6 +779,15 @@ static func _place(state: GameState, u: Unit, free: Array) -> bool:
 ## GM in the Objective Zone) and Extraction Zone; Recon's True Control Zone, picked secretly.
 static func _setup_objectives(m: Mission, state: GameState, rng: RandomNumberGenerator, cfg: Dictionary) -> void:
 	var o := {"sitrep": m.sitrep_id, "zones": m.zones.duplicate(true), "deployment": m.deployment.duplicate(true)}
+	# Deployment zones per side for the setup phase (rules check placement, visuals colour them:
+	# your own green, the enemy's red, the rest neutral): "deploy_<side>" cell sets, and who holds
+	# ground here ("defender": the squad in a Holdout, the enemy in a Gauntlet, "" otherwise; their
+	# side gets the fortifications, an advantage the sitrep intends).
+	for side: String in m.deployment:
+		o["deploy_" + side] = (m.deployment[side] as Array).duplicate(true)
+	o["defender"] = {"sitrep_holdout": Mission.PLAYERS, "sitrep_gauntlet": Mission.ENEMIES}.get(m.sitrep_id, "")
+	if m.flavor.has("ambush"):
+		o["defender"] = Mission.ENEMIES  # dug in along the road
 	match m.sitrep_id:
 		"sitrep_escort", "sitrep_extraction":
 			o["extraction"] = (m.zones.get("extraction", m.deployment.get(Mission.PLAYERS, [])) as Array).duplicate(true)

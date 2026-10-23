@@ -75,3 +75,16 @@ func test_war_regions_have_ambushes_in_cover() -> void:
 	var m: Mission = g["mission"]
 	expect(m.first_side == Mission.ENEMIES and not (m.deployment[Mission.ENEMIES] as Array).is_empty(), "the ambushers start in their cover and go first")
 	expect(not WorldMapGen.region(41, {"name": "x", "landscape": "grassy_hills"}).has("war") or WorldMapGen.region(41, {"name": "x", "landscape": "grassy_hills"})["ambush_spots"].is_empty(), "no war, no ambushes")
+
+
+func test_every_place_kind_has_its_own_ground() -> void:
+	var region := {"seed": 7, "landscape": "grassy_hills", "culture": "old_west", "weather": ""}
+	var signs := {"farm": "farm", "wreck": "wreckage", "outpost": "watchtower", "landmark": "monolith", "port": "water",
+		"pad": "landing_pad", "camp": "tent", "mine": "headframe", "ruins": "ruin", "relay": "relay_mast"}
+	for kind: String in signs:
+		var a := MissionGenerator.area(3, {"region": region, "at": [1, 1], "place": kind, "shape": "square", "size": 40})
+		var map: BattleMap = a["map"]
+		var found := false
+		for c in map.cells():
+			found = found or map.column(c).has_tag(signs[kind])
+		expect(found, "a %s has its %s" % [kind, signs[kind]])

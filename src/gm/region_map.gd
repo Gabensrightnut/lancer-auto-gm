@@ -23,8 +23,8 @@ const TERRAINS := ["road", "plains", "hills", "forest", "swamp", "mountains", "w
 const TRAVEL := {"road": 0.5, "plains": 1.0, "city": 0.75, "hills": 1.5, "forest": 1.5, "swamp": 2.5, "mountains": 4.0, "water": 0.0}
 const MECH_BLOCKED := ["water"]
 ## Area place kind for each tile's place (MissionGenerator.area "place").
-const AREA_PLACE := {"town": "town", "outpost": "outskirts", "farm": "outskirts", "port": "outskirts", "pad": "outskirts",
-	"job_site": "wilds", "wreck": "wilds", "landmark": "wilds", "safe_point": "wilds"}
+const AREA_PLACE := {"town": "town", "outpost": "outpost", "farm": "farm", "port": "port", "pad": "pad",
+	"job_site": "camp", "wreck": "wreck", "landmark": "landmark", "safe_point": "camp", "mine": "mine", "ruins": "ruins", "relay": "relay"}
 
 ## Terrain weights by landscape: what the open country is mostly made of.
 const LAND := {
@@ -84,7 +84,7 @@ static func build(region: Dictionary, opts: Dictionary = {}) -> Dictionary:
 	_set_tile(tiles, start, "city" if landscape == "city" else "plains")
 	places.append({"id": "town", "kind": "town", "name": str(region.get("name", "the town")), "at": [start.x, start.y], "safe_point": true, "repair": "bay"})
 	var wanted: Array = ["farm", "wreck", "outpost", "landmark"] if bool(opts.get("start", false)) else []
-	wanted.append_array(["outpost", "job_site", "job_site", "landmark", "port" if mix.has("water") else "pad", "safe_point"])
+	wanted.append_array(["outpost", "job_site", "mine" if mix.has("hills") or mix.has("mountains") else "job_site", "ruins", "relay", "landmark", "port" if mix.has("water") else "pad", "safe_point"])
 	var taken := {start: true}
 	for i in range(wanted.size()):
 		var kind: String = wanted[i]

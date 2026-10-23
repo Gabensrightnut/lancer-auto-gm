@@ -106,13 +106,26 @@ const CITY_WEATHER := {"cyberpunk": ["rain", "rain", "storm", ""], "union": ["",
 	"ruins": ["", "mist", "storm", ""], "industrial": ["", "", "mist"], "port": ["", "", "rain", "mist"]}
 
 
-static func pick_weather(rng: RandomNumberGenerator, landscape: String, culture: String = "") -> String:
-	var options: Array = WEATHER.get(landscape, [""])
+static func pick_weather(rng: RandomNumberGenerator, landscape: String, culture: String = "", season: String = "") -> String:
+	var options: Array = (WEATHER.get(landscape, [""]) as Array).duplicate()
 	if culture == "burning":
 		return "ashfall"
 	if landscape == "city" and CITY_WEATHER.has(culture):
-		options = CITY_WEATHER[culture]
+		options = (CITY_WEATHER[culture] as Array).duplicate()
+	# The season shifts the odds where the world has seasons (look only; the book's environments
+	# come from weather.json "environment" and the GM's dial, as before).
+	options.append_array((SEASON_WEATHER.get(season, {}) as Dictionary).get(landscape, []))
 	return str(options[rng.randi_range(0, options.size() - 1)])
+
+
+## Extra weather a season adds to a landscape's draw ("spring", "summer", "autumn", "winter").
+const SEASON_WEATHER := {
+	"winter": {"grassy_hills": ["snow", "snow", "snow", "mist"], "autumn_forest": ["snow", "mist"], "tundra": ["blizzard", "snow"],
+		"city": ["snow"], "jungle": ["rain"]},
+	"spring": {"grassy_hills": ["rain", "rain"], "autumn_forest": ["rain"], "jungle": ["rain", "storm"], "toxic_swamp": ["mist"]},
+	"summer": {"desert_mesas": ["sandstorm", "sandstorm"], "salt_flats": ["sandstorm"], "grassy_hills": ["", "storm"], "volcanic": ["ashfall"]},
+	"autumn": {"grassy_hills": ["mist", "rain"], "autumn_forest": ["mist", "rain", "rain"], "city": ["mist", "rain"]},
+}
 
 
 ## Kit name for the renderer ("landscape" or "landscape/culture").
@@ -121,7 +134,7 @@ static func kit(landscape: String, culture: String) -> String:
 
 
 static func generate(rng: RandomNumberGenerator, w: int, h: int, shape: GridLayout.Shape, blocked: Dictionary, landscape: String, culture: String,
-		hub: Dictionary = {}, area: bool = false, edges: Dictionary = {}) -> BattleMap:
+		hub: Dictionary = {}, area: bool = false, edges: Dictionary = {}, feature: String = "") -> BattleMap:
 	var g := TerrainGen.new()
 	g.edges = edges
 	g.rng = rng
@@ -174,7 +187,9 @@ static func generate(rng: RandomNumberGenerator, w: int, h: int, shape: GridLayo
 			g._swamp()
 		_:
 			g._hills()
-	if not hub.is_empty():
+	if feature in FEATURES:
+		g._feature(feature, culture)
+	elif not hub.is_empty():
 		g._town(hub, culture)
 	elif landscape != "city" and culture != "":
 		g._settlement(culture, landscape)
@@ -1721,9 +1736,16 @@ func _building_interiors() -> void:
 					stack.append(n)
 		var entrance := Vector2i(-1, -1)
 		var entrance_face := -1
+		# A hub building's name for the rules' messages ("The saloon came down on ...").
+		var name := ""
+		for t in map.column(part[0]).tags:
+			if t.begins_with("spot_"):
+				name = t.trim_prefix("spot_")
 		for c in part:
 			var col := map.column(c)
 			col.tags.append_array(["interior", "storeys_%d" % maxi(1, col.ground)])
+			if name != "":
+				col.tags.append("name:" + name)
 			var ns := map.grid.neighbors(c)
 			for i in range(ns.size()):
 				var n: Vector2i = ns[i]
@@ -1751,6 +1773,147 @@ func _building_interiors() -> void:
 func _is_house(cell: Vector2i) -> bool:
 	var col := map.column(cell)
 	return col.has_tag("building") or col.has_tag("house") or col.has_tag("keep")
+
+
+# --- Places on the world map --------------------------------------------------------------
+
+## What stands at each kind of place on a region's world map (an area's "place"): built off the
+## crossroads in the middle so the through-roads pass it by. Their fights use the same ground.
+const FEATURES := ["farm", "wreck", "outpost", "landmark", "port", "pad", "camp", "mine", "ruins", "relay"]
+
+
+func _feature(kind: String, culture: String) -> void:
+	var fc := w / 2 + 7
+	var fr := h / 2 - 7
+	var base := clampi(_ground_at(fc, fr), 0, 1)
+	# A levelled site for anything built.
+	if kind != "wreck" and kind != "landmark":
+		for r in range(fr - 7, fr + 7):
+			for c in range(fc - 8, fc + 8):
+				_put(c, r, base, [])
+	match kind:
+		"farm":
+			# The homestead: farmhouse and barn round a yard, fields all about, a track to the road.
+			_box(fc - 3, fr - 2, 3, 2, base + 1, ["building", "house", BattleMap.TAG_DESTRUCTIBLE])
+			_box(fc + 1, fr - 3, 4, 3, base + 2, ["building", BattleMap.TAG_DESTRUCTIBLE])
+			_lot(fc - 4, fr, 9, 2)
+			for i in range(8):
+				_field(fc - 14 + (i % 4) * 7, fr + 3 + (i / 4) * 5 - (12 if i % 3 == 2 else 0), 5, 4, false)
+		"wreck":
+			# A downed ship: a long broken hull across the ground (cover to climb), its sections
+			# scattered, a scorched debris field (difficult).
+			for k in range(12):
+				var c := fc - 6 + k
+				var r := fr + int(round(sin(k * 0.5) * 1.5))
+				if k in [4, 5]:
+					continue  # broken in two
+				for dr in range(2):
+					_put(c, r + dr, base + (2 if k % 3 != 0 else 1), ["machinery", "wreckage", BattleMap.TAG_DESTRUCTIBLE])
+			for i in range(6):
+				var c := fc + rng.randi_range(-9, 9)
+				var r := fr + rng.randi_range(-6, 6)
+				_put(c, r, base + 1, ["container", "wreckage", BattleMap.TAG_DESTRUCTIBLE])
+			_patches(10, Vector2i(3, 6), [BattleMap.TAG_DIFFICULT, "rubble"], 0, true)
+		"outpost":
+			# A walled compound with a gate toward the road, barracks, a watchtower, a pad.
+			_ring_wall(fc - 7, fr - 5, 14, 10, base + 2, "south")
+			_box(fc - 5, fr - 3, 4, 2, base + 1, ["building", BattleMap.TAG_DESTRUCTIBLE])
+			_box(fc + 2, fr - 3, 3, 2, base + 1, ["building", BattleMap.TAG_DESTRUCTIBLE])
+			_box(fc + 4, fr + 2, 1, 1, base + 3, ["wall", "watchtower", BattleMap.TAG_DESTRUCTIBLE])
+			_box(fc - 4, fr + 1, 4, 3, base, ["deck", "landing_pad"])
+		"landmark":
+			# Something old and huge: a ring of standing monoliths round a central spire.
+			_box(fc, fr, 2, 2, base + 4, ["rock", "monolith"])
+			for i in range(8):
+				var a := TAU * i / 8.0
+				_box(fc + int(round(cos(a) * 6)), fr + int(round(sin(a) * 5)), 1, 1, base + 2, ["rock", "monolith"])
+		"port", "pad":
+			# A landing pad (open deck), a hangar, cargo stacked in rows; a port has its quay on
+			# water along the east side.
+			_box(fc - 6, fr - 4, 6, 6, base, ["deck", "landing_pad"])
+			_box(fc + 2, fr - 5, 5, 4, base + 2, ["building", "hangar", BattleMap.TAG_DESTRUCTIBLE])
+			for r in range(fr + 1, fr + 6, 2):
+				for c in range(fc + 1, fc + 7, 3):
+					_box(c, r, 2, 1, base + 1, ["container", BattleMap.TAG_DESTRUCTIBLE])
+			if kind == "port":
+				for r in range(fr - 7, fr + 7):
+					for c in range(fc + 8, fc + 11):
+						_put(c, r, 0, [BattleMap.TAG_DIFFICULT, "water"])
+		"camp":
+			# A field camp: tents in rows, a vehicle park, a barricade line facing the road.
+			for i in range(6):
+				_box(fc - 6 + (i % 3) * 4, fr - 4 + (i / 3) * 4, 2, 2, base + 1, ["building", "tent", BattleMap.TAG_DESTRUCTIBLE])
+			_box(fc + 6, fr - 4, 2, 4, base + 1, ["container", "vehicle_park", BattleMap.TAG_DESTRUCTIBLE])
+			for c in range(fc - 7, fc + 8):
+				if c % 4 != 0:
+					_put(c, fr + 5, base + 1, ["wall", "barricade", BattleMap.TAG_DESTRUCTIBLE])
+		"mine":
+			# The pithead: headframe and winding house, spoil heaps, an open cut (impassable) and
+			# a rail line out to the road.
+			_box(fc - 2, fr - 2, 2, 2, base + 3, ["machinery", "headframe", BattleMap.TAG_DESTRUCTIBLE])
+			_box(fc + 1, fr - 2, 3, 2, base + 1, ["building", BattleMap.TAG_DESTRUCTIBLE])
+			for r in range(fr + 2, fr + 5):
+				for c in range(fc - 6, fc - 2):
+					_put(c, r, 0, [BattleMap.TAG_IMPASSABLE, "chasm", "open_cut"])
+			_patches(4, Vector2i(3, 6), ["rubble", BattleMap.TAG_DIFFICULT], 1, true)
+			var line: Array = []
+			for c in range(fc + 4, w):
+				line.append(Vector2i(c, fr))
+			_rail(line, base)
+		"ruins":
+			# Broken houses: wall stubs and rubble where a village stood.
+			for i in range(7):
+				var c0 := fc - 7 + (i % 4) * 4
+				var r0 := fr - 5 + (i / 4) * 5
+				for k in range(4):
+					if rng.randf() < 0.6:
+						_put(c0 + k, r0, base + rng.randi_range(1, 2), ["wall", "ruin", BattleMap.TAG_DESTRUCTIBLE])
+				_patches(1, Vector2i(2, 3), ["rubble", BattleMap.TAG_DIFFICULT], 0, true)
+		"relay":
+			# A relay station: the mast, its dish and power units, a fence with a gate.
+			_ring_wall(fc - 5, fr - 4, 10, 8, base + 1, "south")
+			_box(fc, fr - 1, 1, 1, base + 5, ["machinery", "relay_mast", BattleMap.TAG_DESTRUCTIBLE])
+			_box(fc - 3, fr - 2, 2, 2, base + 1, ["machinery", BattleMap.TAG_DESTRUCTIBLE])
+			_box(fc + 2, fr + 1, 2, 1, base + 1, ["building", BattleMap.TAG_DESTRUCTIBLE])
+	for r in range(fr - 7, fr + 7):
+		for c in range(fc - 8, fc + 8):
+			var cell := _cell(clampi(c, 0, w - 1), clampi(r, 0, h - 1))
+			if map.has_cell(cell):
+				built[cell] = true
+				if map.column(cell).has_tag("building"):
+					map.column(cell).tags.append("place_" + kind)
+	# A track from the place to the road through the middle.
+	var track: Array = []
+	for r in range(fr + 7, h / 2 + 1):
+		track.append(Vector2i(fc, r))
+	_road(track, "road_z")
+
+
+func _box(c0: int, r0: int, cw: int, rh: int, ground: int, tags: Array) -> void:
+	for r in range(r0, r0 + rh):
+		for c in range(c0, c0 + cw):
+			_put(c, r, ground, tags)
+
+
+func _lot(c0: int, r0: int, cw: int, rh: int) -> void:
+	for r in range(r0, r0 + rh):
+		for c in range(c0, c0 + cw):
+			var cell := _cell(clampi(c, 0, w - 1), clampi(r, 0, h - 1))
+			if map.has_cell(cell) and map.column(cell).tags.is_empty():
+				map.column(cell).tags = PackedStringArray(["lot"])
+
+
+## A compound wall round a rectangle with a two-space gate on one side.
+func _ring_wall(c0: int, r0: int, cw: int, rh: int, ground: int, gate_side: String) -> void:
+	for r in range(r0, r0 + rh):
+		for c in range(c0, c0 + cw):
+			var edge := r == r0 or r == r0 + rh - 1 or c == c0 or c == c0 + cw - 1
+			if not edge:
+				continue
+			var gate := gate_side == "south" and r == r0 + rh - 1 and absi(c - (c0 + cw / 2)) <= 1
+			if gate:
+				continue
+			_put(c, r, ground, ["wall", BattleMap.TAG_DESTRUCTIBLE])
 
 
 ## Towns that get a railway past them.
