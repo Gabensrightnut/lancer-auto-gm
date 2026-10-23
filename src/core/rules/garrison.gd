@@ -68,6 +68,23 @@ static func inside(state: GameState, u: Unit) -> bool:
 	return true
 
 
+## For the hover card: what a building space can hold ("" if it isn't enterable).
+static func capacity_text(state: GameState, cell: Vector2i) -> String:
+	var col := state.map.column(cell)
+	if col == null or not col.has_tag(TAG_INTERIOR):
+		return ""
+	if not on(state):
+		return "A building (solid: the Garrisoned buildings house rule is off)."
+	var inside: Array = []
+	for u: Unit in state.units.values():
+		if Combat.is_present(u) and state.map.grid.footprint(u.cell, u.size).has(cell) and u.level == room_level(col):
+			inside.append(u.name if u.name != "" else u.id)
+	var text := "Enterable: holds 2 half-size units (pilots, soldiers or Size 1/2 mechs) and a squad, or 1 Size 1 mech."
+	if not inside.is_empty():
+		text += " Inside: %s." % ", ".join(PackedStringArray(inside))
+	return text
+
+
 ## A room space with a window (a firing position).
 static func at_window(state: GameState, cell: Vector2i) -> bool:
 	var col := state.map.column(cell)

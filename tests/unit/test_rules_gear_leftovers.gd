@@ -425,6 +425,15 @@ func test_false_idol() -> void:
 	expect_eq(F.events_of(out, "attack_rolled").size(), 0, "fooled: no attack on the real Goblin")
 	expect(not t.turn.get("taken", []).has("skirmish"), "it doesn't lose the action")
 	expect(not F.ok(F.act(e, s, "skirmish", "t", {"weapon": "0:0", "target": "a"})), "can't target the real one now")
+	# The enemy sees the idol as the real thing; its own side sees it as an illusion.
+	var idol: Unit = s.units.values().filter(func(u: Unit) -> bool: return u.counters.has("idol_of"))[0]
+	s.seats["foe"] = {"name": "Foe", "side": t.side}
+	s.seats["me"] = {"name": "Me", "side": a.side}
+	var theirs: Dictionary = ViewFilter.new().view_for(s, "foe")["units"][idol.id]
+	expect_eq([theirs["kind"], theirs["content_id"], theirs.has("illusion_of")], [a.kind, a.content_id, false], "a real-looking copy")
+	var ours: Dictionary = ViewFilter.new().view_for(s, "me")["units"][idol.id]
+	expect_eq([ours.get("illusion_of"), ours.get("revealed")], ["a", false], "marked as an illusion for its owner")
+	expect(AiKnowledge.for_side(s, ViewFilter.new(), t.side).state.unit(idol.id).kind == a.kind, "the enemy AI plans against it as real")
 
 
 func test_mimic_gun() -> void:

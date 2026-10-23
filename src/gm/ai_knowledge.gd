@@ -34,6 +34,11 @@ static func for_side(real: GameState, filter: ViewFilter, side_id: String) -> Ai
 	var units := {}
 	for id: String in real.units:
 		var u: Unit = real.units[id]
+		var fake := ViewFilter.disguise(real, u, side_id)
+		if not fake.is_empty():
+			units[id] = fake  # a False Idol it hasn't seen through: it plans against it like the real one
+			k.unknown[id] = true
+			continue
 		if u.side == side_id or filter.knows_stats(side_id, id, real):
 			units[id] = u.to_dict()
 		elif u.has_status("Hidden"):

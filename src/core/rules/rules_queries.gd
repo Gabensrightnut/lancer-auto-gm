@@ -30,6 +30,60 @@ static func line_of_sight(state: GameState, from_id: String, to_id: String) -> b
 	return Sight.unit_line_of_sight(state, state.unit(from_id), state.unit(to_id))
 
 
+## For the line-of-sight line on screen, using the engine's own sight and cover checks:
+## {visible, cover: "none"/"soft"/"hard", blocked_at: [x, y] or null, blocker: {kind, name} or
+## {}, path_cells: [[x, y], ...], reason, rule_ref}. `to`: a unit id or a cell [x, y].
+## Seeing someone never lets an attack through a wall: attacks need this same line of sight
+## (except Arcing, Seeking and the like, per their tags).
+static func los_detail(state: GameState, from_id: String, to: Variant) -> Dictionary:
+	var a := state.unit(from_id)
+	var out := {"visible": false, "cover": "none", "blocked_at": null, "blocker": {}, "path_cells": [], "reason": "", "rule_ref": Sight.REF_LOS}
+	if a == null:
+		return out
+	var t: Unit = state.unit(String(to)) if to is String else null
+	var cell: Vector2i = t.cell if t != null else (Vector2i(int(to[0]), int(to[1])) if to is Array else a.cell)
+	for c in state.map.grid.line(a.cell, cell):
+		out["path_cells"].append([c.x, c.y])
+	var a_body := Sight.body_of(state, a)
+	var t_body := Sight.body_of(state, t) if t != null else Sight.make_body(state, cell, state.map.ground_height(cell), 0.5)
+	if t != null and t.has_status("Hidden") and t.side != a.side:
+		out["blocker"] = {"kind": "hidden", "name": "Hidden"}
+		out["reason"] = "Hidden: it can't be seen or targeted."
+		out["rule_ref"] = "statuses: Hidden"
+		return out
+	if t != null and Zones.blocks_sight(state, a, t):
+		out["blocker"] = {"kind": "zone", "name": "Blinded or a sight-blocking field"}
+		out["reason"] = "Something blocks its sight (Blinded, a flash or a hardlight field)."
+		return out
+	var cov := Sight.unit_cover(state, a, t) if t != null else Sight.cover(state, a_body, t_body)
+	out["visible"] = bool(cov.get("los", false))
+	out["cover"] = String(cov.get("cover", "none"))
+	out["reason"] = String(cov.get("reason", ""))
+	out["rule_ref"] = String(cov.get("rule_ref", Sight.REF_LOS))
+	# What's in the way: the first thing on the line from the target's center to the shooter's.
+	var r := Sight._trace(state, Sight._center(state, t_body), Sight._center(state, a_body), Sight._skip_cells(a_body, t_body), Sight._voxels(Sight.wreck_bodies(state), a_body, t_body))
+	if r["blocked"]:
+		var bc: Vector2i = r["first_block"]
+		out["blocked_at"] = [bc.x, bc.y]
+		var col := state.map.column(bc)
+		var kind := "terrain"
+		var name := "Terrain"
+		if col != null:
+			for tag: Array in [["window", "window", "A wall with a window"], ["interior", "building", "A building"], ["building", "building", "A building"], [Sight.TAG_VEHICLE, "vehicle", "A parked vehicle"], ["wall", "wall", "A wall"], ["rock", "terrain", "Rock"]]:
+				if col.has_tag(String(tag[0])) or (String(tag[0]) == "window" and Array(col.tags).any(func(x: String) -> bool: return x.begins_with("window_"))):
+					kind = String(tag[1])
+					name = String(tag[2])
+					break
+		for w: Unit in state.units.values():
+			if w.destroyed and w.kind == Unit.KIND_MECH and state.map.grid.footprint(w.cell, w.size).has(bc):
+				kind = "wreck"
+				name = "A wreck"
+		out["blocker"] = {"kind": kind, "name": name}
+	elif r["soft"]:
+		out["blocker"] = {"kind": "soft_cover", "name": "Smoke or foliage"}
+	return out
+
+
 ## Cover the target has against a ranged attack from the attacker:
 ## {los, cover: "none"/"soft"/"hard", difficulty, cover_cells: [[x, y]], reason, rule_ref}.
 static func cover(state: GameState, attacker_id: String, target_id: String) -> Dictionary:
