@@ -481,5 +481,6 @@ static func _discover_thefts(story: StoryState) -> Array:
 			if not bool(w["asleep"]) and not bool(w["out"]):
 				it["missed"] = true
 				_temper(story, str(it["owner"]), 3)
+				Townsfolk.remember(story, str(it["owner"]), "robbed", "%s went missing" % it["name"])
 				events.append({"type": "item_missed", "npc": it["owner"], "item": it["id"], "text": "%s has noticed %s is gone." % [story.npcs[str(it["owner"])]["name"], it["name"]]})
 	return events

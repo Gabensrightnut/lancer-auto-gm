@@ -90,7 +90,14 @@ func look(rel: Vector2, yaw: float) -> float:
 	return v.x
 
 
+## In the cockpit (mounted up, walking the town in your mech): the view from up there.
+var cockpit := false
+const COCKPIT_EYE := 7.4
+
+
 func eye_height() -> float:
+	if cockpit:
+		return COCKPIT_EYE
 	return CROUCH_EYE if sneaking else EYE
 
 
@@ -183,7 +190,9 @@ func show(story: StoryState, me_pid: String, near_room: String) -> void:
 			t = "[E] Go back out"
 		"idoor":
 			t = ("[E] Pick the lock   [R] Force it" if bool(target.get("locked", false)) else "")
-		"mech", "bay":
+		"mech":
+			t = "[E] Climb in   [R] Repair bay: Full Repair (10 hours)"
+		"bay":
 			t = "[E] Repair bay: Full Repair (10 hours)"
 	if t == "" and inside_prompt != "":
 		t = inside_prompt

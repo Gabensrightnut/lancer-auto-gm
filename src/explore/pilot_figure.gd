@@ -92,6 +92,24 @@ func build(l: Dictionary, title: String = "", subtitle: String = "", pilot_suit:
 	return self
 
 
+## In the cockpit: the pilot's figure gives way to their mech (walking the town in it).
+var mech: Node3D
+
+
+func set_mech(model: Node3D) -> void:
+	if mech != null:
+		mech.queue_free()
+	mech = model
+	if _body != null:
+		_body.visible = model == null
+	if model != null:
+		add_child(model)
+	if _label != null:
+		_label.position.y = 9.5 if model != null else 2.25
+	if _ring != null:
+		_ring.scale = Vector3.ONE * (5.0 if model != null else 1.0)
+
+
 func set_highlight(on: bool, color: Color = Color(1.0, 0.82, 0.4)) -> void:
 	if _ring != null:
 		_ring.material_override = MeshKit.overlay_material(Color(color, 0.7) if on else Color(0, 0, 0, 0.28))

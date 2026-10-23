@@ -135,6 +135,9 @@ static func populate(story: StoryState, campaign: Campaign) -> void:
 			sp["name"] = str(wdef["spot_names"][str(sp["kind"])])
 	if wdef.has("room_names"):
 		story.hub["room_names"] = (wdef["room_names"] as Dictionary).duplicate(true)
+	# A world the story puts at war (ambushes on its roads: Journeys.war).
+	if wdef.has("war"):
+		story.hub["war"] = (wdef["war"] as Dictionary).duplicate(true)
 	# Who keeps order here (Soldiers): the world's own garrison.
 	if wdef.has("garrison") and not story.hub.get("garrison_def") is Dictionary:
 		Garrisons.restyle(story, wdef["garrison"])
@@ -293,6 +296,9 @@ static func build_hook(story: StoryState, campaign: Campaign, cid: String) -> Di
 		hook["loot"] = {"name": fill(story, campaign, str(hs["loot"].get("name", "")), ch), "value": int(hs["loot"].get("value", 200)), "reserve": str(hs["loot"].get("reserve", "reserve_supplies"))}
 	hook["chapter"] = cid
 	hook["short_title"] = str(hook["title"])
+	# Where it is and how to get there, now the chapter has set the place (Journeys).
+	hook.erase("site")
+	Journeys.dress(story, campaign, hook)
 	var lines: Array = (ch.get("briefing", []) as Array).map(func(t: String) -> Dictionary: return {"who": "npc", "text": fill(story, campaign, t, ch)})
 	if not lines.is_empty():
 		var sid := "cs_brief_%s" % cid

@@ -56,6 +56,8 @@ static func make_hub(story: StoryState, campaign: Campaign, hub_seed: int, kind:
 		i += 1
 	# Who keeps order here (Soldiers): guards, a night watch, patrols.
 	Garrisons.post(story, campaign, hub, rng, names)
+	# Everyone worth talking to: a story, a worry, a tie, something to offer (Townsfolk).
+	Townsfolk.dress_hub(story, hub, rng, t.get("wants", []))
 	story.hub = hub
 	return hub
 

@@ -178,6 +178,11 @@ static func apply(e: Dictionary, story: StoryState, campaign: Campaign, ctx: Dic
 			who = CampaignScript.npc(who)
 		if story.npcs.has(who):
 			story.npcs[who]["trust"] = clampi(int(story.npcs[who].get("trust", 0)) + int(e.get("add", 0)), -5, 5)
+			# A big turn either way is remembered and brought up next time (Townsfolk).
+			if int(e.get("add", 0)) >= 2:
+				Townsfolk.remember(story, who, "helped", str(e.get("why", "stood by me when it counted")))
+			elif int(e.get("add", 0)) <= -2:
+				Townsfolk.remember(story, who, "crossed", str(e.get("why", "went against me")))
 			return [{"type": "trust_changed", "npc": who, "trust": story.npcs[who]["trust"]}]
 		return []
 	if e.has("give_item"):
